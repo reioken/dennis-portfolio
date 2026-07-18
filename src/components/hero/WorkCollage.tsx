@@ -14,27 +14,56 @@ function resolveFormat(src: string, format?: Shot['format']): Shot['format'] {
   return undefined;
 }
 
+/** Build a seamless marquee track: dense half, then duplicated for -50% scroll. */
+function loopTrack(items: IndexedShot[]): IndexedShot[] {
+  if (!items.length) return [];
+  const half =
+    items.length >= 4
+      ? [...items, ...items]
+      : [...items, ...items, ...items, ...items];
+  return [...half, ...half];
+}
+
+/**
+ * Split into disjoint rails with matching rhythm (desktop/phone pairs),
+ * so top and bottom stay visually symmetrical without shared screenshots.
+ */
+function splitRails(shots: IndexedShot[]): [IndexedShot[], IndexedShot[]] {
+  if (shots.length < 2) return [shots, shots];
+
+  const phones = shots.filter((s) => s.format === 'phone');
+  const desks = shots.filter((s) => s.format !== 'phone');
+  const top: IndexedShot[] = [];
+  const bottom: IndexedShot[] = [];
+  const n = Math.max(desks.length, phones.length);
+
+  for (let i = 0; i < n; i++) {
+    const rail = i % 2 === 0 ? top : bottom;
+    if (desks[i]) rail.push(desks[i]!);
+    if (phones[i]) rail.push(phones[i]!);
+  }
+
+  if (!top.length || !bottom.length) {
+    const mid = Math.ceil(shots.length / 2);
+    return [shots.slice(0, mid), shots.slice(mid)];
+  }
+  return [top, bottom];
+}
+
 /** Slow dual-rail screenshot collage for the hero background (CSS-driven). */
 export default function WorkCollage({ shots }: Props) {
   if (!shots.length) return null;
 
-  // Cap weight: enough variety without duplicating the full library twice in network
   const trimmed: IndexedShot[] = shots.slice(0, 8).map((s, slot) => ({
     ...s,
     slot,
     format: resolveFormat(s.src, s.format),
   }));
 
-  // Split into disjoint sets so top/bottom never show the same shot at once
-  const top: IndexedShot[] = [];
-  const bottom: IndexedShot[] = [];
-  for (let i = 0; i < trimmed.length; i++) {
-    (i % 2 === 0 ? top : bottom).push(trimmed[i]!);
-  }
-  const railABase = top.length ? top : trimmed;
-  const railBBase = bottom.length ? bottom : [...trimmed].reverse();
-  const railA = [...railABase, ...railABase];
-  const railB = [...railBBase].reverse().concat([...railBBase].reverse());
+  const [topBase, bottomBase] = splitRails(trimmed);
+  const railA = loopTrack(topBase);
+  // Reverse bottom order only — same set density, opposite scroll already in CSS
+  const railB = loopTrack([...bottomBase].reverse());
 
   return (
     <div className="hero-collage" aria-hidden>
@@ -59,7 +88,7 @@ export default function WorkCollage({ shots }: Props) {
             <CollageCard
               key={`b-${i}`}
               src={shot.src}
-              format={shot.format === 'phone' ? 'phone' : i % 3 === 0 ? 'wide' : undefined}
+              format={shot.format}
               tilt={i % 2 === 0 ? 2 : -2.5}
               priority={false}
               editKey={`img.collage.${shot.slot}`}
