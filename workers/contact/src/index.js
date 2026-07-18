@@ -202,7 +202,10 @@ async function handleContact(request, env) {
     return json({ ok: false, error: 'invalid_email' }, 400);
   }
 
-  const to = env.CONTACT_TO || 'dennis.bierreth@gmail.com';
+  const to = env.CONTACT_TO;
+  if (!to) {
+    return json({ ok: false, error: 'mail_unavailable' }, 503);
+  }
   const fromAddr = env.CONTACT_FROM || 'contact@dennisbf.design';
   const when = formatWhen();
   const mailSubject = `${subject} — ${name}`;
