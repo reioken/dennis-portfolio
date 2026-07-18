@@ -40,8 +40,8 @@ export const skills = [
   {
     group: { de: 'Design Tools', en: 'Design Tools' },
     items: {
-      de: ['Photoshop & Illustrator', 'InDesign', 'Premiere & After Effects', 'Figma', 'Claude & KI-Tools'],
-      en: ['Photoshop & Illustrator', 'InDesign', 'Premiere & After Effects', 'Figma', 'Claude & AI tools'],
+      de: ['Photoshop & Illustrator', 'InDesign', 'Premiere & After Effects', 'Figma', 'Cursor, Claude & KI-Tools'],
+      en: ['Photoshop & Illustrator', 'InDesign', 'Premiere & After Effects', 'Figma', 'Cursor, Claude & AI tools'],
     },
   },
   {

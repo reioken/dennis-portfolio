@@ -70,7 +70,7 @@ Carl-Benz-Gymnasium
 ---
 
 ## Design Tools
-Photoshop & Illustrator · InDesign · Premiere & After Effects · Figma · Claude & KI-Tools
+Photoshop & Illustrator · InDesign · Premiere & After Effects · Figma · Cursor, Claude & KI-Tools
 
 ## Web & Product
 HTML / CSS · WordPress / CMS · Desktop Apps · Mobile Apps · App Shipping · Product Systems
