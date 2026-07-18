@@ -24,9 +24,17 @@ export default function WorkCollage({ shots }: Props) {
     slot,
     format: resolveFormat(s.src, s.format),
   }));
-  const railA = [...trimmed, ...trimmed];
-  const reversed = [...trimmed].reverse();
-  const railB = [...reversed, ...reversed];
+
+  // Split into disjoint sets so top/bottom never show the same shot at once
+  const top: IndexedShot[] = [];
+  const bottom: IndexedShot[] = [];
+  for (let i = 0; i < trimmed.length; i++) {
+    (i % 2 === 0 ? top : bottom).push(trimmed[i]!);
+  }
+  const railABase = top.length ? top : trimmed;
+  const railBBase = bottom.length ? bottom : [...trimmed].reverse();
+  const railA = [...railABase, ...railABase];
+  const railB = [...railBBase].reverse().concat([...railBBase].reverse());
 
   return (
     <div className="hero-collage" aria-hidden>
