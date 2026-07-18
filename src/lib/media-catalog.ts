@@ -48,7 +48,6 @@ export const COLLAGE_MEDIA: MediaItem[] = [
   { src: '/media/nexus/screen-heatmap.webp', label: 'Heatmap', group: 'NEXUS' },
   { src: '/media/nexus/screen-dice.webp', label: 'Dice', group: 'NEXUS' },
   { src: '/media/nexus/screen-onboard.webp', label: 'Onboarding', group: 'NEXUS' },
-  { src: '/media/nexus/hero.webp', label: 'Hero', group: 'NEXUS' },
 
   // Berry — phone UI
   { src: '/media/berry/screen-home.webp', label: 'Home', group: 'Berry' },
@@ -58,7 +57,6 @@ export const COLLAGE_MEDIA: MediaItem[] = [
   { src: '/media/berry/screen-deck-editor.webp', label: 'Deck Editor', group: 'Berry' },
   { src: '/media/berry/screen-insights.webp', label: 'Insights', group: 'Berry' },
   { src: '/media/berry/screen-tournaments.webp', label: 'Tournaments', group: 'Berry' },
-  { src: '/media/berry/hero.webp', label: 'Hero', group: 'Berry' },
 
   // Riftcast — product surfaces
   { src: '/media/riftcast/screen-desktop.webp', label: 'Desktop', group: 'Riftcast' },
@@ -68,7 +66,6 @@ export const COLLAGE_MEDIA: MediaItem[] = [
   { src: '/media/riftcast/screen-app.webp', label: 'Phone Controls', group: 'Riftcast' },
   { src: '/media/riftcast/screen-quality.webp', label: 'Quality', group: 'Riftcast' },
   { src: '/media/riftcast/screen-pad.webp', label: 'Pad Shooter', group: 'Riftcast' },
-  { src: '/media/riftcast/cover.webp', label: 'Cover', group: 'Riftcast' },
 
   // Floordirekt
   { src: '/media/floordirekt/screen-pruefen.webp', label: 'Prüfen', group: 'Floordirekt' },
@@ -77,7 +74,6 @@ export const COLLAGE_MEDIA: MediaItem[] = [
   { src: '/media/floordirekt/screen-layout-export.webp', label: 'Layout & Export', group: 'Floordirekt' },
   { src: '/media/floordirekt/screen-sprachen.webp', label: 'Sprachen', group: 'Floordirekt' },
   { src: '/media/floordirekt/screen-fertig.webp', label: 'Fertig', group: 'Floordirekt' },
-  { src: '/media/floordirekt/cover.webp', label: 'Cover', group: 'Floordirekt' },
 
   // Forever
   { src: '/media/forever/flyer-web.jpg', label: 'Flyer', group: 'Forever' },

@@ -1,5 +1,6 @@
 import { GATE } from './gate-config';
 import type { BlockInstance } from './block-catalog';
+import { COLLAGE_DEFAULTS, COLLAGE_MEDIA, COLLAGE_SLOT_KEYS } from './media-catalog';
 import { safeCssImageUrl, safeImageUrl } from './url-safe';
 
 export type ContentMap = Record<string, string>;
@@ -13,8 +14,33 @@ export type SiteDoc = {
 
 const EMPTY_DOC: SiteDoc = { v: 2, fields: {}, layout: {} };
 
+/** Only current product screens may stay as collage overrides (drops deleted/legacy paths). */
+const ALLOWED_COLLAGE = new Set<string>([
+  ...Object.values(COLLAGE_DEFAULTS),
+  ...COLLAGE_MEDIA.map((m) => m.src),
+]);
+
 function isDoc(x: unknown): x is SiteDoc {
   return !!x && typeof x === 'object' && (x as SiteDoc).v === 2 && typeof (x as SiteDoc).fields === 'object';
+}
+
+function scrubLegacyMedia(fields: ContentMap): ContentMap {
+  const next = { ...fields };
+  for (const key of COLLAGE_SLOT_KEYS) {
+    const val = next[key];
+    if (val && !ALLOWED_COLLAGE.has(val)) delete next[key];
+  }
+  for (const [k, v] of Object.entries(next)) {
+    if (typeof v !== 'string') continue;
+    if (
+      /\/media\/(?:nexus\/nexus_|nexus\/screen-library|berry\/brand|berry\/screen-home-live|floordirekt\/studio-lockup|floordirekt\/logo-mark)/.test(
+        v,
+      )
+    ) {
+      delete next[k];
+    }
+  }
+  return next;
 }
 
 /** Migrate v1 flat map → v2 doc */
@@ -23,12 +49,12 @@ function normalize(raw: unknown): SiteDoc {
   if (isDoc(raw)) {
     return {
       v: 2,
-      fields: { ...(raw.fields || {}) },
+      fields: scrubLegacyMedia({ ...(raw.fields || {}) }),
       layout: { ...(raw.layout || {}) },
     };
   }
   // legacy flat ContentMap
-  return { v: 2, fields: { ...(raw as ContentMap) }, layout: {} };
+  return { v: 2, fields: scrubLegacyMedia({ ...(raw as ContentMap) }), layout: {} };
 }
 
 export function readDoc(): SiteDoc {

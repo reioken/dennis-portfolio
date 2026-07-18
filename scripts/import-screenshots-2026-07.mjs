@@ -7,7 +7,10 @@ import { copyFile, mkdir, readdir, access } from 'node:fs/promises';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-const shotRoot = path.join(root, 'public', 'media', 'screenshots-2026-07');
+/** Source PNGs live outside the site public folder (not deployed). */
+const shotRoot =
+  process.env.SCREENSHOTS_SRC ||
+  path.join(process.env.USERPROFILE || '', 'Documents', 'screenshots');
 const media = (...p) => path.join(root, 'public', 'media', ...p);
 
 async function exists(p) {
@@ -45,42 +48,49 @@ async function toWebpKeyed(src, dest, { maxW = 512, thr = 18 } = {}) {
     .toFile(dest);
 }
 
-/** src basename → dest stem (without extension). Skip duplicates / junk. */
+/** project → relative folder under Documents/screenshots */
+const SRC_DIR = {
+  berry: 'berry-2026-07-18',
+  nexus: 'nexus-2026-07-18',
+  floordirekt: 'floordirekt-studio_2026-07-18_2026',
+  riftcast: 'riftcast',
+};
+
+/** src basename → dest stem (without extension). */
 const MAP = {
   berry: {
     '01-home.png': 'screen-home',
     '02-search.png': 'screen-search',
     '03-collection.png': 'screen-collection',
-    '04-decks-meta.png': 'screen-decks-meta',
-    '05-deck-editor.png': 'screen-deck-editor',
-    '06-insights.png': 'screen-insights',
-    '07-tournaments.png': 'screen-tournaments',
+    '05-decks-meta.png': 'screen-decks-meta',
+    '15-deck-editor.png': 'screen-deck-editor',
+    '12-insights.png': 'screen-insights',
+    '10-tournaments.png': 'screen-tournaments',
   },
   nexus: {
-    '01-home.png': 'screen-home',
-    '02-grid.png': 'screen-grid',
-    '03-showcase.png': 'screen-showcase',
-    '04-coverflow.png': 'screen-coverflow',
-    '05-couch.png': 'screen-couch',
-    '06-toplists.png': 'screen-toplists',
-    '07-wrapped.png': 'screen-wrapped',
-    '08-cmdk.png': 'screen-cmdk',
+    'home.png': 'screen-home',
+    'homepop.png': 'screen-home-featured',
+    'grid.png': 'screen-grid',
+    'show.png': 'screen-showcase',
+    'flow.png': 'screen-coverflow',
+    'couch.png': 'screen-couch',
+    'couchfeat.png': 'screen-couch-featured',
+    'top.png': 'screen-toplists',
+    'wrapped.png': 'screen-wrapped',
+    'cmdk.png': 'screen-cmdk',
     'blizz.png': 'screen-blizzard',
     'bulk.png': 'screen-bulk',
-    'couchfeat.png': 'screen-couch-featured',
-    'dice.png': 'screen-dice',
     'heatmap.png': 'screen-heatmap',
+    'dice.png': 'screen-dice',
     'onboard.png': 'screen-onboard',
-    'Screenshot 2026-07-18 205816.png': 'screen-home-featured',
-    // top.png == 06-toplists (sha1 match) — skip
   },
   floordirekt: {
-    '01-start.png': 'screen-start',
-    '02-bilder.png': 'screen-bilder',
-    '03-layout-export.png': 'screen-layout-export',
-    '04-sprachen.png': 'screen-sprachen',
-    '05-pruefen.png': 'screen-pruefen',
-    '06-fertig.png': 'screen-fertig',
+    '02_start.png': 'screen-start',
+    '06_bilder.png': 'screen-bilder',
+    '10_layout-export.png': 'screen-layout-export',
+    '11_sprachen.png': 'screen-sprachen',
+    '12_pruefen.png': 'screen-pruefen',
+    '16_fertig.png': 'screen-fertig',
   },
   riftcast: {
     '01-launcher-home.png': 'screen-launcher',
@@ -102,7 +112,7 @@ const MAX_W = {
 
 let imported = 0;
 for (const [project, files] of Object.entries(MAP)) {
-  const dir = path.join(shotRoot, project);
+  const dir = path.join(shotRoot, SRC_DIR[project]);
   const limits = MAX_W[project];
   for (const [srcName, stem] of Object.entries(files)) {
     const src = path.join(dir, srcName);
@@ -125,6 +135,7 @@ const aliases = [
   ['berry/screen-home.webp', 'berry/hero.webp'],
   ['riftcast/screen-desktop.webp', 'riftcast/cover.webp'],
   ['floordirekt/screen-pruefen.webp', 'floordirekt/cover.webp'],
+  ['floordirekt/screen-pruefen@2x.webp', 'floordirekt/cover@2x.webp'],
 ];
 for (const [from, to] of aliases) {
   const a = media(...from.split('/'));
