@@ -1,11 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 66" fill="none">
-  <!-- Riftcast mark: stylized R (no tile). Gradient white ’ indigo/violet. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 66" fill="none" role="img" aria-label="Riftcast">
   <defs>
-    <linearGradient id="rcMark" x1="8" y1="2" x2="54" y2="62" gradientUnits="userSpaceOnUse">
+    <linearGradient id="rcMark" x1="6" y1="1" x2="58" y2="64" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF"/>
-      <stop offset="0.45" stop-color="#D8DEFF"/>
-      <stop offset="1" stop-color="#B69CFF"/>
+      <stop offset="0.4" stop-color="#E8ECFF"/>
+      <stop offset="1" stop-color="#B9A6FF"/>
     </linearGradient>
   </defs>
-  <path fill="url(#rcMark)" d="M15.72 1.63 L19.87 2.39 L21.88 2.26 L26.66 2.77 L33.82 3.02 L40.99 3.52 L45.77 5.16 L48.03 6.29 L50.04 7.8 L52.18 9.68 L53.82 11.82 L55.2 14.21 L56.08 16.47 L57.08 21.25 L57.08 23.64 L56.83 26.03 L56.2 28.42 L55.32 30.81 L54.19 33.07 L52.68 35.08 L50.8 37.09 L48.66 38.73 L46.4 39.86 L41.87 41.62 L41.24 43.5 L44.13 46.27 L46.02 48.53 L60.23 62.74 L60.86 64.25 L51.3 64.25 L48.91 62.37 L46.77 60.1 L44.76 58.22 L23.14 36.46 L21 34.33 L21.12 33.19 L28.29 33.19 L29.42 32.82 L36.59 32.57 L38.98 32.57 L41.37 31.94 L43.5 30.68 L45.52 29.05 L46.9 26.78 L47.53 22 L47.03 19.61 L45.64 17.23 L43.63 15.21 L41.24 14.21 L38.85 13.58 L34.07 13.33 L24.52 13.45 L14.96 13.58 L12.57 13.08 L10.18 12.07 L8.17 10.44 L6.41 8.55 L4.9 6.66 L4.28 5.03 L5.78 3.9 L10.56 2.51 L15.21 1.76 Z"/>
+  <!-- Open-R mark: sharp left beak, smooth bowl, pointed crossbar, clean diagonal leg -->
+  <path
+    fill="url(#rcMark)"
+    d="
+      M 15.7 1.6
+      C 27.5 2.2 39.5 2.6 46.0 5.4
+      C 54.2 9.0 58.6 15.5 57.2 24.0
+      C 56.2 31.5 51.6 37.0 44.5 40.2
+      C 42.6 41.2 41.2 42.8 41.5 45.0
+      L 60.8 64.2
+      L 51.2 64.2
+      L 21.0 34.3
+      L 21.2 33.1
+      C 29.0 32.6 37.2 32.2 42.2 30.2
+      C 47.0 28.2 48.6 23.6 47.5 19.2
+      C 46.6 15.4 42.8 13.4 38.4 13.4
+      L 15.0 13.5
+      C 11.2 13.4 8.0 11.6 6.2 8.8
+      L 4.2 5.1
+      L 5.9 3.7
+      C 8.8 2.2 12.2 1.6 15.7 1.6
+      Z
+    "
+  />
 </svg>
