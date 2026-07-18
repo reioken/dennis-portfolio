@@ -12,7 +12,8 @@ const srcHtml = path.join(
   'NEXUS',
   'index.html',
 );
-const dest = path.join(root, 'public', 'media', 'nexus', 'logo-live.svg');
+const destPublic = path.join(root, 'public', 'media', 'nexus', 'logo-live.svg');
+const destAsset = path.join(root, 'src', 'assets', 'logos', 'nexus-live.svg');
 
 const html = fs.readFileSync(srcHtml, 'utf8');
 const svgStart = html.indexOf('<!-- NEXUS-Logo:');
@@ -75,5 +76,7 @@ ${markInner}
 </svg>
 `;
 
-fs.writeFileSync(dest, svg, 'utf8');
-console.log('wrote', dest, `(${svg.length} bytes)`);
+fs.mkdirSync(path.dirname(destAsset), { recursive: true });
+fs.writeFileSync(destPublic, svg, 'utf8');
+fs.writeFileSync(destAsset, svg, 'utf8');
+console.log('wrote', destPublic, 'and', destAsset, `(${svg.length} bytes)`);

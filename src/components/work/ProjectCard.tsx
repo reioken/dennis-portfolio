@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import AnimatedLogo from './AnimatedLogo';
+import BerryLiveLogo from './BerryLiveLogo';
+import NexusSplashMark from './NexusSplashMark';
 
 type Props = {
   href: string;
@@ -12,7 +14,12 @@ type Props = {
   cover: string;
   /** Project logo shown on the card */
   logo?: string;
-  /** Animated logo — only mounted / visible on hover */
+  /**
+   * Live logo:
+   * - `nexus-splash` → full splash shimmer
+   * - `berry-laugh` → Berry-Bot laugh loop
+   * - URL → SMIL SVG via &lt;object&gt;
+   */
   logoLive?: string;
   tags: string[];
   featured?: boolean;
@@ -95,7 +102,17 @@ export default function ProjectCard({
                 compact ? 'p-5' : featured ? 'p-10 md:p-14' : 'p-8'
               }`}
             >
-              {logoLive && !reduce ? (
+              {logoLive && !reduce && logoLive === 'nexus-splash' ? (
+                <NexusSplashMark
+                  title={coverAlt ?? `${title} logo`}
+                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                />
+              ) : logoLive && !reduce && logoLive === 'berry-laugh' ? (
+                <BerryLiveLogo
+                  title={coverAlt ?? `${title} logo`}
+                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                />
+              ) : logoLive && !reduce ? (
                 <AnimatedLogo
                   src={logoLive}
                   title={coverAlt ?? `${title} logo`}
