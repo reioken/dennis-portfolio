@@ -4,6 +4,7 @@ import path from 'node:path';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CaseMedia from '../../components/work/CaseMedia';
 import CaseMediaTabs from '../../components/work/CaseMediaTabs';
+import CaseAdjacent from '../../components/work/CaseAdjacent.astro';
 import { getCollection, render } from 'astro:content';
 import { site } from '../../lib/site';
 import { p } from '../../lib/paths';
@@ -21,6 +22,7 @@ const { Content } = await render(entry);
 const data = entry.data;
 const all = (await getCollection('work')).sort((a, b) => a.data.order - b.data.order);
 const idx = all.findIndex((w) => w.id === entry.id);
+const prev = all[(idx - 1 + all.length) % all.length];
 const next = all[(idx + 1) % all.length];
 const asset = (src: string) => p(src.replace(/^\//, ''));
 
@@ -142,16 +144,8 @@ const hasBody = (entry.body ?? '').replace(/<[^>]+>/g, '').trim().length > 0;
       )
     }
 
-    <nav class="case-page__nav wrap" aria-label="Case navigation">
-      <a class="btn" href={p(`work/${next.id}`)}>
-        <span data-lang="de">Weiter:</span>
-        <span data-lang="en">Next:</span>
-        {next.data.title}
-      </a>
-      <a class="btn btn--primary" href={p('contact')}>
-        <span data-lang="de">Projekt besprechen</span>
-        <span data-lang="en">Discuss a project</span>
-      </a>
-    </nav>
+    <div class="wrap">
+      <CaseAdjacent prev={prev} next={next} index={idx} total={all.length} />
+    </div>
   </article>
 </BaseLayout>

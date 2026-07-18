@@ -1,0 +1,70 @@
+---
+import { p } from '../../lib/paths';
+
+type WorkLite = {
+  id: string;
+  data: {
+    title: string;
+    role: string;
+    cover: string;
+  };
+};
+
+type Props = {
+  prev: WorkLite;
+  next: WorkLite;
+  index: number;
+  total: number;
+};
+
+const { prev, next, index, total } = Astro.props;
+const asset = (src: string) => p(src.replace(/^\//, ''));
+const label = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
+---
+
+<nav class="case-adjacent" aria-label="Project navigation">
+  <a class="case-adjacent__card case-adjacent__card--prev" href={p(`work/${prev.id}`)}>
+    <span class="case-adjacent__rail" aria-hidden="true">
+      <img src={asset(prev.data.cover)} alt="" loading="lazy" decoding="async" />
+    </span>
+    <span class="case-adjacent__body">
+      <span class="case-adjacent__dir">
+        <span class="case-adjacent__chev" aria-hidden="true">‹</span>
+        <span data-lang="de">Vorher</span>
+        <span data-lang="en">Prev</span>
+      </span>
+      <span class="case-adjacent__title">{prev.data.title}</span>
+      <span class="case-adjacent__role">{prev.data.role}</span>
+    </span>
+  </a>
+
+  <div class="case-adjacent__hub">
+    <p class="case-adjacent__index" aria-hidden="true">{label}</p>
+    <div class="case-adjacent__track" aria-hidden="true">
+      {
+        Array.from({ length: total }, (_, i) => (
+          <span class:list={['case-adjacent__dot', i === index && 'case-adjacent__dot--on']} />
+        ))
+      }
+    </div>
+    <a class="case-adjacent__contact" href={p('contact')}>
+      <span data-lang="de">Projekt besprechen</span>
+      <span data-lang="en">Discuss a project</span>
+    </a>
+  </div>
+
+  <a class="case-adjacent__card case-adjacent__card--next" href={p(`work/${next.id}`)}>
+    <span class="case-adjacent__body">
+      <span class="case-adjacent__dir">
+        <span data-lang="de">Weiter</span>
+        <span data-lang="en">Next</span>
+        <span class="case-adjacent__chev" aria-hidden="true">›</span>
+      </span>
+      <span class="case-adjacent__title">{next.data.title}</span>
+      <span class="case-adjacent__role">{next.data.role}</span>
+    </span>
+    <span class="case-adjacent__rail" aria-hidden="true">
+      <img src={asset(next.data.cover)} alt="" loading="lazy" decoding="async" />
+    </span>
+  </a>
+</nav>
