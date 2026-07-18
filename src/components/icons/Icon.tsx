@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import {
   ArrowUpRight,
+  ArrowsOutSimple,
   Briefcase,
   EnvelopeSimple,
   Flask,
@@ -19,6 +20,7 @@ const map = {
   menu: List,
   close: X,
   external: ArrowUpRight,
+  expand: ArrowsOutSimple,
 } as const;
 
 type Name = keyof typeof map;
