@@ -4,7 +4,7 @@ import { copy } from '../../lib/i18n';
 import BrandLockup from '../brand/BrandLockup';
 import WorkCollage from './WorkCollage';
 
-type Shot = { src: string; alt?: string };
+type Shot = { src: string; alt?: string; format?: 'phone' | 'wide' };
 
 type Props = {
   brand: string;

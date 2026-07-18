@@ -999,12 +999,21 @@ html.fx-off[data-nav-scrolled='1'] .glass-nav__bar {
 .hero-collage__card--wide {
   width: clamp(240px, 34vw, 440px);
 }
+.hero-collage__card--phone {
+  width: clamp(112px, 14vw, 168px);
+  aspect-ratio: 390 / 844;
+  border-radius: 22px;
+}
 .hero-collage__card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: top center;
   filter: saturate(1.05) contrast(1.02);
+}
+.hero-collage__card--phone img {
+  object-fit: cover;
+  object-position: center top;
 }
 .hero-collage__vignette {
   position: absolute;
@@ -1028,6 +1037,9 @@ html.fx-off[data-nav-scrolled='1'] .glass-nav__bar {
   }
   .hero-collage__card--wide {
     width: clamp(180px, 64vw, 280px);
+  }
+  .hero-collage__card--phone {
+    width: clamp(96px, 28vw, 132px);
   }
 }
 

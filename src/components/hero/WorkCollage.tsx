@@ -1,4 +1,4 @@
-type Shot = { src: string; alt?: string };
+type Shot = { src: string; alt?: string; format?: 'phone' | 'wide' };
 
 type Props = {
   shots: Shot[];
@@ -6,12 +6,24 @@ type Props = {
 
 type IndexedShot = Shot & { slot: number };
 
+/** Phone-app screenshots should keep portrait frames (not landscape crops). */
+function resolveFormat(src: string, format?: Shot['format']): Shot['format'] {
+  if (format) return format;
+  if (/\/media\/berry\/shots\//.test(src)) return 'phone';
+  if (/\/media\/riftcast\/shots\/screen-(app|quality|pad)/.test(src)) return 'phone';
+  return undefined;
+}
+
 /** Slow dual-rail screenshot collage for the hero background (CSS-driven). */
 export default function WorkCollage({ shots }: Props) {
   if (!shots.length) return null;
 
   // Cap weight: enough variety without duplicating the full library twice in network
-  const trimmed: IndexedShot[] = shots.slice(0, 8).map((s, slot) => ({ ...s, slot }));
+  const trimmed: IndexedShot[] = shots.slice(0, 8).map((s, slot) => ({
+    ...s,
+    slot,
+    format: resolveFormat(s.src, s.format),
+  }));
   const railA = [...trimmed, ...trimmed];
   const reversed = [...trimmed].reverse();
   const railB = [...reversed, ...reversed];
@@ -25,6 +37,7 @@ export default function WorkCollage({ shots }: Props) {
             <CollageCard
               key={`a-${i}`}
               src={shot.src}
+              format={shot.format}
               tilt={i % 2 === 0 ? -3 : 2.5}
               priority={i < 3}
               editKey={`img.collage.${shot.slot}`}
@@ -38,8 +51,8 @@ export default function WorkCollage({ shots }: Props) {
             <CollageCard
               key={`b-${i}`}
               src={shot.src}
+              format={shot.format === 'phone' ? 'phone' : i % 3 === 0 ? 'wide' : undefined}
               tilt={i % 2 === 0 ? 2 : -2.5}
-              wide={i % 3 === 0}
               priority={false}
               editKey={`img.collage.${shot.slot}`}
             />
@@ -54,26 +67,27 @@ export default function WorkCollage({ shots }: Props) {
 function CollageCard({
   src,
   tilt,
-  wide,
+  format,
   editKey,
   priority,
 }: {
   src: string;
   tilt: number;
-  wide?: boolean;
+  format?: 'phone' | 'wide';
   editKey?: string;
   priority?: boolean;
 }) {
+  const phone = format === 'phone';
   return (
     <div
-      className={`hero-collage__card ${wide ? 'hero-collage__card--wide' : ''}`}
+      className={`hero-collage__card ${phone ? 'hero-collage__card--phone' : ''} ${format === 'wide' ? 'hero-collage__card--wide' : ''}`}
       style={{ transform: `rotate(${tilt}deg)` }}
     >
       <img
         src={src}
         alt=""
-        width={720}
-        height={450}
+        width={phone ? 390 : 720}
+        height={phone ? 844 : 450}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority="low"

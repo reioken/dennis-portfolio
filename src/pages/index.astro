@@ -23,11 +23,11 @@ const asset = (path: string) => p(path.replace(/^\//, ''));
 /** Current stand — developed product apps (UI screenshots) */
 const collageShots = [
   { src: asset('media/nexus/shots/screen-home.webp'), alt: 'NEXUS Home' },
-  { src: asset('media/berry/shots/screen-home.webp'), alt: 'Berry Home' },
+  { src: asset('media/berry/shots/screen-home.webp'), alt: 'Berry Home', format: 'phone' as const },
   { src: asset('media/riftcast/shots/screen-desktop.webp'), alt: 'Riftcast Desktop' },
   { src: asset('media/nexus/shots/screen-grid.webp'), alt: 'NEXUS Grid' },
-  { src: asset('media/berry/shots/screen-collection.webp'), alt: 'Berry Collection' },
-  { src: asset('media/riftcast/shots/screen-app.webp'), alt: 'Riftcast App' },
+  { src: asset('media/berry/shots/screen-search.webp'), alt: 'Berry Search', format: 'phone' as const },
+  { src: asset('media/riftcast/shots/screen-app.webp'), alt: 'Riftcast App', format: 'phone' as const },
   { src: asset('media/floordirekt/shots/screen-pruefen.webp'), alt: 'Floordirekt Studio' },
   { src: asset('media/nexus/shots/screen-couch.webp'), alt: 'NEXUS Couch' },
 ];
