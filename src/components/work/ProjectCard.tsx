@@ -16,9 +16,9 @@ type Props = {
   logo?: string;
   /**
    * Live logo:
-   * - `nexus-splash` → full splash shimmer
-   * - `berry-laugh` → Berry-Bot laugh loop
-   * - URL → SMIL SVG via &lt;object&gt;
+   * - `nexus-splash` → splash shimmer on hover
+   * - `berry-laugh` → Berry-Bot laugh on hover
+   * - URL → SMIL SVG via object
    */
   logoLive?: string;
   tags: string[];
@@ -45,9 +45,11 @@ export default function ProjectCard({
   const reduce = useReducedMotion();
   const ref = useRef<HTMLAnchorElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [hovering, setHovering] = useState(false);
 
   const mark = logo || cover;
   const isLogo = Boolean(logo);
+  const liveActive = hovering && !reduce;
 
   const onMove = (e: React.MouseEvent) => {
     if (reduce || window.matchMedia('(pointer: coarse)').matches) return;
@@ -61,6 +63,7 @@ export default function ProjectCard({
 
   const onLeave = () => {
     setTilt({ x: 0, y: 0 });
+    setHovering(false);
   };
 
   return (
@@ -80,7 +83,10 @@ export default function ProjectCard({
         WebkitBackdropFilter: 'var(--frost)',
       }}
       onMouseMove={onMove}
+      onMouseEnter={() => setHovering(true)}
       onMouseLeave={onLeave}
+      onFocus={() => setHovering(true)}
+      onBlur={() => setHovering(false)}
       animate={{ rotateX: tilt.x, rotateY: tilt.y }}
       transition={{ type: 'spring', stiffness: 260, damping: 22, mass: 0.4 }}
       whileHover={reduce ? undefined : { borderColor: 'color-mix(in srgb, var(--ice) 45%, var(--stroke))' }}
@@ -102,13 +108,15 @@ export default function ProjectCard({
                 compact ? 'p-5' : featured ? 'p-10 md:p-14' : 'p-8'
               }`}
             >
-              {logoLive && !reduce && logoLive === 'nexus-splash' ? (
+              {logoLive === 'nexus-splash' ? (
                 <NexusSplashMark
+                  active={liveActive}
                   title={coverAlt ?? `${title} logo`}
                   className="project-logo-panel__mark project-logo-panel__mark--live"
                 />
-              ) : logoLive && !reduce && logoLive === 'berry-laugh' ? (
+              ) : logoLive === 'berry-laugh' ? (
                 <BerryLiveLogo
+                  active={liveActive}
                   title={coverAlt ?? `${title} logo`}
                   className="project-logo-panel__mark project-logo-panel__mark--live"
                 />

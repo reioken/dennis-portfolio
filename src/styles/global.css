@@ -392,10 +392,6 @@ a:hover .brand-mark--nav {
 }
 .project-logo-panel__mark--live {
   display: block;
-  max-height: 62%;
-  max-width: 78%;
-  width: min(78%, 280px);
-  height: min(62%, 280px);
   border: 0;
   background: transparent;
   filter: none;
@@ -418,71 +414,79 @@ a:hover .brand-mark--nav {
   }
 }
 
-/* —— NEXUS splash mark (ported from app #splash, looping idle) —— */
+/* —— NEXUS splash mark — card-sized stage, FX on hover (.is-hot) —— */
 .nx-sp {
   --nx-violet: #ac8bfd;
   --nx-blue: #4a82fe;
   --nx-ice: #dcebff;
   position: relative;
-  width: min(78%, 220px);
-  height: min(78%, 220px);
+  width: min(68%, 210px);
+  aspect-ratio: 1;
+  height: auto;
+  max-height: 78%;
   display: grid;
   place-items: center;
   filter: none;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nx-sp.is-hot {
+  transform: scale(1.04);
 }
 .nx-sp__aura {
   position: absolute;
-  width: 160%;
-  height: 160%;
+  inset: -8%;
   border-radius: 50%;
-  left: 50%;
-  top: 48%;
-  translate: -50% -50%;
   pointer-events: none;
-  filter: blur(22px);
+  filter: blur(18px);
+  opacity: 0.14;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--nx-ice) 30%, transparent) 0%,
-    color-mix(in srgb, var(--nx-blue) 30%, transparent) 14%,
-    color-mix(in srgb, var(--nx-violet) 13%, transparent) 34%,
-    transparent 60%
+    color-mix(in srgb, var(--nx-ice) 28%, transparent) 0%,
+    color-mix(in srgb, var(--nx-blue) 26%, transparent) 18%,
+    color-mix(in srgb, var(--nx-violet) 12%, transparent) 40%,
+    transparent 68%
   );
+  transition: opacity 0.4s ease;
+}
+.nx-sp.is-hot .nx-sp__aura {
+  opacity: 0.28;
   animation: nx-sp-aura-breathe 4.4s ease-in-out infinite alternate;
 }
 .nx-sp__rays {
   position: absolute;
-  width: 130%;
-  height: 130%;
-  left: 50%;
-  top: 48%;
-  translate: -50% -50%;
+  inset: 2%;
   pointer-events: none;
   mix-blend-mode: screen;
-  filter: blur(4px);
-  opacity: 0.14;
+  filter: blur(3px);
+  opacity: 0;
   background: conic-gradient(
     from 0deg,
     transparent 0 5%,
-    color-mix(in srgb, var(--nx-blue) 30%, transparent) 7%,
+    color-mix(in srgb, var(--nx-blue) 28%, transparent) 7%,
     transparent 11% 24%,
-    color-mix(in srgb, var(--nx-ice) 22%, transparent) 26%,
+    color-mix(in srgb, var(--nx-ice) 20%, transparent) 26%,
     transparent 30% 49%,
-    color-mix(in srgb, var(--nx-violet) 26%, transparent) 51%,
+    color-mix(in srgb, var(--nx-violet) 24%, transparent) 51%,
     transparent 55% 73%,
-    color-mix(in srgb, var(--nx-blue) 24%, transparent) 75%,
+    color-mix(in srgb, var(--nx-blue) 22%, transparent) 75%,
     transparent 79%
   );
-  -webkit-mask-image: radial-gradient(circle, transparent 10%, #000 26%, transparent 62%);
-  mask-image: radial-gradient(circle, transparent 10%, #000 26%, transparent 62%);
+  -webkit-mask-image: radial-gradient(circle, transparent 12%, #000 30%, transparent 58%);
+  mask-image: radial-gradient(circle, transparent 12%, #000 30%, transparent 58%);
+}
+.nx-sp.is-hot .nx-sp__rays {
+  opacity: 0.16;
   animation: nx-sp-rays-spin 22s linear infinite;
 }
 .nx-sp__wrap {
   position: relative;
-  width: 72%;
-  height: 72%;
+  width: 86%;
+  height: 86%;
   display: grid;
   place-items: center;
   isolation: isolate;
+}
+.nx-sp.is-hot .nx-sp__wrap {
   animation: nx-sp-chroma 2.1s ease-in-out infinite, nx-sp-breathe 4.2s ease-in-out infinite;
 }
 .nx-sp__wrap::before,
@@ -492,26 +496,27 @@ a:hover .brand-mark--nav {
   left: 50%;
   top: 50%;
   z-index: 0;
-  width: 108%;
-  height: 108%;
+  width: 104%;
+  height: 104%;
   border-radius: 50%;
   opacity: 0;
   pointer-events: none;
-  border: 1.5px solid color-mix(in srgb, var(--nx-blue) 60%, transparent);
-  animation: nx-sp-ring 6.5s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
+  border: 1.5px solid color-mix(in srgb, var(--nx-blue) 55%, transparent);
 }
-.nx-sp__wrap::after {
-  border-color: color-mix(in srgb, var(--nx-violet) 55%, transparent);
-  animation-delay: 0.12s;
-  animation-duration: 6.8s;
+.nx-sp.is-hot .nx-sp__wrap::before {
+  animation: nx-sp-ring 2.4s cubic-bezier(0.2, 0.7, 0.4, 1) both;
+}
+.nx-sp.is-hot .nx-sp__wrap::after {
+  border-color: color-mix(in srgb, var(--nx-violet) 50%, transparent);
+  animation: nx-sp-ring 2.7s cubic-bezier(0.2, 0.7, 0.4, 1) 0.1s both;
 }
 .nx-sp__burst {
   position: absolute;
   left: 50%;
   top: 50%;
   z-index: 1;
-  width: 14%;
-  height: 14%;
+  width: 12%;
+  height: 12%;
   border-radius: 50%;
   translate: -50% -50%;
   pointer-events: none;
@@ -520,50 +525,59 @@ a:hover .brand-mark--nav {
   background: radial-gradient(
     circle,
     color-mix(in srgb, var(--nx-ice) 55%, var(--nx-blue)) 0%,
-    color-mix(in srgb, var(--nx-blue) 65%, transparent) 30%,
-    color-mix(in srgb, var(--nx-violet) 45%, transparent) 50%,
+    color-mix(in srgb, var(--nx-blue) 60%, transparent) 32%,
+    color-mix(in srgb, var(--nx-violet) 40%, transparent) 52%,
     transparent 72%
   );
-  animation: nx-sp-burst 6.5s cubic-bezier(0.2, 0.8, 0.25, 1) infinite;
+}
+.nx-sp.is-hot .nx-sp__burst {
+  animation: nx-sp-burst 0.95s cubic-bezier(0.2, 0.8, 0.25, 1) both;
 }
 .nx-sp__glint {
   position: absolute;
   z-index: 3;
-  width: 12%;
-  height: 12%;
+  width: 11%;
+  height: 11%;
   opacity: 0;
   pointer-events: none;
   mix-blend-mode: screen;
   clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
-  animation: nx-sp-twinkle 6.5s ease-out infinite;
 }
 .nx-sp__glint.g1 {
-  left: 18%;
-  top: 24%;
+  left: 16%;
+  top: 22%;
   background: var(--nx-violet);
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-violet) 80%, transparent));
-  animation-delay: 0.2s;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-violet) 75%, transparent));
 }
 .nx-sp__glint.g2 {
-  left: 64%;
-  top: 18%;
+  left: 66%;
+  top: 16%;
   background: var(--nx-ice);
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-ice) 75%, transparent));
-  animation-delay: 0.4s;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-ice) 70%, transparent));
 }
 .nx-sp__glint.g3 {
-  left: 70%;
-  top: 56%;
+  left: 72%;
+  top: 58%;
   background: var(--nx-blue);
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-blue) 80%, transparent));
-  animation-delay: 0.65s;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-blue) 75%, transparent));
 }
 .nx-sp__glint.g4 {
-  left: 28%;
-  top: 62%;
+  left: 26%;
+  top: 64%;
   background: var(--nx-violet);
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-violet) 70%, transparent));
-  animation-delay: 0.95s;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-violet) 65%, transparent));
+}
+.nx-sp.is-hot .nx-sp__glint.g1 {
+  animation: nx-sp-twinkle 0.7s ease-out 0.15s both;
+}
+.nx-sp.is-hot .nx-sp__glint.g2 {
+  animation: nx-sp-twinkle 0.7s ease-out 0.32s both;
+}
+.nx-sp.is-hot .nx-sp__glint.g3 {
+  animation: nx-sp-twinkle 0.75s ease-out 0.5s both;
+}
+.nx-sp.is-hot .nx-sp__glint.g4 {
+  animation: nx-sp-twinkle 0.8s ease-out 0.7s both;
 }
 .nx-sp__mark {
   position: relative;
@@ -572,7 +586,12 @@ a:hover .brand-mark--nav {
   height: 100%;
   display: grid;
   place-items: center;
-  animation: nx-sp-glow 6.5s ease-in-out infinite;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 8px color-mix(in srgb, var(--nx-blue) 18%, transparent));
+  transition: filter 0.35s ease;
+}
+.nx-sp.is-hot .nx-sp__mark {
+  animation: nx-sp-glow 2.8s ease-in-out infinite;
 }
 .nx-sp__mark svg {
   width: 100%;
@@ -582,12 +601,12 @@ a:hover .brand-mark--nav {
 }
 @keyframes nx-sp-aura-breathe {
   from {
-    opacity: 0.16;
+    opacity: 0.18;
     transform: scale(0.98);
   }
   to {
-    opacity: 0.32;
-    transform: scale(1.06);
+    opacity: 0.34;
+    transform: scale(1.05);
   }
 }
 @keyframes nx-sp-rays-spin {
@@ -620,48 +639,38 @@ a:hover .brand-mark--nav {
   }
 }
 @keyframes nx-sp-ring {
-  0%,
-  22% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.08);
-  }
-  24% {
+  0% {
     opacity: 0.7;
-    transform: translate(-50%, -50%) scale(1.08);
+    transform: translate(-50%, -50%) scale(1.05);
   }
-  46%,
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(2.85);
+    transform: translate(-50%, -50%) scale(2.15);
   }
 }
 @keyframes nx-sp-burst {
-  0%,
-  22% {
+  0% {
     opacity: 0;
     transform: scale(0.35);
   }
-  26% {
+  22% {
     opacity: 0.42;
-    transform: scale(2.4);
+    transform: scale(2.1);
   }
-  38%,
   100% {
     opacity: 0;
-    transform: scale(7);
+    transform: scale(4.2);
   }
 }
 @keyframes nx-sp-twinkle {
-  0%,
-  22% {
+  0% {
     opacity: 0;
     transform: scale(0.2) rotate(-30deg);
   }
-  28% {
+  45% {
     opacity: 0.75;
-    transform: scale(1.2) rotate(12deg);
+    transform: scale(1.15) rotate(12deg);
   }
-  36%,
   100% {
     opacity: 0;
     transform: scale(0.4) rotate(45deg);
@@ -669,42 +678,39 @@ a:hover .brand-mark--nav {
 }
 @keyframes nx-sp-glow {
   0%,
-  20% {
-    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--nx-ice) 26%, transparent))
-      drop-shadow(0 0 9px color-mix(in srgb, var(--nx-violet) 28%, transparent)) brightness(0.98)
-      saturate(1.05);
-  }
-  24% {
-    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-ice) 60%, transparent))
-      drop-shadow(0 0 16px color-mix(in srgb, var(--nx-blue) 48%, transparent))
-      drop-shadow(0 0 42px color-mix(in srgb, var(--nx-violet) 26%, transparent)) brightness(1.16)
-      saturate(1.45);
+  100% {
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--nx-ice) 30%, transparent))
+      drop-shadow(0 0 10px color-mix(in srgb, var(--nx-violet) 24%, transparent)) brightness(1.02)
+      saturate(1.15);
   }
   40% {
-    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-ice) 38%, transparent))
-      drop-shadow(0 0 12px color-mix(in srgb, var(--nx-blue) 34%, transparent)) brightness(1.07)
-      saturate(1.26);
-  }
-  100% {
-    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--nx-ice) 28%, transparent))
-      drop-shadow(0 0 9px color-mix(in srgb, var(--nx-blue) 22%, transparent))
-      drop-shadow(0 0 20px color-mix(in srgb, var(--nx-violet) 12%, transparent)) brightness(1.03)
-      saturate(1.18);
+    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-ice) 55%, transparent))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--nx-blue) 42%, transparent))
+      drop-shadow(0 0 28px color-mix(in srgb, var(--nx-violet) 22%, transparent)) brightness(1.12)
+      saturate(1.4);
   }
 }
 
-/* —— Berry bot laugh (from app .berry-bot[data-laugh]) —— */
+/* —— Berry bot — card mark, laugh on hover —— */
 .berry-live {
   --berry-accent: #22d3ee;
   --berry-accent2: #34d399;
   --berry-abyss: #080b0f;
   --berry-depth: #10161c;
   --berry-mist: #94a3b8;
-  width: min(58%, 168px);
-  height: min(58%, 168px);
+  width: min(52%, 176px);
+  aspect-ratio: 1;
+  height: auto;
+  max-height: 72%;
   display: grid;
   place-items: center;
-  filter: none;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.42));
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease;
+}
+.berry-live.is-hot {
+  transform: translateY(-3px) scale(1.05);
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
+    drop-shadow(0 0 16px color-mix(in srgb, var(--berry-accent) 28%, transparent));
 }
 .berry-live__bot {
   width: 100%;
@@ -779,20 +785,23 @@ a:hover .brand-mark--nav {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .nx-sp__aura,
-  .nx-sp__rays,
-  .nx-sp__wrap,
-  .nx-sp__wrap::before,
-  .nx-sp__wrap::after,
-  .nx-sp__burst,
-  .nx-sp__glint,
-  .nx-sp__mark,
+  .nx-sp,
+  .nx-sp.is-hot,
+  .berry-live,
+  .berry-live.is-hot {
+    transform: none;
+  }
+  .nx-sp.is-hot .nx-sp__aura,
+  .nx-sp.is-hot .nx-sp__rays,
+  .nx-sp.is-hot .nx-sp__wrap,
+  .nx-sp.is-hot .nx-sp__wrap::before,
+  .nx-sp.is-hot .nx-sp__wrap::after,
+  .nx-sp.is-hot .nx-sp__burst,
+  .nx-sp.is-hot .nx-sp__glint,
+  .nx-sp.is-hot .nx-sp__mark,
   .berry-live__bot[data-laugh],
   .berry-live__bot[data-laugh] .bot-leaves {
     animation: none !important;
-  }
-  .nx-sp__aura {
-    opacity: 0.2;
   }
   .nx-sp__rays,
   .nx-sp__burst,

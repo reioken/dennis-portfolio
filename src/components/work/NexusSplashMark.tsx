@@ -1,16 +1,32 @@
+import { useEffect, useRef } from 'react';
 import logoSvg from '../../assets/logos/nexus-live.svg?raw';
 
-/** NEXUS diamond mark + splash-stage shimmer (chroma, glow, aura, rays, glints). */
+/** NEXUS diamond mark — splash shimmer on hover (`active`). */
 export default function NexusSplashMark({
   className = '',
   title = 'NEXUS',
+  active = false,
 }: {
   className?: string;
   title?: string;
+  active?: boolean;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const svg = rootRef.current?.querySelector('svg') as SVGSVGElement | null;
+    if (!svg?.pauseAnimations) return;
+    if (active) svg.unpauseAnimations();
+    else {
+      svg.pauseAnimations();
+      svg.setCurrentTime(0);
+    }
+  }, [active]);
+
   return (
     <div
-      className={`nx-sp ${className}`}
+      ref={rootRef}
+      className={`nx-sp ${active ? 'is-hot' : ''} ${className}`}
       role="img"
       aria-label={title}
     >

@@ -1,36 +1,43 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
- * Berry-Bot mark — same laugh animation as the top-left brand tap in the app.
- * Loops so the card shows the interaction without requiring a click.
+ * Berry-Bot mark — same laugh as the app header brand, triggered on hover.
  */
 export default function BerryLiveLogo({
   className = '',
   title = 'Berry',
+  active = false,
 }: {
   className?: string;
   title?: string;
+  active?: boolean;
 }) {
   const [laughing, setLaughing] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasActive = useRef(false);
 
   useEffect(() => {
-    let laughTimer: ReturnType<typeof setTimeout> | undefined;
-    const cycle = () => {
+    if (active && !wasActive.current) {
+      if (timer.current) clearTimeout(timer.current);
       setLaughing(true);
-      laughTimer = setTimeout(() => setLaughing(false), 700);
-    };
-    // First laugh shortly after mount, then every 2.8s
-    const first = setTimeout(cycle, 600);
-    const loop = setInterval(cycle, 2800);
+      timer.current = setTimeout(() => setLaughing(false), 700);
+    }
+    wasActive.current = active;
+    if (!active) {
+      setLaughing(false);
+      if (timer.current) clearTimeout(timer.current);
+    }
     return () => {
-      clearTimeout(first);
-      clearInterval(loop);
-      if (laughTimer) clearTimeout(laughTimer);
+      if (timer.current) clearTimeout(timer.current);
     };
-  }, []);
+  }, [active]);
 
   return (
-    <div className={`berry-live ${className}`} role="img" aria-label={title}>
+    <div
+      className={`berry-live ${active ? 'is-hot' : ''} ${className}`}
+      role="img"
+      aria-label={title}
+    >
       <svg
         viewBox="0 0 96 96"
         aria-hidden
