@@ -19,6 +19,18 @@ const work = defineCollection({
     /** Animated logo — only played on card hover */
     logoLive: z.string().optional(),
     gallery: z.array(z.string()).default([]),
+    /** Optional tabbed surfaces (e.g. Riftcast App / Mobile / Browser) */
+    surfaces: z
+      .array(
+        z.object({
+          id: z.string(),
+          labelDe: z.string(),
+          labelEn: z.string(),
+          variant: z.enum(['phone', 'desktop']).default('desktop'),
+          gallery: z.array(z.string()).min(1),
+        }),
+      )
+      .optional(),
     externalUrl: z.string().url().optional(),
     order: z.number().default(99),
   }),

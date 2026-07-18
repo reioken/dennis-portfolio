@@ -23,7 +23,7 @@ export type CollageSlotKey = (typeof COLLAGE_SLOT_KEYS)[number];
 export const COLLAGE_DEFAULTS: Record<CollageSlotKey, string> = {
   'img.collage.0': '/media/nexus/shots/screen-home.webp',
   'img.collage.1': '/media/berry/shots/screen-home.webp',
-  'img.collage.2': '/media/riftcast/shots/screen-desktop.webp',
+  'img.collage.2': '/media/riftcast/shots/screen-quality.webp',
   'img.collage.3': '/media/nexus/shots/screen-grid.webp',
   'img.collage.4': '/media/berry/shots/screen-search.webp',
   'img.collage.5': '/media/riftcast/shots/screen-app.webp',

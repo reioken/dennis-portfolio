@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CaseMedia from '../../components/work/CaseMedia';
+import CaseMediaTabs from '../../components/work/CaseMediaTabs';
 import Reveal from '../../components/motion/Reveal';
 import { getCollection, render } from 'astro:content';
 import { site } from '../../lib/site';
@@ -56,6 +57,18 @@ const images = [
     alt: `${data.title} — ${i + 1}`,
   })),
 ];
+
+const surfaces = (data.surfaces ?? []).map((surface) => ({
+  id: surface.id,
+  labelDe: surface.labelDe,
+  labelEn: surface.labelEn,
+  variant: surface.variant,
+  images: surface.gallery.map((g, i) => ({
+    src: asset(g),
+    srcHi: hiAsset(g),
+    alt: `${data.title} ${surface.labelDe} — ${i + 1}`,
+  })),
+}));
 ---
 
 <BaseLayout
@@ -90,13 +103,19 @@ const images = [
       </div>
     </header>
 
-    <CaseMedia
-      client:load
-      title={data.title}
-      images={images}
-      coverCount={1}
-      variant={entry.id === 'berry' ? 'phone' : 'desktop'}
-    />
+    {
+      surfaces.length > 0 ? (
+        <CaseMediaTabs client:load title={data.title} surfaces={surfaces} />
+      ) : (
+        <CaseMedia
+          client:load
+          title={data.title}
+          images={images}
+          coverCount={1}
+          variant={entry.id === 'berry' ? 'phone' : 'desktop'}
+        />
+      )
+    }
 
     <Reveal client:visible className="wrap prose-case mb-16">
       <Content />

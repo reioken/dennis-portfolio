@@ -1169,7 +1169,48 @@ html[data-edit-mode='1'] .hero-collage__track--b {
   transform: scale(1.015);
 }
 
-/* Phone app cases (Berry) — same chrome, portrait framing */
+/* Case study surface tabs (Riftcast App / Mobile / Browser) */
+.case-surfaces__tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+}
+.case-surfaces__tab {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 0.55rem 1.05rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: transparent;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.case-surfaces__tab:hover {
+  color: var(--text);
+}
+.case-surfaces__tab--active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--elev) 92%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--stroke-hi) 55%, transparent);
+}
+.case-surfaces__tab:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ice) 70%, transparent);
+  outline-offset: 2px;
+}
+
+/* Phone app cases (Berry / Riftcast App) — same chrome, portrait framing */
 .shot-gallery__cover-trigger--phone {
   display: flex;
   justify-content: center;
