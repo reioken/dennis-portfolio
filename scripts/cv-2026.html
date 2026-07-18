@@ -16,6 +16,7 @@
       html,
       body {
         width: 210mm;
+        height: 297mm;
         font-family: "Segoe UI", system-ui, sans-serif;
         color: #e8eaf2;
         background: #07080c;
@@ -24,95 +25,86 @@
       }
       .sheet {
         display: grid;
-        grid-template-columns: 66mm 1fr;
+        grid-template-columns: 58mm 1fr;
         width: 210mm;
         height: 297mm;
         overflow: hidden;
         background: #07080c;
-        page-break-after: always;
-        break-after: page;
-      }
-      .sheet:last-child {
-        page-break-after: auto;
-        break-after: auto;
       }
       .side {
-        background: linear-gradient(180deg, #12151f 0%, #0c0e16 55%, #0a0b12 100%);
-        padding: 12mm 7.5mm 10mm;
+        background: linear-gradient(180deg, #12151f 0%, #0c0e16 60%, #0a0b12 100%);
+        padding: 10mm 6.5mm 9mm;
         border-right: 1px solid rgba(255, 255, 255, 0.08);
         position: relative;
         overflow: hidden;
-        height: 297mm;
       }
       .side::before {
         content: "";
         position: absolute;
-        inset: -20% -40% auto auto;
-        width: 90mm;
-        height: 90mm;
-        background: radial-gradient(circle, rgba(74, 130, 254, 0.28), transparent 68%);
+        inset: -15% -35% auto auto;
+        width: 70mm;
+        height: 70mm;
+        background: radial-gradient(circle, rgba(74, 130, 254, 0.26), transparent 68%);
         pointer-events: none;
       }
       .side::after {
         content: "";
         position: absolute;
-        inset: auto auto -10% -30%;
-        width: 80mm;
-        height: 80mm;
-        background: radial-gradient(circle, rgba(172, 139, 253, 0.22), transparent 70%);
+        inset: auto auto -8% -25%;
+        width: 60mm;
+        height: 60mm;
+        background: radial-gradient(circle, rgba(172, 139, 253, 0.2), transparent 70%);
         pointer-events: none;
       }
       .main {
-        padding: 12mm 10mm 10mm 11mm;
-        height: 297mm;
+        padding: 10mm 9.5mm 9mm 10.5mm;
         overflow: hidden;
         background:
-          radial-gradient(55% 40% at 100% 0%, rgba(74, 130, 254, 0.12), transparent 60%),
-          radial-gradient(40% 35% at 0% 100%, rgba(172, 139, 253, 0.08), transparent 55%),
+          radial-gradient(50% 35% at 100% 0%, rgba(74, 130, 254, 0.11), transparent 60%),
+          radial-gradient(35% 30% at 0% 100%, rgba(172, 139, 253, 0.07), transparent 55%),
           #07080c;
       }
       .portrait {
-        width: 34mm;
-        height: 34mm;
+        width: 30mm;
+        height: 30mm;
         border-radius: 50%;
         object-fit: cover;
         object-position: center top;
         display: block;
-        margin: 0 auto 5.5mm;
-        border: 2px solid transparent;
+        margin: 0 auto 4.5mm;
+        border: 1.5px solid transparent;
         background:
           linear-gradient(#12151f, #12151f) padding-box,
           linear-gradient(120deg, #ac8bfd, #4a82fe, #dcebff) border-box;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
         position: relative;
         z-index: 1;
       }
       .side h2 {
-        font-size: 8pt;
-        letter-spacing: 0.16em;
+        font-size: 7pt;
+        letter-spacing: 0.14em;
         text-transform: uppercase;
         color: #dcebff;
-        margin: 0 0 2.8mm;
+        margin: 0 0 1.8mm;
         position: relative;
         z-index: 1;
       }
       .side .block {
-        margin-bottom: 5.5mm;
+        margin-bottom: 4.5mm;
         position: relative;
         z-index: 1;
       }
       .side p,
       .side li {
-        font-size: 7.6pt;
-        line-height: 1.4;
+        font-size: 7.4pt;
+        line-height: 1.38;
         color: #a4a9c0;
       }
       .side ul {
         list-style: none;
       }
       .side li {
-        padding: 0.9mm 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 0.55mm 0;
       }
       .side a {
         color: #dcebff;
@@ -120,21 +112,35 @@
         word-break: break-all;
       }
       .contact-line {
-        margin-bottom: 1.8mm;
+        margin-bottom: 1.4mm;
       }
       .contact-line strong {
         display: block;
-        font-size: 6.5pt;
-        letter-spacing: 0.12em;
+        font-size: 6pt;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
         color: #6e738c;
-        margin-bottom: 0.5mm;
+        margin-bottom: 0.3mm;
         font-weight: 600;
       }
+      .skills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1mm;
+      }
+      .skill {
+        font-size: 6pt;
+        letter-spacing: 0.03em;
+        color: #c8cde0;
+        border: 1px solid rgba(220, 235, 255, 0.16);
+        background: rgba(74, 130, 254, 0.08);
+        border-radius: 3px;
+        padding: 0.6mm 1.5mm;
+      }
       .name {
-        font-size: 16.5pt;
+        font-size: 15pt;
         font-weight: 700;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.035em;
         text-transform: uppercase;
         line-height: 1.05;
         white-space: nowrap;
@@ -142,200 +148,193 @@
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
-        margin-bottom: 2mm;
+        margin-bottom: 1.4mm;
       }
       .role {
-        font-size: 8.5pt;
-        letter-spacing: 0.14em;
+        font-size: 8.2pt;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
         color: #dcebff;
         font-weight: 600;
-        margin-bottom: 3.5mm;
+        margin-bottom: 2.8mm;
       }
       .lead {
-        font-size: 8.2pt;
-        line-height: 1.45;
+        font-size: 8pt;
+        line-height: 1.42;
         color: #a4a9c0;
-        margin-bottom: 5mm;
+        margin-bottom: 4.5mm;
+        padding-bottom: 4mm;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
       .section {
-        margin-bottom: 4.5mm;
+        margin-bottom: 4mm;
       }
       .section-title {
-        font-size: 8.2pt;
-        letter-spacing: 0.18em;
+        font-size: 7.5pt;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
         color: #f3f5fb;
-        padding-bottom: 1.6mm;
-        margin-bottom: 3mm;
+        padding-bottom: 1.2mm;
+        margin-bottom: 2.2mm;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         display: flex;
         align-items: center;
-        gap: 2.2mm;
+        gap: 2mm;
       }
       .section-title::before {
         content: "";
-        width: 5.5mm;
-        height: 1.1mm;
+        width: 4.5mm;
+        height: 1mm;
         border-radius: 99px;
         background: linear-gradient(90deg, #ac8bfd, #4a82fe);
       }
       .job {
-        margin-bottom: 3.6mm;
-        break-inside: avoid;
-        page-break-inside: avoid;
+        margin-bottom: 2.8mm;
       }
       .job-head {
         display: flex;
         justify-content: space-between;
-        gap: 3mm;
+        gap: 2.5mm;
         align-items: baseline;
-        margin-bottom: 0.7mm;
+        margin-bottom: 0.3mm;
       }
       .job-title {
-        font-size: 8.8pt;
+        font-size: 8.4pt;
         font-weight: 700;
         color: #f3f5fb;
       }
       .job-date {
-        font-size: 7pt;
+        font-size: 6.5pt;
         color: #ac8bfd;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
         white-space: nowrap;
         font-weight: 600;
       }
       .job-org {
-        font-size: 7.5pt;
+        font-size: 7pt;
         color: #4a82fe;
-        margin-bottom: 1.2mm;
+        margin-bottom: 0.7mm;
+      }
+      .job p,
+      .job li {
+        font-size: 7.4pt;
+        line-height: 1.35;
+        color: #a4a9c0;
       }
       .job ul {
-        padding-left: 3.2mm;
+        padding-left: 2.8mm;
         margin: 0;
       }
       .job li {
-        font-size: 7.5pt;
-        line-height: 1.35;
-        color: #a4a9c0;
-        margin-bottom: 0.55mm;
+        margin-bottom: 0.35mm;
+      }
+      .job li strong {
+        color: #c8cde0;
+        font-weight: 600;
       }
       .edu {
-        margin-bottom: 2.6mm;
-        break-inside: avoid;
-        page-break-inside: avoid;
+        margin-bottom: 1.8mm;
+      }
+      .edu-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 2.5mm;
+        align-items: baseline;
       }
       .edu-title {
-        font-size: 8.4pt;
+        font-size: 7.8pt;
         font-weight: 700;
         color: #f3f5fb;
       }
-      .edu-meta {
-        font-size: 7pt;
+      .edu-date {
+        font-size: 6.5pt;
         color: #ac8bfd;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin: 0.5mm 0;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+      .edu-meta {
+        font-size: 7pt;
+        color: #4a82fe;
+        margin: 0.2mm 0 0.3mm;
       }
       .edu p {
-        font-size: 7.5pt;
+        font-size: 7pt;
         color: #a4a9c0;
         line-height: 1.3;
       }
       .edu a {
         color: #9eb6ff;
         text-decoration: none;
-        font-size: 7pt;
-        word-break: break-all;
       }
-      .footer-note {
+      .foot {
         margin-top: 3mm;
-        font-size: 6.5pt;
+        font-size: 6pt;
         color: #6e738c;
         letter-spacing: 0.04em;
-      }
-      .chip-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1.3mm;
-        margin-top: 1.5mm;
-      }
-      .chip {
-        font-size: 6.3pt;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: #dcebff;
-        border: 1px solid rgba(220, 235, 255, 0.22);
-        background: rgba(74, 130, 254, 0.1);
-        border-radius: 99px;
-        padding: 0.8mm 2mm;
-      }
-      .page-label {
-        position: absolute;
-        bottom: 7mm;
-        left: 7.5mm;
-        right: 7.5mm;
-        font-size: 6.2pt;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: #6e738c;
-        z-index: 1;
-      }
-      .main-foot {
-        margin-top: auto;
-      }
-      .main-col {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
       }
     </style>
   </head>
   <body>
-    <!-- PAGE 1: Profil + aktuelle Arbeit -->
     <div class="sheet">
       <aside class="side">
         <img class="portrait" src="../public/media/me/portrait-full.jpg" alt="" />
+
         <div class="block">
           <h2>Kontakt</h2>
-          <div class="contact-line">
-            <strong>Ort</strong>
-            <p>Deutschland</p>
-          </div>
           <div class="contact-line">
             <strong>E-Mail</strong>
             <p><a href="mailto:dennis@dennisbf.design">dennis@dennisbf.design</a></p>
           </div>
           <div class="contact-line">
-            <strong>LinkedIn</strong>
-            <p><a href="https://www.linkedin.com/in/dennis-b-b08834272/">/in/dennis-b-b08834272</a></p>
-          </div>
-          <div class="contact-line">
             <strong>Portfolio</strong>
             <p><a href="https://dennisbf.design/">dennisbf.design</a></p>
           </div>
+          <div class="contact-line">
+            <strong>LinkedIn</strong>
+            <p><a href="https://www.linkedin.com/in/dennis-b-b08834272/">linkedin.com/in/dennis-b</a></p>
+          </div>
+          <div class="contact-line">
+            <strong>Ort</strong>
+            <p>Deutschland</p>
+          </div>
         </div>
+
         <div class="block">
-          <h2>Design Tools</h2>
+          <h2>Fokus</h2>
+          <div class="skills">
+            <span class="skill">Art Direction</span>
+            <span class="skill">UI/UX</span>
+            <span class="skill">Product Design</span>
+            <span class="skill">Branding</span>
+            <span class="skill">Motion</span>
+            <span class="skill">App Shipping</span>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2>Tools</h2>
           <ul>
-            <li>Photoshop &amp; Illustrator</li>
-            <li>InDesign</li>
-            <li>Premiere &amp; After Effects</li>
             <li>Figma</li>
-            <li>Claude &amp; KI-Tools</li>
+            <li>Photoshop · Illustrator</li>
+            <li>InDesign</li>
+            <li>Premiere · After Effects</li>
+            <li>Cursor · Claude</li>
           </ul>
         </div>
+
         <div class="block">
           <h2>Web &amp; Product</h2>
           <ul>
             <li>HTML / CSS</li>
             <li>WordPress / CMS</li>
-            <li>Desktop Apps</li>
-            <li>Mobile Apps</li>
-            <li>App Shipping</li>
-            <li>Product Systems</li>
+            <li>Desktop &amp; Mobile Apps</li>
+            <li>Design Systems</li>
           </ul>
         </div>
+
         <div class="block">
           <h2>Sprachen</h2>
           <ul>
@@ -343,216 +342,120 @@
             <li>Englisch — Verhandlungssicher</li>
           </ul>
         </div>
-        <p class="page-label">Seite 1 / 2</p>
       </aside>
 
       <main class="main">
-        <div class="main-col">
-          <h1 class="name">Dennis Bierreth-Fernandez</h1>
-          <p class="role">Art Director &amp; UI/UX Designer</p>
-          <p class="lead">
-            Kreativer Hybrid-Designer mit 6+ Jahren Erfahrung. Ich verbinde Art Direction und UX/UI mit Branding,
-            Video und Product Shipping — aktuell Floordirekt Studio, eigene Apps und moderne Web-Oberflächen.
-          </p>
+        <h1 class="name">Dennis Bierreth-Fernandez</h1>
+        <p class="role">Art Director &amp; UI/UX Designer</p>
+        <p class="lead">
+          6+ Jahre Agentur und Inhouse. Visuelle Richtung, UX/UI und Product Shipping —
+          von Brand-Imagery bis zu eigenen Desktop- und Mobile-Apps.
+        </p>
 
-          <section class="section">
-            <h2 class="section-title">Aktuelle Arbeit</h2>
+        <section class="section">
+          <h2 class="section-title">Erfahrung</h2>
 
-            <article class="job">
-              <div class="job-head">
-                <h3 class="job-title">Art Direction &amp; Studio Tools — Floordirekt</h3>
-                <span class="job-date">2025 – heute</span>
-              </div>
-              <p class="job-org">Floordirekt · Produktbild Studio</p>
-              <ul>
-                <li><strong>Floordirekt Studio:</strong> Imagery-System und Studio-Workflow für Shop-Produktbilder</li>
-                <li>Varianten, mehrsprachige Overlays und Batch-Export für E-Commerce</li>
-                <li>Visuelle Standards (Look, Typo, Overlay) und portable Studio-Software</li>
-                <li>Art Direction für wiederholbare, markenkonforme Produktbilder</li>
-              </ul>
-              <div class="chip-row">
-                <span class="chip">Art Direction</span>
-                <span class="chip">E-Commerce</span>
-                <span class="chip">Studio Tools</span>
-                <span class="chip">Imagery</span>
-              </div>
-            </article>
+          <article class="job">
+            <div class="job-head">
+              <h3 class="job-title">Art Direction &amp; Studio Tools</h3>
+              <span class="job-date">2025 – heute</span>
+            </div>
+            <p class="job-org">Floordirekt</p>
+            <ul>
+              <li>Imagery-System und Studio-Workflow für Shop-Produktbilder</li>
+              <li>Varianten, mehrsprachige Overlays, Batch-Export</li>
+            </ul>
+          </article>
 
-            <article class="job">
-              <div class="job-head">
-                <h3 class="job-title">Product Design — NEXUS, Berry &amp; Riftcast</h3>
-                <span class="job-date">2025 – heute</span>
-              </div>
-              <p class="job-org">Eigene Products · riftcast.app</p>
-              <ul>
-                <li><strong>NEXUS:</strong> Premium Desktop Game Library — UI, Landing, Installer</li>
-                <li><strong>Berry:</strong> Mobile Collector App — Product Design, App-UI, Design-System</li>
-                <li><strong>Riftcast:</strong> Remote Desktop — Phone, Browser, Host</li>
-              </ul>
-            </article>
+          <article class="job">
+            <div class="job-head">
+              <h3 class="job-title">Product Design</h3>
+              <span class="job-date">2025 – heute</span>
+            </div>
+            <p class="job-org">NEXUS · Berry · Riftcast</p>
+            <ul>
+              <li><strong>NEXUS</strong> — Desktop Game Library: UI, Landing, Installer</li>
+              <li><strong>Berry</strong> — Mobile Collector: App-UI &amp; Design System</li>
+              <li><strong>Riftcast</strong> — Remote Desktop: Phone, Browser, Host</li>
+            </ul>
+          </article>
 
-            <article class="job">
-              <div class="job-head">
-                <h3 class="job-title">UX/UI &amp; Freelance Design</h3>
-                <span class="job-date">06/2024 – heute</span>
-              </div>
-              <p class="job-org">neuefische GmbH · Freelance</p>
-              <ul>
-                <li>UX/UI Design Bootcamp mit Case Studies</li>
-                <li>User Research, Wireframing, Usability-Tests, Figma-Prototypen</li>
-                <li>Freiberufliche Branding- und Web-Projekte</li>
-              </ul>
-            </article>
-          </section>
+          <article class="job">
+            <div class="job-head">
+              <h3 class="job-title">UX/UI &amp; Freelance</h3>
+              <span class="job-date">06/2024 – heute</span>
+            </div>
+            <p class="job-org">neuefische · Freelance</p>
+            <ul>
+              <li>UX/UI Bootcamp mit Case Studies; Branding- &amp; Web-Projekte</li>
+            </ul>
+          </article>
 
-          <p class="footer-note main-foot">Weiter auf Seite 2 · Berufserfahrung &amp; Ausbildung</p>
-        </div>
-      </main>
-    </div>
+          <article class="job">
+            <div class="job-head">
+              <h3 class="job-title">Grafiker &amp; Content Creator</h3>
+              <span class="job-date">09/2022 – 06/2024</span>
+            </div>
+            <p class="job-org">Forever GmbH</p>
+            <ul>
+              <li>Markenkommunikation Print &amp; Digital · Video · E-Commerce-Retusche</li>
+            </ul>
+          </article>
 
-    <!-- PAGE 2: Frühere Stationen + Ausbildung + Kompetenzen -->
-    <div class="sheet">
-      <aside class="side">
-        <div class="block" style="margin-top: 2mm">
-          <h2>Kompetenzen</h2>
-          <ul>
-            <li>UI/UX Design &amp; Strategy</li>
-            <li>Wireframing &amp; Prototyping</li>
-            <li>Corporate Branding</li>
-            <li>Video Editing &amp; Motion</li>
-            <li>Design Thinking</li>
-            <li>Print Production</li>
-            <li>Moderne Websites</li>
-            <li>Motion &amp; Micro-Animations</li>
-            <li>Landing Experiences</li>
-            <li>Intensive KI-Zusammenarbeit</li>
-          </ul>
-        </div>
-        <div class="block">
-          <h2>Design Tools</h2>
-          <ul>
-            <li>Photoshop &amp; Illustrator</li>
-            <li>InDesign</li>
-            <li>Premiere &amp; After Effects</li>
-            <li>Figma</li>
-            <li>Claude &amp; KI-Tools</li>
-          </ul>
-        </div>
-        <div class="block">
-          <h2>Web &amp; Product</h2>
-          <ul>
-            <li>HTML / CSS</li>
-            <li>WordPress / CMS</li>
-            <li>Desktop / Mobile Apps</li>
-            <li>App Shipping</li>
-            <li>Product Systems</li>
-          </ul>
-        </div>
-        <div class="block">
-          <h2>Kontakt</h2>
-          <div class="contact-line">
-            <strong>E-Mail</strong>
-            <p><a href="mailto:dennis@dennisbf.design">dennis@dennisbf.design</a></p>
+          <article class="job">
+            <div class="job-head">
+              <h3 class="job-title">Web- &amp; Grafikdesigner</h3>
+              <span class="job-date">09/2020 – 03/2022</span>
+            </div>
+            <p class="job-org">performio GmbH, Mannheim</p>
+            <ul>
+              <li>WordPress-Sites, Corporate Design und Werbemittel für KMU</li>
+            </ul>
+          </article>
+
+          <article class="job">
+            <div class="job-head">
+              <h3 class="job-title">Designer &amp; Reinzeichner</h3>
+              <span class="job-date">04/2019 – 04/2020</span>
+            </div>
+            <p class="job-org">cyberWear Heidelberg</p>
+            <ul>
+              <li>Merchandise für Porsche, Audi, DB · Druckdaten &amp; Reinzeichnung</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Ausbildung</h2>
+
+          <div class="edu">
+            <div class="edu-row">
+              <p class="edu-title">UX/UI Design Zertifikat</p>
+              <span class="edu-date">06 – 09/2025</span>
+            </div>
+            <p class="edu-meta">neuefische GmbH · Remote</p>
+            <p>Research, IA, Figma, Design Systems · <a href="https://eu.credential.net/16488cdc-8902-407d-970d-e03d96b7c412">Zertifikat ↗</a></p>
           </div>
-          <div class="contact-line">
-            <strong>Portfolio</strong>
-            <p><a href="https://dennisbf.design/">dennisbf.design</a></p>
+
+          <div class="edu">
+            <div class="edu-row">
+              <p class="edu-title">Mediendesigner (staatl. anerkannt)</p>
+              <span class="edu-date">2015 – 2017</span>
+            </div>
+            <p class="edu-meta">SRH Fachschule Heidelberg</p>
           </div>
-        </div>
-        <p class="page-label">Seite 2 / 2</p>
-      </aside>
 
-      <main class="main">
-        <div class="main-col">
-          <section class="section">
-            <h2 class="section-title">Berufserfahrung</h2>
-
-            <article class="job">
-              <div class="job-head">
-                <h3 class="job-title">Grafiker &amp; Content Creator</h3>
-                <span class="job-date">09/2022 – 06/2024</span>
-              </div>
-              <p class="job-org">Forever GmbH</p>
-              <ul>
-                <li>Visuelle Markenkommunikation Print &amp; Digital</li>
-                <li>Video-Content für Social Media (Premiere Pro / After Effects)</li>
-                <li>Produktfotografie und High-End Bildretusche für E-Commerce</li>
-              </ul>
-            </article>
-
-            <article class="job">
-              <div class="job-head">
-                <h3 class="job-title">Web- &amp; Grafikdesigner</h3>
-                <span class="job-date">09/2020 – 03/2022</span>
-              </div>
-              <p class="job-org">performio GmbH, Mannheim</p>
-              <ul>
-                <li>Responsive Websites (WordPress &amp; Elementor)</li>
-                <li>Corporate Designs, Logos und digitale Werbemittel für KMU</li>
-              </ul>
-            </article>
-
-            <article class="job">
-              <div class="job-head">
-                <h3 class="job-title">Designer &amp; Reinzeichner</h3>
-                <span class="job-date">04/2019 – 04/2020</span>
-              </div>
-              <p class="job-org">cyberWear Heidelberg GmbH</p>
-              <ul>
-                <li>Merchandise-Design für Key Accounts (u. a. Porsche, Audi, Deutsche Bahn)</li>
-                <li>Präzise Druckdaten und Reinzeichnungen nach Styleguide</li>
-              </ul>
-            </article>
-
-            <article class="job">
-              <div class="job-head">
-                <h3 class="job-title">Mitarbeiter E-Commerce</h3>
-                <span class="job-date">01/2018 – 01/2019</span>
-              </div>
-              <p class="job-org">Decathlon, Mannheim</p>
-              <ul>
-                <li>Unterstützung im Online-Handel und Kundenberatung</li>
-              </ul>
-            </article>
-
-            <article class="job">
-              <div class="job-head">
-                <h3 class="job-title">FSJ — Hausnotrufzentrale</h3>
-                <span class="job-date">2012 – 2014</span>
-              </div>
-              <p class="job-org">Johanniter-Unfall-Hilfe</p>
-              <ul>
-                <li>Freiwilliges Soziales Jahr in einer Hausnotrufzentrale</li>
-                <li>Notrufe entgegennehmen, Einsatzkoordination, Unterstützung hilfebedürftiger Menschen</li>
-              </ul>
-            </article>
-          </section>
-
-          <section class="section">
-            <h2 class="section-title">Ausbildung</h2>
-            <div class="edu">
-              <p class="edu-title">Zertifikat: UX/UI Design</p>
-              <p class="edu-meta">06/2025 – 09/2025 · neuefische GmbH (Remote)</p>
-              <p>Design Thinking, User Research, Information Architecture, Figma, Design Systems</p>
-              <p><a href="https://eu.credential.net/16488cdc-8902-407d-970d-e03d96b7c412">Zertifikat (Accredible) ↗</a></p>
+          <div class="edu">
+            <div class="edu-row">
+              <p class="edu-title">Game Engineering (ohne Abschl.)</p>
+              <span class="edu-date">2014 – 2015</span>
             </div>
-            <div class="edu">
-              <p class="edu-title">Staatl. anerkannter Mediendesigner</p>
-              <p class="edu-meta">09/2015 – 09/2017 · SRH Fachschule Heidelberg</p>
-            </div>
-            <div class="edu">
-              <p class="edu-title">Studium Game Engineering (ohne Abschl.)</p>
-              <p class="edu-meta">10/2014 – 09/2015 · SRH Hochschule Heidelberg</p>
-              <p>Gewonnen: Game-Design-Contest für Valedo — smartphonegekoppelte Rehab-Apps zum spielerischen Gehen-Wiedererlernen.</p>
-            </div>
-            <div class="edu">
-              <p class="edu-title">Fachabitur</p>
-              <p class="edu-meta">2012 · Carl-Benz-Gymnasium</p>
-            </div>
-          </section>
+            <p class="edu-meta">SRH Hochschule Heidelberg</p>
+            <p>Game-Design-Contest Valedo gewonnen — Rehab-Apps zum Gehen-Wiedererlernen.</p>
+          </div>
+        </section>
 
-          <p class="footer-note main-foot">Stand: Juli 2026 · Portfolio: https://dennisbf.design/</p>
-        </div>
+        <p class="foot">Stand: Juli 2026 · dennisbf.design</p>
       </main>
     </div>
   </body>
