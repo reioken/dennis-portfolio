@@ -30,3 +30,6 @@ pnpm-debug.log*
 # local AI upscale tooling
 tools/realesrgan*
 tools/.upscale-tmp/
+
+# local SDXL weight scratch
+.cache-sdxl/

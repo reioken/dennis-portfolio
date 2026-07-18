@@ -115,6 +115,7 @@ export const COLLAGE_MEDIA: MediaItem[] = [
   { src: '/media/mina/slide-4.webp', label: 'Slide 4', group: 'Mina' },
 
   // Craft
+  { src: '/media/craft/category.webp', label: 'Category', group: 'Craft' },
   { src: '/media/craft/skate-logo.webp', label: 'Skate Logo', group: 'Craft' },
   { src: '/media/craft/barber-mockup.webp', label: 'Barber', group: 'Craft' },
   { src: '/media/craft/shop-mockup.webp', label: 'Shop', group: 'Craft' },
