@@ -334,21 +334,19 @@ button {
 }
 .group:hover .brand-mark--nav,
 a:hover .brand-mark--nav {
-  animation: brand-nav-shimmer 1.05s cubic-bezier(0.33, 1, 0.68, 1) 1;
+  animation: brand-nav-shimmer 1.35s ease-in-out infinite;
   filter:
     drop-shadow(0 0 9px color-mix(in srgb, var(--violet) 48%, transparent))
     drop-shadow(0 0 16px color-mix(in srgb, var(--ice) 26%, transparent));
   transform: scale(1.06);
 }
 @keyframes brand-nav-shimmer {
-  0% {
-    background-position: 8% 58%;
-  }
-  45% {
-    background-position: 92% 28%;
-  }
+  0%,
   100% {
-    background-position: 40% 40%;
+    background-position: 12% 62%;
+  }
+  50% {
+    background-position: 88% 28%;
   }
 }
 @media (prefers-reduced-motion: reduce) {
