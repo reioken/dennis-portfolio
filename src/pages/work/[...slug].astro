@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CaseMedia from '../../components/work/CaseMedia';
-import CaseMediaTabs from '../../components/work/CaseMediaTabs';
+import CaseSurfaceStack from '../../components/work/CaseSurfaceStack';
 import CaseAdjacent from '../../components/work/CaseAdjacent.astro';
 import { getCollection, render } from 'astro:content';
 import { site } from '../../lib/site';
@@ -63,6 +63,8 @@ const surfaces = (data.surfaces ?? []).map((surface) => ({
   id: surface.id,
   labelDe: surface.labelDe,
   labelEn: surface.labelEn,
+  blurbDe: surface.blurbDe,
+  blurbEn: surface.blurbEn,
   variant: surface.variant,
   images: surface.gallery.map((g, i) => ({
     src: asset(g),
@@ -73,6 +75,7 @@ const surfaces = (data.surfaces ?? []).map((surface) => ({
 
 const when = data.timeline || data.year;
 const hasBody = (entry.body ?? '').replace(/<[^>]+>/g, '').trim().length > 0;
+const logoSrc = data.logo ? asset(data.logo) : undefined;
 ---
 
 <BaseLayout
@@ -83,6 +86,20 @@ const hasBody = (entry.body ?? '').replace(/<[^>]+>/g, '').trim().length > 0;
   <article class="case-page">
     <header class="case-page__intro wrap">
       <div class="case-page__main">
+        {
+          logoSrc && (
+            <div class="case-page__brand">
+              <img
+                class="case-page__logo"
+                src={logoSrc}
+                alt={`${data.title} logo`}
+                width={520}
+                height={120}
+                decoding="async"
+              />
+            </div>
+          )
+        }
         <p class="case-page__eyebrow">
           <span>{data.role}</span>
           {when && (
@@ -132,7 +149,7 @@ const hasBody = (entry.body ?? '').replace(/<[^>]+>/g, '').trim().length > 0;
 
     {
       surfaces.length > 0 ? (
-        <CaseMediaTabs client:load title={data.title} surfaces={surfaces} />
+        <CaseSurfaceStack client:load title={data.title} surfaces={surfaces} />
       ) : (
         <CaseMedia
           client:load

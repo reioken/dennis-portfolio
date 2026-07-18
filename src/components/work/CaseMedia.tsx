@@ -24,6 +24,8 @@ type Props = {
   coverCount?: number;
   /** Desktop landscape (default) or phone portrait framing */
   variant?: 'desktop' | 'phone';
+  /** Show “Galerie / N screens” header above the grid */
+  showHead?: boolean;
 };
 
 function readLang(): Lang {
@@ -35,6 +37,7 @@ export default function CaseMedia({
   images,
   coverCount = 1,
   variant = 'desktop',
+  showHead = true,
 }: Props) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState<number | null>(null);
@@ -100,17 +103,19 @@ export default function CaseMedia({
 
       {strip.length > 0 ? (
         <div className="case-page__gallery">
-          <div className="wrap case-page__gallery-head">
-            <p className="section-label mb-0">
-              <span data-lang="de">{copy.de.work.gallery}</span>
-              <span data-lang="en">{copy.en.work.gallery}</span>
-            </p>
-            <p className="shot-gallery__count-hint">
-              {strip.length}{' '}
-              <span data-lang="de">Screens</span>
-              <span data-lang="en">shots</span>
-            </p>
-          </div>
+          {showHead ? (
+            <div className="wrap case-page__gallery-head">
+              <p className="section-label mb-0">
+                <span data-lang="de">{copy.de.work.gallery}</span>
+                <span data-lang="en">{copy.en.work.gallery}</span>
+              </p>
+              <p className="shot-gallery__count-hint">
+                {strip.length}{' '}
+                <span data-lang="de">Screens</span>
+                <span data-lang="en">shots</span>
+              </p>
+            </div>
+          ) : null}
           <div className={`shot-gallery${phone ? ' shot-gallery--phone' : ''}`}>
             <div className="shot-gallery__grid wrap">
               {strip.map((shot, i) => {
