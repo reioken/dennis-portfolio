@@ -15,16 +15,24 @@ type Props = {
   images: GalleryShot[];
   /** How many leading images are the cover (hidden from strip if also in gallery) */
   coverCount?: number;
+  /** Desktop landscape (default) or phone portrait framing */
+  variant?: 'desktop' | 'phone';
 };
 
 function readLang(): Lang {
   return document.documentElement.dataset.lang === 'en' ? 'en' : 'de';
 }
 
-export default function CaseMedia({ title, images, coverCount = 1 }: Props) {
+export default function CaseMedia({
+  title,
+  images,
+  coverCount = 1,
+  variant = 'desktop',
+}: Props) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState<number | null>(null);
   const [lang, setLang] = useState<Lang>('de');
+  const phone = variant === 'phone';
 
   useEffect(() => {
     const sync = () => setLang(readLang());
@@ -45,7 +53,7 @@ export default function CaseMedia({ title, images, coverCount = 1 }: Props) {
         <div key={`cover-${shot.src}`} className="wrap mb-10">
           <button
             type="button"
-            className="shot-gallery__cover-trigger"
+            className={`shot-gallery__cover-trigger${phone ? ' shot-gallery__cover-trigger--phone' : ''}`}
             onClick={() => setOpen(i)}
             aria-label={
               lang === 'en' ? `Open gallery — ${title}` : `Galerie öffnen — ${title}`
@@ -55,8 +63,8 @@ export default function CaseMedia({ title, images, coverCount = 1 }: Props) {
               <img
                 src={shot.src}
                 alt={shot.alt}
-                width={1600}
-                height={1000}
+                width={phone ? 390 : 1600}
+                height={phone ? 844 : 1000}
                 className="shot-gallery__cover-img"
               />
             </span>
@@ -72,7 +80,7 @@ export default function CaseMedia({ title, images, coverCount = 1 }: Props) {
               <span data-lang="en">{copy.en.work.gallery}</span>
             </p>
           </div>
-          <div className="shot-gallery">
+          <div className={`shot-gallery${phone ? ' shot-gallery--phone' : ''}`}>
             <div className="shot-gallery__track">
               {strip.map((shot, i) => {
                 const abs = i + coverCount;
@@ -92,8 +100,8 @@ export default function CaseMedia({ title, images, coverCount = 1 }: Props) {
                       <img
                         src={shot.src}
                         alt=""
-                        width={1040}
-                        height={650}
+                        width={phone ? 390 : 1040}
+                        height={phone ? 844 : 650}
                         loading="lazy"
                         decoding="async"
                         className="shot-gallery__thumb"
@@ -113,6 +121,7 @@ export default function CaseMedia({ title, images, coverCount = 1 }: Props) {
         title={title}
         lang={lang}
         reduce={!!reduce}
+        phone={phone}
         onClose={() => setOpen(null)}
         onChange={setOpen}
       />
@@ -126,6 +135,7 @@ type LightboxProps = {
   title: string;
   lang: Lang;
   reduce: boolean;
+  phone?: boolean;
   onClose: () => void;
   onChange: (i: number | null) => void;
 };
@@ -136,6 +146,7 @@ function GalleryLightbox({
   title,
   lang,
   reduce,
+  phone = false,
   onClose,
   onChange,
 }: LightboxProps) {
@@ -175,7 +186,7 @@ function GalleryLightbox({
     <AnimatePresence>
       {active && index !== null ? (
         <motion.div
-          className="gallery-view"
+          className={`gallery-view${phone ? ' gallery-view--phone' : ''}`}
           role="dialog"
           aria-modal="true"
           aria-label={`${title} — ${copy[lang].work.gallery}`}

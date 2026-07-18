@@ -90,7 +90,13 @@ const images = [
       </div>
     </header>
 
-    <CaseMedia client:load title={data.title} images={images} coverCount={1} />
+    <CaseMedia
+      client:load
+      title={data.title}
+      images={images}
+      coverCount={1}
+      variant={entry.id === 'berry' ? 'phone' : 'desktop'}
+    />
 
     <Reveal client:visible className="wrap prose-case mb-16">
       <Content />

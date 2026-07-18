@@ -1157,6 +1157,45 @@ html[data-edit-mode='1'] .hero-collage__track--b {
   transform: scale(1.015);
 }
 
+/* Phone app cases (Berry) — same chrome, portrait framing */
+.shot-gallery__cover-trigger--phone {
+  display: flex;
+  justify-content: center;
+}
+.shot-gallery__cover-trigger--phone .shot-gallery__cover-panel {
+  width: min(100%, 300px);
+}
+.shot-gallery__cover-trigger--phone .shot-gallery__cover-img {
+  aspect-ratio: 390 / 844;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 18px;
+}
+.shot-gallery--phone .shot-gallery__card {
+  width: min(46vw, 220px);
+}
+.shot-gallery--phone .shot-gallery__frame {
+  padding: 0.35rem;
+  border-radius: calc(var(--radius) + 6px);
+}
+.shot-gallery--phone .shot-gallery__thumb {
+  aspect-ratio: 390 / 844;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 14px;
+}
+.gallery-view--phone .gallery-view__stage {
+  inset:
+    clamp(4.25rem, 10vh, 5.75rem)
+    clamp(1.5rem, 12vw, 8rem)
+    clamp(2rem, 6vh, 3.75rem);
+}
+.gallery-view--phone .gallery-view__image {
+  max-height: min(82vh, 100%);
+  max-width: min(100%, 420px);
+  border-radius: 22px;
+}
+
 .gallery-view {
   position: fixed;
   inset: 0;
@@ -1302,8 +1341,17 @@ html[data-edit-mode='1'] .hero-collage__track--b {
   .shot-gallery__card {
     width: min(86vw, 360px);
   }
+  .shot-gallery--phone .shot-gallery__card {
+    width: min(52vw, 200px);
+  }
+  .shot-gallery__cover-trigger--phone .shot-gallery__cover-panel {
+    width: min(72vw, 260px);
+  }
   .gallery-view__stage {
     inset: 4rem 1.15rem 1.5rem;
+  }
+  .gallery-view--phone .gallery-view__stage {
+    inset: 4rem 1.5rem 1.5rem;
   }
   .gallery-view__nav {
     width: 2.35rem;
