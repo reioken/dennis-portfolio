@@ -41,7 +41,7 @@ export const COLLAGE_DEFAULTS: Record<CollageSlotKey, string> = {
   'img.collage.9': '/media/riftcast/shots/screen-desktop.webp',
   'img.collage.10': '/media/nexus/shots/screen-couch-featured.webp',
   'img.collage.11': '/media/berry/shots/screen-decks-meta.webp',
-  'img.collage.12': '/media/riftcast/shots/screen-launcher.webp',
+  'img.collage.12': '/media/riftcast/shots/screen-desktop-controls.webp',
   'img.collage.13': '/media/floordirekt/shots/screen-start.webp',
   'img.collage.14': '/media/berry/shots/screen-insights.webp',
   'img.collage.15': '/media/nexus/shots/screen-grid.webp',

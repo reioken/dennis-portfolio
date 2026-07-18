@@ -24,11 +24,16 @@ function isDoc(x: unknown): x is SiteDoc {
   return !!x && typeof x === 'object' && (x as SiteDoc).v === 2 && typeof (x as SiteDoc).fields === 'object';
 }
 
+/** Connect/QR launcher screens — weak in the hero marquee */
+const COLLAGE_BLOCKLIST =
+  /\/media\/riftcast\/shots\/screen-launcher(?:-remote)?(?:@2x)?\.(?:webp|png|jpe?g)$/i;
+
 function scrubLegacyMedia(fields: ContentMap): ContentMap {
   const next = { ...fields };
   for (const key of COLLAGE_SLOT_KEYS) {
     const val = next[key];
     if (val && !ALLOWED_COLLAGE.has(val)) delete next[key];
+    if (val && COLLAGE_BLOCKLIST.test(val)) delete next[key];
   }
   for (const [k, v] of Object.entries(next)) {
     if (typeof v !== 'string') continue;
