@@ -1,0 +1,180 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Reveal from '../components/motion/Reveal';
+import PortraitStage from '../components/about/PortraitStage';
+import BrandLockup from '../components/brand/BrandLockup';
+import { site, skills, timeline, education, languages } from '../lib/site';
+import { copy } from '../lib/i18n';
+import { p } from '../lib/paths';
+---
+
+<BaseLayout title={`About — ${site.name}`} description={site.description}>
+  <section class="section overflow-hidden pt-[calc(var(--nav-h)+2rem)]" data-block-id="about-intro" data-block-type="about-intro" data-block-source="native" data-block-label="About Intro">
+    <div class="wrap">
+      <div class="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+        <div>
+          <div class="mb-6 max-w-md">
+            <BrandLockup name={site.name} weight="hero" />
+          </div>
+          <h1 class="mb-5">
+            <span class="name-lock gradient-text font-[family-name:var(--font-display)] text-[clamp(1.35rem,4.2vw,2.7rem)] font-semibold uppercase leading-[1.08] tracking-[0.05em]">
+              <span data-lang="de" data-edit="about.role.de">{copy.de.about.role}</span>
+              <span data-lang="en" data-edit="about.role.en">{copy.en.about.role}</span>
+            </span>
+          </h1>
+          <p class="mb-8 max-w-[42ch] text-[1.15rem] normal-case tracking-normal text-[var(--dim)]">
+            <span data-lang="de" data-edit="about.lead.de">{copy.de.about.lead}</span>
+            <span data-lang="en" data-edit="about.lead.en">{copy.en.about.lead}</span>
+          </p>
+          <div class="flex flex-wrap gap-3">
+            <a class="btn btn--primary" href={site.links.linkedin} target="_blank" rel="noreferrer">
+              <span data-lang="de">{copy.de.about.linkedin}</span>
+              <span data-lang="en">{copy.en.about.linkedin}</span>
+            </a>
+            <a class="btn" href={p('contact')}>
+              <span data-lang="de">{copy.de.about.contact}</span>
+              <span data-lang="en">{copy.en.about.contact}</span>
+            </a>
+            <a class="btn" href={p(site.cvPdf)} download>
+              <span data-lang="de">{copy.de.about.cv}</span>
+              <span data-lang="en">{copy.en.about.cv}</span>
+            </a>
+          </div>
+        </div>
+
+        <PortraitStage
+          client:visible
+          src={p('media/me/portrait.webp')}
+          name={site.name}
+          role={site.role}
+        />
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-block-id="skills" data-block-type="skills" data-block-source="native" data-block-label="Skills">
+    <div class="wrap">
+      <h2 class="display mb-8 text-[clamp(1.5rem,3.5vw,2.2rem)]">
+        <span data-lang="de">{copy.de.about.skillsTitle}</span>
+        <span data-lang="en">{copy.en.about.skillsTitle}</span>
+      </h2>
+      <div class="grid gap-4 md:grid-cols-3">
+        {
+          skills.map((s, i) => (
+            <Reveal client:visible delay={i * 0.05}>
+              <div class="relative h-full overflow-hidden rounded-[var(--radius)] border border-[var(--stroke)] bg-[var(--panel-soft)] p-6">
+                <div
+                  aria-hidden
+                  class="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full opacity-40"
+                  style={`background: radial-gradient(circle, color-mix(in srgb, ${i === 0 ? 'var(--violet)' : i === 1 ? 'var(--blue)' : 'var(--ice)'} 40%, transparent), transparent 70%)`}
+                />
+                <h3 class="display relative mb-4 text-lg text-[var(--text)]">
+                  <span data-lang="de">{s.group.de}</span>
+                  <span data-lang="en">{s.group.en}</span>
+                </h3>
+                <ul class="relative space-y-2 normal-case tracking-normal text-[var(--dim)]">
+                  {s.items.de.map((item, j) => (
+                    <li class="flex gap-2">
+                      <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--meta)]" aria-hidden />
+                      <span>
+                        <span data-lang="de">{item}</span>
+                        <span data-lang="en">{s.items.en[j]}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+          ))
+        }
+      </div>
+
+      <div class="mt-8 flex flex-wrap gap-4">
+        {
+          languages.map((lang) => (
+            <div class="rounded-2xl border border-[var(--stroke)] bg-[var(--panel-soft)] px-5 py-3">
+              <span class="font-semibold uppercase tracking-[0.08em] text-[var(--text)]">
+                <span data-lang="de">{lang.name.de}</span>
+                <span data-lang="en">{lang.name.en}</span>
+              </span>
+              <span class="normal-case tracking-normal text-[var(--dim)]">
+                {' '}
+                — <span data-lang="de">{lang.level.de}</span>
+                <span data-lang="en">{lang.level.en}</span>
+              </span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section pt-0" data-block-id="timeline" data-block-type="timeline" data-block-source="native" data-block-label="Timeline">
+    <div class="wrap">
+      <h2 class="display mb-8 text-[clamp(1.5rem,3.5vw,2.2rem)]">
+        <span data-lang="de">{copy.de.about.timelineLabel}</span>
+        <span data-lang="en">{copy.en.about.timelineLabel}</span>
+      </h2>
+      <ol class="timeline">
+        {
+          timeline.map((t, i) => (
+            <Reveal
+              client:visible
+              delay={i * 0.04}
+              className={i === timeline.length - 1 ? 'timeline__row' : 'timeline__row timeline__row--gap'}
+            >
+              <li class="timeline__item">
+                <div class="timeline__rail" aria-hidden="true">
+                  <span class:list={['timeline__dot', i === 0 && 'timeline__dot--now']} />
+                </div>
+                <div class="timeline__content">
+                  <div class="timeline__year">
+                    <span data-lang="de" data-edit={`timeline.${i}.year`}>{t.year}</span>
+                    <span data-lang="en" data-edit={`timeline.${i}.yearEn`}>{t.yearEn}</span>
+                  </div>
+                  <h3 class="timeline__title">
+                    <span data-lang="de" data-edit={`timeline.${i}.title.de`}>{t.title.de}</span>
+                    <span data-lang="en" data-edit={`timeline.${i}.title.en`}>{t.title.en}</span>
+                  </h3>
+                  <p class="timeline__body">
+                    <span data-lang="de" data-edit={`timeline.${i}.body.de`}>{t.body.de}</span>
+                    <span data-lang="en" data-edit={`timeline.${i}.body.en`}>{t.body.en}</span>
+                  </p>
+                </div>
+              </li>
+            </Reveal>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section class="section pt-0" data-block-id="education" data-block-type="education" data-block-source="native" data-block-label="Ausbildung">
+    <div class="wrap">
+      <h2 class="display mb-8 text-[clamp(1.5rem,3.5vw,2.2rem)]">
+        <span data-lang="de">{copy.de.about.educationTitle}</span>
+        <span data-lang="en">{copy.en.about.educationTitle}</span>
+      </h2>
+          <div class="grid gap-4 sm:grid-cols-2">
+        {
+          education.map((e, i) => (
+            <Reveal client:visible delay={i * 0.05}>
+              <div class="h-full rounded-[var(--radius)] border border-[var(--stroke)] bg-[var(--panel-soft)] p-5">
+                <div class="mb-2 text-[0.72rem] font-bold uppercase tracking-[0.16em] text-[var(--meta)]" data-edit={`education.${i}.year`}>{e.year}</div>
+                <h3 class="display mb-2 text-base text-[var(--text)]">
+                  <span data-lang="de" data-edit={`education.${i}.title.de`}>{e.title.de}</span>
+                  <span data-lang="en" data-edit={`education.${i}.title.en`}>{e.title.en}</span>
+                </h3>
+                <p class="m-0 text-[0.95rem] normal-case tracking-normal text-[var(--dim)]">
+                  <span data-lang="de" data-edit={`education.${i}.body.de`}>{e.body.de}</span>
+                  <span data-lang="en" data-edit={`education.${i}.body.en`}>{e.body.en}</span>
+                </p>
+              </div>
+            </Reveal>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+</BaseLayout>

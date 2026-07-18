@@ -1,0 +1,252 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HeroStage from '../components/hero/HeroStage';
+import ProjectCard from '../components/work/ProjectCard';
+import Reveal from '../components/motion/Reveal';
+import { getCollection } from 'astro:content';
+import { site } from '../lib/site';
+import { copy } from '../lib/i18n';
+import { p } from '../lib/paths';
+
+const works = await getCollection('work');
+const featured = works
+  .filter((w) => w.data.featured)
+  .sort((a, b) => a.data.order - b.data.order);
+const [lead, ...rest] = featured;
+const archive = works
+  .filter((w) => !w.data.featured && w.data.tags.includes('archive'))
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 4);
+
+const asset = (path: string) => p(path.replace(/^\//, ''));
+
+/** Current stand — developed product apps (UI screenshots) */
+const collageShots = [
+  { src: asset('media/nexus/screen-home.webp'), alt: 'NEXUS Home' },
+  { src: asset('media/berry/screen-home.webp'), alt: 'Berry Home' },
+  { src: asset('media/riftcast/screen-desktop.webp'), alt: 'Riftcast Desktop' },
+  { src: asset('media/nexus/screen-grid.webp'), alt: 'NEXUS Grid' },
+  { src: asset('media/berry/screen-collection.webp'), alt: 'Berry Collection' },
+  { src: asset('media/riftcast/screen-app.webp'), alt: 'Riftcast App' },
+  { src: asset('media/floordirekt/screen-pruefen.webp'), alt: 'Floordirekt Studio' },
+  { src: asset('media/nexus/screen-couch.webp'), alt: 'NEXUS Couch' },
+];
+---
+
+<BaseLayout title={`${site.name} — ${site.tagline}`} ogImage={'og/default.png'}>
+  <div data-block-id="hero" data-block-type="hero" data-block-source="native" data-block-label="Hero">
+    <HeroStage
+      client:load
+      brand={site.name}
+      headlineDe={copy.de.home.headline}
+      headlineEn={copy.en.home.headline}
+      supportDe={copy.de.home.support}
+      supportEn={copy.en.home.support}
+      collageShots={collageShots}
+      workHref={p('work')}
+      contactHref={p('contact')}
+    />
+  </div>
+
+  <div class="marquee" aria-hidden="true" data-block-id="marquee" data-block-type="marquee" data-block-source="native" data-block-label="Marquee">
+    <div class="marquee-track" data-lang="de">
+      {[...copy.de.home.marquee, ...copy.de.home.marquee].map((item) => (
+        <span>
+          {item} <em class="not-italic text-[var(--violet)]">✦</em>
+        </span>
+      ))}
+    </div>
+    <div class="marquee-track" data-lang="en">
+      {[...copy.en.home.marquee, ...copy.en.home.marquee].map((item) => (
+        <span>
+          {item} <em class="not-italic text-[var(--violet)]">✦</em>
+        </span>
+      ))}
+    </div>
+  </div>
+
+  <section class="section" data-block-id="featured" data-block-type="featured" data-block-source="native" data-block-label="Selected Work">
+    <div class="wrap">
+      <Reveal client:visible>
+        <p class="section-label">
+          <span data-lang="de" data-edit="home.featuredLabel.de">{copy.de.home.featuredLabel}</span>
+          <span data-lang="en" data-edit="home.featuredLabel.en">{copy.en.home.featuredLabel}</span>
+        </p>
+        <h2 class="display mb-3 text-[clamp(1.6rem,4vw,2.4rem)]">
+          <span data-lang="de" data-edit="home.featuredTitle.de">{copy.de.home.featuredTitle}</span>
+          <span data-lang="en" data-edit="home.featuredTitle.en">{copy.en.home.featuredTitle}</span>
+        </h2>
+        <p class="mb-10 max-w-xl normal-case tracking-normal text-[var(--dim)]">
+          <span data-lang="de" data-edit="home.featuredBody.de">{copy.de.home.featuredBody}</span>
+          <span data-lang="en" data-edit="home.featuredBody.en">{copy.en.home.featuredBody}</span>
+        </p>
+      </Reveal>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        {
+          lead && (
+            <ProjectCard
+              client:visible
+              featured
+              href={p(`work/${lead.id}`)}
+              title={lead.data.title}
+              summary={lead.data.summary}
+              year={lead.data.year}
+              role={lead.data.role}
+              cover={asset(lead.data.cover)}
+              logo={lead.data.logo ? asset(lead.data.logo) : undefined}
+              logoLive={lead.data.logoLive ? asset(lead.data.logoLive) : undefined}
+              tags={lead.data.tags}
+            />
+          )
+        }
+        {
+          rest.map((w) => (
+            <ProjectCard
+              client:visible
+              href={p(`work/${w.id}`)}
+              title={w.data.title}
+              summary={w.data.summary}
+              year={w.data.year}
+              role={w.data.role}
+              cover={asset(w.data.cover)}
+              logo={w.data.logo ? asset(w.data.logo) : undefined}
+              logoLive={w.data.logoLive ? asset(w.data.logoLive) : undefined}
+              tags={w.data.tags}
+            />
+          ))
+        }
+      </div>
+
+      <div class="mt-10">
+        <a href={p('work')} class="btn">
+          <span data-lang="de">{copy.de.home.allProjects}</span>
+          <span data-lang="en">{copy.en.home.allProjects}</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section pt-0" data-block-id="process" data-block-type="process" data-block-source="native" data-block-label="Process">
+    <div class="wrap">
+      <p class="section-label">
+        <span data-lang="de">{copy.de.home.processLabel}</span>
+        <span data-lang="en">{copy.en.home.processLabel}</span>
+      </p>
+      <h2 class="display mb-3 text-[clamp(1.4rem,3.2vw,2rem)]">
+        <span data-lang="de">{copy.de.home.processTitle}</span>
+        <span data-lang="en">{copy.en.home.processTitle}</span>
+      </h2>
+      <p class="mb-8 max-w-xl normal-case tracking-normal text-[var(--dim)]">
+        <span data-lang="de">{copy.de.home.processBody}</span>
+        <span data-lang="en">{copy.en.home.processBody}</span>
+      </p>
+      <ol class="grid gap-4 md:grid-cols-3">
+        {
+          copy.de.home.processSteps.map((step, i) => (
+            <li class="rounded-[var(--radius)] border border-[var(--stroke)] bg-[var(--panel-soft)] p-5">
+              <div class="mb-3 font-[family-name:var(--font-mono)] text-[0.7rem] tracking-[0.14em] text-[var(--meta)]">
+                0{i + 1}
+              </div>
+              <h3 class="display mb-2 text-lg text-[var(--text)]">
+                <span data-lang="de">{step.title}</span>
+                <span data-lang="en">{copy.en.home.processSteps[i].title}</span>
+              </h3>
+              <p class="m-0 text-[0.95rem] normal-case tracking-normal text-[var(--dim)]">
+                <span data-lang="de">{step.body}</span>
+                <span data-lang="en">{copy.en.home.processSteps[i].body}</span>
+              </p>
+            </li>
+          ))
+        }
+      </ol>
+      <p class="mt-8 max-w-2xl text-[0.95rem] normal-case tracking-normal text-[var(--faint)]">
+        <span class="font-semibold uppercase tracking-[0.12em] text-[var(--meta)]">
+          <span data-lang="de">{copy.de.home.proofLabel}</span>
+          <span data-lang="en">{copy.en.home.proofLabel}</span>
+        </span>
+        <span class="mx-2 text-[var(--stroke)]">·</span>
+        <span data-lang="de">{copy.de.home.proofBody}</span>
+        <span data-lang="en">{copy.en.home.proofBody}</span>
+      </p>
+    </div>
+  </section>
+
+  {
+    archive.length > 0 && (
+      <section class="section pt-0" data-block-id="archive" data-block-type="archive" data-block-source="native" data-block-label="Archive">
+        <div class="wrap">
+          <p class="section-label">
+            <span data-lang="de" data-edit="home.archiveLabel.de">{copy.de.home.archiveLabel}</span>
+            <span data-lang="en" data-edit="home.archiveLabel.en">{copy.en.home.archiveLabel}</span>
+          </p>
+          <h2 class="display mb-5 text-[clamp(1.15rem,2.4vw,1.55rem)]">
+            <span data-lang="de" data-edit="home.archiveTitle.de">{copy.de.home.archiveTitle}</span>
+            <span data-lang="en" data-edit="home.archiveTitle.en">{copy.en.home.archiveTitle}</span>
+          </h2>
+          <div class="grid max-w-4xl grid-cols-2 gap-3 md:grid-cols-4 md:gap-3.5">
+            {archive.map((w) => (
+              <ProjectCard
+                client:visible
+                compact
+                href={p(`work/${w.id}`)}
+                title={w.data.title}
+                summary={w.data.summary}
+                year={w.data.year}
+                role={w.data.role}
+                cover={asset(w.data.cover)}
+                logo={w.data.logo ? asset(w.data.logo) : undefined}
+                logoLive={w.data.logoLive ? asset(w.data.logoLive) : undefined}
+                tags={w.data.tags}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="section pt-0" data-block-id="cta" data-block-type="cta" data-block-source="native" data-block-label="Next / CTA">
+    <div class="wrap">
+      <div class="cta-panel relative overflow-hidden rounded-[28px] border border-[var(--stroke)]">
+        <div
+          aria-hidden
+          class="absolute inset-0"
+          style="background: linear-gradient(120deg, color-mix(in srgb, var(--violet) 22%, transparent), transparent 45%), linear-gradient(300deg, color-mix(in srgb, var(--blue) 16%, transparent), transparent 55%), var(--panel)"
+        ></div>
+        <div class="cta-visual pointer-events-none absolute inset-y-0 right-0 z-0 w-full md:w-[58%]" aria-hidden="true">
+          <img
+            src={asset('media/cta/cta-graphic.webp')}
+            alt=""
+            width={1600}
+            height={900}
+            loading="lazy"
+            decoding="async"
+            class="cta-visual__img h-full w-full object-cover object-right"
+          />
+        </div>
+        <div class="relative z-10 grid items-center px-6 py-10 md:grid-cols-[1.1fr_0.9fr] md:px-12 md:py-14">
+          <div class="max-w-xl">
+            <p class="section-label">
+              <span data-lang="de" data-edit="home.nextLabel.de">{copy.de.home.nextLabel}</span>
+              <span data-lang="en" data-edit="home.nextLabel.en">{copy.en.home.nextLabel}</span>
+            </p>
+            <h2 class="display mb-4 text-[clamp(1.5rem,3.5vw,2.2rem)]">
+              <span data-lang="de" data-edit="home.nextTitle.de">{copy.de.home.nextTitle}</span>
+              <span data-lang="en" data-edit="home.nextTitle.en">{copy.en.home.nextTitle}</span>
+            </h2>
+            <p class="mb-7 normal-case tracking-normal text-[var(--dim)]">
+              <span data-lang="de" data-edit="home.nextBody.de">{copy.de.home.nextBody}</span>
+              <span data-lang="en" data-edit="home.nextBody.en">{copy.en.home.nextBody}</span>
+            </p>
+            <a href={p('contact')} class="btn btn--primary">
+              <span data-lang="de" data-edit="home.nextCta.de">{copy.de.home.nextCta}</span>
+              <span data-lang="en" data-edit="home.nextCta.en">{copy.en.home.nextCta}</span>
+            </a>
+          </div>
+          <div class="hidden md:block" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

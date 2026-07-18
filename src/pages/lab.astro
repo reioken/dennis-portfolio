@@ -1,0 +1,51 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProjectCard from '../components/work/ProjectCard';
+import { getCollection } from 'astro:content';
+import { site } from '../lib/site';
+import { copy } from '../lib/i18n';
+import { p } from '../lib/paths';
+
+const asset = (path: string) => p(path.replace(/^\//, ''));
+const lab = (await getCollection('work'))
+  .filter((w) => w.data.tags.includes('lab'))
+  .sort((a, b) => a.data.order - b.data.order);
+---
+
+<BaseLayout title={`Lab — ${site.name}`} description={copy.de.lab.body}>
+  <section class="section pt-[calc(var(--nav-h)+2.5rem)]">
+    <div class="wrap">
+      <p class="section-label">
+        <span data-lang="de">{copy.de.lab.label}</span>
+        <span data-lang="en">{copy.en.lab.label}</span>
+      </p>
+      <h1 class="display mb-3 text-[clamp(2rem,5.5vw,3.2rem)]">
+        <span data-lang="de">{copy.de.lab.title}</span>
+        <span data-lang="en">{copy.en.lab.title}</span>
+      </h1>
+      <p class="mb-8 max-w-2xl normal-case tracking-normal text-[var(--dim)]">
+        <span data-lang="de">{copy.de.lab.body}</span>
+        <span data-lang="en">{copy.en.lab.body}</span>
+      </p>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        {
+          lab.map((w) => (
+            <ProjectCard
+              client:visible
+              href={p(`work/${w.id}`)}
+              title={w.data.title}
+              summary={w.data.summary}
+              year={w.data.year}
+              role={w.data.role}
+              cover={asset(w.data.cover)}
+              logo={w.data.logo ? asset(w.data.logo) : undefined}
+              logoLive={w.data.logoLive ? asset(w.data.logoLive) : undefined}
+              tags={w.data.tags}
+            />
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>

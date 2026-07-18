@@ -1,0 +1,18 @@
+---
+description: After every change set, commit and push to GitHub automatically
+alwaysApply: true
+---
+
+# Auto commit + push
+
+The user requires **every change** in this repo to be committed and pushed.
+
+After finishing a task that modifies files:
+
+1. Run `git status`, `git diff`, and `git log -5 --oneline` (parallel).
+2. Stage relevant files (`git add`). Do **not** stage secrets (`.env`, credentials).
+3. Commit with a concise message focused on why (PowerShell here-string is fine).
+4. `git push -u origin HEAD` (or `git push` if upstream exists).
+5. Confirm with `git status`.
+
+Skip only when there are truly no file changes. Never force-push to main/master unless the user explicitly asks.

@@ -1,0 +1,119 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CaseMedia from '../../components/work/CaseMedia';
+import Reveal from '../../components/motion/Reveal';
+import { getCollection, render } from 'astro:content';
+import { site } from '../../lib/site';
+import { p } from '../../lib/paths';
+
+export async function getStaticPaths() {
+  const works = await getCollection('work');
+  return works.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const data = entry.data;
+const all = (await getCollection('work')).sort((a, b) => a.data.order - b.data.order);
+const idx = all.findIndex((w) => w.id === entry.id);
+const next = all[(idx + 1) % all.length];
+const asset = (src: string) => p(src.replace(/^\//, ''));
+
+function hiAsset(sitePath: string): string | undefined {
+  const clean = sitePath.replace(/^\//, '');
+  const candidates = [
+    clean.replace(/(\.\w+)$/, '@2x.webp'),
+    clean.replace(/(\.\w+)$/, '@2x$1'),
+  ];
+  for (const rel of candidates) {
+    if (fs.existsSync(path.join(process.cwd(), 'public', rel))) {
+      return p(rel);
+    }
+  }
+  return undefined;
+}
+
+const coverSrc = asset(data.cover);
+const coverHi = hiAsset(data.cover);
+const galleryOnly = data.gallery
+  .map((g) => g.replace(/^\//, ''))
+  .filter((g) => g !== data.cover.replace(/^\//, ''));
+
+const images = [
+  {
+    src: coverSrc,
+    srcHi: coverHi,
+    alt: `${data.title} Cover`,
+  },
+  ...galleryOnly.map((g, i) => ({
+    src: asset(g),
+    srcHi: hiAsset(g),
+    alt: `${data.title} — ${i + 1}`,
+  })),
+];
+---
+
+<BaseLayout
+  title={`${data.title} — ${site.name}`}
+  description={data.summary}
+  ogImage={asset(data.cover)}
+>
+  <article class="pt-[calc(var(--nav-h)+2rem)]">
+    <header class="wrap mb-10">
+      <p class="section-label">{data.year} · {data.role}</p>
+      <h1 class="display text-[clamp(2.2rem,5vw,3.4rem)] mb-4">{data.title}</h1>
+      <p class="text-[1.15rem] text-[var(--dim)] max-w-2xl mb-6">{data.summary}</p>
+      <div class="glass-panel p-4 md:p-5 flex flex-wrap gap-x-8 gap-y-3 text-[0.9rem]">
+        {data.timeline && (
+          <div>
+            <div class="mb-1 text-[0.72rem] uppercase tracking-[0.12em] text-[var(--meta)]">Timeline</div>
+            <div class="text-[var(--text)]">{data.timeline}</div>
+          </div>
+        )}
+        {data.stack.length > 0 && (
+          <div>
+            <div class="mb-1 text-[0.72rem] uppercase tracking-[0.12em] text-[var(--meta)]">Stack</div>
+            <div class="text-[var(--dim)]">{data.stack.join(' · ')}</div>
+          </div>
+        )}
+        {data.outcome && (
+          <div class="min-w-[12rem] flex-1">
+            <div class="mb-1 text-[0.72rem] uppercase tracking-[0.12em] text-[var(--meta)]">Outcome</div>
+            <div class="text-[var(--dim)]">{data.outcome}</div>
+          </div>
+        )}
+      </div>
+    </header>
+
+    <CaseMedia client:load title={data.title} images={images} coverCount={1} />
+
+    <Reveal client:visible className="wrap prose-case mb-16">
+      <Content />
+    </Reveal>
+
+    <div class="wrap mb-16 flex flex-wrap gap-3">
+      {
+        data.externalUrl && (
+          <a class="btn btn--primary" href={data.externalUrl} target="_blank" rel="noreferrer">
+            <span data-lang="de">Produktseite öffnen</span>
+            <span data-lang="en">Open product page</span>
+          </a>
+        )
+      }
+      <a class="btn" href={p(`work/${next.id}`)}>
+        <span data-lang="de">Weiter:</span>
+        <span data-lang="en">Next:</span>
+        {next.data.title}
+      </a>
+      <a class="btn" href={p('contact')}>
+        <span data-lang="de">Projekt besprechen</span>
+        <span data-lang="en">Discuss a project</span>
+      </a>
+    </div>
+  </article>
+</BaseLayout>

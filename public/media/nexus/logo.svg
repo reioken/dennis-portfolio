@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-14 -14 422.78 384.03" width="64" height="64">
+  <!-- NEXUS facettiertes Diamant-„N" — statische Fassung (Favicon + ICO-Quelle). Dennis' Nachbau (new-logo.svg, 17 Facetten).
+       Animierte Fassung (Lichtreflex, Facetten-Funkeln, Randlicht): #nexusMark in index.html. -->
+  <defs>
+    <linearGradient id="nxg1" x1="1.55" y1="310.32" x2="124.37" y2="284.84" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#a57bfd"/><stop offset="1" stop-color="#4238f9"/></linearGradient>
+    <linearGradient id="nxg2" x1="-2.89" y1="345.16" x2="49.23" y2="215.89" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d8dbfe"/><stop offset="1" stop-color="#4b87fd"/></linearGradient>
+    <linearGradient id="nxg3" x1="47.41" y1="220.4" x2="75.01" y2="151.94" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2770fe"/><stop offset=".12" stop-color="#2168fa"/><stop offset=".68" stop-color="#0a4beb"/><stop offset="1" stop-color="#0241e6"/></linearGradient>
+    <linearGradient id="nxg4" x1="9.73" y1="138.47" x2="86.46" y2="79.63" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1a73fb"/><stop offset=".2" stop-color="#1058e8"/><stop offset=".52" stop-color="#0434ce"/><stop offset=".65" stop-color="#0936d1"/><stop offset=".8" stop-color="#173fdb"/><stop offset=".97" stop-color="#2f4deb"/><stop offset="1" stop-color="#3450ef"/></linearGradient>
+    <linearGradient id="nxg5" x1="99.73" y1="274.55" x2="114.42" y2="173.97" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#353efa"/><stop offset=".11" stop-color="#2a3bf1"/><stop offset=".52" stop-color="#0631d3"/><stop offset=".67" stop-color="#052fcd"/><stop offset=".86" stop-color="#0329bf"/><stop offset="1" stop-color="#0224b0"/></linearGradient>
+    <linearGradient id="nxg6" x1="134.17" y1="223.68" x2="118.85" y2="166.17" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0627bb"/><stop offset=".52" stop-color="#011ca0"/><stop offset="1" stop-color="#001fa2"/></linearGradient>
+    <linearGradient id="nxg7" x1="100.28" y1="157.4" x2="119.42" y2="143.19" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#000d53"/><stop offset=".52" stop-color="#000f63"/><stop offset=".63" stop-color="#001068"/><stop offset=".76" stop-color="#001376"/><stop offset=".91" stop-color="#001a8e"/><stop offset="1" stop-color="#001fa2"/></linearGradient>
+    <linearGradient id="nxg8" x1="174.52" y1="194.04" x2="69.36" y2="18.7" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2539f8"/><stop offset=".2" stop-color="#3550f9"/><stop offset=".46" stop-color="#4f75fc"/><stop offset=".46" stop-color="#567dfc"/><stop offset=".48" stop-color="#648efc"/><stop offset=".49" stop-color="#6e9afc"/><stop offset=".52" stop-color="#74a1fc"/><stop offset=".58" stop-color="#76a3fc"/><stop offset=".63" stop-color="#88b0fc"/><stop offset=".74" stop-color="#adccfd"/><stop offset=".84" stop-color="#c8e0fd"/><stop offset=".93" stop-color="#d8ecfd"/><stop offset="1" stop-color="#def1fe"/></linearGradient>
+    <linearGradient id="nxg9" x1="222.64" y1="143.81" x2="105.31" y2="8.39" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1041ed"/><stop offset=".06" stop-color="#2553f4"/><stop offset=".12" stop-color="#3360fa"/><stop offset=".17" stop-color="#3965fc"/><stop offset=".23" stop-color="#416bfc"/><stop offset=".33" stop-color="#4b72fc"/><stop offset=".46" stop-color="#4f75fc"/><stop offset=".46" stop-color="#567dfc"/><stop offset=".48" stop-color="#648efc"/><stop offset=".49" stop-color="#6e9afc"/><stop offset=".52" stop-color="#74a1fc"/><stop offset=".58" stop-color="#76a3fc"/><stop offset=".63" stop-color="#88b0fc"/><stop offset=".74" stop-color="#adccfd"/><stop offset=".84" stop-color="#c8e0fd"/><stop offset=".93" stop-color="#d8ecfd"/><stop offset="1" stop-color="#def1fe"/></linearGradient>
+    <linearGradient id="nxg10" x1="309.06" y1="309.96" x2="166.62" y2="191.38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#b780fc"/><stop offset="0" stop-color="#b57ffb"/><stop offset=".1" stop-color="#a773fb"/><stop offset=".17" stop-color="#a26ffb"/><stop offset=".2" stop-color="#9767fb"/><stop offset=".26" stop-color="#875bfb"/><stop offset=".33" stop-color="#7d54fb"/><stop offset=".42" stop-color="#7a52fc"/><stop offset=".44" stop-color="#734dfc"/><stop offset=".52" stop-color="#5a3efc"/><stop offset=".6" stop-color="#4b35fc"/><stop offset=".66" stop-color="#4632fc"/><stop offset=".66" stop-color="#4531fb"/><stop offset=".79" stop-color="#2a2df3"/><stop offset=".91" stop-color="#1a2aed"/><stop offset="1" stop-color="#152aec"/></linearGradient>
+    <linearGradient id="nxg11" x1="330.89" y1="334.51" x2="227.52" y2="152.44" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#b588fe"/><stop offset=".11" stop-color="#aa83fd"/><stop offset=".27" stop-color="#9278fb"/><stop offset=".36" stop-color="#8674fb"/><stop offset=".52" stop-color="#746ffb"/><stop offset=".54" stop-color="#6967fb"/><stop offset=".57" stop-color="#595cfc"/><stop offset=".61" stop-color="#5056fc"/><stop offset=".66" stop-color="#4e54fd"/><stop offset=".7" stop-color="#3f4ef8"/><stop offset=".77" stop-color="#2443ef"/><stop offset=".84" stop-color="#143cea"/><stop offset=".89" stop-color="#0f3ae9"/></linearGradient>
+    <linearGradient id="nxg12" x1="291.56" y1="224.3" x2="263.28" y2="132.96" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#010f6a"/><stop offset=".14" stop-color="#011074"/><stop offset=".27" stop-color="#021381"/><stop offset=".33" stop-color="#011587"/><stop offset=".52" stop-color="#011b9a"/><stop offset=".52" stop-color="#011b9a"/><stop offset=".58" stop-color="#011da3"/><stop offset=".66" stop-color="#011ea6"/><stop offset=".76" stop-color="#0121ae"/><stop offset=".89" stop-color="#0124b4"/></linearGradient>
+    <linearGradient id="nxg13" x1="293.07" y1="196" x2="295.39" y2="81.25" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0426b7"/><stop offset=".13" stop-color="#042bc1"/><stop offset=".27" stop-color="#0433d1"/><stop offset=".28" stop-color="#0433d1"/><stop offset=".52" stop-color="#0940e4"/><stop offset=".53" stop-color="#0b41e7"/><stop offset=".59" stop-color="#1146f0"/><stop offset=".66" stop-color="#1348f3"/><stop offset=".78" stop-color="#2052f9"/><stop offset=".89" stop-color="#2657fd"/></linearGradient>
+    <linearGradient id="nxg14" x1="307.56" y1="71.69" x2="385.61" y2="3.28" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4372fd"/><stop offset=".27" stop-color="#4871fc"/><stop offset=".52" stop-color="#5980fb"/><stop offset=".54" stop-color="#6388fb"/><stop offset=".57" stop-color="#7395fc"/><stop offset=".61" stop-color="#7c9cfc"/><stop offset=".66" stop-color="#7f9ffd"/><stop offset=".71" stop-color="#89aafd"/><stop offset=".81" stop-color="#98bafd"/><stop offset=".89" stop-color="#9ec0fe"/></linearGradient>
+    <linearGradient id="nxg15" x1="305.92" y1="321.59" x2="336.16" y2="178.85" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2d13bd"/><stop offset=".21" stop-color="#2019c1"/><stop offset=".31" stop-color="#151bbe"/><stop offset=".44" stop-color="#0e1ebc"/><stop offset=".66" stop-color="#142bd4"/><stop offset=".79" stop-color="#1735e3"/><stop offset=".89" stop-color="#193ae9"/></linearGradient>
+    <linearGradient id="nxg16" x1="321.18" y1="203.76" x2="330.26" y2="125.46" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0521b7"/><stop offset=".21" stop-color="#082ac9"/><stop offset=".28" stop-color="#082cce"/><stop offset=".45" stop-color="#0831d6"/><stop offset=".63" stop-color="#0530d7"/><stop offset=".68" stop-color="#0737e0"/><stop offset=".79" stop-color="#0d43f0"/><stop offset=".87" stop-color="#0f48f6"/></linearGradient>
+    <linearGradient id="nxg17" x1="335.45" y1="141.49" x2="431.04" y2="57.7" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#375ffc"/><stop offset=".13" stop-color="#4069fc"/><stop offset=".2" stop-color="#4871fc"/><stop offset=".29" stop-color="#5f85fc"/><stop offset=".36" stop-color="#698efc"/><stop offset=".66" stop-color="#abc5fd"/><stop offset=".78" stop-color="#d4e1fd"/><stop offset=".88" stop-color="#f0f4fd"/><stop offset=".93" stop-color="#fbfcfd"/></linearGradient>
+    <filter id="nxRimStatic" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="3.5" result="dil"/>
+      <feGaussianBlur in="dil" stdDeviation="9" result="halo"/>
+      <feFlood flood-color="#5f97ff" flood-opacity=".6"/>
+      <feComposite in2="halo" operator="in" result="oglow"/>
+      <feMerge><feMergeNode in="oglow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <g id="nxBody">
+      <polygon fill="url(#nxg1)" points="0 356.03 125.43 285.1 75.34 249.63 0 356.03"/>
+      <polygon fill="url(#nxg2)" points="40.68 138.6 75.34 249.63 0 356.03 40.68 138.6"/>
+      <polygon fill="url(#nxg3)" points="101.42 154.43 75.34 249.63 40.68 138.6 101.42 154.43"/>
+      <polygon fill="url(#nxg4)" points="40.68 138.6 101.42 154.43 110.61 121.51 64.91 9.89 40.68 138.6"/>
+      <polygon fill="url(#nxg5)" points="125.43 285.1 75.34 249.63 101.42 154.43 133.74 233.62 125.43 285.1"/>
+      <polygon fill="url(#nxg6)" points="101.42 154.43 133.74 233.62 140.3 193.02 128.6 164.59 101.42 154.43"/>
+      <polygon fill="url(#nxg7)" points="101.42 154.43 110.61 121.51 128.6 164.59 101.42 154.43"/>
+      <polygon fill="url(#nxg8)" points="64.91 9.89 156.43 232.68 201.99 171.03 64.91 9.89"/>
+      <polygon fill="url(#nxg9)" points="201.99 171.03 243.17 116.45 64.91 9.89 201.99 171.03"/>
+      <polygon fill="url(#nxg10)" points="156.43 232.68 334.09 346.11 201.99 171.03 156.43 232.68"/>
+      <polygon fill="url(#nxg11)" points="201.99 171.03 243.17 116.45 334.09 346.11 201.99 171.03"/>
+      <polygon fill="url(#nxg12)" points="290.62 236.3 297.34 206.4 265.16 122.3 259.85 158.43 290.62 236.3"/>
+      <polygon fill="url(#nxg13)" points="265.16 122.3 273.22 67.57 324.6 90.98 297.34 206.4 265.16 122.3"/>
+      <polygon fill="url(#nxg14)" points="273.22 67.57 394.78 0 324.6 90.98 273.22 67.57"/>
+      <polygon fill="url(#nxg15)" points="334.09 346.11 358.29 210.96 347.38 183.31 296.74 209.07 290.62 236.3 334.09 346.11"/>
+      <polygon fill="url(#nxg16)" points="296.74 209.07 347.38 183.31 319.71 111.69 296.74 209.07"/>
+      <polygon fill="url(#nxg17)" points="358.29 210.96 319.71 111.69 324.6 90.98 394.78 0 358.29 210.96"/>
+    </g>
+  </defs>
+  <g filter="url(#nxRimStatic)"><use href="#nxBody"/></g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke="#ffffff" stroke-width="5" opacity=".95"/>
+    <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke="#f4f9ff" stroke-width="4.4" opacity=".92"/>
+    <line x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke="#eaf2ff" stroke-width="3.4" opacity=".85"/>
+    <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke="#cfe0ff" stroke-width="2.2" opacity=".5"/>
+    <line x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke="#dbe8ff" stroke-width="2.4" opacity=".48"/>
+  </g>
+</svg>

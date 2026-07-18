@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkFilter from '../../components/work/WorkFilter';
+import { getCollection } from 'astro:content';
+import { site } from '../../lib/site';
+import { copy } from '../../lib/i18n';
+import { base, p } from '../../lib/paths';
+
+const asset = (path: string) => p(path.replace(/^\//, ''));
+const works = (await getCollection('work'))
+  .sort((a, b) => a.data.order - b.data.order)
+  .map((w) => ({
+    slug: w.id,
+    title: w.data.title,
+    summary: w.data.summary,
+    year: w.data.year,
+    role: w.data.role,
+    cover: asset(w.data.cover),
+    logo: w.data.logo ? asset(w.data.logo) : undefined,
+    logoLive: w.data.logoLive ? asset(w.data.logoLive) : undefined,
+    tags: w.data.tags,
+    featured: w.data.featured,
+  }));
+---
+
+<BaseLayout title={`Work — ${site.name}`} description={site.description}>
+  <section class="section pt-[calc(var(--nav-h)+2.5rem)]">
+    <div class="wrap">
+      <p class="section-label">
+        <span data-lang="de">{copy.de.work.label}</span>
+        <span data-lang="en">{copy.en.work.label}</span>
+      </p>
+      <h1 class="display mb-3 text-[clamp(2rem,5.5vw,3.2rem)] leading-[1.05]">
+        <span class="gradient-text">
+          <span data-lang="de">{copy.de.work.title}</span>
+          <span data-lang="en">{copy.en.work.title}</span>
+        </span>
+      </h1>
+      <p class="mb-10 max-w-2xl text-[1.05rem] normal-case tracking-normal text-[var(--dim)]">
+        <span data-lang="de">{copy.de.work.body}</span>
+        <span data-lang="en">{copy.en.work.body}</span>
+      </p>
+      <WorkFilter client:load items={works} basePath={base} />
+    </div>
+  </section>
+</BaseLayout>

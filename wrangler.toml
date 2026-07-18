@@ -1,0 +1,9 @@
+name = "dennis-portfolio"
+compatibility_date = "2026-07-01"
+pages_build_output_dir = "dist"
+
+# Live: https://dennis-portfolio-87g.pages.dev
+# Optional custom domain in CF Pages: dennis.riftcast.app
+
+[vars]
+SITE_URL = "https://dennis-portfolio-87g.pages.dev"

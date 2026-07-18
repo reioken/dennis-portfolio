@@ -1,0 +1,38 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../lib/site';
+---
+
+<BaseLayout title={`Impressum — ${site.name}`} description={`Impressum — ${site.name}`}>
+  <section class="section pt-[calc(var(--nav-h)+2.5rem)]">
+    <div class="wrap prose-case max-w-2xl">
+      <h1 class="display mb-4 text-3xl text-[var(--text)]">Impressum</h1>
+      <p>Angaben gemäß § 5 TMG:</p>
+      <p>
+        <strong>{site.name}</strong><br />
+        {site.role}<br />
+        {site.legalAddress}<br />
+        Deutschland<br />
+        E-Mail: <a href={`mailto:${site.email}`}>{site.email}</a><br />
+        Telefon: <a href={`tel:${site.phone.replace(/\s/g, '')}`}>{site.phone}</a><br />
+        LinkedIn: <a href={site.links.linkedin} target="_blank" rel="noreferrer">/in/dennis-b-b08834272</a>
+      </p>
+      <h2>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>
+      <p>
+        {site.name}<br />
+        {site.legalAddress}
+      </p>
+      <h2>Haftung für Inhalte</h2>
+      <p>
+        Die Inhalte dieser Website wurden mit Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität
+        der Inhalte wird keine Gewähr übernommen.
+      </p>
+      <h2>Haftung für Links</h2>
+      <p>
+        Externe Links führen zu Inhalten Dritter. Für diese Inhalte ist ausschließlich der jeweilige Anbieter
+        verantwortlich. Bei Bekanntwerden von Rechtsverletzungen werden entsprechende Links entfernt.
+      </p>
+      <p>Dies ist das persönliche Portfolio von {site.name}.</p>
+    </div>
+  </section>
+</BaseLayout>

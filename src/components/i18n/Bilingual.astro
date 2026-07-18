@@ -1,0 +1,14 @@
+---
+interface Props {
+  de: string;
+  en: string;
+  as?: keyof HTMLElementTagNameMap;
+  class?: string;
+}
+const { de, en, as: Tag = 'span', class: className } = Astro.props;
+---
+
+<Tag class:list={['i18n-pair', className]} set:html={undefined}>
+  <span data-lang="de">{de}</span>
+  <span data-lang="en">{en}</span>
+</Tag>

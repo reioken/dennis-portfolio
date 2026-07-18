@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07090f"/>
+      <stop offset="48%" stop-color="#10182a"/>
+      <stop offset="100%" stop-color="#0a0c14"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="28%" cy="30%" r="42%">
+      <stop offset="0%" stop-color="#4a82fe" stop-opacity=".45"/>
+      <stop offset="100%" stop-color="#4a82fe" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="78%" cy="68%" r="40%">
+      <stop offset="0%" stop-color="#ac8bfd" stop-opacity=".32"/>
+      <stop offset="100%" stop-color="#ac8bfd" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ac8bfd"/>
+      <stop offset="55%" stop-color="#4a82fe"/>
+      <stop offset="100%" stop-color="#dcebff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <rect width="1600" height="1000" fill="url(#glowA)"/>
+  <rect width="1600" height="1000" fill="url(#glowB)"/>
+
+  <!-- Phone frame -->
+  <rect x="980" y="180" width="360" height="680" rx="48" fill="#0c1018" stroke="url(#frame)" stroke-width="2"/>
+  <rect x="1004" y="230" width="312" height="560" rx="18" fill="#121826"/>
+  <rect x="1004" y="230" width="312" height="560" rx="18" fill="url(#glowA)" opacity=".35"/>
+  <circle cx="1160" cy="206" r="6" fill="#dcebff" opacity=".55"/>
+
+  <!-- Desktop hint -->
+  <rect x="220" y="280" width="620" height="380" rx="18" fill="#0c1018" stroke="url(#frame)" stroke-width="1.5" opacity=".9"/>
+  <rect x="244" y="320" width="572" height="300" rx="10" fill="#141c2c"/>
+  <rect x="244" y="320" width="572" height="300" rx="10" fill="url(#glowB)" opacity=".25"/>
+
+  <text x="120" y="200" fill="#f4f7ff" font-family="Segoe UI, system-ui, sans-serif" font-size="92" font-weight="700" letter-spacing="4">RIFTCAST</text>
+  <text x="120" y="270" fill="#9aa8c7" font-family="Segoe UI, system-ui, sans-serif" font-size="34">Your PC. In your hand.</text>
+</svg>

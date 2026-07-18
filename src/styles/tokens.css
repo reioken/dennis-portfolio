@@ -1,0 +1,97 @@
+:root {
+  --bg: #07080c;
+  --bg2: #0c0e16;
+  --elev: #12151f;
+  --ink: #f7f8fc;
+  /* Type scale — keep these visually distinct */
+  --text: #f7f8fc; /* titles / primary */
+  --dim: #8188a1; /* body copy */
+  --faint: #52586c; /* quiet chrome */
+  --meta: #b79cff; /* dates, labels, meta */
+
+  /* NEXUS brand trio — smooth violet → blue → ice */
+  --violet: #ac8bfd;
+  --blue: #4a82fe;
+  --ice: #c8daf4;
+  --cyan: #35d0f2;
+  --magenta: #e86bd0;
+  --ember: #ac8bfd;
+  --gold: #e8c27a;
+  --lime: #9ad7ff;
+
+  --glow-v: color-mix(in srgb, var(--violet) 45%, transparent);
+  --glow-b: color-mix(in srgb, var(--blue) 40%, transparent);
+
+  --glass-a: 1;
+  --glass: rgba(255 255 255 / calc(0.06 * var(--glass-a)));
+  --glass-2: rgba(255 255 255 / calc(0.1 * var(--glass-a)));
+  --panel: rgba(10 12 20 / calc(0.78 * var(--glass-a)));
+  --panel-soft: rgba(12 14 22 / calc(0.55 * var(--glass-a)));
+
+  --stroke: rgba(255, 255, 255, 0.1);
+  --stroke-hi: rgba(255, 255, 255, 0.28);
+
+  --lg-edge: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  --lg-spec: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 1px rgba(0, 0, 0, 0.25);
+  --lg-depth: 0 16px 40px rgba(0, 0, 0, 0.4);
+
+  --frost: blur(calc(24px * var(--fx, 1))) saturate(160%);
+  --frost-nav: blur(calc(16px * var(--fx, 1))) saturate(140%);
+
+  --fx: 1;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --max: 1180px;
+  --nav-h: 56px;
+
+  --font-display: "Outfit Variable", Outfit, system-ui, sans-serif;
+  --font-sans: "Outfit Variable", Outfit, system-ui, sans-serif;
+  --font-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+html[data-accent="ocean"] {
+  --violet: #5ec8ff;
+  --blue: #3a8cff;
+  --ice: #c5e6f8;
+  --meta: #7ec9ff;
+  --cyan: #4ee0d0;
+}
+
+html[data-accent="ember"] {
+  --violet: #ff7a5c;
+  --blue: #ff9a4a;
+  --ice: #f0d0b8;
+  --meta: #ff9a78;
+  --cyan: #ffb86b;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass: rgba(16, 18, 26, 0.94);
+    --glass-2: rgba(22, 24, 34, 0.96);
+    --panel: rgba(12, 14, 20, 0.97);
+    --frost: none;
+    --frost-nav: none;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --frost: blur(calc(14px * var(--fx, 1))) saturate(140%);
+    --frost-nav: blur(calc(10px * var(--fx, 1))) saturate(130%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fx: 0;
+  }
+}
+
+html.fx-off {
+  --fx: 0;
+  --frost: none;
+  --frost-nav: none;
+}

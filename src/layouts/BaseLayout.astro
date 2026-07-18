@@ -1,0 +1,149 @@
+---
+import '../styles/global.css';
+import GlassNav from '../components/nav/GlassNav';
+import BrandLockup from '../components/brand/BrandLockup';
+import FxBoot from '../components/FxBoot';
+import SiteGate from '../components/gate/SiteGate';
+import { navItems, site } from '../lib/site';
+import { copy } from '../lib/i18n';
+import { p } from '../lib/paths';
+import { GATE } from '../lib/gate-config';
+import { getCollection } from 'astro:content';
+import BackToTop from '../components/footer/BackToTop';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+}
+
+const {
+  title = `${site.name} — ${site.role}`,
+  description = site.description,
+  ogImage = 'og/default.png',
+} = Astro.props;
+
+const path = Astro.url.pathname;
+const nav = navItems.map((n) => ({ href: p(n.href), labelKey: n.labelKey }));
+const workLinks = (await getCollection('work'))
+  .sort((a, b) => a.data.order - b.data.order)
+  .map((w) => ({ href: p(`work/${w.id}`), title: w.data.title }));
+const canonical = new URL(path, Astro.site ?? site.url).toString();
+const favicon = p('favicon.svg');
+const appleIcon = p('apple-touch-icon.png');
+const og = new URL(p(ogImage.replace(/^\//, '')), Astro.site ?? site.url).toString();
+const gateOn = GATE.lockSite || GATE.editor;
+const personLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: site.name,
+  jobTitle: site.role,
+  url: site.url,
+  email: site.email,
+  sameAs: [site.links.linkedin, site.links.github, site.links.riftcast],
+  knowsAbout: ['Art Direction', 'UI/UX Design', 'Product Design', 'Branding'],
+};
+---
+
+<!doctype html>
+<html lang="de" data-lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#07080c" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={`${favicon}?v=3`} />
+    <link rel="icon" type="image/png" sizes="32x32" href={`${p('favicon-32.png')}?v=3`} />
+    <link rel="apple-touch-icon" href={`${appleIcon}?v=3`} />
+    <script is:inline define:vars={{ lockSite: GATE.lockSite, authKey: GATE.authKey }}>
+      (function () {
+        try {
+          var lang = localStorage.getItem('portfolio-lang');
+          if (lang === 'en' || lang === 'de') {
+            document.documentElement.dataset.lang = lang;
+            document.documentElement.lang = lang;
+          }
+          if (lockSite && localStorage.getItem(authKey) !== '1') {
+            document.documentElement.dataset.gateLocked = '1';
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={og} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={og} />
+    <script type="application/ld+json" set:html={JSON.stringify(personLd)} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">
+      <span data-lang="de">{copy.de.nav.skip}</span>
+      <span data-lang="en">{copy.en.nav.skip}</span>
+    </a>
+    {gateOn && <SiteGate client:load />}
+    <FxBoot client:idle />
+    <GlassNav
+      client:load
+      items={nav}
+      workLinks={workLinks}
+      currentPath={path}
+      brand={site.name}
+      homeHref={p()}
+    />
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="wrap flex flex-col gap-5 py-8 md:flex-row md:items-end md:justify-between md:gap-6 md:py-7">
+        <a href={p()} class="min-w-0 text-[var(--text)] transition-opacity hover:opacity-90" aria-label="Home">
+          <BrandLockup name={site.name} role={copy.de.footer.tagline} weight="footer" compact />
+        </a>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-3 md:justify-end">
+          <nav
+            class="flex flex-wrap gap-x-4 gap-y-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]"
+            aria-label="Footer"
+          >
+            <a class="transition-colors hover:text-[var(--text)]" href={p('work')}>
+              <span data-lang="de">{copy.de.nav.work}</span>
+              <span data-lang="en">{copy.en.nav.work}</span>
+            </a>
+            <a class="transition-colors hover:text-[var(--text)]" href={p('about')}>
+              <span data-lang="de">{copy.de.nav.about}</span>
+              <span data-lang="en">{copy.en.nav.about}</span>
+            </a>
+            <a class="transition-colors hover:text-[var(--text)]" href={p('contact')}>
+              <span data-lang="de">{copy.de.nav.contact}</span>
+              <span data-lang="en">{copy.en.nav.contact}</span>
+            </a>
+            <a class="transition-colors hover:text-[var(--text)]" href={p('impressum')}>Impressum</a>
+            <a class="transition-colors hover:text-[var(--text)]" href={p('privacy')}>
+              <span data-lang="de">Datenschutz</span>
+              <span data-lang="en">Privacy</span>
+            </a>
+          </nav>
+          <a class="btn btn--primary !min-h-10 !px-4 !py-2 !text-[0.68rem]" href={p(site.cvPdf)} download>
+            <span data-lang="de">{copy.de.footer.cv}</span>
+            <span data-lang="en">{copy.en.footer.cv}</span>
+          </a>
+        </div>
+      </div>
+      <div class="border-t border-[var(--stroke)]">
+        <div class="wrap flex items-center justify-between gap-4 py-3 text-[0.7rem] text-[var(--faint)]">
+          <span>© {new Date().getFullYear()} {site.name}</span>
+          <BackToTop client:idle labelDe={copy.de.footer.top} labelEn={copy.en.footer.top} />
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

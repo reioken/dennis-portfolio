@@ -1,0 +1,673 @@
+/* Under construction + personal editor — tied to gate-config.enabled */
+
+.gate-screen {
+  background:
+    radial-gradient(70% 50% at 50% -10%, color-mix(in srgb, var(--blue) 28%, transparent), transparent 55%),
+    radial-gradient(50% 40% at 100% 80%, color-mix(in srgb, var(--violet) 18%, transparent), transparent 50%),
+    var(--bg);
+}
+
+.gate-glow {
+  position: absolute;
+  inset: 20% 10% auto;
+  height: 40%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--violet) 22%, transparent), transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.gate-input {
+  min-height: 2.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--text);
+  padding: 0.7rem 1rem;
+  outline: none;
+  backdrop-filter: blur(12px);
+}
+
+.gate-input:focus {
+  border-color: color-mix(in srgb, var(--ice) 55%, var(--stroke));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 22%, transparent);
+}
+
+/* —— Personal editor shell —— */
+.editor-shell {
+  position: relative;
+  z-index: 180;
+}
+
+.editor-fab-solo {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 200;
+  min-height: 2.4rem;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--blue) 35%, transparent);
+  background: color-mix(in srgb, var(--blue) 22%, #0a0b12);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  backdrop-filter: blur(14px);
+  box-shadow: var(--lg-depth);
+}
+
+.editor-dock {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 200;
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ice) 28%, var(--stroke));
+  background: color-mix(in srgb, #0a0b12 88%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--lg-depth);
+}
+
+.editor-dock__btn {
+  min-height: 2.4rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--dim);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.editor-dock__btn:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--violet) 14%, transparent);
+}
+
+.editor-dock__btn.is-active,
+.editor-dock__btn--main.is-active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--ice) 40%, transparent);
+  background: color-mix(in srgb, var(--violet) 28%, transparent);
+}
+
+.editor-dock__btn--main:not(.is-active) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--blue) 22%, transparent);
+  border-color: color-mix(in srgb, var(--blue) 35%, transparent);
+}
+
+.editor-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 1.15rem;
+  z-index: 199;
+  transform: translateX(-50%);
+  max-width: min(90vw, 28rem);
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, #0a0b12 90%, transparent);
+  color: var(--dim);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+
+.editor-hint__ok {
+  color: var(--meta);
+}
+
+/* Click targets while editing */
+html[data-edit-mode='1'] [data-edit],
+html[data-edit-mode='1'] [data-edit-img] {
+  outline: 1.5px dashed color-mix(in srgb, var(--violet) 55%, transparent);
+  outline-offset: 4px;
+  border-radius: 4px;
+  cursor: text;
+  transition: outline-color 0.15s, background-color 0.15s;
+}
+
+html[data-edit-mode='1'] [data-edit]:hover,
+html[data-edit-mode='1'] [data-edit-img]:hover {
+  outline-color: var(--ice);
+  background-color: color-mix(in srgb, var(--violet) 12%, transparent);
+}
+
+html[data-edit-mode='1'] a [data-edit],
+html[data-edit-mode='1'] button [data-edit] {
+  cursor: text;
+}
+
+/* Inline edit card — next to the clicked element */
+.editor-inline {
+  position: fixed;
+  z-index: 210;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--ice) 30%, var(--stroke));
+  background: color-mix(in srgb, #0a0b12 96%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    var(--lg-depth),
+    0 0 0 1px color-mix(in srgb, var(--violet) 18%, transparent);
+}
+
+.editor-inline__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--meta);
+}
+
+.editor-inline__body {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.editor-inline__preview {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 0.65rem;
+  border: 1px solid var(--stroke);
+}
+
+.editor-inline__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+/* Unified controls */
+.editor-control {
+  width: 100%;
+  min-height: 2.5rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--stroke);
+  background: var(--panel-soft);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.6rem 0.75rem;
+  outline: none;
+}
+
+.editor-control:focus {
+  border-color: color-mix(in srgb, var(--ice) 50%, var(--stroke));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 20%, transparent);
+}
+
+.editor-control--area {
+  min-height: 6.5rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.editor-control--file {
+  min-height: auto;
+  padding: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--dim);
+}
+
+.editor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.15rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.editor-btn:hover {
+  border-color: color-mix(in srgb, var(--ice) 40%, var(--stroke));
+}
+
+.editor-btn--primary {
+  border-color: color-mix(in srgb, var(--violet) 45%, transparent);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--violet) 55%, transparent), color-mix(in srgb, var(--blue) 45%, transparent));
+  color: #fff;
+}
+
+.editor-btn--primary:hover {
+  filter: brightness(1.06);
+}
+
+.editor-btn--block {
+  width: 100%;
+}
+
+.editor-btn--file {
+  cursor: pointer;
+}
+
+.editor-btn--danger {
+  border-color: color-mix(in srgb, #ff6b6b 35%, var(--stroke));
+  color: #ffb4b4;
+}
+
+.editor-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.editor-ico:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ice) 40%, var(--stroke));
+  background: color-mix(in srgb, var(--violet) 18%, transparent);
+}
+
+.editor-ico:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Side drawers */
+.editor-drawer {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 4.5rem;
+  z-index: 205;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, calc(100vw - 1.5rem));
+  border-radius: 1.15rem;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, #0a0b12 96%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--lg-depth);
+  overflow: hidden;
+}
+
+.editor-drawer--compact {
+  bottom: auto;
+  max-height: min(70vh, 28rem);
+}
+
+.editor-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.editor-drawer__eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--meta);
+}
+
+.editor-drawer__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.editor-drawer__body {
+  flex: 1;
+  overflow: auto;
+  padding: 0.9rem 1rem 1.1rem;
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+}
+
+.editor-drawer__intro {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--dim);
+}
+
+.editor-drawer__note {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  color: var(--faint);
+  line-height: 1.45;
+}
+
+.editor-drawer__note code {
+  color: var(--ice);
+  font-size: 0.68rem;
+}
+
+.editor-tools {
+  gap: 0.55rem;
+}
+
+.editor-block-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.editor-block-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.7rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--stroke);
+  background: var(--panel-soft);
+}
+
+.editor-block-item.is-hidden {
+  opacity: 0.5;
+}
+
+.editor-block-item__meta {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.editor-block-item__meta strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.editor-block-item__meta span {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+.editor-block-item__actions {
+  display: flex;
+  gap: 0.28rem;
+}
+
+.editor-suggest {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.editor-suggest__item {
+  text-align: left;
+  border-radius: 0.8rem;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--violet) 10%, transparent);
+  padding: 0.65rem 0.75rem;
+  display: grid;
+  gap: 0.15rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.editor-suggest__item:hover {
+  border-color: color-mix(in srgb, var(--ice) 45%, var(--stroke));
+}
+
+.editor-suggest__item strong {
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editor-suggest__item span {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--dim);
+}
+
+.db-custom-block {
+  animation: db-block-in 0.45s ease;
+}
+
+@keyframes db-block-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html[data-gate-locked='1'] {
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .editor-hint {
+    bottom: 4.25rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    transform: none;
+    max-width: none;
+    text-align: center;
+  }
+}
+
+/* Hero collage media picker */
+.editor-drawer--media {
+  width: min(420px, calc(100vw - 1.5rem));
+}
+
+.editor-collage {
+  gap: 0.85rem;
+}
+
+.editor-collage__slots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+
+.editor-collage__slot {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--stroke);
+  background: var(--panel-soft);
+  color: var(--faint);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, color 0.2s;
+}
+
+.editor-collage__slot img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 0.45rem;
+  background: #0a0c12;
+}
+
+.editor-collage__slot span {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.editor-collage__slot:hover {
+  border-color: color-mix(in srgb, var(--ice) 40%, var(--stroke));
+  color: var(--text);
+}
+
+.editor-collage__slot.is-active {
+  border-color: color-mix(in srgb, var(--violet) 55%, var(--stroke));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--violet) 35%, transparent);
+  color: var(--ice);
+}
+
+.editor-collage__slot-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.editor-collage__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.editor-collage__chip {
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--dim);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.editor-collage__chip:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--ice) 35%, var(--stroke));
+}
+
+.editor-collage__chip.is-active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--violet) 50%, var(--stroke));
+  background: color-mix(in srgb, var(--violet) 16%, transparent);
+}
+
+.editor-collage__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+}
+
+.editor-collage__thumb {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--stroke);
+  background: var(--panel-soft);
+  color: var(--dim);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.editor-collage__thumb img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 0.5rem;
+  background: #0a0c12;
+}
+
+.editor-collage__thumb span {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0 0.15rem 0.15rem;
+  min-width: 0;
+}
+
+.editor-collage__thumb strong {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-collage__thumb em {
+  font-style: normal;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.editor-collage__thumb:hover {
+  border-color: color-mix(in srgb, var(--ice) 40%, var(--stroke));
+  transform: translateY(-1px);
+}
+
+.editor-collage__thumb.is-used:not(.is-active) {
+  opacity: 0.72;
+}
+
+.editor-collage__thumb.is-active {
+  border-color: color-mix(in srgb, var(--violet) 60%, var(--stroke));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--violet) 30%, transparent);
+}
+
+.editor-collage__thumb.is-active::after {
+  content: "Aktiv";
+  justify-self: start;
+  margin: -0.1rem 0 0.1rem 0.15rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--violet) 28%, transparent);
+  color: var(--ice);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

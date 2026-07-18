@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="currentColor">
+  <path fill-rule="evenodd" d="M8 16 L16 8 H30 V18 H20 L18 20 V44 L20 46 H30 V56 H16 L8 48 V16ZM18 22 H28 V42 H18 V22Z"/>
+  <rect x="30" y="8" width="10" height="48"/>
+  <polygon points="40,8 58,8 53,18 40,18"/>
+  <polygon points="40,22 52,22 48,32 40,32"/>
+  <path fill-rule="evenodd" d="M40 32 H54 L58 36 V44 L54 48 H40 V32ZM48 38 H52 V42 H48 V38Z"/>
+  <path fill-rule="evenodd" d="M40 48 H55 L59 52 V58 L55 56 H40 V48ZM48 51 H53 V54 H48 V51Z"/>
+</svg>
