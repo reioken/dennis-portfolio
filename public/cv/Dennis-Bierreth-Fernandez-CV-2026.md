@@ -3,7 +3,7 @@
 **Art Director & UI/UX Designer**  
 Deutschland  
 +49 176 45988754  
-dennis.bierreth@gmail.com  
+dennis@dennisbf.design  
 LinkedIn: https://www.linkedin.com/in/dennis-b-b08834272/  
 Portfolio: https://dennisbf.design/
 

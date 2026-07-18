@@ -4,7 +4,7 @@ export const site = {
   monogram: 'DBF',
   tagline: 'UX/UI Designer · Art Director',
   role: 'Art Director & UI/UX Designer',
-  email: 'dennis.bierreth@gmail.com',
+  email: 'dennis@dennisbf.design',
   phone: '+49 176 45988754',
   location: 'Deutschland',
   address: 'Deutschland',
