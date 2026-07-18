@@ -12,13 +12,9 @@ npm run build
 npx wrangler pages deploy dist --project-name=dennis-portfolio --commit-dirty=true
 ```
 
-## Custom domain (optional)
+## Custom domain
 
-In Cloudflare Dashboard → Pages → `dennis-portfolio` → Custom domains:
-
-1. Add `dennis.riftcast.app`
-2. Update `astro.config.mjs` `site` and `src/lib/site.ts` `url`
-3. Update maker-links in `riftcast/site/nexus` + `berry` footers
+Production: `www.dennisbf.design` (Cloudflare Pages → Custom domains).
 
 ## GitHub Actions
 

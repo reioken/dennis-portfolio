@@ -33,8 +33,6 @@ npm run build
 npx wrangler pages deploy dist --project-name=dennis-portfolio --commit-dirty=true
 ```
 
-Optional Custom Domain: `dennis.riftcast.app` (Cloudflare Pages → Custom domains). Product landings already link to that hostname as „About the maker“.
-
 ## Struktur
 
 - `src/pages` — Routen (Home, Work, About, Lab, Contact, Legal)
@@ -42,8 +40,3 @@ Optional Custom Domain: `dennis.riftcast.app` (Cloudflare Pages → Custom domai
 - `src/components` — Glass Nav, Hero, Cards, Command Palette
 - `public/media` — kuratierte Screenshots
 - `public/cv` — CV 2026 (Markdown)
-
-## Produktsites
-
-- NEXUS: https://riftcast.app/nexus/
-- Berry: https://riftcast.app/berry/

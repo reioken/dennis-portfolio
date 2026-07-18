@@ -17,9 +17,6 @@ export const site = {
     'Art Director & UI/UX Designer — Floordirekt, NEXUS, Berry, Riftcast.',
   url: 'https://www.dennisbf.design/',
   links: {
-    nexus: 'https://riftcast.app/nexus/',
-    berry: 'https://riftcast.app/berry/',
-    riftcast: 'https://riftcast.app/',
     github: 'https://github.com/reioken',
     linkedin: 'https://www.linkedin.com/in/dennis-b-b08834272/',
   },
