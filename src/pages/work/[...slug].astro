@@ -4,7 +4,6 @@ import path from 'node:path';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CaseMedia from '../../components/work/CaseMedia';
 import CaseMediaTabs from '../../components/work/CaseMediaTabs';
-import Reveal from '../../components/motion/Reveal';
 import { getCollection, render } from 'astro:content';
 import { site } from '../../lib/site';
 import { p } from '../../lib/paths';
@@ -69,6 +68,9 @@ const surfaces = (data.surfaces ?? []).map((surface) => ({
     alt: `${data.title} ${surface.labelDe} — ${i + 1}`,
   })),
 }));
+
+const when = data.timeline || data.year;
+const hasBody = (entry.body ?? '').replace(/<[^>]+>/g, '').trim().length > 0;
 ---
 
 <BaseLayout
@@ -76,31 +78,54 @@ const surfaces = (data.surfaces ?? []).map((surface) => ({
   description={data.summary}
   ogImage={asset(data.cover)}
 >
-  <article class="pt-[calc(var(--nav-h)+2rem)]">
-    <header class="wrap mb-10">
-      <p class="section-label">{data.year} · {data.role}</p>
-      <h1 class="display text-[clamp(2.2rem,5vw,3.4rem)] mb-4">{data.title}</h1>
-      <p class="text-[1.15rem] text-[var(--dim)] max-w-2xl mb-6">{data.summary}</p>
-      <div class="glass-panel p-4 md:p-5 flex flex-wrap gap-x-8 gap-y-3 text-[0.9rem]">
-        {data.timeline && (
-          <div>
-            <div class="mb-1 text-[0.72rem] uppercase tracking-[0.12em] text-[var(--meta)]">Timeline</div>
-            <div class="text-[var(--text)]">{data.timeline}</div>
-          </div>
-        )}
-        {data.stack.length > 0 && (
-          <div>
-            <div class="mb-1 text-[0.72rem] uppercase tracking-[0.12em] text-[var(--meta)]">Stack</div>
-            <div class="text-[var(--dim)]">{data.stack.join(' · ')}</div>
-          </div>
-        )}
-        {data.outcome && (
-          <div class="min-w-[12rem] flex-1">
-            <div class="mb-1 text-[0.72rem] uppercase tracking-[0.12em] text-[var(--meta)]">Outcome</div>
-            <div class="text-[var(--dim)]">{data.outcome}</div>
-          </div>
-        )}
+  <article class="case-page">
+    <header class="case-page__intro wrap">
+      <div class="case-page__main">
+        <p class="case-page__eyebrow">
+          <span>{data.role}</span>
+          {when && (
+            <>
+              <span class="case-page__dot" aria-hidden="true">·</span>
+              <span>{when}</span>
+            </>
+          )}
+        </p>
+        <h1 class="case-page__title">{data.title}</h1>
+        <p class="case-page__summary">{data.summary}</p>
+        {
+          hasBody && (
+            <div class="case-page__copy prose-case">
+              <Content />
+            </div>
+          )
+        }
       </div>
+
+      <aside class="case-page__aside" aria-label="Project details">
+        {
+          data.stack.length > 0 && (
+            <div class="case-page__block">
+              <h2 class="case-page__label">Stack</h2>
+              <ul class="case-page__chips">
+                {data.stack.map((item) => (
+                  <li>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+        {
+          data.outcome && (
+            <div class="case-page__block">
+              <h2 class="case-page__label">
+                <span data-lang="de">Ergebnis</span>
+                <span data-lang="en">Outcome</span>
+              </h2>
+              <p class="case-page__outcome">{data.outcome}</p>
+            </div>
+          )
+        }
+      </aside>
     </header>
 
     {
@@ -111,34 +136,22 @@ const surfaces = (data.surfaces ?? []).map((surface) => ({
           client:load
           title={data.title}
           images={images}
-          coverCount={1}
+          coverCount={0}
           variant={entry.id === 'berry' ? 'phone' : 'desktop'}
         />
       )
     }
 
-    <Reveal client:visible className="wrap prose-case mb-16">
-      <Content />
-    </Reveal>
-
-    <div class="wrap mb-16 flex flex-wrap gap-3">
-      {
-        data.externalUrl && (
-          <a class="btn btn--primary" href={data.externalUrl} target="_blank" rel="noreferrer">
-            <span data-lang="de">Produktseite öffnen</span>
-            <span data-lang="en">Open product page</span>
-          </a>
-        )
-      }
+    <nav class="case-page__nav wrap" aria-label="Case navigation">
       <a class="btn" href={p(`work/${next.id}`)}>
         <span data-lang="de">Weiter:</span>
         <span data-lang="en">Next:</span>
         {next.data.title}
       </a>
-      <a class="btn" href={p('contact')}>
+      <a class="btn btn--primary" href={p('contact')}>
         <span data-lang="de">Projekt besprechen</span>
         <span data-lang="en">Discuss a project</span>
       </a>
-    </div>
+    </nav>
   </article>
 </BaseLayout>

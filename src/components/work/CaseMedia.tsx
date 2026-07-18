@@ -107,8 +107,8 @@ export default function CaseMedia({
       ))}
 
       {strip.length > 0 ? (
-        <div className="mb-14">
-          <div className="wrap mb-5 flex items-end justify-between gap-4">
+        <div className="case-page__gallery">
+          <div className="wrap case-page__gallery-head">
             <p className="section-label mb-0">
               <span data-lang="de">{copy.de.work.gallery}</span>
               <span data-lang="en">{copy.en.work.gallery}</span>

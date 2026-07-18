@@ -27,7 +27,7 @@ export default function CaseMediaTabs({ title, surfaces }: Props) {
 
   return (
     <div className="case-surfaces">
-      <div className="wrap mb-6">
+      <div className="wrap mb-3">
         <div className="case-surfaces__tabs" role="tablist" aria-label={`${title} surfaces`}>
           {surfaces.map((surface) => {
             const selected = surface.id === active.id;
@@ -64,7 +64,7 @@ export default function CaseMediaTabs({ title, surfaces }: Props) {
           <CaseMedia
             title={`${title} — ${active.labelDe}`}
             images={active.images}
-            coverCount={1}
+            coverCount={0}
             variant={active.variant}
           />
         </motion.div>
