@@ -175,7 +175,7 @@ function clean(value, max) {
 
 async function handleContact(request, env) {
   if (!env.CONTACT) {
-    return json({ ok: false, error: 'mail_unavailable' }, 503);
+    return json({ ok: false, error: 'mail_binding_missing' }, 503);
   }
 
   let body;
@@ -202,9 +202,9 @@ async function handleContact(request, env) {
     return json({ ok: false, error: 'invalid_email' }, 400);
   }
 
-  const to = env.CONTACT_TO;
+  const to = typeof env.CONTACT_TO === 'string' ? env.CONTACT_TO.trim() : '';
   if (!to) {
-    return json({ ok: false, error: 'mail_unavailable' }, 503);
+    return json({ ok: false, error: 'mail_inbox_missing' }, 503);
   }
   const fromAddr = env.CONTACT_FROM || 'contact@dennisbf.design';
   const when = formatWhen();
