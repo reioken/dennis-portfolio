@@ -12,7 +12,8 @@
     "astro": "astro",
     "optimize:media": "node scripts/optimize-media.mjs",
     "upscale:gallery": "node scripts/upscale-gallery.mjs",
-    "deploy": "astro build && wrangler pages deploy dist --project-name=dennis-portfolio --commit-dirty=true"
+    "deploy:contact": "wrangler deploy -c workers/contact/wrangler.toml",
+    "deploy": "npm run deploy:contact && astro build && wrangler pages deploy dist --project-name=dennis-portfolio --commit-dirty=true"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.3",

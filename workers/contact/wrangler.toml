@@ -1,0 +1,13 @@
+name = "dennis-portfolio-contact"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+workers_dev = false
+
+[vars]
+CONTACT_TO = "dennis.bierreth@gmail.com"
+CONTACT_FROM = "contact@dennisbf.design"
+
+# Send only to the verified Email Routing destination (Gmail)
+[[send_email]]
+name = "CONTACT"
+destination_address = "dennis.bierreth@gmail.com"

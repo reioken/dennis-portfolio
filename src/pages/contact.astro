@@ -1,12 +1,37 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactForm from '../components/contact/ContactForm';
 import { site } from '../lib/site';
 import { copy } from '../lib/i18n';
+
+const formDe = {
+  name: 'Name',
+  email: 'E-Mail',
+  subject: 'Betreff',
+  message: 'Nachricht',
+  send: 'Nachricht senden',
+  sending: 'Senden…',
+  success: 'Danke — deine Nachricht ist unterwegs.',
+  error: 'Senden fehlgeschlagen. Versuch’s nochmal oder schreib direkt per Mail.',
+  required: 'Bitte Name, E-Mail und Nachricht ausfüllen.',
+};
+
+const formEn = {
+  name: 'Name',
+  email: 'Email',
+  subject: 'Subject',
+  message: 'Message',
+  send: 'Send message',
+  sending: 'Sending…',
+  success: 'Thanks — your message is on its way.',
+  error: 'Couldn’t send. Try again or email me directly.',
+  required: 'Please fill in name, email, and message.',
+};
 ---
 
 <BaseLayout title={`Contact — ${site.name}`} description={site.description}>
   <section class="section pt-[calc(var(--nav-h)+2.5rem)]" data-block-id="contact" data-block-type="contact" data-block-source="native" data-block-label="Contact">
-    <div class="wrap grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+    <div class="wrap grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
       <div>
         <p class="section-label">
           <span data-lang="de">{copy.de.contact.label}</span>
@@ -20,13 +45,17 @@ import { copy } from '../lib/i18n';
             Let's <span class="gradient-text">{copy.en.contact.titleAccent}</span>
           </span>
         </h1>
-        <p class="mb-0 max-w-[40ch] text-[1.05rem] normal-case tracking-normal text-[var(--dim)]">
+        <p class="mb-8 max-w-[42ch] text-[1.05rem] normal-case tracking-normal text-[var(--dim)]">
           <span data-lang="de" data-edit="contact.body.de">{copy.de.contact.body}</span>
           <span data-lang="en" data-edit="contact.body.en">{copy.en.contact.body}</span>
         </p>
+
+        <div class="contact-form-shell">
+          <ContactForm client:load de={formDe} en={formEn} />
+        </div>
       </div>
 
-      <div class="relative space-y-6 overflow-hidden rounded-[28px] border border-[var(--stroke)] bg-[var(--panel)] p-7">
+      <aside class="relative space-y-6 overflow-hidden rounded-[28px] border border-[var(--stroke)] bg-[var(--panel)] p-7 lg:sticky lg:top-[calc(var(--nav-h)+1.25rem)]">
         <div
           aria-hidden
           class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-50"
@@ -56,14 +85,10 @@ import { copy } from '../lib/i18n';
           </a>
         </div>
         <div class="relative flex flex-wrap gap-3 pt-1">
-          <a class="btn btn--primary" href={`mailto:${site.email}`}>
-            <span data-lang="de">{copy.de.contact.openMail}</span>
-            <span data-lang="en">{copy.en.contact.openMail}</span>
-          </a>
           <a class="btn" href={site.links.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
           <a class="btn" href={site.links.github} target="_blank" rel="noreferrer">GitHub</a>
         </div>
-      </div>
+      </aside>
     </div>
   </section>
 </BaseLayout>

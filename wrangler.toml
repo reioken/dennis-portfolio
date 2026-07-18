@@ -6,3 +6,8 @@ pages_build_output_dir = "dist"
 
 [vars]
 SITE_URL = "https://www.dennisbf.design"
+
+# Contact mail Worker (has send_email; Pages config cannot)
+[[services]]
+binding = "CONTACT_WORKER"
+service = "dennis-portfolio-contact"
