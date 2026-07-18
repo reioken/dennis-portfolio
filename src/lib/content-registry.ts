@@ -14,7 +14,6 @@ export const CONTENT_FIELDS: ContentField[] = [
   { key: 'site.shortName', label: 'Kurzname (Nav)', kind: 'text', group: 'Brand' },
   { key: 'site.role', label: 'Job-Titel', kind: 'text', group: 'Brand' },
   { key: 'site.email', label: 'E-Mail', kind: 'text', group: 'Brand' },
-  { key: 'site.phone', label: 'Telefon', kind: 'text', group: 'Brand' },
   { key: 'site.location', label: 'Ort', kind: 'text', group: 'Brand' },
   { key: 'site.description', label: 'Meta Description', kind: 'textarea', group: 'Brand' },
 

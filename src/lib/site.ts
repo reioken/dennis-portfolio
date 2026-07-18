@@ -5,7 +5,6 @@ export const site = {
   tagline: 'UX/UI Designer · Art Director',
   role: 'Art Director & UI/UX Designer',
   email: 'dennis@dennisbf.design',
-  phone: '+49 176 45988754',
   location: 'Deutschland',
   address: 'Deutschland',
   /** Only for Impressum / Datenschutz (§ 5 TMG) — not shown on marketing pages */

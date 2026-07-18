@@ -75,15 +75,6 @@ const formEn = {
           </div>
           <div class="normal-case tracking-normal text-[var(--text)]" data-edit="site.location">{site.location}</div>
         </div>
-        <div class="relative">
-          <div class="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-[var(--meta)]">
-            <span data-lang="de">Telefon</span>
-            <span data-lang="en">Phone</span>
-          </div>
-          <a class="normal-case tracking-normal text-[var(--text)] hover:text-[var(--ice)]" href={`tel:${site.phone.replace(/\s/g, '')}`}>
-            {site.phone}
-          </a>
-        </div>
         <div class="relative flex flex-wrap gap-3 pt-1">
           <a class="btn" href={site.links.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
           <a class="btn" href={site.links.github} target="_blank" rel="noreferrer">GitHub</a>

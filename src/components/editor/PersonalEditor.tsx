@@ -40,7 +40,6 @@ function defaultsFromSite(): ContentMap {
     'site.shortName': site.shortName,
     'site.role': site.role,
     'site.email': site.email,
-    'site.phone': site.phone,
     'site.location': site.location,
     'site.description': site.description,
     'home.headline.de': copy.de.home.headline,
