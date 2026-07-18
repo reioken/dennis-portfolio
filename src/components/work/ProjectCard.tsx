@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import AnimatedLogo from './AnimatedLogo';
 
 type Props = {
   href: string;
@@ -37,11 +38,9 @@ export default function ProjectCard({
   const reduce = useReducedMotion();
   const ref = useRef<HTMLAnchorElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const [hovering, setHovering] = useState(false);
 
   const mark = logo || cover;
   const isLogo = Boolean(logo);
-  const showLive = Boolean(logoLive && hovering && !reduce);
 
   const onMove = (e: React.MouseEvent) => {
     if (reduce || window.matchMedia('(pointer: coarse)').matches) return;
@@ -55,7 +54,6 @@ export default function ProjectCard({
 
   const onLeave = () => {
     setTilt({ x: 0, y: 0 });
-    setHovering(false);
   };
 
   return (
@@ -75,7 +73,6 @@ export default function ProjectCard({
         WebkitBackdropFilter: 'var(--frost)',
       }}
       onMouseMove={onMove}
-      onMouseEnter={() => setHovering(true)}
       onMouseLeave={onLeave}
       animate={{ rotateX: tilt.x, rotateY: tilt.y }}
       transition={{ type: 'spring', stiffness: 260, damping: 22, mass: 0.4 }}
@@ -98,28 +95,25 @@ export default function ProjectCard({
                 compact ? 'p-5' : featured ? 'p-10 md:p-14' : 'p-8'
               }`}
             >
-              <img
-                src={mark}
-                alt={coverAlt ?? `${title} logo`}
-                width={640}
-                height={320}
-                loading="lazy"
-                decoding="async"
-                className={`project-logo-panel__mark max-h-full max-w-full object-contain transition-[opacity,transform,filter] duration-500 ease-out ${
-                  showLive ? 'opacity-0 scale-[0.98]' : 'opacity-100'
-                } ${logoLive || reduce ? '' : 'project-logo-panel__mark--idle'}`}
-              />
-              {showLive && logoLive ? (
-                <img
+              {logoLive && !reduce ? (
+                <AnimatedLogo
                   src={logoLive}
-                  alt=""
+                  title={coverAlt ?? `${title} logo`}
+                  className="project-logo-panel__mark project-logo-panel__mark--live max-h-[70%] max-w-[78%] w-full h-full object-contain"
+                />
+              ) : (
+                <img
+                  src={mark}
+                  alt={coverAlt ?? `${title} logo`}
                   width={640}
                   height={320}
+                  loading="lazy"
                   decoding="async"
-                  aria-hidden
-                  className="project-logo-panel__mark project-logo-panel__mark--live absolute inset-0 m-auto max-h-[70%] max-w-[78%] object-contain opacity-100"
+                  className={`project-logo-panel__mark max-h-full max-w-full object-contain ${
+                    logoLive || reduce ? '' : 'project-logo-panel__mark--idle'
+                  }`}
                 />
-              ) : null}
+              )}
             </div>
           </>
         ) : (

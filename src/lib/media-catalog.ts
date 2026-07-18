@@ -21,7 +21,7 @@ export type CollageSlotKey = (typeof COLLAGE_SLOT_KEYS)[number];
 
 /** Defaults = current stand of developed product apps */
 export const COLLAGE_DEFAULTS: Record<CollageSlotKey, string> = {
-  'img.collage.0': '/media/nexus/shots/screen-splash.webp',
+  'img.collage.0': '/media/nexus/shots/screen-home-featured.webp',
   'img.collage.1': '/media/berry/shots/screen-home.webp',
   'img.collage.2': '/media/riftcast/shots/screen-quality.webp',
   'img.collage.3': '/media/nexus/shots/screen-grid.webp',

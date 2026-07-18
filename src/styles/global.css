@@ -391,8 +391,13 @@ a:hover .brand-mark--nav {
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45));
 }
 .project-logo-panel__mark--live {
+  display: block;
   max-height: 62%;
   max-width: 78%;
+  width: min(78%, 280px);
+  height: min(62%, 280px);
+  border: 0;
+  background: transparent;
 }
 /* Subtle float/glow only while hovering — no continuous motion at rest */
 .project-logo-panel__mark--idle {
