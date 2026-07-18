@@ -83,5 +83,13 @@ export const CONTENT_FIELDS: ContentField[] = [
   { key: 'img.collage.5', label: 'Hero Collage 6', kind: 'image', group: 'Bilder' },
   { key: 'img.collage.6', label: 'Hero Collage 7', kind: 'image', group: 'Bilder' },
   { key: 'img.collage.7', label: 'Hero Collage 8', kind: 'image', group: 'Bilder' },
+  { key: 'img.collage.8', label: 'Hero Collage 9', kind: 'image', group: 'Bilder' },
+  { key: 'img.collage.9', label: 'Hero Collage 10', kind: 'image', group: 'Bilder' },
+  { key: 'img.collage.10', label: 'Hero Collage 11', kind: 'image', group: 'Bilder' },
+  { key: 'img.collage.11', label: 'Hero Collage 12', kind: 'image', group: 'Bilder' },
+  { key: 'img.collage.12', label: 'Hero Collage 13', kind: 'image', group: 'Bilder' },
+  { key: 'img.collage.13', label: 'Hero Collage 14', kind: 'image', group: 'Bilder' },
+  { key: 'img.collage.14', label: 'Hero Collage 15', kind: 'image', group: 'Bilder' },
+  { key: 'img.collage.15', label: 'Hero Collage 16', kind: 'image', group: 'Bilder' },
   { key: 'img.favicon', label: 'Favicon URL', kind: 'image', group: 'Bilder' },
 ];

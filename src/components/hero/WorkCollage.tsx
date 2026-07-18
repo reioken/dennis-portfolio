@@ -17,10 +17,13 @@ function resolveFormat(src: string, format?: Shot['format']): Shot['format'] {
 /** Build a seamless marquee track: dense half, then duplicated for -50% scroll. */
 function loopTrack(items: IndexedShot[]): IndexedShot[] {
   if (!items.length) return [];
+  // More unique shots → one pass per half; fewer shots → repeat to keep density
   const half =
-    items.length >= 4
-      ? [...items, ...items]
-      : [...items, ...items, ...items, ...items];
+    items.length >= 6
+      ? [...items]
+      : items.length >= 4
+        ? [...items, ...items]
+        : [...items, ...items, ...items, ...items];
   return [...half, ...half];
 }
 
@@ -54,7 +57,7 @@ function splitRails(shots: IndexedShot[]): [IndexedShot[], IndexedShot[]] {
 export default function WorkCollage({ shots }: Props) {
   if (!shots.length) return null;
 
-  const trimmed: IndexedShot[] = shots.slice(0, 8).map((s, slot) => ({
+  const trimmed: IndexedShot[] = shots.slice(0, 16).map((s, slot) => ({
     ...s,
     slot,
     format: resolveFormat(s.src, s.format),

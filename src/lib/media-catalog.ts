@@ -15,20 +15,36 @@ export const COLLAGE_SLOT_KEYS = [
   'img.collage.5',
   'img.collage.6',
   'img.collage.7',
+  'img.collage.8',
+  'img.collage.9',
+  'img.collage.10',
+  'img.collage.11',
+  'img.collage.12',
+  'img.collage.13',
+  'img.collage.14',
+  'img.collage.15',
 ] as const;
 
 export type CollageSlotKey = (typeof COLLAGE_SLOT_KEYS)[number];
 
-/** Defaults = current stand of developed product apps */
+/** Defaults = strong product UI shots for the hero collage */
 export const COLLAGE_DEFAULTS: Record<CollageSlotKey, string> = {
   'img.collage.0': '/media/nexus/shots/screen-home-featured.webp',
   'img.collage.1': '/media/berry/shots/screen-home.webp',
   'img.collage.2': '/media/riftcast/shots/screen-quality.webp',
-  'img.collage.3': '/media/nexus/shots/screen-grid.webp',
-  'img.collage.4': '/media/berry/shots/screen-search.webp',
+  'img.collage.3': '/media/nexus/shots/screen-showcase.webp',
+  'img.collage.4': '/media/berry/shots/screen-collection.webp',
   'img.collage.5': '/media/riftcast/shots/screen-app.webp',
   'img.collage.6': '/media/floordirekt/shots/screen-pruefen.webp',
-  'img.collage.7': '/media/nexus/shots/screen-couch.webp',
+  'img.collage.7': '/media/nexus/shots/screen-coverflow.webp',
+  'img.collage.8': '/media/berry/shots/screen-search.webp',
+  'img.collage.9': '/media/riftcast/shots/screen-desktop.webp',
+  'img.collage.10': '/media/nexus/shots/screen-couch-featured.webp',
+  'img.collage.11': '/media/berry/shots/screen-decks-meta.webp',
+  'img.collage.12': '/media/riftcast/shots/screen-launcher.webp',
+  'img.collage.13': '/media/floordirekt/shots/screen-start.webp',
+  'img.collage.14': '/media/berry/shots/screen-insights.webp',
+  'img.collage.15': '/media/nexus/shots/screen-grid.webp',
 };
 
 export const COLLAGE_MEDIA: MediaItem[] = [
