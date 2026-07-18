@@ -484,6 +484,20 @@ a:hover .brand-mark--nav {
     radial-gradient(ellipse 55% 45% at 70% 70%, color-mix(in srgb, var(--ice) 14%, transparent), transparent 65%),
     linear-gradient(160deg, #0a0c12 0%, #12151e 48%, #0b0d14 100%);
 }
+/* Light mark panels (e.g. Mina — dark logo needs contrast) */
+.project-logo-panel--light {
+  background:
+    radial-gradient(ellipse 65% 50% at 50% 40%, color-mix(in srgb, #ff8b7e 14%, transparent), transparent 68%),
+    radial-gradient(ellipse 50% 40% at 78% 72%, color-mix(in srgb, #7eb0ff 10%, transparent), transparent 62%),
+    linear-gradient(165deg, #f7f8fb 0%, #e9eef6 46%, #f3f5f9 100%);
+}
+.project-logo-panel--light .project-logo-panel__glow {
+  background: radial-gradient(circle, color-mix(in srgb, #ff8b7e 22%, transparent), transparent 70%);
+  opacity: 0.4;
+}
+.group:hover .project-logo-panel--light .project-logo-panel__glow {
+  opacity: 0.65;
+}
 .project-logo-panel__glow {
   position: absolute;
   inset: 12% 18%;
@@ -1036,6 +1050,22 @@ a:hover .brand-mark--nav {
   object-fit: contain;
   object-position: left center;
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.35));
+}
+/* Dark logos (Mina) need a light chip on the dark case page */
+.case-page__brand:has(.case-page__logo[src*='/mina/']) {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--stroke) 80%, #fff);
+  background:
+    radial-gradient(ellipse 80% 70% at 30% 40%, color-mix(in srgb, #ff8b7e 12%, transparent), transparent 65%),
+    linear-gradient(165deg, #f7f8fb 0%, #e9eef6 100%);
+  box-shadow: var(--lg-edge);
+}
+.case-page__brand:has(.case-page__logo[src*='/mina/']) .case-page__logo {
+  max-height: 2.35rem;
+  filter: none;
 }
 .case-page__eyebrow {
   display: flex;
