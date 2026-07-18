@@ -30,14 +30,6 @@ function readLang(): Lang {
   return document.documentElement.dataset.lang === 'en' ? 'en' : 'de';
 }
 
-/** Bento span for desktop landscape grids */
-function desktopSpan(i: number, total: number): 'full' | 'wide' | 'std' {
-  if (total <= 2) return 'full';
-  if (i === 0 && total >= 3) return 'wide';
-  if (total % 2 === 1 && i === total - 1) return 'full';
-  return 'std';
-}
-
 export default function CaseMedia({
   title,
   images,
@@ -123,12 +115,11 @@ export default function CaseMedia({
             <div className="shot-gallery__grid wrap">
               {strip.map((shot, i) => {
                 const abs = i + coverCount;
-                const span = phone ? 'std' : desktopSpan(i, strip.length);
                 return (
                   <motion.button
                     key={`${shot.src}-${abs}`}
                     type="button"
-                    className={`shot-gallery__card shot-gallery__card--${span}`}
+                    className="shot-gallery__card"
                     onClick={() => setOpen(abs)}
                     aria-label={
                       lang === 'en'
