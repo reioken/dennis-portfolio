@@ -1,2 +1,2 @@
-# Prefer www so apex/www stay on one cache key after deploys
-https://dennisbf.design/* https://www.dennisbf.design/:splat 301
+# Domain-level redirects are not supported here.
+# Apex → www is handled by functions/_middleware.js

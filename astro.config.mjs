@@ -6,7 +6,7 @@ import mdx from '@astrojs/mdx';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://dennisbf.design',
+  site: 'https://www.dennisbf.design',
   base: '/',
   integrations: [react(), mdx()],
   vite: {

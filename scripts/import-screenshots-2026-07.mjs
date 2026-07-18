@@ -120,22 +120,22 @@ for (const [project, files] of Object.entries(MAP)) {
       console.warn('missing', project, srcName);
       continue;
     }
-    const dest = media(project, `${stem}.webp`);
-    const destHi = media(project, `${stem}@2x.webp`);
+    const dest = media(project, 'shots', `${stem}.webp`);
+    const destHi = media(project, 'shots', `${stem}@2x.webp`);
     await toWebp(src, dest, { maxW: limits.std, quality: 82 });
     await toWebp(src, destHi, { maxW: limits.hi, quality: 84 });
-    console.log('ok', `${project}/${stem}.webp`);
+    console.log('ok', `${project}/shots/${stem}.webp`);
     imported++;
   }
 }
 
-// Cover aliases
+// Cover aliases (live under shots/ with the screens)
 const aliases = [
-  ['nexus/screen-home.webp', 'nexus/hero.webp'],
-  ['berry/screen-home.webp', 'berry/hero.webp'],
-  ['riftcast/screen-desktop.webp', 'riftcast/cover.webp'],
-  ['floordirekt/screen-pruefen.webp', 'floordirekt/cover.webp'],
-  ['floordirekt/screen-pruefen@2x.webp', 'floordirekt/cover@2x.webp'],
+  ['nexus/shots/screen-home.webp', 'nexus/shots/hero.webp'],
+  ['berry/shots/screen-home.webp', 'berry/shots/hero.webp'],
+  ['riftcast/shots/screen-desktop.webp', 'riftcast/shots/cover.webp'],
+  ['floordirekt/shots/screen-pruefen.webp', 'floordirekt/shots/cover.webp'],
+  ['floordirekt/shots/screen-pruefen@2x.webp', 'floordirekt/shots/cover@2x.webp'],
 ];
 for (const [from, to] of aliases) {
   const a = media(...from.split('/'));
