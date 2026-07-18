@@ -169,6 +169,20 @@ import { p } from '../lib/paths';
                   <span data-lang="de" data-edit={`education.${i}.body.de`}>{e.body.de}</span>
                   <span data-lang="en" data-edit={`education.${i}.body.en`}>{e.body.en}</span>
                 </p>
+                {
+                  'url' in e && e.url ? (
+                    <a
+                      class="mt-3 inline-flex text-[0.8rem] font-semibold uppercase tracking-[0.12em] text-[var(--violet)] transition-colors hover:text-[var(--text)]"
+                      href={e.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <span data-lang="de">{e.urlLabel?.de ?? 'Zertifikat ansehen'}</span>
+                      <span data-lang="en">{e.urlLabel?.en ?? 'View certificate'}</span>
+                      <span aria-hidden="true" class="ml-1">↗</span>
+                    </a>
+                  ) : null
+                }
               </div>
             </Reveal>
           ))

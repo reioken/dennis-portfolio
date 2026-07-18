@@ -55,7 +55,8 @@ Freiwilliges Soziales Jahr in einer Hausnotrufzentrale: Notrufe, Einsatzkoordina
 ## Ausbildung
 
 ### Zertifikat: UX/UI Design (06/2025 – 09/2025)
-Intensiv-Bootcamp bei neuefische GmbH (Remote) — Design Thinking, User Research, Information Architecture, Figma, Design Systems
+Intensiv-Bootcamp bei neuefische GmbH (Remote) — Design Thinking, User Research, Information Architecture, Figma, Design Systems  
+Zertifikat (Accredible): https://eu.credential.net/16488cdc-8902-407d-970d-e03d96b7c412
 
 ### Staatl. anerkannter Mediendesigner (09/2015 – 09/2017)
 SRH Fachschule, Heidelberg

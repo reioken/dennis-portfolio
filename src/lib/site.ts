@@ -199,6 +199,11 @@ export const education = [
       de: 'Intensiv-Bootcamp bei neuefische GmbH (Remote). Schwerpunkte: Design Thinking, User Research, Information Architecture, Figma Deep-Dive, Design Systems.',
       en: 'Intensive bootcamp at neuefische GmbH (remote). Focus: design thinking, user research, information architecture, Figma deep-dive, design systems.',
     },
+    url: 'https://eu.credential.net/16488cdc-8902-407d-970d-e03d96b7c412',
+    urlLabel: {
+      de: 'Zertifikat ansehen',
+      en: 'View certificate',
+    },
   },
   {
     year: '09/2015 – 09/2017',
