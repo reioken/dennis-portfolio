@@ -47,11 +47,28 @@
     </g>
   </defs>
   <g filter="url(#nxRimStatic)"><use href="#nxBody"/></g>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke="#ffffff" stroke-width="5" opacity=".95"/>
-    <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke="#f4f9ff" stroke-width="4.4" opacity=".92"/>
-    <line x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke="#eaf2ff" stroke-width="3.4" opacity=".85"/>
-    <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke="#cfe0ff" stroke-width="2.2" opacity=".5"/>
-    <line x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke="#dbe8ff" stroke-width="2.4" opacity=".48"/>
+  <defs>
+    <linearGradient id="nxEdgeStatic" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="400" y2="356">
+      <stop offset="0" stop-color="#4a82fe" stop-opacity=".15"/>
+      <stop offset=".35" stop-color="#dcebff" stop-opacity=".55"/>
+      <stop offset=".5" stop-color="#ffffff" stop-opacity=".9"/>
+      <stop offset=".7" stop-color="#ac8bfd" stop-opacity=".4"/>
+      <stop offset="1" stop-color="#4a82fe" stop-opacity=".1"/>
+    </linearGradient>
+    <filter id="nxEdgeSoftStatic" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.6"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#nxEdgeSoftStatic)" stroke="url(#nxEdgeStatic)" opacity=".85">
+    <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="6"/>
+    <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="5"/>
+    <line x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="4"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="url(#nxEdgeStatic)">
+    <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="1.8" opacity=".9"/>
+    <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="1.5" opacity=".85"/>
+    <line x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="1.3" opacity=".7"/>
+    <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="1" opacity=".4"/>
+    <line x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="1" opacity=".35"/>
   </g>
 </svg>
