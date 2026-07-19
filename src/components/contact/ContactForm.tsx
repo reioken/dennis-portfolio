@@ -115,8 +115,18 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
     );
   };
 
+  // action/method: without JS this posts as a normal HTML form to the worker,
+  // which answers with a branded result page — JS path stays as enhancement
   return (
-    <form ref={formRef} className="contact-form" onSubmit={onSubmit} onInput={onInput} noValidate>
+    <form
+      ref={formRef}
+      className="contact-form"
+      action={endpoint}
+      method="POST"
+      onSubmit={onSubmit}
+      onInput={onInput}
+      noValidate
+    >
       {/* honeypot */}
       <label className="contact-form__hp" aria-hidden="true">
         <span>Company</span>

@@ -390,6 +390,44 @@ button {
 .hero-copy {
   opacity: 1;
 }
+/* Verfügbarkeits-Pill im Hero + Contact */
+.hero-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--stroke-hi) 80%, transparent);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--dim);
+  text-transform: none;
+}
+.hero-status__dot {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.7);
+  animation: status-pulse 2.4s ease-in-out infinite;
+}
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-status__dot {
+    animation: none;
+  }
+}
 .hero-copy__item {
   opacity: 1;
   transform: none;

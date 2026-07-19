@@ -68,12 +68,17 @@ const formEn = {
           class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-50"
           style="background: radial-gradient(circle, color-mix(in srgb, var(--violet) 45%, transparent), transparent 70%)"
         />
+        <p class="hero-status relative !text-[0.78rem]">
+          <span class="hero-status__dot" aria-hidden></span>
+          <span data-lang="de">{site.availability.de}</span>
+          <span data-lang="en">{site.availability.en}</span>
+        </p>
         <div class="relative">
           <div class="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-[var(--meta)]">
             <span data-lang="de">{copy.de.contact.email}</span>
             <span data-lang="en">{copy.en.contact.email}</span>
           </div>
-          <a class="break-all text-[1.15rem] gradient-text" href={`mailto:${site.email}`} data-edit="site.email">{site.email}</a>
+          <!--email_off--><a class="break-all text-[1.15rem] gradient-text" href={`mailto:${site.email}`} data-edit="site.email">{site.email}</a><!--/email_off-->
         </div>
         <div class="relative">
           <div class="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-[var(--meta)]">

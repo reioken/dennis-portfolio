@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { copy } from '../../lib/i18n';
+import { site } from '../../lib/site';
 import BrandLockup from '../brand/BrandLockup';
 import WorkCollage from './WorkCollage';
 
@@ -57,13 +58,19 @@ export default function HeroStage({
             </span>
           </h1>
 
-          <p className="hero-copy__item mb-9 max-w-[42ch] text-[1.05rem] font-normal normal-case tracking-normal text-[var(--dim)]">
+          <p className="hero-copy__item mb-5 max-w-[42ch] text-[1.05rem] font-normal normal-case tracking-normal text-[var(--dim)]">
             <span data-lang="de" data-edit="home.support.de">
               {supportDe}
             </span>
             <span data-lang="en" data-edit="home.support.en">
               {supportEn}
             </span>
+          </p>
+
+          <p className="hero-copy__item hero-status mb-9">
+            <span className="hero-status__dot" aria-hidden />
+            <span data-lang="de">{site.availability.de} · {site.location}</span>
+            <span data-lang="en">{site.availability.en} · Mannheim/Heidelberg area</span>
           </p>
 
           <div className="hero-copy__item flex flex-wrap gap-3">

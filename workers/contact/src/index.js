@@ -173,21 +173,77 @@ function clean(value, max) {
     .slice(0, max);
 }
 
+/** Branded result page for no-JS form posts (progressive enhancement fallback). */
+function resultPage(ok, errorKey) {
+  const messages = {
+    missing_fields: 'Bitte Name, E-Mail und Nachricht ausfüllen. / Please fill in name, email and message.',
+    invalid_email: 'Bitte prüf die E-Mail-Adresse. / Please check the email address.',
+    send_failed: 'Senden fehlgeschlagen — bitte später nochmal versuchen oder direkt mailen. / Sending failed — please retry later or email directly.',
+  };
+  const title = ok ? 'Nachricht gesendet' : 'Senden fehlgeschlagen';
+  const body = ok
+    ? 'Danke — deine Nachricht ist unterwegs. / Thanks — your message is on its way.'
+    : messages[errorKey] || messages.send_failed;
+  const html = `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>${title} — Dennis Bierreth-Fernandez</title>
+<style>
+  body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#07080c;color:#f7f8fc;font-family:system-ui,'Segoe UI',sans-serif;padding:1.5rem}
+  main{max-width:34rem;text-align:center;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:2.5rem 2rem;background:rgba(10,12,20,.8)}
+  h1{margin:0 0 .75rem;font-size:1.4rem;letter-spacing:.02em}
+  p{margin:0 0 1.5rem;color:#8188a1;line-height:1.55}
+  a{display:inline-block;padding:.75rem 1.4rem;border-radius:999px;background:linear-gradient(120deg,#ac8bfd,#4a82fe);color:#fff;text-decoration:none;font-weight:600;font-size:.85rem;letter-spacing:.1em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<main>
+  <h1>${ok ? '✓ ' : ''}${title}</h1>
+  <p>${body}</p>
+  <a href="/contact/">Zurück zum Kontakt / Back to contact</a>
+</main>
+</body>
+</html>`;
+  return new Response(html, {
+    status: ok ? 200 : 400,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
+
 async function handleContact(request, env) {
+  // No-JS fallback: plain HTML form posts send urlencoded/multipart instead of JSON
+  const contentType = (request.headers.get('content-type') || '').toLowerCase();
+  const isFormPost =
+    contentType.includes('application/x-www-form-urlencoded') ||
+    contentType.includes('multipart/form-data');
+  const respond = (data, status) =>
+    isFormPost ? resultPage(!!data.ok, data.error) : json(data, status);
+
   if (!env.CONTACT) {
-    return json({ ok: false, error: 'mail_binding_missing' }, 503);
+    return respond({ ok: false, error: 'mail_binding_missing' }, 503);
   }
 
   let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ ok: false, error: 'invalid_json' }, 400);
+  if (isFormPost) {
+    try {
+      body = Object.fromEntries((await request.formData()).entries());
+    } catch {
+      return respond({ ok: false, error: 'invalid_form' }, 400);
+    }
+  } else {
+    try {
+      body = await request.json();
+    } catch {
+      return respond({ ok: false, error: 'invalid_json' }, 400);
+    }
   }
 
   // Honeypot
   if (body.company || body.website) {
-    return json({ ok: true });
+    return respond({ ok: true }, 200);
   }
 
   const name = clean(body.name, MAX.name);
@@ -196,15 +252,15 @@ async function handleContact(request, env) {
   const message = clean(body.message, MAX.message);
 
   if (!name || !email || !message) {
-    return json({ ok: false, error: 'missing_fields' }, 400);
+    return respond({ ok: false, error: 'missing_fields' }, 400);
   }
   if (!EMAIL_RE.test(email)) {
-    return json({ ok: false, error: 'invalid_email' }, 400);
+    return respond({ ok: false, error: 'invalid_email' }, 400);
   }
 
   const to = typeof env.CONTACT_TO === 'string' ? env.CONTACT_TO.trim() : '';
   if (!to) {
-    return json({ ok: false, error: 'mail_inbox_missing' }, 503);
+    return respond({ ok: false, error: 'mail_inbox_missing' }, 503);
   }
   const fromAddr = env.CONTACT_FROM || 'contact@dennisbf.design';
   const when = formatWhen();
@@ -224,10 +280,10 @@ async function handleContact(request, env) {
 
   try {
     await env.CONTACT.send(new EmailMessage(fromAddr, to, raw));
-    return json({ ok: true });
+    return respond({ ok: true }, 200);
   } catch (err) {
     console.error('contact mail failed', err?.message || err);
-    return json({ ok: false, error: 'send_failed' }, 502);
+    return respond({ ok: false, error: 'send_failed' }, 502);
   }
 }
 

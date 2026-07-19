@@ -5,8 +5,13 @@ export const site = {
   tagline: 'UX/UI Designer · Art Director',
   role: 'Art Director & UI/UX Designer',
   email: 'dennis@dennisbf.design',
-  location: 'Deutschland',
+  location: 'Raum Mannheim/Heidelberg',
   address: 'Deutschland',
+  /** Aktueller Status — verhindert unpassende Recruiter-Anfragen, schärft Freelance */
+  availability: {
+    de: 'Aktuell Art Director bei Floordirekt · offen für Freelance-Projekte',
+    en: 'Currently Art Director at Floordirekt · open for freelance projects',
+  },
   /** Only for Impressum / Datenschutz (§ 5 TMG) — not shown on marketing pages */
   legalAddress: '68542 Heddesheim',
   profile: {
