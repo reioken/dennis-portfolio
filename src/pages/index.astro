@@ -144,35 +144,51 @@ const collageShots = [
 
   <section class="section pt-0" data-block-id="process" data-block-type="process" data-block-source="native" data-block-label="Process">
     <div class="wrap">
-      <p class="section-label">
-        <span data-lang="de">{copy.de.home.processLabel}</span>
-        <span data-lang="en">{copy.en.home.processLabel}</span>
-      </p>
-      <h2 class="display mb-3 text-[clamp(1.4rem,3.2vw,2rem)]">
-        <span data-lang="de">{copy.de.home.processTitle}</span>
-        <span data-lang="en">{copy.en.home.processTitle}</span>
-      </h2>
-      <p class="mb-8 max-w-xl normal-case tracking-normal text-[var(--dim)]">
-        <span data-lang="de">{copy.de.home.processBody}</span>
-        <span data-lang="en">{copy.en.home.processBody}</span>
-      </p>
-      <ol class="grid gap-4 md:grid-cols-3">
+      <div data-reveal>
+        <p class="section-label">
+          <span data-lang="de">{copy.de.home.processLabel}</span>
+          <span data-lang="en">{copy.en.home.processLabel}</span>
+        </p>
+        <h2 class="display mb-3 text-[clamp(1.4rem,3.2vw,2rem)]">
+          <span data-lang="de">{copy.de.home.processTitle}</span>
+          <span data-lang="en">{copy.en.home.processTitle}</span>
+        </h2>
+        <p class="mb-10 max-w-xl normal-case tracking-normal text-[var(--dim)]">
+          <span data-lang="de">{copy.de.home.processBody}</span>
+          <span data-lang="en">{copy.en.home.processBody}</span>
+        </p>
+      </div>
+
+      <ol class="process-flow" aria-label={copy.de.home.processTitle}>
         {
-          copy.de.home.processSteps.map((step, i) => (
-            <li class="rounded-[var(--radius)] border border-[var(--stroke)] bg-[var(--panel-soft)] p-5">
-              <div class="mb-3 font-[family-name:var(--font-mono)] text-[0.7rem] tracking-[0.14em] text-[var(--meta)]">
-                0{i + 1}
-              </div>
-              <h3 class="display mb-2 text-lg text-[var(--text)]">
-                <span data-lang="de">{step.title}</span>
-                <span data-lang="en">{copy.en.home.processSteps[i].title}</span>
-              </h3>
-              <p class="m-0 text-[0.95rem] normal-case tracking-normal text-[var(--dim)]">
-                <span data-lang="de">{step.body}</span>
-                <span data-lang="en">{copy.en.home.processSteps[i].body}</span>
-              </p>
-            </li>
-          ))
+          copy.de.home.processSteps.map((step, i) => {
+            const en = copy.en.home.processSteps[i];
+            return (
+              <li class="process-flow__step" data-reveal style={`--reveal-delay:${i * 0.08}s`}>
+                <div class="process-flow__visual" aria-hidden="true">
+                  <span class="process-flow__glow" />
+                  <img
+                    class="process-flow__img"
+                    src={asset(step.image)}
+                    alt={step.imageAlt}
+                    width={896}
+                    height={896}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span class="process-flow__index">0{i + 1}</span>
+                </div>
+                <h3 class="process-flow__title">
+                  <span data-lang="de">{step.title}</span>
+                  <span data-lang="en">{en.title}</span>
+                </h3>
+                <p class="process-flow__body">
+                  <span data-lang="de">{step.body}</span>
+                  <span data-lang="en">{en.body}</span>
+                </p>
+              </li>
+            );
+          })
         }
       </ol>
     </div>

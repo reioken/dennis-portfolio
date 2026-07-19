@@ -1656,6 +1656,153 @@ a:hover .brand-mark--nav {
   padding: clamp(4rem, 10vw, 7.5rem) 0;
 }
 
+/* —— Klarer Prozess — visual flow, no cards —— */
+.process-flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: clamp(2.25rem, 5vw, 3rem);
+  position: relative;
+}
+@media (min-width: 768px) {
+  .process-flow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem 1.75rem;
+    align-items: start;
+  }
+  .process-flow::before {
+    content: '';
+    position: absolute;
+    top: clamp(5.5rem, 12vw, 7.25rem);
+    left: 14%;
+    right: 14%;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--ice) 18%, transparent) 18%,
+      color-mix(in srgb, var(--violet) 28%, transparent) 50%,
+      color-mix(in srgb, var(--blue) 22%, transparent) 82%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+.process-flow__step {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  text-align: center;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+@media (min-width: 768px) {
+  .process-flow__step {
+    max-width: none;
+  }
+}
+.process-flow__visual {
+  position: relative;
+  width: min(100%, 220px);
+  aspect-ratio: 1;
+  margin: 0 auto 1.15rem;
+  display: grid;
+  place-items: center;
+}
+.process-flow__glow {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 45% 40%, color-mix(in srgb, var(--ice) 22%, transparent), transparent 58%),
+    radial-gradient(circle at 60% 65%, color-mix(in srgb, var(--violet) 18%, transparent), transparent 62%),
+    radial-gradient(circle at 40% 70%, color-mix(in srgb, var(--blue) 14%, transparent), transparent 65%);
+  filter: blur(28px);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: process-glow 7.5s ease-in-out infinite;
+}
+.process-flow__step:nth-child(2) .process-flow__glow {
+  animation-delay: -2.4s;
+}
+.process-flow__step:nth-child(3) .process-flow__glow {
+  animation-delay: -4.8s;
+}
+.process-flow__img {
+  position: relative;
+  z-index: 1;
+  width: 86%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+  animation: process-float 6.8s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+.process-flow__step:nth-child(2) .process-flow__img {
+  animation-delay: -2.2s;
+}
+.process-flow__step:nth-child(3) .process-flow__img {
+  animation-delay: -4.4s;
+}
+.process-flow__index {
+  position: absolute;
+  left: 6%;
+  top: 8%;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--meta) 85%, var(--text));
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+.process-flow__title {
+  margin: 0 0 0.45rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2.2vw, 1.4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.process-flow__body {
+  margin: 0 auto;
+  max-width: 18rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--dim);
+}
+@keyframes process-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes process-glow {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.68;
+    transform: scale(1.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .process-flow__img,
+  .process-flow__glow {
+    animation: none !important;
+  }
+}
+
 /* Scroll-reveal (progressive enhancement):
    content is visible by default; the boot script arms hiding only when JS + IO
    are available, so nothing stays invisible if hydration/JS fails. */
