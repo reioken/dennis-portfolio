@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroStage from '../components/hero/HeroStage';
 import ProjectCard from '../components/work/ProjectCard';
+import TrustBar from '../components/home/TrustBar.astro';
 import { getCollection } from 'astro:content';
 import { site } from '../lib/site';
 import { copy } from '../lib/i18n';
@@ -167,15 +168,7 @@ const collageShots = [
           ))
         }
       </ol>
-      <p class="mt-8 max-w-2xl text-[0.95rem] normal-case tracking-normal text-[var(--faint)]">
-        <span class="font-semibold uppercase tracking-[0.12em] text-[var(--meta)]">
-          <span data-lang="de">{copy.de.home.proofLabel}</span>
-          <span data-lang="en">{copy.en.home.proofLabel}</span>
-        </span>
-        <span class="mx-2 text-[var(--stroke)]">·</span>
-        <span data-lang="de">{copy.de.home.proofBody}</span>
-        <span data-lang="en">{copy.en.home.proofBody}</span>
-      </p>
+      <TrustBar />
     </div>
   </section>
 
