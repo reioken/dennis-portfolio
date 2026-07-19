@@ -1,31 +1,34 @@
 # Anleitung: dennisbf.design — was du selbst machen kannst
 
-Einfach von oben nach unten abarbeiten. Alles andere läuft automatisch.
+Stand: EN-Version ist gemerged und live (https://www.dennisbf.design/en/),
+Web Analytics ist deaktiviert. Einfach von oben nach unten abarbeiten.
 
 ---
 
-## 1. Englische Version live schalten (5 Minuten)
+## 1. Auto-Deploy reparieren (einmalig, ~5 Minuten)
 
-Die englische Version (`/en/…`) liegt fertig getestet in einem Pull Request.
+Aktuell schlägt der automatische Deploy bei jedem `git push` fehl, weil im
+GitHub-Repo die Cloudflare-Zugangsdaten fehlen. Bis das gemacht ist, muss
+nach jedem Push zusätzlich `npm run deploy` laufen.
 
-1. Öffne: **https://github.com/reioken/dennis-portfolio/pull/1**
-2. Klicke den grünen Button **„Merge pull request"** → **„Confirm merge"**
-3. Fertig — GitHub deployt automatisch. Nach ~2 Minuten prüfen:
-   - https://www.dennisbf.design/en/ → englische Startseite
-   - Der **DE/EN-Schalter** oben rechts wechselt jetzt die URL
+1. **Cloudflare-Token erstellen:**
+   https://dash.cloudflare.com/profile/api-tokens → **Create Token** →
+   unten bei „Custom token" auf **Get started** →
+   Name z. B. `github-pages-deploy`, Berechtigung:
+   **Account → Cloudflare Pages → Edit** → Continue → Create Token →
+   den angezeigten Token **kopieren** (wird nur einmal angezeigt)
+2. **In GitHub eintragen:**
+   https://github.com/reioken/dennis-portfolio/settings/secrets/actions →
+   **New repository secret**, zwei Stück:
+   - Name: `CLOUDFLARE_API_TOKEN` → Wert: der kopierte Token
+   - Name: `CLOUDFLARE_ACCOUNT_ID` → Wert: `bd0f3043cb8b0eb6dfab9c1131fe8e87`
+3. Fertig. Ab jetzt deployt **jeder `git push` automatisch** — testen kannst
+   du es unter https://github.com/reioken/dennis-portfolio/actions
+   (der neueste Lauf sollte grün werden).
 
 ---
 
-## 2. Cloudflare Web Analytics ausschalten (2 Minuten)
-
-Behebt die Konsolenfehler aus dem Audit. Geht nur in deinem Dashboard:
-
-1. https://dash.cloudflare.com → **Workers & Pages** → Projekt **dennis-portfolio**
-2. Tab **Metrics** (oder **Settings**) → **Web Analytics** → deaktivieren
-
----
-
-## 3. Echte Kennzahlen in die Cases schreiben (wann du willst)
+## 2. Echte Kennzahlen in die Cases schreiben (wann du willst)
 
 In drei Dateien stehen `TODO`-Kommentare, wo nur du die Zahlen kennst:
 
@@ -38,13 +41,13 @@ In drei Dateien stehen `TODO`-Kommentare, wo nur du die Zahlen kennst:
 So gehst du vor:
 1. Datei öffnen, den Satz bei **Ergebnis** um deine Zahl ergänzen
 2. Den `{/* TODO: … */}`-Kommentar löschen
-3. Deployen (siehe Punkt 5)
+3. Deployen (siehe Punkt 4)
 
 **Wichtig:** Nichts erfinden — lieber keine Zahl als eine ausgedachte.
 
 ---
 
-## 4. Neue Case Study anlegen (Schritt für Schritt)
+## 3. Neue Case Study anlegen (Schritt für Schritt)
 
 1. Screenshots nach `public/media/<projekt>/shots/` legen (WebP)
 2. `npm run thumbs` ausführen (erzeugt kleine Varianten fürs schnelle Laden)
@@ -52,7 +55,7 @@ So gehst du vor:
    und anpassen: `title`, `summary`, `cover`, `gallery` + `galleryAlts`
    (kurze Bildbeschreibungen), `tags`, `order`
 4. Soll sie auf die Startseite? → `featured: true`
-5. Deployen (Punkt 5) — die englische `/en/`-Route entsteht **automatisch**
+5. Deployen (Punkt 4) — die englische `/en/`-Route entsteht **automatisch**
 
 Nur wenn die Seite einen eigenen englischen Beschreibungstext bekommen soll:
 in `scripts/en-routes.mjs` bei `META_EN` einen Eintrag ergänzen (sonst bleibt
@@ -60,16 +63,16 @@ dort der deutsche Text — kein Beinbruch).
 
 ---
 
-## 5. Deployen — zwei Wege
+## 4. Deployen — zwei Wege
 
-**Weg A (empfohlen):** committen und pushen, GitHub deployt automatisch
+**Weg A (nach Punkt 1 eingerichtet):** committen und pushen, GitHub deployt
 ```
 git add -A
 git commit -m "Kurz sagen was du geändert hast"
 git push
 ```
 
-**Weg B (direkt vom Rechner):**
+**Weg B (direkt vom Rechner, funktioniert immer):**
 ```
 npm run deploy
 ```
@@ -78,7 +81,7 @@ Danach immer kurz https://www.dennisbf.design aufrufen und durchklicken.
 
 ---
 
-## 6. Einmalige Qualitäts-Checks (je ~2 Minuten, kein Konto nötig)
+## 5. Einmalige Qualitäts-Checks (je ~2 Minuten, kein Konto nötig)
 
 | Tool | Link | Was du tust |
 |---|---|---|
@@ -90,7 +93,7 @@ Wenn irgendwo Rot auftaucht: Screenshot machen und mir geben.
 
 ---
 
-## 7. Wo liegt was? (Spickzettel)
+## 6. Wo liegt was? (Spickzettel)
 
 | Was | Datei |
 |---|---|
@@ -100,6 +103,3 @@ Wenn irgendwo Rot auftaucht: Screenshot machen und mir geben.
 | Farben & Design-Tokens | `src/styles/tokens.css` |
 | Impressum / Datenschutz | `src/pages/impressum.astro`, `privacy.astro` |
 | Englische Titles/Descriptions | `scripts/en-routes.mjs` (`META_EN`) |
-
-**Noch offen im Impressum:** Straße + Hausnummer fehlen
-(`legalAddress` in `src/lib/site.ts`) — kurz eintragen, committen, fertig.
