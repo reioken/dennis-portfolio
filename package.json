@@ -14,7 +14,8 @@
     "upscale:gallery": "node scripts/upscale-gallery.mjs",
     "deploy:contact": "wrangler deploy -c workers/contact/wrangler.toml",
     "deploy": "npm run deploy:contact && astro build && wrangler pages deploy dist --project-name=dennis-portfolio --commit-dirty=true",
-    "thumbs": "node scripts/build-thumbs.mjs"
+    "thumbs": "node scripts/build-thumbs.mjs",
+    "avif": "node scripts/build-avif.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.3",

@@ -6,6 +6,7 @@ import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import { fileURLToPath } from 'node:url';
 import { buildEnRoutes } from './scripts/en-routes.mjs';
+import { hardenCsp } from './scripts/csp-hashes.mjs';
 
 /** Erzeugt nach dem Build crawlbare /en/-Routen + hreflang (siehe scripts/en-routes.mjs) */
 const enRoutes = () => ({
@@ -13,6 +14,16 @@ const enRoutes = () => ({
   hooks: {
     'astro:build:done': async ({ dir }) => {
       await buildEnRoutes(fileURLToPath(dir));
+    },
+  },
+});
+
+/** Ersetzt 'unsafe-inline' in script-src durch Hashes der gebauten Inline-Scripts */
+const cspHashes = () => ({
+  name: 'csp-hashes',
+  hooks: {
+    'astro:build:done': async ({ dir }) => {
+      await hardenCsp(fileURLToPath(dir));
     },
   },
 });
@@ -28,6 +39,7 @@ export default defineConfig({
       serialize: (item) => ({ ...item, lastmod: new Date().toISOString() }),
     }),
     enRoutes(),
+    cspHashes(),
   ],
   vite: {
     plugins: [tailwindcss()],

@@ -6,7 +6,7 @@ import LangSwitch from '../i18n/LangSwitch';
 import { copy, type Lang } from '../../lib/i18n';
 
 type NavItem = { href: string; labelKey: keyof typeof copy.de.nav };
-type WorkLink = { href: string; title: string };
+type WorkLink = { href: string; title: string; tags?: string[] };
 
 type Props = {
   items: NavItem[];
@@ -252,45 +252,71 @@ export default function GlassNav({
                 })}
               </ul>
 
-              {workLinks.length > 0 ? (
-                <div className="nav-dropdown__section">
-                  <p className="nav-dropdown__section-label">
-                    <span data-lang="de">Projekte</span>
-                    <span data-lang="en">Projects</span>
-                  </p>
-                  <ul className="nav-dropdown__list nav-dropdown__list--compact">
-                    {workLinks.map((w, i) => {
-                      const active = isActive(w.href);
-                      return (
-                        <motion.li
-                          key={w.href}
-                          initial={reduce ? false : { opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={
-                            reduce
-                              ? { duration: 0 }
-                              : {
-                                  delay: 0.08 + i * 0.025,
-                                  type: 'spring',
-                                  stiffness: 500,
-                                  damping: 36,
+              {workLinks.length > 0
+                ? (() => {
+                    // Lange Liste visuell gruppieren: Product / Design & Craft / Lab
+                    const groups = [
+                      {
+                        key: 'product',
+                        labelDe: 'Product', labelEn: 'Product',
+                        links: workLinks.filter((w) => w.tags?.includes('product')),
+                      },
+                      {
+                        key: 'design',
+                        labelDe: 'Design & Craft', labelEn: 'Design & craft',
+                        links: workLinks.filter(
+                          (w) => !w.tags?.includes('product') && !w.tags?.includes('lab'),
+                        ),
+                      },
+                      {
+                        key: 'lab',
+                        labelDe: 'Labor', labelEn: 'Lab',
+                        links: workLinks.filter((w) => w.tags?.includes('lab')),
+                      },
+                    ].filter((g) => g.links.length > 0);
+                    let idx = 0;
+                    return groups.map((group) => (
+                      <div className="nav-dropdown__section" key={group.key}>
+                        <p className="nav-dropdown__section-label">
+                          <span data-lang="de">{group.labelDe}</span>
+                          <span data-lang="en">{group.labelEn}</span>
+                        </p>
+                        <ul className="nav-dropdown__list nav-dropdown__list--compact">
+                          {group.links.map((w) => {
+                            const active = isActive(w.href);
+                            const i = idx++;
+                            return (
+                              <motion.li
+                                key={w.href}
+                                initial={reduce ? false : { opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={
+                                  reduce
+                                    ? { duration: 0 }
+                                    : {
+                                        delay: 0.08 + i * 0.025,
+                                        type: 'spring',
+                                        stiffness: 500,
+                                        damping: 36,
+                                      }
                                 }
-                          }
-                        >
-                          <a
-                            href={w.href}
-                            aria-current={active ? 'page' : undefined}
-                            className={`nav-dropdown__link nav-dropdown__link--sub ${active ? 'is-active' : ''}`}
-                            onClick={() => setOpen(false)}
-                          >
-                            {w.title}
-                          </a>
-                        </motion.li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ) : null}
+                              >
+                                <a
+                                  href={w.href}
+                                  aria-current={active ? 'page' : undefined}
+                                  className={`nav-dropdown__link nav-dropdown__link--sub ${active ? 'is-active' : ''}`}
+                                  onClick={() => setOpen(false)}
+                                >
+                                  {w.title}
+                                </a>
+                              </motion.li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ));
+                  })()
+                : null}
             </motion.div>
           ) : null}
         </AnimatePresence>

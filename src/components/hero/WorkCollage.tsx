@@ -1,3 +1,5 @@
+import { toAvif, toAvifSrcSet } from '../../lib/img';
+
 type Shot = { src: string; alt?: string; format?: 'phone' | 'wide' };
 
 type Props = {
@@ -131,18 +133,23 @@ function CollageCard({
       className={`hero-collage__card ${phone ? 'hero-collage__card--phone' : ''} ${format === 'wide' ? 'hero-collage__card--wide' : ''}`}
       style={{ transform: `rotate(${tilt}deg)` }}
     >
-      <img
-        src={src}
-        srcSet={srcSet}
-        alt=""
-        width={phone ? 390 : 720}
-        height={phone ? 844 : 450}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        fetchPriority={lcp ? 'high' : 'low'}
-        draggable={false}
-        {...(editKey ? { 'data-edit-img': editKey } : {})}
-      />
+      <picture>
+        {(srcSet ? toAvifSrcSet(srcSet) : toAvif(src)) && (
+          <source type="image/avif" srcSet={srcSet ? toAvifSrcSet(srcSet) : toAvif(src)} />
+        )}
+        <img
+          src={src}
+          srcSet={srcSet}
+          alt=""
+          width={phone ? 390 : 720}
+          height={phone ? 844 : 450}
+          loading={priority ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority={lcp ? 'high' : 'low'}
+          draggable={false}
+          {...(editKey ? { 'data-edit-img': editKey } : {})}
+        />
+      </picture>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import NexusSplashMark from './NexusSplashMark';
 import RiftcastLiveLogo from './RiftcastLiveLogo';
 import MinaLiveLogo from './MinaLiveLogo';
 import FdStudioLiveLogo from './FdStudioLiveLogo';
+import { toAvif } from '../../lib/img';
 
 /** Tag slugs are data values — show localized labels on the cards. */
 const TAG_LABELS: Record<string, { de: string; en: string }> = {
@@ -171,21 +172,24 @@ export default function ProjectCard({
             </div>
           </>
         ) : (
-          <img
-            src={cover}
-            alt={coverAlt ?? `${title} cover`}
-            width={1200}
-            height={750}
-            loading="lazy"
-            decoding="async"
-            className={`w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.045] ${
-              featured
-                ? 'aspect-[16/10] h-full md:aspect-auto md:absolute md:inset-0'
-                : compact
-                  ? 'aspect-[16/9]'
-                  : 'aspect-[16/10]'
-            }`}
-          />
+          <picture>
+            {toAvif(cover) && <source type="image/avif" srcSet={toAvif(cover)} />}
+            <img
+              src={cover}
+              alt={coverAlt ?? `${title} cover`}
+              width={1200}
+              height={750}
+              loading="lazy"
+              decoding="async"
+              className={`w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.045] ${
+                featured
+                  ? 'aspect-[16/10] h-full md:aspect-auto md:absolute md:inset-0'
+                  : compact
+                    ? 'aspect-[16/9]'
+                    : 'aspect-[16/10]'
+              }`}
+            />
+          </picture>
         )}
         <div
           className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${

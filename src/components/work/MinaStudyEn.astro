@@ -6,6 +6,7 @@
  * are used as figures.
  */
 import { p } from '../../lib/paths';
+import { toAvif } from '../../lib/img';
 
 const img = (name: string) => p(`media/mina/${name}`);
 
@@ -124,7 +125,7 @@ const clickflow = [
         <li>Neighbourhood app</li>
       </ul>
     </div>
-    <img src={img('en-app-icon.webp')} alt="Mina app icon — the Mina cat waving on a yellow tile" width={400} height={430} loading="lazy" decoding="async" class="mstudy__icon" />
+    <picture>{toAvif(img('en-app-icon.webp')) && <source type="image/avif" srcset={toAvif(img('en-app-icon.webp'))} />}<img src={img('en-app-icon.webp')} alt="Mina app icon — the Mina cat waving on a yellow tile" width={400} height={430} loading="lazy" decoding="async" class="mstudy__icon" /></picture>
   </section>
 
   <!-- Framework -->
@@ -256,7 +257,7 @@ const clickflow = [
       </p>
     </div>
     <figure class="mstudy__figure">
-      <img src={img('en-ui-kit.webp')} alt="Mina colour system — green, mint, dark grey, yellow and salmon swatches" width={460} height={530} loading="lazy" decoding="async" />
+      <picture>{toAvif(img('en-ui-kit.webp')) && <source type="image/avif" srcset={toAvif(img('en-ui-kit.webp'))} />}<img src={img('en-ui-kit.webp')} alt="Mina colour system — green, mint, dark grey, yellow and salmon swatches" width={460} height={530} loading="lazy" decoding="async" /></picture>
       <figcaption>Colour system: green for trust, yellow and salmon as warm accents.</figcaption>
     </figure>
   </section>
@@ -264,7 +265,7 @@ const clickflow = [
   <!-- Naming + key visual -->
   <section class="mstudy__section mstudy__cols">
     <figure class="mstudy__figure">
-      <img src={img('en-cat.webp')} alt="Mina the cat waving, surrounded by confetti" width={560} height={415} loading="lazy" decoding="async" />
+      <picture>{toAvif(img('en-cat.webp')) && <source type="image/avif" srcset={toAvif(img('en-cat.webp'))} />}<img src={img('en-cat.webp')} alt="Mina the cat waving, surrounded by confetti" width={560} height={415} loading="lazy" decoding="async" /></picture>
       <figcaption>Mina the cat — key visual and the app’s friendly companion.</figcaption>
     </figure>
     <div>
@@ -332,7 +333,7 @@ const clickflow = [
         </ol>
       </div>
       <figure class="mstudy__figure mstudy__figure--dark">
-        <img src={img('en-wireframes.webp')} alt="Low-fidelity wireframes of the Mina app — home, help request form and neighbourhood map" width={860} height={980} loading="lazy" decoding="async" />
+        <picture>{toAvif(img('en-wireframes.webp')) && <source type="image/avif" srcset={toAvif(img('en-wireframes.webp'))} />}<img src={img('en-wireframes.webp')} alt="Low-fidelity wireframes of the Mina app — home, help request form and neighbourhood map" width={860} height={980} loading="lazy" decoding="async" /></picture>
         <figcaption>Wireframes: home, help request and neighbourhood map.</figcaption>
       </figure>
     </div>

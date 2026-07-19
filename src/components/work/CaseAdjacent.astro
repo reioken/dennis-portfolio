@@ -1,5 +1,6 @@
 ---
 import { p } from '../../lib/paths';
+import { toAvif } from '../../lib/img';
 
 type WorkLite = {
   id: string;
@@ -25,7 +26,10 @@ const label = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(
 <nav class="case-adjacent" aria-label="Project navigation">
   <a class="case-adjacent__card case-adjacent__card--prev" href={p(`work/${prev.id}`)}>
     <span class="case-adjacent__rail" aria-hidden="true">
-      <img src={asset(prev.data.cover)} alt="" loading="lazy" decoding="async" />
+      <picture>
+        {toAvif(asset(prev.data.cover)) && <source type="image/avif" srcset={toAvif(asset(prev.data.cover))} />}
+        <img src={asset(prev.data.cover)} alt="" loading="lazy" decoding="async" />
+      </picture>
     </span>
     <span class="case-adjacent__body">
       <span class="case-adjacent__dir">
@@ -64,7 +68,10 @@ const label = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(
       <span class="case-adjacent__role">{next.data.role}</span>
     </span>
     <span class="case-adjacent__rail" aria-hidden="true">
-      <img src={asset(next.data.cover)} alt="" loading="lazy" decoding="async" />
+      <picture>
+        {toAvif(asset(next.data.cover)) && <source type="image/avif" srcset={toAvif(asset(next.data.cover))} />}
+        <img src={asset(next.data.cover)} alt="" loading="lazy" decoding="async" />
+      </picture>
     </span>
   </a>
 </nav>

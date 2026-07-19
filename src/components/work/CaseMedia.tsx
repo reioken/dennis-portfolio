@@ -9,6 +9,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Icon from '../icons/Icon';
 import { copy, type Lang } from '../../lib/i18n';
+import { toAvif } from '../../lib/img';
 
 export type GalleryShot = {
   src: string;
@@ -99,13 +100,16 @@ export default function CaseMedia({
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="shot-gallery__cover-panel glass-panel">
-              <img
-                src={shot.src}
-                alt={shot.alt}
-                width={phone ? 390 : 1600}
-                height={phone ? 844 : 1000}
-                className="shot-gallery__cover-img"
-              />
+              <picture>
+                {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
+                <img
+                  src={shot.src}
+                  alt={shot.alt}
+                  width={phone ? 390 : 1600}
+                  height={phone ? 844 : 1000}
+                  className="shot-gallery__cover-img"
+                />
+              </picture>
               <span className="shot-gallery__cover-cue" aria-hidden>
                 <Icon name="expand" size={16} weight="bold" />
               </span>
@@ -163,15 +167,18 @@ export default function CaseMedia({
                     }}
                   >
                     <span className="shot-gallery__frame">
-                      <img
-                        src={shot.src}
-                        alt=""
-                        width={phone ? 390 : 1040}
-                        height={phone ? 844 : 650}
-                        loading="lazy"
-                        decoding="async"
-                        className="shot-gallery__thumb"
-                      />
+                      <picture>
+                        {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
+                        <img
+                          src={shot.src}
+                          alt=""
+                          width={phone ? 390 : 1040}
+                          height={phone ? 844 : 650}
+                          loading="lazy"
+                          decoding="async"
+                          className="shot-gallery__thumb"
+                        />
+                      </picture>
                       <span className="shot-gallery__shine" aria-hidden />
                     </span>
                   </motion.button>
@@ -388,13 +395,16 @@ function GalleryLightbox({
                     : { type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }
                 }
               >
-                <img
-                  src={src}
-                  alt={active.alt}
-                  className="gallery-view__image"
-                  decoding="async"
-                  draggable={false}
-                />
+                <picture>
+                  {toAvif(src) && <source type="image/avif" srcSet={toAvif(src)} />}
+                  <img
+                    src={src}
+                    alt={active.alt}
+                    className="gallery-view__image"
+                    decoding="async"
+                    draggable={false}
+                  />
+                </picture>
               </motion.figure>
             </AnimatePresence>
           </div>
@@ -417,7 +427,10 @@ function GalleryLightbox({
                   className={`gallery-view__film-item${i === index ? ' gallery-view__film-item--active' : ''}${phone ? ' gallery-view__film-item--phone' : ''}`}
                   onClick={() => onChange(i)}
                 >
-                  <img src={shot.src} alt="" loading="lazy" decoding="async" draggable={false} />
+                  <picture>
+                    {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
+                    <img src={shot.src} alt="" loading="lazy" decoding="async" draggable={false} />
+                  </picture>
                 </button>
               ))}
             </div>

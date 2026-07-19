@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
+import { toAvif } from '../../lib/img';
 
 type Page = { src: string; alt: string };
 
@@ -53,15 +54,17 @@ export default function CaseDocument({ labelDe, labelEn, pages = [], children }:
         {children
           ? children
           : shown.map((page, i) => (
-              <img
-                key={page.src}
-                src={page.src}
-                alt={page.alt}
-                width={1400}
-                height={1465}
-                loading={i < 2 ? 'eager' : 'lazy'}
-                decoding="async"
-              />
+              <picture key={page.src}>
+                {toAvif(page.src) && <source type="image/avif" srcSet={toAvif(page.src)} />}
+                <img
+                  src={page.src}
+                  alt={page.alt}
+                  width={1400}
+                  height={1465}
+                  loading={i < 2 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+              </picture>
             ))}
         {!open && <div className="case-doc__fade" aria-hidden />}
       </div>

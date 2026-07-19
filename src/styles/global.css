@@ -104,6 +104,11 @@ img {
   height: auto;
 }
 
+/* AVIF-Kaskade: <picture> ist reiner Format-Wrapper, nie Layout-Box */
+picture {
+  display: contents;
+}
+
 a {
   color: inherit;
   text-decoration: none;
