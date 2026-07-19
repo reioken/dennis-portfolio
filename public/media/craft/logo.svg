@@ -1,4 +1,12 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 120" fill="none">
-  <text x="120" y="58" text-anchor="middle" fill="#f7f8fc" font-family="Segoe UI, sans-serif" font-size="26" font-weight="800" letter-spacing="3">VISUAL CRAFT</text>
-  <text x="120" y="88" text-anchor="middle" fill="#ac8bfd" font-family="Segoe UI, sans-serif" font-size="14" font-weight="600" letter-spacing="3">LOGOS &amp; CONCEPTS</text>
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="Logos & Concepts">
+  <defs>
+    <linearGradient id="cg" x1="28" y1="18" x2="92" y2="102" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ac8bfd"/>
+      <stop offset="0.5" stop-color="#4a82fe"/>
+      <stop offset="1" stop-color="#c8daf4"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="46" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1"/>
+  <path d="M42 28 L78 28 L54 60 L82 92 L46 92 L46 28 Z" fill="url(#cg)" opacity="0.95"/>
+  <path d="M54 60 L78 28 L82 48 L62 68 Z" fill="#dcebff" opacity="0.35"/>
 </svg>
