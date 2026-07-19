@@ -2,7 +2,6 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroStage from '../components/hero/HeroStage';
 import ProjectCard from '../components/work/ProjectCard';
-import TrustBar from '../components/home/TrustBar.astro';
 import { getCollection } from 'astro:content';
 import { site } from '../lib/site';
 import { copy } from '../lib/i18n';
@@ -176,7 +175,6 @@ const collageShots = [
           ))
         }
       </ol>
-      <TrustBar />
     </div>
   </section>
 
