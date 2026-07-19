@@ -80,6 +80,7 @@ export default function ProjectCard({
 
   const mark = logo || cover;
   const isLogo = Boolean(logo);
+  const ambient = !reduce;
   const liveActive = hovering && !reduce;
 
   const onMove = (e: React.MouseEvent) => {
@@ -141,6 +142,7 @@ export default function ProjectCard({
             >
               {logoLive === 'nexus-splash' ? (
                 <NexusSplashMark
+                  ambient={ambient}
                   active={liveActive}
                   title={coverAlt ?? `${title} logo`}
                   className="project-logo-panel__mark project-logo-panel__mark--live"
@@ -149,31 +151,31 @@ export default function ProjectCard({
                 <BerryLiveLogo
                   active={liveActive}
                   title={coverAlt ?? `${title} logo`}
-                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                  className={`project-logo-panel__mark project-logo-panel__mark--live${ambient ? ' is-ambient' : ''}`}
                 />
               ) : logoLive === 'riftcast-cast' ? (
                 <RiftcastLiveLogo
                   active={liveActive}
                   title={coverAlt ?? `${title} logo`}
-                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                  className={`project-logo-panel__mark project-logo-panel__mark--live${ambient ? ' is-ambient' : ''}`}
                 />
               ) : logoLive === 'mina-heart' ? (
                 <MinaLiveLogo
                   active={liveActive}
                   title={coverAlt ?? `${title} logo`}
-                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                  className={`project-logo-panel__mark project-logo-panel__mark--live${ambient ? ' is-ambient' : ''}`}
                 />
               ) : logoLive === 'fd-flash' ? (
                 <FdStudioLiveLogo
                   active={liveActive}
                   title={coverAlt ?? `${title} logo`}
-                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                  className={`project-logo-panel__mark project-logo-panel__mark--live${ambient ? ' is-ambient' : ''}`}
                 />
               ) : logoLive && !reduce ? (
                 <AnimatedLogo
                   src={logoLive}
                   title={coverAlt ?? `${title} logo`}
-                  className="project-logo-panel__mark project-logo-panel__mark--live max-h-[70%] max-w-[78%] w-full h-full object-contain"
+                  className="project-logo-panel__mark project-logo-panel__mark--live is-ambient max-h-[70%] max-w-[78%] w-full h-full object-contain"
                 />
               ) : (
                 <img

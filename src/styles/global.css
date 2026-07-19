@@ -530,7 +530,7 @@ a:hover .brand-mark--nav {
   }
 }
 
-/* Project cards — logo panel */
+/* Project cards — logo panel (ambient float + drifting glow) */
 .project-logo-panel {
   aspect-ratio: 16 / 10;
   background:
@@ -540,16 +540,21 @@ a:hover .brand-mark--nav {
 }
 .project-logo-panel__glow {
   position: absolute;
-  inset: 12% 18%;
+  inset: 10% 16%;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--meta) 28%, transparent), transparent 68%);
-  filter: blur(28px);
-  opacity: 0.55;
-  transition: opacity 0.5s ease, transform 0.7s ease;
+  background:
+    radial-gradient(circle at 42% 40%, color-mix(in srgb, var(--ice) 32%, transparent), transparent 55%),
+    radial-gradient(circle at 62% 58%, color-mix(in srgb, var(--violet) 26%, transparent), transparent 60%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--blue) 22%, transparent), transparent 70%);
+  filter: blur(30px);
+  opacity: 0.5;
+  transform-origin: 50% 50%;
+  animation: panel-glow-drift 8s ease-in-out infinite;
+  transition: opacity 0.55s ease;
 }
 .group:hover .project-logo-panel__glow {
-  opacity: 0.9;
-  transform: scale(1.06);
+  opacity: 0.85;
+  animation-duration: 5.5s;
 }
 .project-logo-panel__mark {
   max-height: 58%;
@@ -562,25 +567,75 @@ a:hover .brand-mark--nav {
   background: transparent;
   filter: none;
 }
-/* Subtle float/glow only while hovering — no continuous motion at rest */
+/* Shared ambient float for non-NEXUS live marks */
+.berry-live.is-ambient,
+.rc-live.is-ambient,
+.mina-live.is-ambient,
+.fdl.is-ambient,
 .project-logo-panel__mark--idle {
-  transition: transform 0.55s ease, filter 0.55s ease;
+  animation: logo-mark-float 6.2s ease-in-out infinite;
+}
+.group:hover .berry-live.is-ambient,
+.group:hover .rc-live.is-ambient,
+.group:hover .mina-live.is-ambient,
+.group:hover .fdl.is-ambient {
+  animation: logo-mark-float-hot 4.4s ease-in-out infinite;
 }
 .group:hover .project-logo-panel__mark--idle {
-  transform: translateY(-4px) scale(1.04);
   filter: drop-shadow(0 10px 28px rgba(74, 130, 254, 0.35))
     drop-shadow(0 0 18px rgba(172, 139, 253, 0.25));
 }
-@media (prefers-reduced-motion: reduce) {
-  .group:hover .project-logo-panel__mark--idle {
-    transform: none;
+@keyframes panel-glow-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    filter: blur(30px) saturate(1);
   }
-  .group:hover .project-logo-panel__glow {
+  33% {
+    transform: translate(3%, -2.5%) scale(1.06);
+    filter: blur(34px) saturate(1.15);
+  }
+  66% {
+    transform: translate(-2.5%, 2%) scale(1.03);
+    filter: blur(28px) saturate(1.08);
+  }
+}
+@keyframes logo-mark-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes logo-mark-float-hot {
+  0%,
+  100% {
+    transform: translateY(-2px) scale(1.03);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .project-logo-panel__glow,
+  .berry-live.is-ambient,
+  .rc-live.is-ambient,
+  .mina-live.is-ambient,
+  .fdl.is-ambient,
+  .project-logo-panel__mark--idle,
+  .group:hover .berry-live.is-ambient,
+  .group:hover .rc-live.is-ambient,
+  .group:hover .mina-live.is-ambient,
+  .group:hover .fdl.is-ambient,
+  .group:hover .project-logo-panel__mark--idle {
+    animation: none !important;
     transform: none;
   }
 }
 
-/* —— NEXUS splash mark — card-sized stage, FX on hover (.is-hot) —— */
+/* —— NEXUS diamond — ambient crystal float + hover flex —— */
 .nx-sp {
   --nx-violet: #ac8bfd;
   --nx-blue: #4a82fe;
@@ -593,56 +648,115 @@ a:hover .brand-mark--nav {
   display: grid;
   place-items: center;
   filter: none;
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.nx-sp.is-hot {
-  transform: scale(1.04);
+.nx-sp.is-live {
+  animation: nx-float 5.6s ease-in-out infinite;
+}
+.nx-sp.is-live.is-hot {
+  animation: nx-float-hot 3.8s ease-in-out infinite;
 }
 .nx-sp__aura {
   position: absolute;
-  inset: -8%;
+  inset: -14%;
   border-radius: 50%;
   pointer-events: none;
-  filter: blur(18px);
-  opacity: 0.14;
+  filter: blur(22px);
+  opacity: 0;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--nx-ice) 28%, transparent) 0%,
-    color-mix(in srgb, var(--nx-blue) 26%, transparent) 18%,
-    color-mix(in srgb, var(--nx-violet) 12%, transparent) 40%,
-    transparent 68%
+    color-mix(in srgb, var(--nx-ice) 34%, transparent) 0%,
+    color-mix(in srgb, var(--nx-blue) 30%, transparent) 22%,
+    color-mix(in srgb, var(--nx-violet) 16%, transparent) 48%,
+    transparent 72%
   );
-  transition: opacity 0.4s ease;
+}
+.nx-sp.is-live .nx-sp__aura {
+  opacity: 0.22;
+  animation: nx-aura 4.8s ease-in-out infinite;
 }
 .nx-sp.is-hot .nx-sp__aura {
-  opacity: 0.28;
-  animation: nx-sp-aura-breathe 4.4s ease-in-out infinite alternate;
+  opacity: 0.42;
+  animation-duration: 3.2s;
+}
+.nx-sp__aura--core {
+  inset: 8%;
+  filter: blur(14px);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--nx-ice) 45%, transparent) 0%,
+    color-mix(in srgb, var(--nx-blue) 28%, transparent) 35%,
+    transparent 68%
+  );
+}
+.nx-sp.is-live .nx-sp__aura--core {
+  opacity: 0.18;
+  animation: nx-aura-core 3.6s ease-in-out infinite;
+}
+.nx-sp.is-hot .nx-sp__aura--core {
+  opacity: 0.38;
 }
 .nx-sp__rays {
   position: absolute;
-  inset: 2%;
+  inset: -4%;
   pointer-events: none;
   mix-blend-mode: screen;
-  filter: blur(3px);
+  filter: blur(2.5px);
   opacity: 0;
   background: conic-gradient(
     from 0deg,
-    transparent 0 5%,
-    color-mix(in srgb, var(--nx-blue) 28%, transparent) 7%,
-    transparent 11% 24%,
-    color-mix(in srgb, var(--nx-ice) 20%, transparent) 26%,
-    transparent 30% 49%,
-    color-mix(in srgb, var(--nx-violet) 24%, transparent) 51%,
-    transparent 55% 73%,
-    color-mix(in srgb, var(--nx-blue) 22%, transparent) 75%,
-    transparent 79%
+    transparent 0 4%,
+    color-mix(in srgb, var(--nx-ice) 42%, transparent) 5.5%,
+    transparent 8% 18%,
+    color-mix(in srgb, var(--nx-blue) 38%, transparent) 20%,
+    transparent 23% 38%,
+    color-mix(in srgb, var(--nx-violet) 40%, transparent) 40%,
+    transparent 43% 58%,
+    color-mix(in srgb, var(--nx-ice) 30%, transparent) 60%,
+    transparent 63% 78%,
+    color-mix(in srgb, var(--nx-blue) 34%, transparent) 80%,
+    transparent 83%
   );
-  -webkit-mask-image: radial-gradient(circle, transparent 12%, #000 30%, transparent 58%);
-  mask-image: radial-gradient(circle, transparent 12%, #000 30%, transparent 58%);
+  -webkit-mask-image: radial-gradient(circle, transparent 14%, #000 32%, transparent 62%);
+  mask-image: radial-gradient(circle, transparent 14%, #000 32%, transparent 62%);
+}
+.nx-sp.is-live .nx-sp__rays {
+  opacity: 0.1;
+  animation: nx-rays 28s linear infinite;
 }
 .nx-sp.is-hot .nx-sp__rays {
-  opacity: 0.16;
-  animation: nx-sp-rays-spin 22s linear infinite;
+  opacity: 0.28;
+  animation-duration: 12s;
+}
+.nx-sp__dust {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.nx-sp__mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--nx-ice);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--nx-ice) 80%, transparent);
+  opacity: 0;
+}
+.nx-sp.is-live .nx-sp__mote {
+  animation: nx-mote 5.5s ease-in-out infinite;
+}
+.nx-sp__mote.m1 { left: 18%; top: 28%; animation-delay: 0s; }
+.nx-sp__mote.m2 { left: 72%; top: 22%; animation-delay: 0.6s; background: var(--nx-violet); }
+.nx-sp__mote.m3 { left: 78%; top: 55%; animation-delay: 1.2s; background: var(--nx-blue); }
+.nx-sp__mote.m4 { left: 24%; top: 68%; animation-delay: 1.8s; }
+.nx-sp__mote.m5 { left: 48%; top: 14%; animation-delay: 2.2s; background: var(--nx-blue); }
+.nx-sp__mote.m6 { left: 58%; top: 76%; animation-delay: 2.8s; background: var(--nx-violet); }
+.nx-sp__mote.m7 { left: 12%; top: 48%; animation-delay: 3.3s; }
+.nx-sp__mote.m8 { left: 86%; top: 38%; animation-delay: 3.8s; background: var(--nx-ice); }
+.nx-sp__mote.m9 { left: 38%; top: 82%; animation-delay: 4.2s; background: var(--nx-blue); }
+.nx-sp__mote.m10 { left: 64%; top: 42%; animation-delay: 4.7s; background: var(--nx-violet); }
+.nx-sp.is-hot .nx-sp__mote {
+  animation-duration: 3.2s;
 }
 .nx-sp__wrap {
   position: relative;
@@ -652,8 +766,11 @@ a:hover .brand-mark--nav {
   place-items: center;
   isolation: isolate;
 }
+.nx-sp.is-live .nx-sp__wrap {
+  animation: nx-breathe 4.6s ease-in-out infinite;
+}
 .nx-sp.is-hot .nx-sp__wrap {
-  animation: nx-sp-chroma 2.1s ease-in-out infinite, nx-sp-breathe 4.2s ease-in-out infinite;
+  animation-duration: 3.2s;
 }
 .nx-sp__wrap::before,
 .nx-sp__wrap::after {
@@ -662,27 +779,28 @@ a:hover .brand-mark--nav {
   left: 50%;
   top: 50%;
   z-index: 0;
-  width: 104%;
-  height: 104%;
+  width: 108%;
+  height: 108%;
   border-radius: 50%;
   opacity: 0;
   pointer-events: none;
   border: 1.5px solid color-mix(in srgb, var(--nx-blue) 55%, transparent);
+  transform: translate(-50%, -50%) scale(0.9);
 }
 .nx-sp.is-hot .nx-sp__wrap::before {
-  animation: nx-sp-ring 2.4s cubic-bezier(0.2, 0.7, 0.4, 1) both;
+  animation: nx-ring 2.8s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
 }
 .nx-sp.is-hot .nx-sp__wrap::after {
-  border-color: color-mix(in srgb, var(--nx-violet) 50%, transparent);
-  animation: nx-sp-ring 2.7s cubic-bezier(0.2, 0.7, 0.4, 1) 0.1s both;
+  border-color: color-mix(in srgb, var(--nx-violet) 55%, transparent);
+  animation: nx-ring 2.8s cubic-bezier(0.2, 0.7, 0.4, 1) 1.4s infinite;
 }
 .nx-sp__burst {
   position: absolute;
   left: 50%;
   top: 50%;
   z-index: 1;
-  width: 12%;
-  height: 12%;
+  width: 14%;
+  height: 14%;
   border-radius: 50%;
   translate: -50% -50%;
   pointer-events: none;
@@ -690,60 +808,52 @@ a:hover .brand-mark--nav {
   mix-blend-mode: screen;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--nx-ice) 55%, var(--nx-blue)) 0%,
-    color-mix(in srgb, var(--nx-blue) 60%, transparent) 32%,
-    color-mix(in srgb, var(--nx-violet) 40%, transparent) 52%,
-    transparent 72%
+    color-mix(in srgb, var(--nx-ice) 70%, var(--nx-blue)) 0%,
+    color-mix(in srgb, var(--nx-blue) 55%, transparent) 36%,
+    color-mix(in srgb, var(--nx-violet) 40%, transparent) 55%,
+    transparent 74%
   );
 }
 .nx-sp.is-hot .nx-sp__burst {
-  animation: nx-sp-burst 0.95s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  animation: nx-burst 2.6s cubic-bezier(0.2, 0.8, 0.25, 1) infinite;
 }
 .nx-sp__glint {
   position: absolute;
   z-index: 3;
-  width: 11%;
-  height: 11%;
+  width: 12%;
+  height: 12%;
   opacity: 0;
   pointer-events: none;
   mix-blend-mode: screen;
   clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
+  will-change: transform, opacity;
 }
-.nx-sp__glint.g1 {
-  left: 16%;
-  top: 22%;
-  background: var(--nx-violet);
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-violet) 75%, transparent));
-}
-.nx-sp__glint.g2 {
-  left: 66%;
-  top: 16%;
-  background: var(--nx-ice);
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-ice) 70%, transparent));
-}
-.nx-sp__glint.g3 {
-  left: 72%;
-  top: 58%;
-  background: var(--nx-blue);
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-blue) 75%, transparent));
-}
-.nx-sp__glint.g4 {
-  left: 26%;
-  top: 64%;
-  background: var(--nx-violet);
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--nx-violet) 65%, transparent));
-}
-.nx-sp.is-hot .nx-sp__glint.g1 {
-  animation: nx-sp-twinkle 0.7s ease-out 0.15s both;
-}
-.nx-sp.is-hot .nx-sp__glint.g2 {
-  animation: nx-sp-twinkle 0.7s ease-out 0.32s both;
-}
-.nx-sp.is-hot .nx-sp__glint.g3 {
-  animation: nx-sp-twinkle 0.75s ease-out 0.5s both;
-}
-.nx-sp.is-hot .nx-sp__glint.g4 {
-  animation: nx-sp-twinkle 0.8s ease-out 0.7s both;
+.nx-sp__glint.g1 { left: 14%; top: 20%; background: var(--nx-violet); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-violet) 80%, transparent)); }
+.nx-sp__glint.g2 { left: 68%; top: 12%; background: var(--nx-ice); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--nx-ice) 85%, transparent)); width: 14%; height: 14%; }
+.nx-sp__glint.g3 { left: 74%; top: 56%; background: var(--nx-blue); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-blue) 80%, transparent)); }
+.nx-sp__glint.g4 { left: 22%; top: 66%; background: var(--nx-violet); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-violet) 70%, transparent)); }
+.nx-sp__glint.g5 { left: 46%; top: 6%; background: var(--nx-ice); filter: drop-shadow(0 0 7px color-mix(in srgb, var(--nx-ice) 90%, transparent)); width: 15%; height: 15%; }
+.nx-sp__glint.g6 { left: 8%; top: 46%; background: var(--nx-blue); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-blue) 75%, transparent)); width: 10%; height: 10%; }
+.nx-sp__glint.g7 { left: 82%; top: 30%; background: var(--nx-violet); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-violet) 75%, transparent)); width: 10%; height: 10%; }
+.nx-sp__glint.g8 { left: 52%; top: 78%; background: var(--nx-ice); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-ice) 70%, transparent)); width: 9%; height: 9%; }
+/* Ambient twinkles — seamless infinite, staggered */
+.nx-sp.is-live .nx-sp__glint.g1 { animation: nx-twinkle 2.8s ease-in-out 0s infinite; }
+.nx-sp.is-live .nx-sp__glint.g2 { animation: nx-twinkle 2.4s ease-in-out 0.4s infinite; }
+.nx-sp.is-live .nx-sp__glint.g3 { animation: nx-twinkle 3s ease-in-out 0.9s infinite; }
+.nx-sp.is-live .nx-sp__glint.g4 { animation: nx-twinkle 2.6s ease-in-out 1.3s infinite; }
+.nx-sp.is-live .nx-sp__glint.g5 { animation: nx-twinkle 2.2s ease-in-out 0.2s infinite; }
+.nx-sp.is-live .nx-sp__glint.g6 { animation: nx-twinkle 3.2s ease-in-out 1.7s infinite; }
+.nx-sp.is-live .nx-sp__glint.g7 { animation: nx-twinkle 2.5s ease-in-out 2.1s infinite; }
+.nx-sp.is-live .nx-sp__glint.g8 { animation: nx-twinkle 2.9s ease-in-out 0.7s infinite; }
+.nx-sp.is-hot .nx-sp__glint.g1,
+.nx-sp.is-hot .nx-sp__glint.g2,
+.nx-sp.is-hot .nx-sp__glint.g3,
+.nx-sp.is-hot .nx-sp__glint.g4,
+.nx-sp.is-hot .nx-sp__glint.g5,
+.nx-sp.is-hot .nx-sp__glint.g6,
+.nx-sp.is-hot .nx-sp__glint.g7,
+.nx-sp.is-hot .nx-sp__glint.g8 {
+  animation-duration: 1.35s;
 }
 .nx-sp__mark {
   position: relative;
@@ -752,12 +862,15 @@ a:hover .brand-mark--nav {
   height: 100%;
   display: grid;
   place-items: center;
-  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.4))
-    drop-shadow(0 0 8px color-mix(in srgb, var(--nx-blue) 18%, transparent));
-  transition: filter 0.35s ease;
+  filter:
+    drop-shadow(0 6px 18px rgba(0, 0, 0, 0.42))
+    drop-shadow(0 0 10px color-mix(in srgb, var(--nx-blue) 22%, transparent));
+}
+.nx-sp.is-live .nx-sp__mark {
+  animation: nx-glow 3.4s ease-in-out infinite;
 }
 .nx-sp.is-hot .nx-sp__mark {
-  animation: nx-sp-glow 2.8s ease-in-out infinite;
+  animation: nx-glow-hot 1.8s ease-in-out infinite;
 }
 .nx-sp__mark svg {
   width: 100%;
@@ -765,17 +878,47 @@ a:hover .brand-mark--nav {
   overflow: visible;
   display: block;
 }
-@keyframes nx-sp-aura-breathe {
-  from {
-    opacity: 0.18;
-    transform: scale(0.98);
+@keyframes nx-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.4deg);
   }
-  to {
-    opacity: 0.34;
-    transform: scale(1.05);
+  50% {
+    transform: translateY(-8px) rotate(0.5deg);
   }
 }
-@keyframes nx-sp-rays-spin {
+@keyframes nx-float-hot {
+  0%,
+  100% {
+    transform: translateY(-3px) scale(1.05) rotate(-0.6deg);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.08) rotate(0.7deg);
+  }
+}
+@keyframes nx-aura {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.34;
+    transform: scale(1.08);
+  }
+}
+@keyframes nx-aura-core {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.28;
+    transform: scale(1.1);
+  }
+}
+@keyframes nx-rays {
   from {
     transform: rotate(0);
   }
@@ -783,77 +926,111 @@ a:hover .brand-mark--nav {
     transform: rotate(360deg);
   }
 }
-@keyframes nx-sp-chroma {
-  0%,
-  100% {
-    filter: saturate(1.12) hue-rotate(0deg);
-  }
-  35% {
-    filter: saturate(1.7) hue-rotate(-16deg);
-  }
-  65% {
-    filter: saturate(1.8) hue-rotate(20deg);
-  }
-}
-@keyframes nx-sp-breathe {
+@keyframes nx-breathe {
   0%,
   100% {
     transform: scale(1);
   }
   50% {
-    transform: scale(1.03);
+    transform: scale(1.035);
   }
 }
-@keyframes nx-sp-ring {
+@keyframes nx-ring {
   0% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  70% {
+    opacity: 0;
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(2.15);
+    transform: translate(-50%, -50%) scale(2.05);
   }
 }
-@keyframes nx-sp-burst {
+@keyframes nx-burst {
   0% {
     opacity: 0;
-    transform: scale(0.35);
+    transform: scale(0.3);
   }
-  22% {
-    opacity: 0.42;
-    transform: scale(2.1);
+  12% {
+    opacity: 0.55;
+    transform: scale(1.8);
+  }
+  35% {
+    opacity: 0;
+    transform: scale(3.8);
   }
   100% {
     opacity: 0;
-    transform: scale(4.2);
+    transform: scale(3.8);
   }
 }
-@keyframes nx-sp-twinkle {
-  0% {
-    opacity: 0;
-    transform: scale(0.2) rotate(-30deg);
-  }
-  45% {
-    opacity: 0.75;
-    transform: scale(1.15) rotate(12deg);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.4) rotate(45deg);
-  }
-}
-@keyframes nx-sp-glow {
+@keyframes nx-twinkle {
   0%,
   100% {
-    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--nx-ice) 30%, transparent))
-      drop-shadow(0 0 10px color-mix(in srgb, var(--nx-violet) 24%, transparent)) brightness(1.02)
-      saturate(1.15);
+    opacity: 0;
+    transform: scale(0.25) rotate(-20deg);
   }
   40% {
-    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--nx-ice) 55%, transparent))
-      drop-shadow(0 0 14px color-mix(in srgb, var(--nx-blue) 42%, transparent))
-      drop-shadow(0 0 28px color-mix(in srgb, var(--nx-violet) 22%, transparent)) brightness(1.12)
-      saturate(1.4);
+    opacity: 0.95;
+    transform: scale(1.2) rotate(10deg);
+  }
+  70% {
+    opacity: 0.15;
+    transform: scale(0.55) rotate(28deg);
+  }
+}
+@keyframes nx-mote {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0) scale(0.4);
+  }
+  35% {
+    opacity: 0.85;
+    transform: translateY(-10px) scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: translateY(-22px) scale(0.3);
+  }
+}
+@keyframes nx-glow {
+  0%,
+  100% {
+    filter:
+      drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4))
+      drop-shadow(0 0 8px color-mix(in srgb, var(--nx-blue) 28%, transparent))
+      drop-shadow(0 0 18px color-mix(in srgb, var(--nx-violet) 16%, transparent))
+      brightness(1.04) saturate(1.12);
+  }
+  50% {
+    filter:
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.38))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--nx-ice) 42%, transparent))
+      drop-shadow(0 0 28px color-mix(in srgb, var(--nx-blue) 32%, transparent))
+      drop-shadow(0 0 40px color-mix(in srgb, var(--nx-violet) 18%, transparent))
+      brightness(1.12) saturate(1.28);
+  }
+}
+@keyframes nx-glow-hot {
+  0%,
+  100% {
+    filter:
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4))
+      drop-shadow(0 0 12px color-mix(in srgb, var(--nx-ice) 50%, transparent))
+      drop-shadow(0 0 26px color-mix(in srgb, var(--nx-blue) 45%, transparent))
+      drop-shadow(0 0 48px color-mix(in srgb, var(--nx-violet) 28%, transparent))
+      brightness(1.14) saturate(1.35);
+  }
+  50% {
+    filter:
+      drop-shadow(0 10px 24px rgba(0, 0, 0, 0.36))
+      drop-shadow(0 0 18px color-mix(in srgb, var(--nx-ice) 70%, transparent))
+      drop-shadow(0 0 36px color-mix(in srgb, var(--nx-blue) 55%, transparent))
+      drop-shadow(0 0 64px color-mix(in srgb, var(--nx-violet) 35%, transparent))
+      brightness(1.22) saturate(1.5);
   }
 }
 
@@ -874,7 +1051,6 @@ a:hover .brand-mark--nav {
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease;
 }
 .berry-live.is-hot {
-  transform: translateY(-3px) scale(1.05);
   filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
     drop-shadow(0 0 16px color-mix(in srgb, var(--berry-accent) 28%, transparent));
 }
@@ -961,7 +1137,6 @@ a:hover .brand-mark--nav {
     filter 0.4s ease;
 }
 .mina-live.is-hot {
-  transform: translateY(-3px) scale(1.03);
   filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
     drop-shadow(0 0 16px color-mix(in srgb, #f4796b 26%, transparent));
 }
@@ -1053,7 +1228,6 @@ a:hover .brand-mark--nav {
     filter 0.4s ease;
 }
 .fdl.is-hot {
-  transform: translateY(-3px) scale(1.03);
   filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
     drop-shadow(0 0 16px rgba(255, 210, 63, 0.22));
 }
@@ -1129,7 +1303,6 @@ a:hover .brand-mark--nav {
     filter 0.45s ease;
 }
 .rc-live.is-hot {
-  transform: translateY(-3px) scale(1.05);
   filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
     drop-shadow(0 0 16px color-mix(in srgb, var(--violet) 30%, transparent));
 }
@@ -1203,6 +1376,7 @@ a:hover .brand-mark--nav {
 
 @media (prefers-reduced-motion: reduce) {
   .nx-sp,
+  .nx-sp.is-live,
   .nx-sp.is-hot,
   .berry-live,
   .berry-live.is-hot,
@@ -1213,6 +1387,7 @@ a:hover .brand-mark--nav {
   .fdl,
   .fdl.is-hot {
     transform: none;
+    animation: none !important;
   }
   .rc-live.is-hot .rc-live__mark,
   .rc-live.is-hot .rc-live__ring--1,
@@ -1230,21 +1405,24 @@ a:hover .brand-mark--nav {
   .mina-live__mini {
     opacity: 0;
   }
-  .nx-sp.is-hot .nx-sp__aura,
-  .nx-sp.is-hot .nx-sp__rays,
-  .nx-sp.is-hot .nx-sp__wrap,
+  .nx-sp.is-live .nx-sp__aura,
+  .nx-sp.is-live .nx-sp__aura--core,
+  .nx-sp.is-live .nx-sp__rays,
+  .nx-sp.is-live .nx-sp__wrap,
+  .nx-sp.is-live .nx-sp__glint,
+  .nx-sp.is-live .nx-sp__mote,
+  .nx-sp.is-live .nx-sp__mark,
   .nx-sp.is-hot .nx-sp__wrap::before,
   .nx-sp.is-hot .nx-sp__wrap::after,
   .nx-sp.is-hot .nx-sp__burst,
-  .nx-sp.is-hot .nx-sp__glint,
-  .nx-sp.is-hot .nx-sp__mark,
   .berry-live__bot[data-laugh],
   .berry-live__bot[data-laugh] .bot-leaves {
     animation: none !important;
   }
   .nx-sp__rays,
   .nx-sp__burst,
-  .nx-sp__glint {
+  .nx-sp__glint,
+  .nx-sp__mote {
     opacity: 0;
   }
 }
