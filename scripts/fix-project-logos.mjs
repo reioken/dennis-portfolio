@@ -73,13 +73,43 @@ await sharp(minaCover)
   console.log('webp mina/logo.webp (cropped)');
 }
 
-// 4) Forever white wordmark — strip black plate
-await toWebp(media('forever', 'logo-white.png'), media('forever', 'logo.webp'), {
-  maxW: 900,
-  keyBlack: true,
-  thr: 20,
-});
-await copyFile(media('forever', 'logo-white.png'), media('forever', 'logo.png'));
+// 4) Forever white wordmark — strip black plate + K-tile white stroke
+{
+  const src = media('forever', 'logo-white.png');
+  const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = info;
+  const thr = 20;
+  for (let i = 0; i < data.length; i += 4) {
+    const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+    if (lum <= thr) data[i + 3] = 0;
+    else if (lum < thr + 28) data[i + 3] = Math.round(((lum - thr) / 28) * data[i + 3]);
+  }
+  // Remove 4th CMYK tile (black) + its white border — invisible on dark cards anyway
+  for (let y = 0; y <= 42; y++) {
+    for (let x = 344; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (data[i + 3] < 5) continue;
+      const r = data[i],
+        g = data[i + 1],
+        b = data[i + 2];
+      if (r > 160 && g > 140 && b < 100) continue; // keep yellow
+      data[i] = data[i + 1] = data[i + 2] = 0;
+      data[i + 3] = 0;
+    }
+  }
+  const out = sharp(data, { raw: { width: w, height: h, channels: 4 } });
+  await out
+    .clone()
+    .webp({ quality: 90, alphaQuality: 95, effort: 4 })
+    .toFile(media('forever', 'logo.webp'));
+  await sharp(data, { raw: { width: w, height: h, channels: 4 } })
+    .avif({ quality: 70 })
+    .toFile(media('forever', 'logo.avif'));
+  await sharp(data, { raw: { width: w, height: h, channels: 4 } })
+    .png()
+    .toFile(media('forever', 'logo.png'));
+  console.log('webp forever/logo.webp (K-tile stroke removed)');
+}
 
 // 5) SportMüller — strip black plate (keeps orange + white)
 await toWebp(media('sportmueller', 'logo-head.png'), media('sportmueller', 'logo.webp'), {
