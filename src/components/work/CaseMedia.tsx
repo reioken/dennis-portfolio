@@ -15,6 +15,8 @@ export type GalleryShot = {
   src: string;
   srcHi?: string;
   alt: string;
+  /** Englischer Alt-Text; fehlt er, bleibt der deutsche stehen */
+  altEn?: string;
 };
 
 type Props = {
@@ -31,6 +33,11 @@ type Props = {
 
 function readLang(): Lang {
   return document.documentElement.dataset.lang === 'en' ? 'en' : 'de';
+}
+
+/** Alt-Text in der aktiven Sprache (Attribute können keine data-lang-Spans tragen) */
+function altFor(shot: GalleryShot, lang: Lang) {
+  return lang === 'en' ? (shot.altEn ?? shot.alt) : shot.alt;
 }
 
 export default function CaseMedia({
@@ -104,7 +111,7 @@ export default function CaseMedia({
                 {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
                 <img
                   src={shot.src}
-                  alt={shot.alt}
+                  alt={altFor(shot, lang)}
                   width={phone ? 390 : 1600}
                   height={phone ? 844 : 1000}
                   className="shot-gallery__cover-img"
@@ -145,8 +152,8 @@ export default function CaseMedia({
                     onClick={(e) => openAt(abs, e.currentTarget)}
                     aria-label={
                       lang === 'en'
-                        ? `Open image ${abs + 1} of ${images.length}: ${shot.alt}`
-                        : `Bild ${abs + 1} von ${images.length} öffnen: ${shot.alt}`
+                        ? `Open image ${abs + 1} of ${images.length}: ${altFor(shot, lang)}`
+                        : `Bild ${abs + 1} von ${images.length} öffnen: ${altFor(shot, lang)}`
                     }
                     initial={reduce ? false : { opacity: 0, y: 22, scale: 0.985 }}
                     whileInView={reduce ? undefined : { opacity: 1, y: 0, scale: 1 }}
@@ -399,7 +406,7 @@ function GalleryLightbox({
                   {toAvif(src) && <source type="image/avif" srcSet={toAvif(src)} />}
                   <img
                     src={src}
-                    alt={active.alt}
+                    alt={altFor(active, lang)}
                     className="gallery-view__image"
                     decoding="async"
                     draggable={false}

@@ -28,7 +28,7 @@ const path = Astro.url.pathname;
 const nav = navItems.map((n) => ({ href: p(n.href), labelKey: n.labelKey }));
 const workLinks = (await getCollection('work'))
   .sort((a, b) => a.data.order - b.data.order)
-  .map((w) => ({ href: p(`work/${w.id}`), title: w.data.title, tags: [...w.data.tags] }));
+  .map((w) => ({ href: p(`work/${w.id}`), title: w.data.title, titleEn: w.data.titleEn, tags: [...w.data.tags] }));
 const canonical = new URL(path, Astro.site ?? site.url).toString();
 const favicon = p('favicon.svg');
 const appleIcon = p('apple-touch-icon.png');

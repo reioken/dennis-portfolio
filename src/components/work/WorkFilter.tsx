@@ -8,6 +8,10 @@ export type WorkItem = {
   summary: string;
   year: string;
   role: string;
+  titleEn?: string;
+  summaryEn?: string;
+  yearEn?: string;
+  roleEn?: string;
   cover: string;
   logo?: string;
   logoLive?: string;
@@ -51,17 +55,19 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
     window.history.replaceState(null, '', url);
   };
 
+  /** Beide Sprachen ins Markup — steht schon vor der Hydration korrekt da */
   const labelMap = {
-    all: copy[lang].work.filterAll,
-    product: copy[lang].work.filterProduct,
-    design: copy[lang].work.filterDesign,
-    archive: copy[lang].work.filterArchive,
-    lab: copy[lang].work.filterLab,
+    all: [copy.de.work.filterAll, copy.en.work.filterAll],
+    product: [copy.de.work.filterProduct, copy.en.work.filterProduct],
+    design: [copy.de.work.filterDesign, copy.en.work.filterDesign],
+    archive: [copy.de.work.filterArchive, copy.en.work.filterArchive],
+    lab: [copy.de.work.filterLab, copy.en.work.filterLab],
   } as const;
 
   const filters = filterIds.map((id) => ({
     id,
-    label: labelMap[id],
+    labelDe: labelMap[id][0],
+    labelEn: labelMap[id][1],
   }));
 
   const visible = useMemo(() => {
@@ -82,18 +88,29 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
               className={`work-filter__tab ${on ? 'is-active' : ''}`}
               onClick={() => select(f.id)}
             >
-              {f.label}
+              {f.labelDe === f.labelEn ? (
+                f.labelDe
+              ) : (
+                <>
+                  <span data-lang="de">{f.labelDe}</span>
+                  <span data-lang="en">{f.labelEn}</span>
+                </>
+              )}
             </button>
           );
         })}
       </div>
 
       <p className="sr-only" role="status" aria-live="polite">
-        {lang === 'en' ? `${visible.length} projects shown` : `${visible.length} Projekte angezeigt`}
+        <span data-lang="de">{visible.length} Projekte angezeigt</span>
+        <span data-lang="en">{visible.length} projects shown</span>
       </p>
 
       {visible.length === 0 ? (
-        <p className="normal-case tracking-normal text-[var(--dim)]">{copy[lang].work.filterEmpty}</p>
+        <p className="normal-case tracking-normal text-[var(--dim)]">
+          <span data-lang="de">{copy.de.work.filterEmpty}</span>
+          <span data-lang="en">{copy.en.work.filterEmpty}</span>
+        </p>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
           {visible.map((item) => (
@@ -104,6 +121,10 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
               summary={item.summary}
               year={item.year}
               role={item.role}
+              titleEn={item.titleEn}
+              summaryEn={item.summaryEn}
+              yearEn={item.yearEn}
+              roleEn={item.roleEn}
               cover={item.cover}
               logo={item.logo}
               logoLive={item.logoLive}

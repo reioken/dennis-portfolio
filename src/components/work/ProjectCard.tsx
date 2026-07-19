@@ -16,12 +16,27 @@ const TAG_LABELS: Record<string, { de: string; en: string }> = {
   lab: { de: 'Labor', en: 'Lab' },
 };
 
+/** Rendert beide Sprachen; CSS blendet die inaktive aus (siehe global.css). */
+function Bi({ de, en }: { de: string; en?: string }) {
+  if (!en || en === de) return <>{de}</>;
+  return (
+    <>
+      <span data-lang="de">{de}</span>
+      <span data-lang="en">{en}</span>
+    </>
+  );
+}
+
 type Props = {
   href: string;
   title: string;
   summary: string;
   year: string;
   role: string;
+  titleEn?: string;
+  summaryEn?: string;
+  yearEn?: string;
+  roleEn?: string;
   /** Fallback / legacy card image when no logo is set */
   cover: string;
   /** Project logo shown on the card */
@@ -46,6 +61,10 @@ export default function ProjectCard({
   summary,
   year,
   role,
+  titleEn,
+  summaryEn,
+  yearEn,
+  roleEn,
   cover,
   logo,
   logoLive,
@@ -209,7 +228,7 @@ export default function ProjectCard({
               : 'left-3 top-3 px-2 py-1 text-[0.7rem]'
           }`}
         >
-          {year}
+          <Bi de={year} en={yearEn} />
         </span>
       </div>
       <div
@@ -222,7 +241,7 @@ export default function ProjectCard({
             compact ? 'mb-1 text-[0.62rem]' : 'mb-2 text-[0.75rem]'
           }`}
         >
-          {role}
+          <Bi de={role} en={roleEn} />
         </div>
         <h3
           className={`display text-[var(--text)] transition-colors duration-300 group-hover:text-[color-mix(in_srgb,var(--meta)_55%,var(--text))] ${
@@ -233,7 +252,7 @@ export default function ProjectCard({
                 : 'mb-2 text-[1.35rem]'
           }`}
         >
-          {title}
+          <Bi de={title} en={titleEn} />
         </h3>
         <p
           className={`text-[var(--dim)] ${
@@ -244,7 +263,7 @@ export default function ProjectCard({
                 : 'mb-4 line-clamp-2 text-[0.95rem]'
           }`}
         >
-          {summary}
+          <Bi de={summary} en={summaryEn} />
         </p>
         <div className={`flex flex-wrap ${compact ? 'gap-1.5' : 'gap-2'}`}>
           {tags.slice(0, featured ? 5 : compact ? 2 : 3).map((tag) => {

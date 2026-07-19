@@ -11,11 +11,19 @@ const work = defineCollection({
     timeline: z.string().optional(),
     stack: z.array(z.string()).default([]),
     outcome: z.string().optional(),
+    /* Englische Entsprechungen — fehlt eine, fällt die Seite auf Deutsch zurück */
+    titleEn: z.string().optional(),
+    summaryEn: z.string().optional(),
+    roleEn: z.string().optional(),
+    yearEn: z.string().optional(),
+    timelineEn: z.string().optional(),
+    outcomeEn: z.string().optional(),
     tags: z.array(z.enum(['product', 'design', 'archive', 'lab'])).default([]),
     featured: z.boolean().default(false),
     cover: z.string(),
     /** Beschreibender Alt-Text fürs Cover (Fallback: "<Titel> Cover") */
     coverAlt: z.string().optional(),
+    coverAltEn: z.string().optional(),
     /** Logo shown on project cards (preferred over cover) */
     logo: z.string().optional(),
     /** Animated logo — only played on card hover */
@@ -23,6 +31,7 @@ const work = defineCollection({
     gallery: z.array(z.string()).default([]),
     /** Beschreibende Alt-Texte, index-parallel zu gallery */
     galleryAlts: z.array(z.string()).optional(),
+    galleryAltsEn: z.array(z.string()).optional(),
     /** Long-form case study (sliced PDF/deck) rendered as one continuous document
         instead of a thumbnail gallery. Slices must be listed in reading order. */
     document: z
@@ -45,6 +54,7 @@ const work = defineCollection({
           gallery: z.array(z.string()).min(1),
           /** Beschreibende Alt-Texte, index-parallel zu gallery */
           alts: z.array(z.string()).optional(),
+          altsEn: z.array(z.string()).optional(),
         }),
       )
       .optional(),

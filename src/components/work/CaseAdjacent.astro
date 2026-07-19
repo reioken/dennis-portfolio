@@ -8,6 +8,8 @@ type WorkLite = {
     title: string;
     role: string;
     cover: string;
+    titleEn?: string;
+    roleEn?: string;
   };
 };
 
@@ -37,8 +39,8 @@ const label = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(
         <span data-lang="de">Vorher</span>
         <span data-lang="en">Prev</span>
       </span>
-      <span class="case-adjacent__title">{prev.data.title}</span>
-      <span class="case-adjacent__role">{prev.data.role}</span>
+      <span class="case-adjacent__title"><span data-lang="de">{prev.data.title}</span><span data-lang="en">{prev.data.titleEn ?? prev.data.title}</span></span>
+      <span class="case-adjacent__role"><span data-lang="de">{prev.data.role}</span><span data-lang="en">{prev.data.roleEn ?? prev.data.role}</span></span>
     </span>
   </a>
 
@@ -64,8 +66,8 @@ const label = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(
         <span data-lang="en">Next</span>
         <span class="case-adjacent__chev" aria-hidden="true">›</span>
       </span>
-      <span class="case-adjacent__title">{next.data.title}</span>
-      <span class="case-adjacent__role">{next.data.role}</span>
+      <span class="case-adjacent__title"><span data-lang="de">{next.data.title}</span><span data-lang="en">{next.data.titleEn ?? next.data.title}</span></span>
+      <span class="case-adjacent__role"><span data-lang="de">{next.data.role}</span><span data-lang="en">{next.data.roleEn ?? next.data.role}</span></span>
     </span>
     <span class="case-adjacent__rail" aria-hidden="true">
       <picture>

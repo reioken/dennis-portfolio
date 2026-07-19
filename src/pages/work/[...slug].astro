@@ -49,16 +49,22 @@ const galleryOnly = data.gallery
   .map((g, i) => ({ path: g.replace(/^\//, ''), alt: data.galleryAlts?.[i] }))
   .filter((g) => g.path !== data.cover.replace(/^\//, ''));
 
+const galleryOnlyEn = data.gallery
+  .map((g, i) => ({ path: g.replace(/^\//, ''), alt: data.galleryAltsEn?.[i] }))
+  .filter((g) => g.path !== data.cover.replace(/^\//, ''));
+
 const images = [
   {
     src: coverSrc,
     srcHi: coverHi,
     alt: data.coverAlt ?? `${data.title} Cover`,
+    altEn: data.coverAltEn ?? data.galleryAltsEn?.[0],
   },
   ...galleryOnly.map((g, i) => ({
     src: asset(g.path),
     srcHi: hiAsset(g.path),
     alt: g.alt ?? `${data.title} — ${i + 1}`,
+    altEn: galleryOnlyEn[i]?.alt,
   })),
 ];
 
@@ -78,6 +84,7 @@ const surfaces = (data.surfaces ?? []).map((surface) => ({
     src: asset(g),
     srcHi: hiAsset(g),
     alt: surface.alts?.[i] ?? `${data.title} ${surface.labelDe} — ${i + 1}`,
+    altEn: surface.altsEn?.[i],
   })),
 }));
 
@@ -132,16 +139,28 @@ const breadcrumbLd = {
           )
         }
         <p class="case-page__eyebrow">
-          <span>{data.role}</span>
+          <span>
+            <span data-lang="de">{data.role}</span>
+            <span data-lang="en">{data.roleEn ?? data.role}</span>
+          </span>
           {when && (
             <>
               <span class="case-page__dot" aria-hidden="true">·</span>
-              <span>{when}</span>
+              <span>
+                <span data-lang="de">{when}</span>
+                <span data-lang="en">{data.timelineEn ?? data.yearEn ?? when}</span>
+              </span>
             </>
           )}
         </p>
-        <h1 class="case-page__title">{data.title}</h1>
-        <p class="case-page__summary">{data.summary}</p>
+        <h1 class="case-page__title">
+          <span data-lang="de">{data.title}</span>
+          <span data-lang="en">{data.titleEn ?? data.title}</span>
+        </h1>
+        <p class="case-page__summary">
+          <span data-lang="de">{data.summary}</span>
+          <span data-lang="en">{data.summaryEn ?? data.summary}</span>
+        </p>
         {
           hasBody && (
             <div class="case-page__copy prose-case">
@@ -171,7 +190,10 @@ const breadcrumbLd = {
                 <span data-lang="de">Ergebnis</span>
                 <span data-lang="en">Outcome</span>
               </h2>
-              <p class="case-page__outcome">{data.outcome}</p>
+              <p class="case-page__outcome">
+                <span data-lang="de">{data.outcome}</span>
+                <span data-lang="en">{data.outcomeEn ?? data.outcome}</span>
+              </p>
             </div>
           )
         }

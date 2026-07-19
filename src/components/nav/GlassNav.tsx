@@ -6,7 +6,7 @@ import LangSwitch from '../i18n/LangSwitch';
 import { copy, type Lang } from '../../lib/i18n';
 
 type NavItem = { href: string; labelKey: keyof typeof copy.de.nav };
-type WorkLink = { href: string; title: string; tags?: string[] };
+type WorkLink = { href: string; title: string; titleEn?: string; tags?: string[] };
 
 type Props = {
   items: NavItem[];
@@ -128,7 +128,16 @@ export default function GlassNav({
     return path === h || path.startsWith(`${h}/`);
   };
 
-  const label = (key: NavItem['labelKey']) => copy[lang].nav[key];
+  /** Beide Sprachen ins Markup — die Nav steht damit schon vor der Hydration richtig da */
+  const label = (key: NavItem['labelKey']) =>
+    copy.de.nav[key] === copy.en.nav[key] ? (
+      copy.de.nav[key]
+    ) : (
+      <>
+        <span data-lang="de">{copy.de.nav[key]}</span>
+        <span data-lang="en">{copy.en.nav[key]}</span>
+      </>
+    );
 
   const panelTransition = reduce
     ? { duration: 0.12 }
@@ -205,7 +214,7 @@ export default function GlassNav({
             aria-controls="site-menu"
             onClick={() => setOpen((v) => !v)}
           >
-            <span className="sr-only">{copy[lang].nav.menu}</span>
+            <span className="sr-only"><span data-lang="de">{copy.de.nav.menu}</span><span data-lang="en">{copy.en.nav.menu}</span></span>
             <Icon name={open ? 'close' : 'menu'} size={18} weight="bold" className="text-[var(--text)]" />
           </button>
         </div>
@@ -307,7 +316,14 @@ export default function GlassNav({
                                   className={`nav-dropdown__link nav-dropdown__link--sub ${active ? 'is-active' : ''}`}
                                   onClick={() => setOpen(false)}
                                 >
-                                  {w.title}
+                                  {w.titleEn && w.titleEn !== w.title ? (
+                                    <>
+                                      <span data-lang="de">{w.title}</span>
+                                      <span data-lang="en">{w.titleEn}</span>
+                                    </>
+                                  ) : (
+                                    w.title
+                                  )}
                                 </a>
                               </motion.li>
                             );
