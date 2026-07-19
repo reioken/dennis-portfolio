@@ -7,10 +7,18 @@ export const site = {
   email: 'dennis@dennisbf.design',
   location: 'Raum Mannheim/Heidelberg',
   address: 'Deutschland',
-  /** Aktueller Status — verhindert unpassende Recruiter-Anfragen, schärft Freelance */
+  /** Status-Pill — klar: fest angestellt, keine Hire-Anfragen, Freelance ok */
   availability: {
-    de: 'Aktuell Art Director bei Floordirekt · offen für Freelance-Projekte',
-    en: 'Currently Art Director at Floordirekt · open for freelance projects',
+    de: {
+      role: 'Art Director bei Floordirekt',
+      noHire: 'keine Festanstellung',
+      freelance: 'Freelance willkommen',
+    },
+    en: {
+      role: 'Art Director at Floordirekt',
+      noHire: 'not open for hire',
+      freelance: 'freelance welcome',
+    },
   },
   /** Only for Impressum / Datenschutz (§ 5 TMG) — not shown on marketing pages */
   legalAddress: '68542 Heddesheim',

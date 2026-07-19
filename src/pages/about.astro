@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PortraitStage from '../components/about/PortraitStage';
+import AvailabilityStatus from '../components/brand/AvailabilityStatus.astro';
 import BrandLockup from '../components/brand/BrandLockup';
 import { site, skills, timeline, education, languages } from '../lib/site';
 import { copy } from '../lib/i18n';
@@ -9,7 +10,7 @@ import { p } from '../lib/paths';
 
 <BaseLayout
   title={`Über mich — ${site.name}`}
-  description={`${site.name} — Hobby-Softwareentwickler · Art Director & UI/UX Designer. 6+ Jahre Agentur und Inhouse: Floordirekt, NEXUS, Berry, Riftcast, Forever, performio.`}
+  description={`${site.name} — Hobby-Softwareentwickler · Art Director & UI/UX Designer. Fest bei Floordirekt, keine Festanstellung — Freelance willkommen.`}
 >
   <section class="section overflow-hidden pt-[calc(var(--nav-h)+2rem)]" data-block-id="about-intro" data-block-type="about-intro" data-block-source="native" data-block-label="About Intro">
     <div class="wrap">
@@ -28,11 +29,9 @@ import { p } from '../lib/paths';
             <span data-lang="de" data-edit="about.lead.de">{copy.de.about.lead}</span>
             <span data-lang="en" data-edit="about.lead.en">{copy.en.about.lead}</span>
           </p>
-          <p class="hero-status mb-8">
-            <span class="hero-status__dot" aria-hidden></span>
-            <span data-lang="de">{site.availability.de} · {site.location}</span>
-            <span data-lang="en">{site.availability.en} · Mannheim/Heidelberg area</span>
-          </p>
+          <div class="mb-9">
+            <AvailabilityStatus showLocation />
+          </div>
           <div class="flex flex-wrap gap-3">
             <a class="btn btn--primary" href={site.links.linkedin} target="_blank" rel="noreferrer">
               <span data-lang="de">{copy.de.about.linkedin}</span>

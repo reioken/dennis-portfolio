@@ -28,11 +28,11 @@ const META_EN = {
   },
   'about/': {
     title: 'About — Dennis Bierreth-Fernandez',
-    desc: 'Dennis Bierreth-Fernandez — hobby software developer, art director & UI/UX designer. 6+ years agency and in-house: Floordirekt, NEXUS, Berry, Riftcast, Forever, performio.',
+    desc: 'Dennis Bierreth-Fernandez — hobby software developer, art director & UI/UX designer. Full-time at Floordirekt, not open for hire — freelance welcome.',
   },
   'contact/': {
     title: 'Contact — Dennis Bierreth-Fernandez',
-    desc: 'Contact Dennis Bierreth-Fernandez — hobby software development, art direction, UX/UI, branding, video or product. Use the form or email directly.',
+    desc: 'Contact Dennis Bierreth-Fernandez for freelance — art direction, UX/UI, branding, video or product. Not open for full-time hire.',
   },
   'lab/': {
     title: 'Lab — Dennis Bierreth-Fernandez',

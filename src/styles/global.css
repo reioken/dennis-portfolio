@@ -402,29 +402,56 @@ button {
 .hero-copy {
   opacity: 1;
 }
-/* Verfügbarkeits-Pill im Hero + Contact */
+/* Verfügbarkeits-Pill — Hero / About / Contact */
 .hero-status {
   display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.5rem 0.95rem;
-  border-radius: 999px;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: min(100%, 38rem);
+  padding: 0.8rem 1.2rem;
+  border-radius: 1.15rem;
   border: 1px solid color-mix(in srgb, var(--stroke-hi) 80%, transparent);
-  background: color-mix(in srgb, var(--panel) 88%, transparent);
-  font-size: 0.8rem;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  font-size: 0.84rem;
   font-weight: 600;
   letter-spacing: 0.01em;
+  line-height: 1.55;
   color: var(--dim);
   text-transform: none;
 }
 .hero-status__dot {
   flex: 0 0 auto;
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.4rem;
   border-radius: 999px;
   background: #4ade80;
   box-shadow: 0 0 8px rgba(74, 222, 128, 0.7);
   animation: status-pulse 2.4s ease-in-out infinite;
+}
+.hero-status__body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.hero-status__lang {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0;
+  row-gap: 0.4rem;
+}
+.hero-status__sep {
+  margin-inline: 0.55rem;
+  opacity: 0.4;
+  font-weight: 500;
+}
+.hero-status__part--nohire {
+  color: color-mix(in srgb, var(--gold) 65%, var(--text));
+  font-weight: 700;
+}
+.hero-status__part--freelance {
+  color: color-mix(in srgb, #4ade80 50%, var(--text));
+  font-weight: 700;
 }
 @keyframes status-pulse {
   0%,
