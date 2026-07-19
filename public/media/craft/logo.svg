@@ -1,12 +1,23 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="Logos & Concepts">
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none" role="img" aria-label="Logos and Concepts">
   <defs>
-    <linearGradient id="cg" x1="28" y1="18" x2="92" y2="102" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ac8bfd"/>
-      <stop offset="0.5" stop-color="#4a82fe"/>
-      <stop offset="1" stop-color="#c8daf4"/>
+    <linearGradient id="craft-a" x1="36" y1="28" x2="118" y2="132" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c8b4ff"/>
+      <stop offset="0.45" stop-color="#7b8cff"/>
+      <stop offset="1" stop-color="#4a82fe"/>
+    </linearGradient>
+    <linearGradient id="craft-b" x1="70" y1="40" x2="120" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e8f0ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#4a82fe" stop-opacity="0.15"/>
     </linearGradient>
   </defs>
-  <circle cx="60" cy="60" r="46" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1"/>
-  <path d="M42 28 L78 28 L54 60 L82 92 L46 92 L46 28 Z" fill="url(#cg)" opacity="0.95"/>
-  <path d="M54 60 L78 28 L82 48 L62 68 Z" fill="#dcebff" opacity="0.35"/>
+  <!-- Clean geometric mark: layered brand shard (no blueprint clutter) -->
+  <path
+    d="M52 34h40c3.3 0 5.4 3.4 3.9 6.3L78 78l18.9 37.7c1.5 2.9-.6 6.3-3.9 6.3H52c-2.8 0-4.7-2.8-3.7-5.4L64 80 48.3 39.4C47.3 36.8 49.2 34 52 34Z"
+    fill="url(#craft-a)"
+  />
+  <path
+    d="M78 78l17.9-37.7c.7-1.4 2.5-1.9 3.8-1.1l14.2 8.2c1.6 1 1.9 3.2.6 4.6L94.2 78l20.3 25.9c1.3 1.6.7 4-1.2 4.8l-14.6 6.2c-1.5.6-3.2-.2-3.7-1.7L78 78Z"
+    fill="url(#craft-b)"
+  />
+  <circle cx="78" cy="78" r="5.5" fill="#f4f7ff"/>
 </svg>

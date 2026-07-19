@@ -597,6 +597,9 @@ a:hover .brand-mark--nav {
   animation: none !important;
   transform: none !important;
 }
+.project-card--compact .web-stack .web-stack__card {
+  animation: none !important;
+}
 .project-card--compact .nx-sp.is-live .nx-sp__aura,
 .project-card--compact .nx-sp.is-live .nx-sp__aura--core,
 .project-card--compact .nx-sp.is-live .nx-sp__rays,
@@ -683,6 +686,103 @@ a:hover .brand-mark--nav {
     animation: none !important;
     transform: none;
   }
+  .web-stack__card {
+    animation: none !important;
+  }
+}
+
+/* —— Website Designs stacked previews —— */
+.web-stack {
+  width: min(100%, 340px);
+  height: min(100%, 210px);
+  max-width: 92%;
+  max-height: 86%;
+  display: grid;
+  place-items: center;
+}
+.web-stack__stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.web-stack__card {
+  position: absolute;
+  left: 18%;
+  top: 14%;
+  width: 64%;
+  aspect-ratio: 16 / 10;
+  border-radius: 11px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, #fff 22%, transparent);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.45),
+    0 2px 0 color-mix(in srgb, #fff 10%, transparent) inset;
+  background: #0c0e14;
+  will-change: transform;
+}
+.web-stack__card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  pointer-events: none;
+}
+.web-stack__card.c1 {
+  z-index: 1;
+  transform: translate(-18%, 12%) rotate(-9deg) scale(0.88);
+  animation: web-stack-drift-1 7.2s ease-in-out infinite;
+}
+.web-stack__card.c2 {
+  z-index: 2;
+  transform: translate(-6%, 5%) rotate(-3.5deg) scale(0.93);
+  animation: web-stack-drift-2 8s ease-in-out infinite;
+}
+.web-stack__card.c3 {
+  z-index: 3;
+  transform: translate(6%, -2%) rotate(3deg) scale(0.97);
+  animation: web-stack-drift-3 7.6s ease-in-out infinite;
+}
+.web-stack__card.c4 {
+  z-index: 4;
+  transform: translate(16%, -10%) rotate(8deg) scale(1);
+  animation: web-stack-drift-4 6.8s ease-in-out infinite;
+}
+.web-stack.is-hot .web-stack__card.c1 { animation-name: web-stack-hot-1; }
+.web-stack.is-hot .web-stack__card.c2 { animation-name: web-stack-hot-2; }
+.web-stack.is-hot .web-stack__card.c3 { animation-name: web-stack-hot-3; }
+.web-stack.is-hot .web-stack__card.c4 { animation-name: web-stack-hot-4; }
+@keyframes web-stack-drift-1 {
+  0%, 100% { transform: translate(-18%, 12%) rotate(-9deg) scale(0.88); }
+  50% { transform: translate(-20%, 8%) rotate(-10deg) scale(0.9); }
+}
+@keyframes web-stack-drift-2 {
+  0%, 100% { transform: translate(-6%, 5%) rotate(-3.5deg) scale(0.93); }
+  50% { transform: translate(-4%, 2%) rotate(-2deg) scale(0.95); }
+}
+@keyframes web-stack-drift-3 {
+  0%, 100% { transform: translate(6%, -2%) rotate(3deg) scale(0.97); }
+  50% { transform: translate(8%, -5%) rotate(4deg) scale(0.99); }
+}
+@keyframes web-stack-drift-4 {
+  0%, 100% { transform: translate(16%, -10%) rotate(8deg) scale(1); }
+  50% { transform: translate(18%, -13%) rotate(9deg) scale(1.02); }
+}
+@keyframes web-stack-hot-1 {
+  0%, 100% { transform: translate(-26%, 16%) rotate(-12deg) scale(0.9); }
+  50% { transform: translate(-28%, 12%) rotate(-13deg) scale(0.92); }
+}
+@keyframes web-stack-hot-2 {
+  0%, 100% { transform: translate(-10%, 6%) rotate(-5deg) scale(0.95); }
+  50% { transform: translate(-8%, 3%) rotate(-3.5deg) scale(0.97); }
+}
+@keyframes web-stack-hot-3 {
+  0%, 100% { transform: translate(10%, -4%) rotate(5deg) scale(0.99); }
+  50% { transform: translate(12%, -7%) rotate(6deg) scale(1.01); }
+}
+@keyframes web-stack-hot-4 {
+  0%, 100% { transform: translate(24%, -14%) rotate(11deg) scale(1.03); }
+  50% { transform: translate(26%, -17%) rotate(12deg) scale(1.05); }
 }
 
 /* —— NEXUS diamond — ambient crystal float + hover flex —— */

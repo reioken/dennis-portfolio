@@ -22,6 +22,7 @@ const LOGO_LIVE_TOKENS = new Set([
   'riftcast-cast',
   'mina-heart',
   'fd-flash',
+  'websites-stack',
 ]);
 
 /** Resolve logoLive: keep motion tokens, asset-prefix file paths. */

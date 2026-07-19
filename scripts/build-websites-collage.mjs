@@ -1,3 +1,6 @@
+/**
+ * Website Designs fallback mark — stacked client websites (websites only).
+ */
 import sharp from 'sharp';
 import path from 'node:path';
 
@@ -9,54 +12,45 @@ const files = [
   'bouche-cover.webp',
 ];
 
-const W = 1600;
+const W = 1200;
 const H = 900;
-const marginX = 56;
-const gap = 16;
-const cardW = Math.floor((W - marginX * 2 - gap * (files.length - 1)) / files.length);
-const cardH = Math.round(cardW * (875 / 1400));
-const totalW = files.length * cardW + (files.length - 1) * gap;
-const startX = Math.round((W - totalW) / 2);
-const startY = Math.round((H - cardH) / 2);
-const radius = 14;
+const cardW = 520;
+const cardH = Math.round(cardW * 0.62);
+const radius = 16;
 
 const bg = await sharp({
   create: {
     width: W,
     height: H,
-    channels: 3,
-    background: { r: 10, g: 12, b: 20 },
+    channels: 4,
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
   },
 })
   .png()
   .toBuffer();
 
-const glowSvg = Buffer.from(`
-<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <radialGradient id="g" cx="50%" cy="48%" r="52%">
-      <stop offset="0%" stop-color="#4a82fe" stop-opacity="0.2"/>
-      <stop offset="50%" stop-color="#ac8bfd" stop-opacity="0.09"/>
-      <stop offset="100%" stop-color="#0a0c14" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="100%" height="100%" fill="url(#g)"/>
-</svg>`);
+const layouts = [
+  { x: 180, y: 220, rot: -10, scale: 0.9 },
+  { x: 280, y: 180, rot: -4, scale: 0.94 },
+  { x: 380, y: 140, rot: 3, scale: 0.97 },
+  { x: 470, y: 100, rot: 8, scale: 1 },
+];
 
-const composites = [{ input: glowSvg, top: 0, left: 0 }];
+const composites = [];
 
 for (let i = 0; i < files.length; i++) {
-  const x = startX + i * (cardW + gap);
-  const y = startY + (i % 2 === 0 ? -8 : 10);
+  const { x, y, rot, scale } = layouts[i];
+  const w = Math.round(cardW * scale);
+  const h = Math.round(cardH * scale);
 
   const resized = await sharp(path.join(dir, files[i]))
-    .resize(cardW, cardH, { fit: 'cover', position: 'top' })
+    .resize(w, h, { fit: 'cover', position: 'top' })
     .png()
     .toBuffer();
 
   const mask = Buffer.from(`
-<svg width="${cardW}" height="${cardH}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="${cardW}" height="${cardH}" rx="${radius}" ry="${radius}" fill="#fff"/>
+<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${w}" height="${h}" rx="${radius}" ry="${radius}" fill="#fff"/>
 </svg>`);
 
   const rounded = await sharp(resized)
@@ -64,48 +58,57 @@ for (let i = 0; i < files.length; i++) {
     .png()
     .toBuffer();
 
-  const shadow = await sharp({
+  const stroke = Buffer.from(`
+<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${radius}"
+    fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+</svg>`);
+
+  const framed = await sharp(rounded)
+    .composite([{ input: stroke }])
+    .png()
+    .toBuffer();
+
+  // Rotate on transparent canvas larger than card
+  const pad = 80;
+  const canvasW = w + pad * 2;
+  const canvasH = h + pad * 2;
+  const rotated = await sharp({
     create: {
-      width: cardW + 20,
-      height: cardH + 24,
+      width: canvasW,
+      height: canvasH,
       channels: 4,
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite([
-      {
-        input: Buffer.from(`
-<svg width="${cardW + 20}" height="${cardH + 24}" xmlns="http://www.w3.org/2000/svg">
-  <rect x="6" y="8" width="${cardW}" height="${cardH}" rx="${radius}" fill="black" opacity="0.5"/>
-</svg>`),
-      },
-    ])
-    .blur(9)
+    .composite([{ input: framed, left: pad, top: pad }])
     .png()
-    .toBuffer();
+    .toBuffer()
+    .then((buf) =>
+      sharp(buf)
+        .rotate(rot, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .png()
+        .toBuffer(),
+    );
 
-  const stroke = Buffer.from(`
-<svg width="${cardW}" height="${cardH}" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0.75" y="0.75" width="${cardW - 1.5}" height="${cardH - 1.5}" rx="${radius}"
-    fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-</svg>`);
-
-  composites.push({ input: shadow, left: x - 3, top: y - 1 });
-  composites.push({ input: rounded, left: x, top: y });
-  composites.push({ input: stroke, left: x, top: y });
+  const meta = await sharp(rotated).metadata();
+  composites.push({
+    input: rotated,
+    left: Math.round(x - (meta.width - w) / 2),
+    top: Math.round(y - (meta.height - h) / 2),
+  });
 }
 
 const composed = await sharp(bg).composite(composites).png().toBuffer();
 
-await sharp(composed).webp({ quality: 86 }).toFile(path.join(dir, 'logo.webp'));
-await sharp(composed).avif({ quality: 68 }).toFile(path.join(dir, 'logo.avif'));
+await sharp(composed).webp({ quality: 88, alphaQuality: 95 }).toFile(path.join(dir, 'stack.webp'));
+await sharp(composed).avif({ quality: 70 }).toFile(path.join(dir, 'stack.avif'));
+await sharp(composed).webp({ quality: 88, alphaQuality: 95 }).toFile(path.join(dir, 'logo.webp'));
+await sharp(composed).avif({ quality: 70 }).toFile(path.join(dir, 'logo.avif'));
 await sharp(composed)
+  .flatten({ background: { r: 12, g: 14, b: 22 } })
   .resize(1400, 875, { fit: 'cover' })
   .webp({ quality: 86 })
   .toFile(path.join(dir, 'collage-cover.webp'));
-await sharp(composed)
-  .resize(1400, 875, { fit: 'cover' })
-  .avif({ quality: 68 })
-  .toFile(path.join(dir, 'collage-cover.avif'));
 
-console.log('[websites-collage]', { cardW, cardH, count: files.length });
+console.log('[websites-stack]', { count: files.length, out: 'stack.webp' });

@@ -6,6 +6,7 @@ import NexusSplashMark from './NexusSplashMark';
 import RiftcastLiveLogo from './RiftcastLiveLogo';
 import MinaLiveLogo from './MinaLiveLogo';
 import FdStudioLiveLogo from './FdStudioLiveLogo';
+import WebsitesStackLogo from './WebsitesStackLogo';
 import { toAvif } from '../../lib/img';
 
 /** Tag slugs are data values — show localized labels on the cards. */
@@ -171,6 +172,12 @@ export default function ProjectCard({
                   active={liveActive}
                   title={coverAlt ?? `${title} logo`}
                   className={`project-logo-panel__mark project-logo-panel__mark--live${ambient ? ' is-ambient' : ''}`}
+                />
+              ) : logoLive === 'websites-stack' ? (
+                <WebsitesStackLogo
+                  active={liveActive}
+                  title={coverAlt ?? `${title} logo`}
+                  className="project-logo-panel__mark project-logo-panel__mark--live"
                 />
               ) : logoLive && !reduce ? (
                 <AnimatedLogo
