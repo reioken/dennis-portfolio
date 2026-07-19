@@ -166,7 +166,9 @@ const personLd = {
               }
             }
           },
-          { rootMargin: '0px 0px -10% 0px' },
+          // Großzügiger Vorlauf: Inhalte werden deutlich vor dem Viewport enthüllt,
+          // damit schnelles Scrollen/Crawler nie leere Sektionen sehen
+          { rootMargin: '0px 0px 35% 0px' },
         );
         const vh = window.innerHeight;
         for (const el of els) {

@@ -280,6 +280,13 @@ button {
 .contact-form__field textarea[aria-invalid='true'] {
   border-color: color-mix(in srgb, #ff8b8b 55%, var(--stroke));
 }
+.contact-form__field-error {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: color-mix(in srgb, #ff8b8b 78%, var(--text));
+}
 .contact-form__field input:focus,
 .contact-form__field textarea:focus {
   border-color: color-mix(in srgb, var(--ice) 45%, var(--stroke));

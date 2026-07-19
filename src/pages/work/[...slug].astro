@@ -46,19 +46,19 @@ function hiAsset(sitePath: string): string | undefined {
 const coverSrc = asset(data.cover);
 const coverHi = hiAsset(data.cover);
 const galleryOnly = data.gallery
-  .map((g) => g.replace(/^\//, ''))
-  .filter((g) => g !== data.cover.replace(/^\//, ''));
+  .map((g, i) => ({ path: g.replace(/^\//, ''), alt: data.galleryAlts?.[i] }))
+  .filter((g) => g.path !== data.cover.replace(/^\//, ''));
 
 const images = [
   {
     src: coverSrc,
     srcHi: coverHi,
-    alt: `${data.title} Cover`,
+    alt: data.coverAlt ?? `${data.title} Cover`,
   },
   ...galleryOnly.map((g, i) => ({
-    src: asset(g),
-    srcHi: hiAsset(g),
-    alt: `${data.title} — ${i + 1}`,
+    src: asset(g.path),
+    srcHi: hiAsset(g.path),
+    alt: g.alt ?? `${data.title} — ${i + 1}`,
   })),
 ];
 
@@ -77,7 +77,7 @@ const surfaces = (data.surfaces ?? []).map((surface) => ({
   images: surface.gallery.map((g, i) => ({
     src: asset(g),
     srcHi: hiAsset(g),
-    alt: `${data.title} ${surface.labelDe} — ${i + 1}`,
+    alt: surface.alts?.[i] ?? `${data.title} ${surface.labelDe} — ${i + 1}`,
   })),
 }));
 

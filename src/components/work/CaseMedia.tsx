@@ -95,7 +95,7 @@ export default function CaseMedia({
             }
             initial={reduce ? false : { opacity: 0, y: 18 }}
             whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-8% 0px' }}
+            viewport={{ once: true, margin: '0px 0px 240px 0px' }}
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="shot-gallery__cover-panel glass-panel">
@@ -146,7 +146,7 @@ export default function CaseMedia({
                     }
                     initial={reduce ? false : { opacity: 0, y: 22, scale: 0.985 }}
                     whileInView={reduce ? undefined : { opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true, margin: '-6% 0px' }}
+                    viewport={{ once: true, margin: '0px 0px 240px 0px' }}
                     transition={{
                       duration: 0.5,
                       delay: reduce ? 0 : Math.min(i * 0.045, 0.28),

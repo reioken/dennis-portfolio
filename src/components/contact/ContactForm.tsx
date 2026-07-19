@@ -24,16 +24,22 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type ErrorKey = 'required' | 'invalid_email' | 'send_failed';
 
+type FieldErrorKey = 'required' | 'invalid_email';
+
 export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props) {
   const [status, setStatus] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
   const [errorKey, setErrorKey] = useState<ErrorKey | ''>('');
-  const [invalidFields, setInvalidFields] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, FieldErrorKey>>({});
   const formRef = useRef<HTMLFormElement>(null);
 
   function fail(key: ErrorKey, fields: string[]) {
     setStatus('err');
     setErrorKey(key);
-    setInvalidFields(fields);
+    const map: Record<string, FieldErrorKey> = {};
+    for (const f of fields) {
+      map[f] = key === 'invalid_email' && f === 'email' ? 'invalid_email' : 'required';
+    }
+    setFieldErrors(map);
     if (fields.length && formRef.current) {
       const first = formRef.current.querySelector<HTMLElement>(`[name="${fields[0]}"]`);
       first?.focus();
@@ -45,8 +51,29 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
     if (status === 'ok' || status === 'err') {
       setStatus('idle');
       setErrorKey('');
-      setInvalidFields([]);
+      setFieldErrors({});
     }
+  }
+
+  /** Per-field inline error, linked via aria-describedby. */
+  function FieldError({ field }: { field: string }) {
+    const kind = fieldErrors[field];
+    if (!kind) return null;
+    return (
+      <span className="contact-form__field-error" id={`fe-${field}`}>
+        {kind === 'invalid_email' ? (
+          <>
+            <span data-lang="de">Bitte gültige E-Mail-Adresse angeben.</span>
+            <span data-lang="en">Please enter a valid email address.</span>
+          </>
+        ) : (
+          <>
+            <span data-lang="de">Bitte ausfüllen.</span>
+            <span data-lang="en">This field is required.</span>
+          </>
+        )}
+      </span>
+    );
   }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -102,7 +129,7 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
     }
   }
 
-  const isInvalid = (field: string) => invalidFields.includes(field);
+  const isInvalid = (field: string) => Boolean(fieldErrors[field]);
 
   const errorText = (key: ErrorKey | '') => {
     const pick = (c: Copy) =>
@@ -146,7 +173,9 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
             required
             maxLength={80}
             aria-invalid={isInvalid('name') || undefined}
+            aria-describedby={isInvalid('name') ? 'fe-name' : undefined}
           />
+          <FieldError field="name" />
         </label>
         <label className="contact-form__field">
           <span>
@@ -160,7 +189,9 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
             required
             maxLength={160}
             aria-invalid={isInvalid('email') || undefined}
+            aria-describedby={isInvalid('email') ? 'fe-email' : undefined}
           />
+          <FieldError field="email" />
         </label>
       </div>
 
@@ -183,7 +214,9 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
           rows={6}
           maxLength={4000}
           aria-invalid={isInvalid('message') || undefined}
+          aria-describedby={isInvalid('message') ? 'fe-message' : undefined}
         />
+        <FieldError field="message" />
       </label>
 
       <div className="contact-form__actions">

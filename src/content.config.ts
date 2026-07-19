@@ -14,11 +14,15 @@ const work = defineCollection({
     tags: z.array(z.enum(['product', 'design', 'archive', 'lab'])).default([]),
     featured: z.boolean().default(false),
     cover: z.string(),
+    /** Beschreibender Alt-Text fürs Cover (Fallback: "<Titel> Cover") */
+    coverAlt: z.string().optional(),
     /** Logo shown on project cards (preferred over cover) */
     logo: z.string().optional(),
     /** Animated logo — only played on card hover */
     logoLive: z.string().optional(),
     gallery: z.array(z.string()).default([]),
+    /** Beschreibende Alt-Texte, index-parallel zu gallery */
+    galleryAlts: z.array(z.string()).optional(),
     /** Long-form case study (sliced PDF/deck) rendered as one continuous document
         instead of a thumbnail gallery. Slices must be listed in reading order. */
     document: z
@@ -39,6 +43,8 @@ const work = defineCollection({
           blurbEn: z.string().optional(),
           variant: z.enum(['phone', 'desktop']).default('desktop'),
           gallery: z.array(z.string()).min(1),
+          /** Beschreibende Alt-Texte, index-parallel zu gallery */
+          alts: z.array(z.string()).optional(),
         }),
       )
       .optional(),
