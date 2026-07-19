@@ -8,42 +8,42 @@ Basierend auf dem Audit vom 19. Juli 2026 (`audit_dennisbf_design.md`). Priorisi
 
 Diese drei Punkte verhindern aktuell, dass Anfragen überhaupt ankommen oder dass Recruiter Kontakt aufnehmen.
 
-- [ ] **Kontaktformular ohne JS zum Laufen bringen** — `<form>` braucht `action`/`method`, die an den bestehenden Cloudflare-Worker-Endpoint posten; Client-JS bleibt als Progressive Enhancement (Validierung, ohne Reload). *Aufwand: M*
-- [ ] **E-Mail-Link ohne JS reparieren** — Cloudflare-Email-Obfuscation für den Contact-Link deaktivieren oder durch einfaches, funktionierendes Muster (z. B. `<noscript>`-Fallback mit echtem `mailto:`) ersetzen. *Aufwand: S*
-- [ ] **Beschäftigungsstatus klarstellen** — ein Satz im Hero/Contact, der eindeutig sagt: aktuell Art Director bei Floordirekt, **keine** Festanstellung gesucht, aber offen für Freelance-Projekte. Z. B. "Aktuell Art Director bei Floordirekt · offen für Freelance-Projekte · Mannheim/Heidelberg" (Vorbild: Lu Yu, [luyu.co](https://luyu.co/)). Verhindert unpassende Recruiter-Anfragen und schärft Ziel 2. *Aufwand: S*
+- [x] **Kontaktformular ohne JS zum Laufen bringen** — `<form>` braucht `action`/`method`, die an den bestehenden Cloudflare-Worker-Endpoint posten; Client-JS bleibt als Progressive Enhancement (Validierung, ohne Reload). *Aufwand: M*
+- [x] **E-Mail-Link ohne JS reparieren** — Cloudflare-Email-Obfuscation für den Contact-Link deaktivieren oder durch einfaches, funktionierendes Muster (z. B. `<noscript>`-Fallback mit echtem `mailto:`) ersetzen. *Aufwand: S*
+- [x] **Beschäftigungsstatus klarstellen** — ein Satz im Hero/Contact, der eindeutig sagt: aktuell Art Director bei Floordirekt, **keine** Festanstellung gesucht, aber offen für Freelance-Projekte. Z. B. "Aktuell Art Director bei Floordirekt · offen für Freelance-Projekte · Mannheim/Heidelberg" (Vorbild: Lu Yu, [luyu.co](https://luyu.co/)). Verhindert unpassende Recruiter-Anfragen und schärft Ziel 2. *Aufwand: S*
 
 ---
 
 ## Phase 1 — Quick Wins (alle < 1h, in einem Batch umsetzbar)
 
-- [ ] Standortangabe auf `/contact/` von "Deutschland" auf "Mannheim/Heidelberg-Raum" konkretisieren
+- [x] Standortangabe auf `/contact/` von "Deutschland" auf "Mannheim/Heidelberg-Raum" konkretisieren
 - [ ] Cloudflare Web Analytics im Dashboard deaktivieren (behebt CSP-Konsolenfehler)
-- [ ] `fetchpriority="high"` auf das echte Hero-/LCP-Bild setzen, `low` nur für den Rest
-- [ ] Mobile-Menü-Hintergrund undurchsichtig machen (Opazität/Blur erhöhen, behebt Text-Overlap)
-- [ ] `address`-Feld (PostalAddress, Region Rhein-Neckar) im Person-JSON-LD ergänzen
-- [ ] Interne Links direkt mit trailing slash versehen (spart 308-Redirect-Hop)
-- [ ] Toten `lockSite`/`authKey`-Code aus dem Production-Bundle entfernen
-- [ ] Desktop-Hamburger neben Vollnavigation entfernen
-- [ ] `--faint`-Textfarbe (`#727990`) geringfügig aufhellen für sichere AA-Konformität
-- [ ] `access-control-allow-origin: *` von HTML-Responses entfernen, nur auf API-Routen belassen
+- [x] `fetchpriority="high"` auf das echte Hero-/LCP-Bild setzen, `low` nur für den Rest
+- [x] Mobile-Menü-Hintergrund undurchsichtig machen (Opazität/Blur erhöhen, behebt Text-Overlap)
+- [x] `address`-Feld (PostalAddress, Region Rhein-Neckar) im Person-JSON-LD ergänzen
+- [x] Interne Links direkt mit trailing slash versehen (spart 308-Redirect-Hop)
+- [x] Toten `lockSite`/`authKey`-Code aus dem Production-Bundle entfernen
+- [x] Desktop-Hamburger neben Vollnavigation entfernen
+- [x] `--faint`-Textfarbe (`#727990`) geringfügig aufhellen für sichere AA-Konformität
+- [x] `access-control-allow-origin: *` von HTML-Responses entfernen, nur auf API-Routen belassen
 
 ---
 
 ## Phase 2 — Hoch-Priorität (Accessibility & SEO-Substanz)
 
-- [ ] **Alt-Texte nachziehen**: alle Bilder auf `/work/nexus/` (18 von 19 fehlen) und 33 der 36 Homepage-Bilder — nach Vorbild von `/work/mina/` (bereits vorbildlich)
-- [ ] **Formular-Fehlermeldungen pro Feld**: statt einer Sammelmeldung, jedes invalide Feld per `aria-describedby` mit eigenem Fehlertext verknüpfen
-- [ ] **Scroll-Reveal-Galerie robuster machen**: `IntersectionObserver`-`rootMargin` großzügiger setzen (z. B. `200% 0px`), damit Crawler/schnelles Scrollen nichts verpassen
-- [ ] **Sitemap um `lastmod`** pro URL ergänzen (automatisch aus Build-Zeitstempel)
+- [x] **Alt-Texte nachziehen**: alle Bilder auf `/work/nexus/` (18 von 19 fehlen) und 33 der 36 Homepage-Bilder — nach Vorbild von `/work/mina/` (bereits vorbildlich)
+- [x] **Formular-Fehlermeldungen pro Feld**: statt einer Sammelmeldung, jedes invalide Feld per `aria-describedby` mit eigenem Fehlertext verknüpfen
+- [x] **Scroll-Reveal-Galerie robuster machen**: `IntersectionObserver`-`rootMargin` großzügiger setzen (z. B. `200% 0px`), damit Crawler/schnelles Scrollen nichts verpassen
+- [x] **Sitemap um `lastmod`** pro URL ergänzen (automatisch aus Build-Zeitstempel)
 
 ---
 
 ## Phase 3 — Content-Überarbeitung (größter Hebel für Ziel 1 + 3)
 
-- [ ] **NEXUS-Case auf Problem→Prozess→Outcome umbauen**: mindestens 1-2 echte oder plausibel approximierte Kennzahlen ergänzen (Anzahl Stores/Installationen, Zeitersparnis, Fehlerquote vorher/nachher)
-- [ ] Gleiches Schema für Riftcast und Berry, sobald NEXUS als Vorlage steht
-- [ ] **Trust-Leiste ergänzen**: Firmennamen/Rollen (Floordirekt, performio, cyberWear, Decathlon) prominent auf About oder Homepage platzieren — ohne dass Zitate nötig sind
-- [ ] Formulierung auf About-Seite präzisieren: aktuelle Festanstellung bei Floordirekt als Art Director klar benennen und explizit machen, dass nur Freelance-Anfragen gesucht werden, keine neue Festanstellung (siehe Phase 0)
+- [x] **NEXUS-Case auf Problem→Prozess→Outcome umbauen**: mindestens 1-2 echte oder plausibel approximierte Kennzahlen ergänzen (Anzahl Stores/Installationen, Zeitersparnis, Fehlerquote vorher/nachher)
+- [x] Gleiches Schema für Riftcast und Berry, sobald NEXUS als Vorlage steht
+- [x] **Trust-Leiste ergänzen**: Firmennamen/Rollen (Floordirekt, performio, cyberWear, Decathlon) prominent auf About oder Homepage platzieren — ohne dass Zitate nötig sind
+- [x] Formulierung auf About-Seite präzisieren: aktuelle Festanstellung bei Floordirekt als Art Director klar benennen und explizit machen, dass nur Freelance-Anfragen gesucht werden, keine neue Festanstellung (siehe Phase 0)
 
 ---
 

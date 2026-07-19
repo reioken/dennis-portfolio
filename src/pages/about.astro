@@ -24,9 +24,14 @@ import { p } from '../lib/paths';
               <span data-lang="en" data-edit="about.role.en">{copy.en.about.role}</span>
             </span>
           </h1>
-          <p class="mb-8 max-w-[42ch] text-[1.15rem] normal-case tracking-normal text-[var(--dim)]">
+          <p class="mb-5 max-w-[42ch] text-[1.15rem] normal-case tracking-normal text-[var(--dim)]">
             <span data-lang="de" data-edit="about.lead.de">{copy.de.about.lead}</span>
             <span data-lang="en" data-edit="about.lead.en">{copy.en.about.lead}</span>
+          </p>
+          <p class="hero-status mb-8">
+            <span class="hero-status__dot" aria-hidden></span>
+            <span data-lang="de">{site.availability.de} · {site.location}</span>
+            <span data-lang="en">{site.availability.en} · Mannheim/Heidelberg area</span>
           </p>
           <div class="flex flex-wrap gap-3">
             <a class="btn btn--primary" href={site.links.linkedin} target="_blank" rel="noreferrer">
