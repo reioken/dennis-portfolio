@@ -3,26 +3,36 @@ import type { Lang } from '../../lib/i18n';
 
 const STORAGE_KEY = 'portfolio-lang';
 
-function applyLang(lang: Lang) {
-  document.documentElement.dataset.lang = lang;
-  document.documentElement.lang = lang;
-  localStorage.setItem(STORAGE_KEY, lang);
-}
-
+/**
+ * Sprachwechsel über echte Routen: DE lebt auf /…, EN auf /en/….
+ * Die URL ist die Quelle der Wahrheit — html[data-lang] wird serverseitig
+ * pro Route gesetzt; der Toggle navigiert zur Schwester-URL.
+ */
 export default function LangSwitch() {
   const [lang, setLang] = useState<Lang>('de');
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const next: Lang = saved === 'en' ? 'en' : 'de';
-    setLang(next);
-    applyLang(next);
+    setLang(document.documentElement.dataset.lang === 'en' ? 'en' : 'de');
   }, []);
 
   const toggle = () => {
-    const next: Lang = lang === 'de' ? 'en' : 'de';
-    setLang(next);
-    applyLang(next);
+    // Sprache zur Klickzeit aus dem DOM lesen (serverseitig pro Route gesetzt) —
+    // der React-State könnte direkt nach der Hydration noch beim Default stehen
+    const current: Lang = document.documentElement.dataset.lang === 'en' ? 'en' : 'de';
+    const next: Lang = current === 'de' ? 'en' : 'de';
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      /* Speicherung optional */
+    }
+    const { pathname, search, hash } = window.location;
+    const target =
+      next === 'en'
+        ? pathname.startsWith('/en/') || pathname === '/en'
+          ? pathname
+          : `/en${pathname === '/' ? '/' : pathname}`
+        : pathname.replace(/^\/en(?=\/|$)/, '') || '/';
+    window.location.assign(`${target}${search}${hash}`);
   };
 
   return (

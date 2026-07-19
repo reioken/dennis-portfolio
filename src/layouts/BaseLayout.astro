@@ -66,17 +66,8 @@ const personLd = {
     <link rel="icon" type="image/svg+xml" href={`${favicon}?v=3`} />
     <link rel="icon" type="image/png" sizes="32x32" href={`${p('favicon-32.png')}?v=3`} />
     <link rel="apple-touch-icon" href={`${appleIcon}?v=3`} />
-    <script is:inline>
-      (function () {
-        try {
-          var lang = localStorage.getItem('portfolio-lang');
-          if (lang === 'en' || lang === 'de') {
-            document.documentElement.dataset.lang = lang;
-            document.documentElement.lang = lang;
-          }
-        } catch (e) {}
-      })();
-    </script>
+    {/* Sprache kommt aus der Route: DE auf /…, EN auf /en/… (siehe scripts/en-routes.mjs).
+        Kein localStorage-Override mehr — die URL ist die Quelle der Wahrheit. */}
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={site.name} />
     <meta property="og:title" content={title} />
