@@ -48,22 +48,29 @@ export default function BerryLiveLogo({
       >
         <defs>
           <linearGradient id={`${uid}-rim`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#e8fff2" stopOpacity="0.05" />
-            <stop offset="32%" stopColor="#9dffc8" stopOpacity="0.95" />
-            <stop offset="48%" stopColor="#ffffff" stopOpacity="1" />
-            <stop offset="64%" stopColor="#5ce6a0" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="#e8fff2" stopOpacity="0.05" />
+            <stop offset="0%" stopColor="#e8fff2" stopOpacity="0" />
+            <stop offset="34%" stopColor="#9dffc8" stopOpacity="0.35" />
+            <stop offset="48%" stopColor="#f4fffa" stopOpacity="0.55" />
+            <stop offset="62%" stopColor="#5ce6a0" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#e8fff2" stopOpacity="0" />
             {ambient ? (
               <animateTransform
                 attributeName="gradientTransform"
                 type="rotate"
                 from="0 0.5 0.5"
                 to="360 0.5 0.5"
-                dur="8s"
+                dur="10s"
                 repeatCount="indefinite"
               />
             ) : null}
           </linearGradient>
+          <filter id={`${uid}-soft`} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.1" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
         <rect className="bot-shell" x="2" y="45" width="10" height="21" rx="5" />
         <rect className="bot-accent" x="2" y="55" width="10" height="11" rx="5" />
@@ -81,7 +88,7 @@ export default function BerryLiveLogo({
           <path className="bot-accent2" d="M60 12 C66 4 78 3 84 10 C80 20 66 20 60 12 Z" />
         </g>
         <ellipse className="bot-head" cx="48" cy="56" rx="35" ry="31" strokeWidth="1.5" />
-        {/* Soft prism rim — light walks the silhouette */}
+        {/* Soft premium rim — bloom + walking edge catch */}
         <ellipse
           cx="48"
           cy="56"
@@ -89,8 +96,9 @@ export default function BerryLiveLogo({
           ry="31"
           fill="none"
           stroke={`url(#${uid}-rim)`}
-          strokeWidth="3.2"
-          opacity="0.35"
+          strokeWidth="3.6"
+          opacity="0.28"
+          filter={`url(#${uid}-soft)`}
           style={{ mixBlendMode: 'screen' }}
         />
         <ellipse
@@ -100,8 +108,8 @@ export default function BerryLiveLogo({
           ry="31"
           fill="none"
           stroke={`url(#${uid}-rim)`}
-          strokeWidth="1.1"
-          opacity="0.85"
+          strokeWidth="0.85"
+          opacity="0.42"
           style={{ mixBlendMode: 'screen' }}
         />
         <rect
@@ -121,8 +129,9 @@ export default function BerryLiveLogo({
           rx="14"
           fill="none"
           stroke={`url(#${uid}-rim)`}
-          strokeWidth="2.4"
-          opacity="0.4"
+          strokeWidth="2.8"
+          opacity="0.26"
+          filter={`url(#${uid}-soft)`}
           style={{ mixBlendMode: 'screen' }}
         />
         <rect
@@ -133,8 +142,8 @@ export default function BerryLiveLogo({
           rx="14"
           fill="none"
           stroke={`url(#${uid}-rim)`}
-          strokeWidth="0.9"
-          opacity="0.9"
+          strokeWidth="0.7"
+          opacity="0.4"
           style={{ mixBlendMode: 'screen' }}
         />
         <path

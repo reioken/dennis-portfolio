@@ -32,21 +32,25 @@ export default function RiftcastLiveLogo({
           </linearGradient>
           <linearGradient id={`${gradId}-rim`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64">
             <stop offset="0" stopColor="#B69CFF" stopOpacity="0" />
-            <stop offset="0.4" stopColor="#D8DEFF" stopOpacity="0.35" />
-            <stop offset="0.5" stopColor="#FFFFFF" stopOpacity="0.9" />
-            <stop offset="0.65" stopColor="#8EC5FF" stopOpacity="0.35" />
+            <stop offset="0.38" stopColor="#D8DEFF" stopOpacity="0.18" />
+            <stop offset="0.5" stopColor="#F4F6FF" stopOpacity="0.48" />
+            <stop offset="0.62" stopColor="#8EC5FF" stopOpacity="0.2" />
             <stop offset="1" stopColor="#B69CFF" stopOpacity="0" />
             <animateTransform
               attributeName="gradientTransform"
               type="rotate"
               from="0 32 32"
               to="360 32 32"
-              dur="7.5s"
+              dur="10s"
               repeatCount="indefinite"
             />
           </linearGradient>
-          <filter id={`${gradId}-soft`} x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" />
+          <filter id={`${gradId}-soft`} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
           </filter>
         </defs>
         <path
@@ -56,19 +60,21 @@ export default function RiftcastLiveLogo({
         <path
           fill="none"
           stroke={`url(#${gradId}-rim)`}
-          strokeWidth="2.4"
+          strokeWidth="2.8"
           strokeLinejoin="round"
           strokeLinecap="round"
           filter={`url(#${gradId}-soft)`}
-          opacity="0.75"
+          opacity="0.42"
+          style={{ mixBlendMode: 'screen' }}
           d="M4.5 4 L37 4 C48.5 4 58 11.5 58 23 C58 31.5 52.5 37.5 44 40 L57.5 58.5 L47 58.5 L33 43 L18.5 36 C30 38.6 45.5 34.5 45.5 23 C45.5 14.5 40 11.5 33.5 11.5 L14 11.5 Z"
         />
         <path
           fill="none"
           stroke={`url(#${gradId}-rim)`}
-          strokeWidth="0.9"
+          strokeWidth="0.7"
           strokeLinejoin="round"
-          opacity="0.85"
+          opacity="0.4"
+          style={{ mixBlendMode: 'screen' }}
           d="M4.5 4 L37 4 C48.5 4 58 11.5 58 23 C58 31.5 52.5 37.5 44 40 L57.5 58.5 L47 58.5 L33 43 L18.5 36 C30 38.6 45.5 34.5 45.5 23 C45.5 14.5 40 11.5 33.5 11.5 L14 11.5 Z"
         />
       </svg>

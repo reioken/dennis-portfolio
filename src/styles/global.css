@@ -549,32 +549,32 @@ a:hover .brand-mark--nav {
 .project-logo-panel {
   aspect-ratio: 16 / 10;
   background:
-    radial-gradient(ellipse 70% 55% at 50% 42%, color-mix(in srgb, var(--violet) 22%, transparent), transparent 70%),
-    radial-gradient(ellipse 55% 45% at 70% 70%, color-mix(in srgb, var(--ice) 14%, transparent), transparent 65%),
+    radial-gradient(ellipse 70% 55% at 50% 42%, color-mix(in srgb, var(--violet) 14%, transparent), transparent 72%),
+    radial-gradient(ellipse 55% 45% at 70% 70%, color-mix(in srgb, var(--ice) 8%, transparent), transparent 68%),
     linear-gradient(160deg, #0a0c12 0%, #12151e 48%, #0b0d14 100%);
 }
 .project-logo-panel__glow {
   position: absolute;
-  inset: 10% 16%;
+  inset: 14% 18%;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 42% 40%, color-mix(in srgb, var(--ice) 32%, transparent), transparent 55%),
-    radial-gradient(circle at 62% 58%, color-mix(in srgb, var(--violet) 26%, transparent), transparent 60%),
-    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--blue) 22%, transparent), transparent 70%);
-  filter: blur(30px);
-  opacity: 0.5;
+    radial-gradient(circle at 42% 40%, color-mix(in srgb, var(--ice) 18%, transparent), transparent 58%),
+    radial-gradient(circle at 62% 58%, color-mix(in srgb, var(--violet) 14%, transparent), transparent 62%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--blue) 12%, transparent), transparent 72%);
+  filter: blur(42px);
+  opacity: 0.32;
   transform-origin: 50% 50%;
-  animation: panel-glow-drift 8s ease-in-out infinite;
-  transition: opacity 0.55s ease;
+  animation: panel-glow-drift 10s ease-in-out infinite;
+  transition: opacity 0.65s ease;
 }
 .group:hover .project-logo-panel__glow {
-  opacity: 0.85;
-  animation-duration: 5.5s;
+  opacity: 0.52;
+  animation-duration: 7s;
 }
-/* Craft-/Compact-Kacheln: kein Idle-Schweben, ruhiger Glow */
+/* Archiv-/Compact-Kacheln: kein Idle-Schweben, ruhiger Glow */
 .project-card--compact .project-logo-panel__glow {
   animation: none;
-  opacity: 0.45;
+  opacity: 0.28;
 }
 .project-card--compact .project-logo-panel__mark--idle,
 .project-card--compact .berry-live.is-ambient,
@@ -631,46 +631,51 @@ a:hover .brand-mark--nav {
     logo-mark-float-hot 4.4s ease-in-out infinite,
     logo-rim-orbit 4.8s ease-in-out infinite;
 }
+/* Premium rim: soft ambient bloom + wandering edge catch (no hard white stroke) */
 @keyframes logo-rim-orbit {
   0%,
   100% {
     filter:
-      drop-shadow(0 6px 18px rgba(0, 0, 0, 0.4))
-      drop-shadow(2px -3px 1.2px rgba(220, 235, 255, 0.55))
-      drop-shadow(-2px 2px 3px rgba(74, 130, 254, 0.22));
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.36))
+      drop-shadow(0 0 16px rgba(74, 130, 254, 0.1))
+      drop-shadow(1.5px -2px 3px rgba(220, 235, 255, 0.2))
+      drop-shadow(-1.5px 1.5px 4px rgba(172, 139, 253, 0.1));
   }
   25% {
     filter:
-      drop-shadow(0 6px 18px rgba(0, 0, 0, 0.4))
-      drop-shadow(3px 1px 1.4px rgba(255, 255, 255, 0.5))
-      drop-shadow(-1px -2px 3px rgba(172, 139, 253, 0.28));
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.36))
+      drop-shadow(0 0 18px rgba(172, 139, 253, 0.12))
+      drop-shadow(2px 1px 3.5px rgba(255, 255, 255, 0.18))
+      drop-shadow(-1px -1.5px 4px rgba(154, 215, 255, 0.12));
   }
   50% {
     filter:
-      drop-shadow(0 6px 18px rgba(0, 0, 0, 0.4))
-      drop-shadow(-2px 3px 1.3px rgba(154, 215, 255, 0.48))
-      drop-shadow(2px -1px 3px rgba(74, 130, 254, 0.25));
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.36))
+      drop-shadow(0 0 16px rgba(154, 215, 255, 0.1))
+      drop-shadow(-1.5px 2px 3.5px rgba(220, 235, 255, 0.18))
+      drop-shadow(1.5px -1px 4px rgba(74, 130, 254, 0.12));
   }
   75% {
     filter:
-      drop-shadow(0 6px 18px rgba(0, 0, 0, 0.4))
-      drop-shadow(-3px -2px 1.2px rgba(220, 235, 255, 0.45))
-      drop-shadow(2px 2px 3px rgba(172, 139, 253, 0.24));
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.36))
+      drop-shadow(0 0 18px rgba(74, 130, 254, 0.1))
+      drop-shadow(-2px -1.5px 3px rgba(220, 235, 255, 0.16))
+      drop-shadow(1.5px 1.5px 4px rgba(172, 139, 253, 0.11));
   }
 }
 @keyframes panel-glow-drift {
   0%,
   100% {
     transform: translate(0, 0) scale(1);
-    filter: blur(30px) saturate(1);
+    filter: blur(42px) saturate(0.95);
   }
   33% {
-    transform: translate(3%, -2.5%) scale(1.06);
-    filter: blur(34px) saturate(1.15);
+    transform: translate(2%, -1.5%) scale(1.04);
+    filter: blur(46px) saturate(1.05);
   }
   66% {
-    transform: translate(-2.5%, 2%) scale(1.03);
-    filter: blur(28px) saturate(1.08);
+    transform: translate(-1.5%, 1.5%) scale(1.02);
+    filter: blur(40px) saturate(1);
   }
 }
 @keyframes logo-mark-float {
@@ -705,8 +710,10 @@ a:hover .brand-mark--nav {
   .group:hover .project-logo-panel__mark--idle {
     animation: none !important;
     transform: none;
-    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.4))
-      drop-shadow(1px -2px 1px rgba(220, 235, 255, 0.35));
+    filter:
+      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.36))
+      drop-shadow(0 0 14px rgba(74, 130, 254, 0.1))
+      drop-shadow(1px -1.5px 2.5px rgba(220, 235, 255, 0.16));
   }
   .web-stack__card {
     animation: none !important;
@@ -1035,8 +1042,9 @@ a:hover .brand-mark--nav {
   display: grid;
   place-items: center;
   filter:
-    drop-shadow(0 6px 18px rgba(0, 0, 0, 0.42))
-    drop-shadow(0 0 10px color-mix(in srgb, var(--nx-blue) 22%, transparent));
+    drop-shadow(0 8px 20px rgba(0, 0, 0, 0.36))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--nx-blue) 12%, transparent))
+    drop-shadow(1px -1.5px 3px rgba(220, 235, 255, 0.14));
 }
 .nx-sp.is-live .nx-sp__mark {
   animation: nx-glow 3.4s ease-in-out infinite;
@@ -1071,23 +1079,23 @@ a:hover .brand-mark--nav {
 @keyframes nx-aura {
   0%,
   100% {
-    opacity: 0.18;
-    transform: scale(0.96);
+    opacity: 0.1;
+    transform: scale(0.97);
   }
   50% {
-    opacity: 0.34;
-    transform: scale(1.08);
+    opacity: 0.2;
+    transform: scale(1.05);
   }
 }
 @keyframes nx-aura-core {
   0%,
   100% {
-    opacity: 0.12;
-    transform: scale(0.94);
+    opacity: 0.07;
+    transform: scale(0.96);
   }
   50% {
-    opacity: 0.28;
-    transform: scale(1.1);
+    opacity: 0.16;
+    transform: scale(1.06);
   }
 }
 @keyframes nx-rays {
@@ -1145,12 +1153,12 @@ a:hover .brand-mark--nav {
     transform: scale(0.25) rotate(-20deg);
   }
   40% {
-    opacity: 0.95;
-    transform: scale(1.2) rotate(10deg);
+    opacity: 0.45;
+    transform: scale(1) rotate(8deg);
   }
   70% {
-    opacity: 0.15;
-    transform: scale(0.55) rotate(28deg);
+    opacity: 0.08;
+    transform: scale(0.5) rotate(22deg);
   }
 }
 @keyframes nx-mote {
@@ -1172,37 +1180,41 @@ a:hover .brand-mark--nav {
   0%,
   100% {
     filter:
-      drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4))
-      drop-shadow(0 0 8px color-mix(in srgb, var(--nx-blue) 28%, transparent))
-      drop-shadow(0 0 18px color-mix(in srgb, var(--nx-violet) 16%, transparent))
-      brightness(1.04) saturate(1.12);
+      drop-shadow(0 8px 18px rgba(0, 0, 0, 0.36))
+      drop-shadow(0 0 12px color-mix(in srgb, var(--nx-blue) 14%, transparent))
+      drop-shadow(0 0 22px color-mix(in srgb, var(--nx-violet) 8%, transparent))
+      drop-shadow(1px -1.5px 3px rgba(220, 235, 255, 0.14))
+      brightness(1.02) saturate(1.06);
   }
   50% {
     filter:
-      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.38))
-      drop-shadow(0 0 14px color-mix(in srgb, var(--nx-ice) 42%, transparent))
-      drop-shadow(0 0 28px color-mix(in srgb, var(--nx-blue) 32%, transparent))
-      drop-shadow(0 0 40px color-mix(in srgb, var(--nx-violet) 18%, transparent))
-      brightness(1.12) saturate(1.28);
+      drop-shadow(0 9px 22px rgba(0, 0, 0, 0.34))
+      drop-shadow(0 0 16px color-mix(in srgb, var(--nx-ice) 18%, transparent))
+      drop-shadow(0 0 28px color-mix(in srgb, var(--nx-blue) 16%, transparent))
+      drop-shadow(0 0 36px color-mix(in srgb, var(--nx-violet) 10%, transparent))
+      drop-shadow(-1px 1.5px 3.5px rgba(172, 139, 253, 0.12))
+      brightness(1.05) saturate(1.1);
   }
 }
 @keyframes nx-glow-hot {
   0%,
   100% {
     filter:
-      drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4))
-      drop-shadow(0 0 12px color-mix(in srgb, var(--nx-ice) 50%, transparent))
-      drop-shadow(0 0 26px color-mix(in srgb, var(--nx-blue) 45%, transparent))
-      drop-shadow(0 0 48px color-mix(in srgb, var(--nx-violet) 28%, transparent))
-      brightness(1.14) saturate(1.35);
+      drop-shadow(0 9px 22px rgba(0, 0, 0, 0.36))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--nx-ice) 22%, transparent))
+      drop-shadow(0 0 26px color-mix(in srgb, var(--nx-blue) 18%, transparent))
+      drop-shadow(0 0 40px color-mix(in srgb, var(--nx-violet) 12%, transparent))
+      drop-shadow(1.5px -1.5px 3px rgba(220, 235, 255, 0.18))
+      brightness(1.06) saturate(1.12);
   }
   50% {
     filter:
-      drop-shadow(0 10px 24px rgba(0, 0, 0, 0.36))
-      drop-shadow(0 0 18px color-mix(in srgb, var(--nx-ice) 70%, transparent))
-      drop-shadow(0 0 36px color-mix(in srgb, var(--nx-blue) 55%, transparent))
-      drop-shadow(0 0 64px color-mix(in srgb, var(--nx-violet) 35%, transparent))
-      brightness(1.22) saturate(1.5);
+      drop-shadow(0 10px 24px rgba(0, 0, 0, 0.34))
+      drop-shadow(0 0 18px color-mix(in srgb, var(--nx-ice) 28%, transparent))
+      drop-shadow(0 0 32px color-mix(in srgb, var(--nx-blue) 22%, transparent))
+      drop-shadow(0 0 48px color-mix(in srgb, var(--nx-violet) 14%, transparent))
+      drop-shadow(-1.5px 1.5px 3.5px rgba(172, 139, 253, 0.14))
+      brightness(1.09) saturate(1.16);
   }
 }
 
@@ -1223,8 +1235,10 @@ a:hover .brand-mark--nav {
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease;
 }
 .berry-live.is-hot {
-  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
-    drop-shadow(0 0 16px color-mix(in srgb, var(--berry-accent) 28%, transparent));
+  filter:
+    drop-shadow(0 10px 24px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--berry-accent) 16%, transparent))
+    drop-shadow(1px -1.5px 3px rgba(232, 255, 242, 0.18));
 }
 .berry-live__bot {
   width: 100%;
@@ -1309,8 +1323,10 @@ a:hover .brand-mark--nav {
     filter 0.4s ease;
 }
 .mina-live.is-hot {
-  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
-    drop-shadow(0 0 16px color-mix(in srgb, #f4796b 26%, transparent));
+  filter:
+    drop-shadow(0 10px 24px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 18px color-mix(in srgb, #f4796b 14%, transparent))
+    drop-shadow(1px -1.5px 3px rgba(255, 220, 210, 0.16));
 }
 .mina-live__svg {
   width: 100%;
@@ -1400,8 +1416,10 @@ a:hover .brand-mark--nav {
     filter 0.4s ease;
 }
 .fdl.is-hot {
-  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
-    drop-shadow(0 0 16px rgba(255, 210, 63, 0.22));
+  filter:
+    drop-shadow(0 10px 24px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 18px rgba(255, 210, 63, 0.12))
+    drop-shadow(1px -1.5px 3px rgba(255, 240, 200, 0.14));
 }
 .fdl__svg {
   width: 100%;
@@ -1475,8 +1493,10 @@ a:hover .brand-mark--nav {
     filter 0.45s ease;
 }
 .rc-live.is-hot {
-  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45))
-    drop-shadow(0 0 16px color-mix(in srgb, var(--violet) 30%, transparent));
+  filter:
+    drop-shadow(0 10px 24px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--violet) 14%, transparent))
+    drop-shadow(1px -1.5px 3px rgba(220, 230, 255, 0.16));
 }
 .rc-live__mark {
   width: 88%;
@@ -1528,11 +1548,17 @@ a:hover .brand-mark--nav {
 @keyframes rc-cast-glow {
   0%,
   100% {
-    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--ice) 25%, transparent)) brightness(1);
+    filter:
+      drop-shadow(0 0 4px color-mix(in srgb, var(--ice) 12%, transparent))
+      drop-shadow(1px -1px 2.5px rgba(220, 230, 255, 0.14))
+      brightness(1);
   }
   45% {
-    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--blue) 45%, transparent))
-      drop-shadow(0 0 18px color-mix(in srgb, var(--violet) 26%, transparent)) brightness(1.1);
+    filter:
+      drop-shadow(0 0 10px color-mix(in srgb, var(--blue) 18%, transparent))
+      drop-shadow(0 0 20px color-mix(in srgb, var(--violet) 12%, transparent))
+      drop-shadow(-1px 1px 3px rgba(182, 156, 255, 0.14))
+      brightness(1.04);
   }
 }
 @keyframes rc-cast-ring {

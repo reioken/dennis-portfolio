@@ -19,10 +19,10 @@
     <linearGradient id="nxg15" x1="305.92" y1="321.59" x2="336.16" y2="178.85" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2d13bd"/><stop offset=".21" stop-color="#2019c1"/><stop offset=".31" stop-color="#151bbe"/><stop offset=".44" stop-color="#0e1ebc"/><stop offset=".66" stop-color="#142bd4"/><stop offset=".79" stop-color="#1735e3"/><stop offset=".89" stop-color="#193ae9"/></linearGradient>
     <linearGradient id="nxg16" x1="321.18" y1="203.76" x2="330.26" y2="125.46" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0521b7"/><stop offset=".21" stop-color="#082ac9"/><stop offset=".28" stop-color="#082cce"/><stop offset=".45" stop-color="#0831d6"/><stop offset=".63" stop-color="#0530d7"/><stop offset=".68" stop-color="#0737e0"/><stop offset=".79" stop-color="#0d43f0"/><stop offset=".87" stop-color="#0f48f6"/></linearGradient>
     <linearGradient id="nxg17" x1="335.45" y1="141.49" x2="431.04" y2="57.7" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#375ffc"/><stop offset=".13" stop-color="#4069fc"/><stop offset=".2" stop-color="#4871fc"/><stop offset=".29" stop-color="#5f85fc"/><stop offset=".36" stop-color="#698efc"/><stop offset=".66" stop-color="#abc5fd"/><stop offset=".78" stop-color="#d4e1fd"/><stop offset=".88" stop-color="#f0f4fd"/><stop offset=".93" stop-color="#fbfcfd"/></linearGradient>
-    <filter id="nxRimStatic" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
-      <feMorphology in="SourceAlpha" operator="dilate" radius="3.5" result="dil"/>
-      <feGaussianBlur in="dil" stdDeviation="9" result="halo"/>
-      <feFlood flood-color="#5f97ff" flood-opacity=".6"/>
+    <filter id="nxRimStatic" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="2.2" result="dil"/>
+      <feGaussianBlur in="dil" stdDeviation="12" result="halo"/>
+      <feFlood flood-color="#5f97ff" flood-opacity=".32"/>
       <feComposite in2="halo" operator="in" result="oglow"/>
       <feMerge><feMergeNode in="oglow"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
@@ -49,26 +49,27 @@
   <g filter="url(#nxRimStatic)"><use href="#nxBody"/></g>
   <defs>
     <linearGradient id="nxEdgeStatic" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="400" y2="356">
-      <stop offset="0" stop-color="#4a82fe" stop-opacity=".15"/>
-      <stop offset=".35" stop-color="#dcebff" stop-opacity=".55"/>
-      <stop offset=".5" stop-color="#ffffff" stop-opacity=".9"/>
-      <stop offset=".7" stop-color="#ac8bfd" stop-opacity=".4"/>
-      <stop offset="1" stop-color="#4a82fe" stop-opacity=".1"/>
+      <stop offset="0" stop-color="#4a82fe" stop-opacity="0"/>
+      <stop offset=".35" stop-color="#dcebff" stop-opacity=".28"/>
+      <stop offset=".5" stop-color="#f2f7ff" stop-opacity=".48"/>
+      <stop offset=".7" stop-color="#ac8bfd" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#4a82fe" stop-opacity="0"/>
     </linearGradient>
-    <filter id="nxEdgeSoftStatic" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="1.6"/>
+    <filter id="nxEdgeSoftStatic" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#nxEdgeSoftStatic)" stroke="url(#nxEdgeStatic)" opacity=".85">
-    <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="6"/>
-    <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="5"/>
-    <line x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="4"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#nxEdgeSoftStatic)" stroke="url(#nxEdgeStatic)" opacity=".45" style="mix-blend-mode:screen">
+    <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="5.5"/>
+    <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="4.5"/>
+    <line x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="3.5"/>
   </g>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="url(#nxEdgeStatic)">
-    <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="1.8" opacity=".9"/>
-    <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="1.5" opacity=".85"/>
-    <line x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="1.3" opacity=".7"/>
-    <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="1" opacity=".4"/>
-    <line x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="1" opacity=".35"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="url(#nxEdgeStatic)" style="mix-blend-mode:screen">
+    <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="1.1" opacity=".45"/>
+    <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="1" opacity=".4"/>
+    <line x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width=".85" opacity=".32"/>
+    <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width=".75" opacity=".22"/>
+    <line x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width=".75" opacity=".2"/>
   </g>
 </svg>

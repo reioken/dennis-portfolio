@@ -78,106 +78,101 @@
   </linearGradient>
   <!-- 4-Punkt-Diamant-Glint -->
   <path id="nxSpark" d="M0,-30 C4,-7 7,-4 30,0 C7,4 4,7 0,30 C-4,7 -7,4 -30,0 C-7,-4 -4,-7 0,-30 Z" fill="currentColor"/>
-  <!-- Weicher Aussen-Halo -->
-  <filter id="nxRim" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
-    <feMorphology in="SourceAlpha" operator="dilate" radius="3.5" result="dil"/>
-    <feGaussianBlur in="dil" stdDeviation="12" result="halo"/>
-    <feFlood flood-color="#4a82fe" flood-opacity=".7"><animate attributeName="flood-opacity" values=".45;.85;.45" dur="3.2s" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite"/></feFlood>
+  <!-- Weicher Aussen-Halo (subtil) -->
+  <filter id="nxRim" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+    <feMorphology in="SourceAlpha" operator="dilate" radius="2.2" result="dil"/>
+    <feGaussianBlur in="dil" stdDeviation="14" result="halo"/>
+    <feFlood flood-color="#4a82fe" flood-opacity=".32"><animate attributeName="flood-opacity" values=".22;.38;.22" dur="4.2s" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite"/></feFlood>
     <feComposite in2="halo" operator="in" result="oglow"/>
     <feMerge><feMergeNode in="oglow"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>
-  <!-- Weiches Kanten-Glow (Lichtbrechung, kein harter Strich) -->
-  <filter id="nxEdgeSoft" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
-    <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="b"/>
-    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  <!-- Weiches Kanten-Bloom (Premium-Rim, kein harter Strich) -->
+  <filter id="nxEdgeSoft" x="-45%" y="-45%" width="190%" height="190%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>
-  <!-- Wanderndes Specular entlang der Kanten (Lichtrichtung dreht) -->
+  <!-- Wanderndes Specular — weicher Peak, Eis statt reinem Weiß -->
   <linearGradient id="nxEdgeSpec" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="400" y2="0">
     <stop offset="0" stop-color="#4a82fe" stop-opacity="0"/>
-    <stop offset=".28" stop-color="#ac8bfd" stop-opacity=".15"/>
-    <stop offset=".42" stop-color="#dcebff" stop-opacity=".55"/>
-    <stop offset=".5" stop-color="#ffffff" stop-opacity=".95"/>
-    <stop offset=".58" stop-color="#9ad7ff" stop-opacity=".5"/>
-    <stop offset=".72" stop-color="#35d0f2" stop-opacity=".2"/>
+    <stop offset=".3" stop-color="#ac8bfd" stop-opacity=".08"/>
+    <stop offset=".44" stop-color="#dcebff" stop-opacity=".28"/>
+    <stop offset=".5" stop-color="#f2f7ff" stop-opacity=".52"/>
+    <stop offset=".56" stop-color="#9ad7ff" stop-opacity=".26"/>
+    <stop offset=".72" stop-color="#35d0f2" stop-opacity=".1"/>
     <stop offset="1" stop-color="#ac8bfd" stop-opacity="0"/>
-    <animateTransform attributeName="gradientTransform" type="rotate" from="0 197 178" to="360 197 178" dur="9s" repeatCount="indefinite"/>
+    <animateTransform attributeName="gradientTransform" type="rotate" from="0 197 178" to="360 197 178" dur="11s" repeatCount="indefinite"/>
   </linearGradient>
-  <!-- Prismatisches Band (Refraktion) -->
+  <!-- Prismatisches Band (dezente Refraktion) -->
   <linearGradient id="nxEdgePrisma" gradientUnits="userSpaceOnUse" x1="0" y1="356" x2="395" y2="0">
     <stop offset="0" stop-color="#ac8bfd" stop-opacity="0"/>
-    <stop offset=".3" stop-color="#e86bd0" stop-opacity=".45"/>
-    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".55"/>
-    <stop offset=".7" stop-color="#35d0f2" stop-opacity=".4"/>
+    <stop offset=".32" stop-color="#e86bd0" stop-opacity=".18"/>
+    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".28"/>
+    <stop offset=".68" stop-color="#35d0f2" stop-opacity=".2"/>
     <stop offset="1" stop-color="#dcebff" stop-opacity="0"/>
-    <animateTransform attributeName="gradientTransform" type="rotate" from="180 197 178" to="540 197 178" dur="11s" repeatCount="indefinite"/>
+    <animateTransform attributeName="gradientTransform" type="rotate" from="180 197 178" to="540 197 178" dur="14s" repeatCount="indefinite"/>
   </linearGradient>
   
   </defs>
 
     <!-- Körper mit weichem Aussen-Halo -->
     <g filter="url(#nxRim)"><use href="#nxBody"/></g>
-    <!-- Realistische Kantenlichter: Glow + Specular + Prisma, Licht wandert → andere Grate aufleuchten -->
-    <g id="nxEdges" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#nxEdgeSoft)">
-      <!-- Weiches Prisma-Glow (dicker) -->
-      <g opacity=".55" stroke="url(#nxEdgePrisma)">
-        <polyline class="nx-e nx-e--a" points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="9"/>
-        <polyline class="nx-e nx-e--b" points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="8"/>
-        <line class="nx-e nx-e--c" x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="7"/>
-        <line class="nx-e nx-e--d" x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="6"/>
-        <line class="nx-e nx-e--e" x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="6"/>
-        <polyline class="nx-e nx-e--f" points="394.78,0 358.29,210.96 334.09,346.11" stroke-width="5.5"/>
-        <line class="nx-e nx-e--g" x1="0" y1="356.03" x2="125.43" y2="285.1" stroke-width="5"/>
-        <line class="nx-e nx-e--h" x1="156.43" y1="232.68" x2="201.99" y2="171.03" stroke-width="5"/>
+    <!-- Premium-Kanten: weiches Bloom + dezenter Specular, Licht wandert -->
+    <g id="nxEdges" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#nxEdgeSoft)" style="mix-blend-mode:screen">
+      <g opacity=".38" stroke="url(#nxEdgePrisma)">
+        <polyline class="nx-e nx-e--a" points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="7"/>
+        <polyline class="nx-e nx-e--b" points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="6.5"/>
+        <line class="nx-e nx-e--c" x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="5.5"/>
+        <line class="nx-e nx-e--d" x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="5"/>
+        <line class="nx-e nx-e--e" x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="5"/>
+        <polyline class="nx-e nx-e--f" points="394.78,0 358.29,210.96 334.09,346.11" stroke-width="4.5"/>
+        <line class="nx-e nx-e--g" x1="0" y1="356.03" x2="125.43" y2="285.1" stroke-width="4"/>
+        <line class="nx-e nx-e--h" x1="156.43" y1="232.68" x2="201.99" y2="171.03" stroke-width="4"/>
       </g>
-      <!-- Scharfer Specular-Kern -->
       <g stroke="url(#nxEdgeSpec)">
-        <polyline class="nx-e nx-e--a" points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="2.6" opacity=".9"/>
-        <polyline class="nx-e nx-e--b" points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="2.3" opacity=".88"/>
-        <line class="nx-e nx-e--c" x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="2" opacity=".8"/>
-        <line class="nx-e nx-e--d" x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="1.6" opacity=".55"/>
-        <line class="nx-e nx-e--e" x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="1.7" opacity=".5"/>
-        <polyline class="nx-e nx-e--f" points="394.78,0 358.29,210.96 334.09,346.11" stroke-width="1.5" opacity=".45"/>
-        <line class="nx-e nx-e--g" x1="0" y1="356.03" x2="125.43" y2="285.1" stroke-width="1.5" opacity=".4"/>
-        <line class="nx-e nx-e--h" x1="156.43" y1="232.68" x2="201.99" y2="171.03" stroke-width="1.5" opacity=".42"/>
+        <polyline class="nx-e nx-e--a" points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="1.4" opacity=".55"/>
+        <polyline class="nx-e nx-e--b" points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="1.25" opacity=".5"/>
+        <line class="nx-e nx-e--c" x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="1.1" opacity=".42"/>
+        <line class="nx-e nx-e--d" x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="1" opacity=".32"/>
+        <line class="nx-e nx-e--e" x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="1" opacity=".3"/>
+        <polyline class="nx-e nx-e--f" points="394.78,0 358.29,210.96 334.09,346.11" stroke-width=".9" opacity=".28"/>
+        <line class="nx-e nx-e--g" x1="0" y1="356.03" x2="125.43" y2="285.1" stroke-width=".9" opacity=".25"/>
+        <line class="nx-e nx-e--h" x1="156.43" y1="232.68" x2="201.99" y2="171.03" stroke-width=".9" opacity=".26"/>
       </g>
     </g>
-    <!-- Pro-Kante Opacity-Pulse (Licht „wandert“ um den Kristall) -->
-    <g fill="none" stroke-linecap="round" pointer-events="none">
-      <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke="#ffffff" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;.85;0;0;0" keyTimes="0;.12;.28;.5;1" dur="8s" repeatCount="indefinite"/></polyline>
-      <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke="#f4f9ff" stroke-width="1.1" opacity="0"><animate attributeName="opacity" values="0;0;.9;0;0" keyTimes="0;.2;.35;.52;1" dur="8s" repeatCount="indefinite"/></polyline>
-      <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke="#dcebff" stroke-width="1" opacity="0"><animate attributeName="opacity" values="0;0;0;.75;0" keyTimes="0;.35;.48;.62;1" dur="8s" repeatCount="indefinite"/></line>
-      <polyline points="394.78,0 358.29,210.96 334.09,346.11" stroke="#9ad7ff" stroke-width="1" opacity="0"><animate attributeName="opacity" values="0;0;0;0;.7;0" keyTimes="0;.5;.62;.75;.88;1" dur="8s" repeatCount="indefinite"/></polyline>
-      <line x1="0" y1="356.03" x2="75.34" y2="249.63" stroke="#ac8bfd" stroke-width="1" opacity="0"><animate attributeName="opacity" values="0;.55;0;0;0" keyTimes="0;.7;.85;.95;1" dur="8s" begin="0.4s" repeatCount="indefinite"/></line>
-      <line x1="297.34" y1="206.4" x2="265.16" y2="122.3" stroke="#4a82fe" stroke-width="1" opacity="0"><animate attributeName="opacity" values="0;0;.65;0;0" keyTimes="0;.1;.25;.4;1" dur="8s" begin="1.2s" repeatCount="indefinite"/></line>
+    <!-- Pro-Kante Soft-Pulse (Licht wandert — Peak max ~0.4) -->
+    <g fill="none" stroke-linecap="round" pointer-events="none" style="mix-blend-mode:screen">
+      <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke="#dcebff" stroke-width="1.6" opacity="0"><animate attributeName="opacity" values="0;.4;0;0;0" keyTimes="0;.12;.3;.5;1" dur="9s" repeatCount="indefinite"/></polyline>
+      <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke="#f2f7ff" stroke-width="1.4" opacity="0"><animate attributeName="opacity" values="0;0;.42;0;0" keyTimes="0;.2;.36;.54;1" dur="9s" repeatCount="indefinite"/></polyline>
+      <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke="#dcebff" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;0;0;.35;0" keyTimes="0;.35;.48;.64;1" dur="9s" repeatCount="indefinite"/></line>
+      <polyline points="394.78,0 358.29,210.96 334.09,346.11" stroke="#9ad7ff" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;0;0;0;.32;0" keyTimes="0;.5;.62;.76;.9;1" dur="9s" repeatCount="indefinite"/></polyline>
+      <line x1="0" y1="356.03" x2="75.34" y2="249.63" stroke="#ac8bfd" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;.28;0;0;0" keyTimes="0;.7;.86;.95;1" dur="9s" begin="0.5s" repeatCount="indefinite"/></line>
+      <line x1="297.34" y1="206.4" x2="265.16" y2="122.3" stroke="#4a82fe" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;0;.3;0;0" keyTimes="0;.1;.26;.42;1" dur="9s" begin="1.4s" repeatCount="indefinite"/></line>
     </g>
-    <!-- Facetten-Schillern: Violet / Blau / Eis — kräftiger, weich auslaufend -->
+    <!-- Facetten-Schillern — dezent -->
     <g style="mix-blend-mode:screen">
-      <polygon fill="#ac8bfd" opacity="0" points="64.91 9.89 156.43 232.68 201.99 171.03 64.91 9.89"><animate attributeName="opacity" values="0;.55;0" keyTimes="0;.14;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="3.8s" repeatCount="indefinite"/></polygon>
-      <polygon fill="#dcebff" opacity="0" points="358.29 210.96 319.71 111.69 324.6 90.98 394.78 0 358.29 210.96"><animate attributeName="opacity" values="0;.52;0" keyTimes="0;.12;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.2s" begin="0.9s" repeatCount="indefinite"/></polygon>
-      <polygon fill="#4a82fe" opacity="0" points="273.22 67.57 394.78 0 324.6 90.98 273.22 67.57"><animate attributeName="opacity" values="0;.5;0" keyTimes="0;.13;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4s" begin="1.8s" repeatCount="indefinite"/></polygon>
-      <polygon fill="#ac8bfd" opacity="0" points="40.68 138.6 75.34 249.63 0 356.03 40.68 138.6"><animate attributeName="opacity" values="0;.45;0" keyTimes="0;.12;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.6s" begin="2.6s" repeatCount="indefinite"/></polygon>
-      <polygon fill="#4a82fe" opacity="0" points="201.99 171.03 243.17 116.45 64.91 9.89 201.99 171.03"><animate attributeName="opacity" values="0;.48;0" keyTimes="0;.11;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.1s" begin="0.4s" repeatCount="indefinite"/></polygon>
+      <polygon fill="#ac8bfd" opacity="0" points="64.91 9.89 156.43 232.68 201.99 171.03 64.91 9.89"><animate attributeName="opacity" values="0;.22;0" keyTimes="0;.14;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.4s" repeatCount="indefinite"/></polygon>
+      <polygon fill="#dcebff" opacity="0" points="358.29 210.96 319.71 111.69 324.6 90.98 394.78 0 358.29 210.96"><animate attributeName="opacity" values="0;.2;0" keyTimes="0;.12;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.8s" begin="0.9s" repeatCount="indefinite"/></polygon>
+      <polygon fill="#4a82fe" opacity="0" points="273.22 67.57 394.78 0 324.6 90.98 273.22 67.57"><animate attributeName="opacity" values="0;.2;0" keyTimes="0;.13;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.6s" begin="1.8s" repeatCount="indefinite"/></polygon>
+      <polygon fill="#ac8bfd" opacity="0" points="40.68 138.6 75.34 249.63 0 356.03 40.68 138.6"><animate attributeName="opacity" values="0;.18;0" keyTimes="0;.12;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="5.2s" begin="2.6s" repeatCount="indefinite"/></polygon>
+      <polygon fill="#4a82fe" opacity="0" points="201.99 171.03 243.17 116.45 64.91 9.89 201.99 171.03"><animate attributeName="opacity" values="0;.18;0" keyTimes="0;.11;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.7s" begin="0.4s" repeatCount="indefinite"/></polygon>
     </g>
-    <!-- Diagonaler Lichtreflex über den geschliffenen Stein -->
+    <!-- Diagonaler Lichtreflex — weicher Glas-Sweep -->
     <g clip-path="url(#nxSil)" style="mix-blend-mode:screen">
-      <!-- Haupt-Sweep: Glas-Reflex + Prisma — weicher Ein-/Auslauf (kein harter Jump) -->
       <g transform="rotate(-22 197 178)">
-        <rect y="-160" width="120" height="640" fill="url(#nxSpec)" opacity="0"><animate attributeName="x" values="-380;540" dur="3.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.88;1" dur="3.2s" repeatCount="indefinite"/></rect>
-        <rect y="-160" width="72" height="640" fill="url(#nxPrisma)" opacity="0"><animate attributeName="x" values="-450;470" dur="3.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.9;.9;0" keyTimes="0;.08;.88;1" dur="3.2s" repeatCount="indefinite"/></rect>
-        <rect y="-160" width="150" height="640" fill="url(#nxSweep)" opacity="0"><animate attributeName="x" values="-360;520" dur="5.8s" begin="1.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.85;.85;0" keyTimes="0;.1;.9;1" dur="5.8s" begin="1.2s" repeatCount="indefinite"/></rect>
+        <rect y="-160" width="120" height="640" fill="url(#nxSpec)" opacity="0"><animate attributeName="x" values="-380;540" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.45;.45;0" keyTimes="0;.1;.88;1" dur="4s" repeatCount="indefinite"/></rect>
+        <rect y="-160" width="72" height="640" fill="url(#nxPrisma)" opacity="0"><animate attributeName="x" values="-450;470" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.35;.35;0" keyTimes="0;.1;.88;1" dur="4s" repeatCount="indefinite"/></rect>
+        <rect y="-160" width="150" height="640" fill="url(#nxSweep)" opacity="0"><animate attributeName="x" values="-360;520" dur="6.5s" begin="1.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.4;.4;0" keyTimes="0;.12;.9;1" dur="6.5s" begin="1.2s" repeatCount="indefinite"/></rect>
       </g>
-      <!-- Gegen-Sweep: Kreuz-Reflex -->
       <g transform="rotate(34 197 178)">
-        <rect y="-220" width="70" height="760" fill="url(#nxSpec)" opacity="0"><animate attributeName="x" values="560;-420" dur="4.2s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.55;.55;0" keyTimes="0;.1;.88;1" dur="4.2s" begin="1s" repeatCount="indefinite"/></rect>
+        <rect y="-220" width="70" height="760" fill="url(#nxSpec)" opacity="0"><animate attributeName="x" values="560;-420" dur="5s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.22;.22;0" keyTimes="0;.12;.88;1" dur="5s" begin="1s" repeatCount="indefinite"/></rect>
       </g>
-      <!-- Facetten-Blitz-Kaskade -->
       <g fill="#f2f7ff">
-        <polygon points="64.91 9.89 156.43 232.68 201.99 171.03 64.91 9.89" opacity="0"><animate attributeName="opacity" values="0;0;.65;0;0" keyTimes="0;.08;.14;.24;1" dur="3.4s" repeatCount="indefinite"/></polygon>
-        <polygon points="201.99 171.03 243.17 116.45 334.09 346.11 201.99 171.03" opacity="0"><animate attributeName="opacity" values="0;0;.58;0;0" keyTimes="0;.22;.28;.38;1" dur="3.4s" repeatCount="indefinite"/></polygon>
-        <polygon points="273.22 67.57 394.78 0 324.6 90.98 273.22 67.57" opacity="0"><animate attributeName="opacity" values="0;0;.78;0;0" keyTimes="0;.36;.42;.52;1" dur="3.4s" repeatCount="indefinite"/></polygon>
-        <polygon points="358.29 210.96 319.71 111.69 324.6 90.98 394.78 0 358.29 210.96" opacity="0"><animate attributeName="opacity" values="0;0;.55;0;0" keyTimes="0;.5;.56;.66;1" dur="3.4s" repeatCount="indefinite"/></polygon>
-        <polygon points="0 356.03 125.43 285.1 75.34 249.63 0 356.03" opacity="0"><animate attributeName="opacity" values="0;0;.6;0;0" keyTimes="0;.64;.7;.8;1" dur="3.4s" repeatCount="indefinite"/></polygon>
-        <polygon points="40.68 138.6 101.42 154.43 110.61 121.51 64.91 9.89 40.68 138.6" opacity="0"><animate attributeName="opacity" values="0;0;.5;0;0" keyTimes="0;.78;.84;.94;1" dur="3.4s" repeatCount="indefinite"/></polygon>
+        <polygon points="64.91 9.89 156.43 232.68 201.99 171.03 64.91 9.89" opacity="0"><animate attributeName="opacity" values="0;0;.28;0;0" keyTimes="0;.08;.14;.26;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="201.99 171.03 243.17 116.45 334.09 346.11 201.99 171.03" opacity="0"><animate attributeName="opacity" values="0;0;.24;0;0" keyTimes="0;.22;.28;.4;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="273.22 67.57 394.78 0 324.6 90.98 273.22 67.57" opacity="0"><animate attributeName="opacity" values="0;0;.32;0;0" keyTimes="0;.36;.42;.54;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="358.29 210.96 319.71 111.69 324.6 90.98 394.78 0 358.29 210.96" opacity="0"><animate attributeName="opacity" values="0;0;.22;0;0" keyTimes="0;.5;.56;.68;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="0 356.03 125.43 285.1 75.34 249.63 0 356.03" opacity="0"><animate attributeName="opacity" values="0;0;.24;0;0" keyTimes="0;.64;.7;.82;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="40.68 138.6 101.42 154.43 110.61 121.51 64.91 9.89 40.68 138.6" opacity="0"><animate attributeName="opacity" values="0;0;.2;0;0" keyTimes="0;.78;.84;.94;1" dur="4.2s" repeatCount="indefinite"/></polygon>
       </g>
     </g>
     <!-- Spitzen-Glints — dichter, heller, nahtlos geloopte Diamant-Funken -->
