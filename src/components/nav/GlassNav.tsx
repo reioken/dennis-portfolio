@@ -200,7 +200,7 @@ export default function GlassNav({
           <button
             ref={btnRef}
             type="button"
-            className={`nav-icon-btn ${open ? 'is-open' : ''}`}
+            className={`nav-icon-btn md:hidden ${open ? 'is-open' : ''}`}
             aria-expanded={open}
             aria-controls="site-menu"
             onClick={() => setOpen((v) => !v)}

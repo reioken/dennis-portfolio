@@ -80,6 +80,7 @@ export default function WorkCollage({ shots }: Props) {
               format={shot.format}
               tilt={i % 2 === 0 ? -3 : 2.5}
               priority={i < 3}
+              lcp={i === 0}
               editKey={`img.collage.${shot.slot}`}
             />
           ))}
@@ -110,12 +111,15 @@ function CollageCard({
   format,
   editKey,
   priority,
+  lcp = false,
 }: {
   src: string;
   tilt: number;
   format?: 'phone' | 'wide';
   editKey?: string;
   priority?: boolean;
+  /** First visible card = LCP candidate → fetch with high priority */
+  lcp?: boolean;
 }) {
   const phone = format === 'phone';
   // Cards render at ≤360px CSS width — the @sm variant (720w, see scripts/build-thumbs.mjs)
@@ -135,7 +139,7 @@ function CollageCard({
         height={phone ? 844 : 450}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
-        fetchPriority="low"
+        fetchPriority={lcp ? 'high' : 'low'}
         draggable={false}
         {...(editKey ? { 'data-edit-img': editKey } : {})}
       />

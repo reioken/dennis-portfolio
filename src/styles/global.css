@@ -2131,9 +2131,9 @@ html.fx-off[data-nav-scrolled='1'] .glass-nav__bar {
   overflow: hidden;
   border-radius: 1rem;
   border: 1px solid color-mix(in srgb, var(--ice) 22%, var(--stroke));
-  background: color-mix(in srgb, #0a0b12 94%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  background: color-mix(in srgb, #0a0b12 98%, transparent);
+  backdrop-filter: blur(26px) saturate(140%);
+  -webkit-backdrop-filter: blur(26px) saturate(140%);
   box-shadow:
     var(--lg-edge),
     0 18px 40px rgba(0, 0, 0, 0.45);

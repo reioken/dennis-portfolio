@@ -99,7 +99,7 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
           {visible.map((item) => (
             <ProjectCard
               key={item.slug}
-              href={`${root}work/${item.slug}`}
+              href={`${root}work/${item.slug}/`}
               title={item.title}
               summary={item.summary}
               year={item.year}

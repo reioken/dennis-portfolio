@@ -35,7 +35,7 @@ const appleIcon = p('apple-touch-icon.png');
 const og = new URL(p(ogImage.replace(/^\//, '')), Astro.site ?? site.url).toString();
 /** Only the default OG asset is a true 1200×630 card — don't claim that for case covers. */
 const ogIsDefault = ogImage.replace(/^\//, '') === 'og/default.png';
-const gateOn = GATE.lockSite || GATE.editor;
+const gateOn = GATE.editor;
 const personLd = {
   '@context': 'https://schema.org',
   '@type': 'Person',
@@ -43,6 +43,11 @@ const personLd = {
   jobTitle: site.role,
   url: site.url,
   email: site.email,
+  address: {
+    '@type': 'PostalAddress',
+    addressRegion: 'Rhein-Neckar-Region (Mannheim/Heidelberg)',
+    addressCountry: 'DE',
+  },
   sameAs: [site.links.linkedin, site.links.github],
   knowsAbout: ['Art Direction', 'UI/UX Design', 'Product Design', 'Branding'],
 };
@@ -61,16 +66,13 @@ const personLd = {
     <link rel="icon" type="image/svg+xml" href={`${favicon}?v=3`} />
     <link rel="icon" type="image/png" sizes="32x32" href={`${p('favicon-32.png')}?v=3`} />
     <link rel="apple-touch-icon" href={`${appleIcon}?v=3`} />
-    <script is:inline define:vars={{ lockSite: GATE.lockSite, authKey: GATE.authKey }}>
+    <script is:inline>
       (function () {
         try {
           var lang = localStorage.getItem('portfolio-lang');
           if (lang === 'en' || lang === 'de') {
             document.documentElement.dataset.lang = lang;
             document.documentElement.lang = lang;
-          }
-          if (lockSite && localStorage.getItem(authKey) !== '1') {
-            document.documentElement.dataset.gateLocked = '1';
           }
         } catch (e) {}
       })();

@@ -3,11 +3,17 @@ export const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : `${import.meta.env.BASE_URL}/`;
 
-/** Join a site-relative path onto the configured base. */
+/** Join a site-relative path onto the configured base.
+    Page routes get a trailing slash (avoids the 308 redirect hop on Pages);
+    files, queries and anchors stay untouched. */
 export function p(path = '') {
   if (!path || path === '/') return base;
   const clean = path.replace(/^\//, '');
-  return `${base}${clean}`;
+  const joined = `${base}${clean}`;
+  if (/\.[a-z0-9]+$/i.test(clean) || clean.includes('?') || clean.includes('#') || joined.endsWith('/')) {
+    return joined;
+  }
+  return `${joined}/`;
 }
 
 const LOGO_LIVE_TOKENS = new Set([
