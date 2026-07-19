@@ -121,15 +121,15 @@ await copyFile(media('sportmueller', 'logo-head.png'), media('sportmueller', 'lo
 
 // 6) Ashwake — official mark from game project (already has alpha)
 const ashSrc = path.resolve(root, '..', 'Ashwake', 'assets', 'ui', 'logo_mark.png');
-await toWebp(ashSrc, media('ashwake', 'logo.webp'), { maxW: 900 });
+await toWebp(ashSrc, media('ashwake', 'logo-mark.webp'), { maxW: 900 });
 await sharp(ashSrc)
   .resize({ width: 900, withoutEnlargement: true })
   .avif({ quality: 70 })
-  .toFile(media('ashwake', 'logo.avif'));
+  .toFile(media('ashwake', 'logo-mark.avif'));
 await sharp(ashSrc)
   .resize({ width: 900, withoutEnlargement: true })
   .png()
-  .toFile(media('ashwake', 'logo.png'));
+  .toFile(media('ashwake', 'logo-mark.png'));
 
 // 7) Web Designs — collage of 4 client covers (no fake wordmark)
 const webCovers = [
