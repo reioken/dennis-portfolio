@@ -76,7 +76,7 @@ const META_EN = {
   },
   'work/ashwake/': {
     title: 'Ashwake — Dennis Bierreth-Fernandez',
-    desc: 'Godot lab — combat and atmosphere as an ongoing experiment.',
+    desc: 'Survivor-roguelite — forge your lantern, hold the ember, endure the nightwatch.',
   },
   'impressum/': {
     title: 'Legal notice — Dennis Bierreth-Fernandez',
