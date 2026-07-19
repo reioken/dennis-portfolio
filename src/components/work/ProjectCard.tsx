@@ -232,7 +232,7 @@ export default function ProjectCard({
           aria-hidden
         />
         <span
-          className={`absolute rounded-md bg-[rgba(6,7,10,0.78)] font-[family-name:var(--font-mono)] tracking-[0.1em] text-[var(--text)] shadow-[0_1px_2px_rgba(0,0,0,0.45)] backdrop-blur-sm ${
+          className={`absolute z-10 whitespace-nowrap rounded-md bg-[rgba(6,7,10,0.78)] font-[family-name:var(--font-mono)] tracking-[0.08em] text-[var(--text)] shadow-[0_1px_2px_rgba(0,0,0,0.45)] backdrop-blur-sm ${
             compact
               ? 'left-2 top-2 px-1.5 py-0.5 text-[0.62rem]'
               : 'left-3 top-3 px-2 py-1 text-[0.7rem]'
