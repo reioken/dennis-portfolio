@@ -2127,6 +2127,13 @@ html.fx-off[data-nav-scrolled='1'] .glass-nav__bar {
     background 0.2s,
     color 0.2s;
 }
+/* Desktop zeigt die volle Hauptnavigation — Hamburger nur unterhalb md
+   (hier statt Tailwind md:hidden, weil diese Regel später in der Kaskade steht) */
+@media (min-width: 768px) {
+  .nav-icon-btn {
+    display: none;
+  }
+}
 .nav-icon-btn:hover,
 .nav-icon-btn.is-open {
   border-color: var(--stroke);
