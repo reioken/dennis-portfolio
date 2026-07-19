@@ -165,8 +165,8 @@ const collageShots = [
             const en = copy.en.home.processSteps[i];
             return (
               <li class="process-flow__step" data-reveal style={`--reveal-delay:${i * 0.08}s`}>
-                <div class="process-flow__visual" aria-hidden="true">
-                  <span class="process-flow__glow" />
+                <div class="process-flow__visual">
+                  <span class="process-flow__glow" aria-hidden="true" />
                   <img
                     class="process-flow__img"
                     src={asset(step.image)}
@@ -176,7 +176,7 @@ const collageShots = [
                     loading="lazy"
                     decoding="async"
                   />
-                  <span class="process-flow__index">0{i + 1}</span>
+                  <span class="process-flow__index" aria-hidden="true">0{i + 1}</span>
                 </div>
                 <h3 class="process-flow__title">
                   <span data-lang="de">{step.title}</span>
@@ -191,6 +191,14 @@ const collageShots = [
           })
         }
       </ol>
+
+      <p class="process-flow__note" data-reveal style="--reveal-delay:0.28s">
+        <a href={p('work/mina')} class="process-flow__link">
+          <span data-lang="de">{copy.de.home.processNote}</span>
+          <span data-lang="en">{copy.en.home.processNote}</span>
+          <span aria-hidden="true"> →</span>
+        </a>
+      </p>
     </div>
   </section>
 
