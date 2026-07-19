@@ -3,10 +3,11 @@ import { motion, useReducedMotion } from 'motion/react';
 type Props = {
   src: string;
   name: string;
-  role: string;
+  roleDe: string;
+  roleEn: string;
 };
 
-export default function PortraitStage({ src, name, role }: Props) {
+export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
   const reduce = useReducedMotion();
 
   return (
@@ -64,8 +65,13 @@ export default function PortraitStage({ src, name, role }: Props) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.55, type: 'spring', stiffness: 160, damping: 20 }}
       >
-        <p className="text-[0.88rem] font-semibold leading-snug" data-edit="site.role">
-          {role}
+        <p className="text-[0.88rem] font-semibold leading-snug">
+          <span data-lang="de" data-edit="about.role.de">
+            {roleDe}
+          </span>
+          <span data-lang="en" data-edit="about.role.en">
+            {roleEn}
+          </span>
         </p>
       </motion.div>
     </div>

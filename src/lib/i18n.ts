@@ -15,7 +15,7 @@ export const copy = {
     home: {
       brand: 'Dennis Bierreth-Fernandez',
       headline: 'Vom Markenbild zur App',
-      support: 'Visuelle Richtung, UX/UI — vom Konzept bis zur fertigen App.',
+      support: 'Hobby-Softwareentwicklung, visuelle Richtung, UX/UI — vom Konzept bis zur fertigen App.',
       ctaWork: 'Arbeit ansehen',
       ctaContact: 'Kontakt',
       marquee: [
@@ -23,6 +23,7 @@ export const copy = {
         'Berry',
         'Riftcast',
         'Floordirekt Studio',
+        'Hobby Software',
         'Product Design',
         'UI/UX Design',
         'Art Direction',
@@ -57,8 +58,8 @@ export const copy = {
     },
     about: {
       label: 'Über mich',
-      role: 'Art Director & UI/UX Designer',
-      lead: '6+ Jahre Agentur und Inhouse. Visuelle Richtung mit UX/UI, Branding, Video und eigenen Product-Builds.',
+      role: 'Hobby-Softwareentwickler · Art Director & UI/UX Designer',
+      lead: 'Hobby-Softwareentwickler mit 6+ Jahren Agentur und Inhouse. Visuelle Richtung mit UX/UI, Branding, Video und eigenen Product-Builds.',
       body: 'Aktuell Floordirekt, NEXUS, Berry, Riftcast und Freelance. Davor Forever, performio, cyberWear und Johanniter FSJ.',
       linkedin: 'LinkedIn',
       contact: 'Kontakt',
@@ -94,7 +95,7 @@ export const copy = {
       label: 'Kontakt',
       title: 'Lass uns bauen.',
       titleAccent: 'bauen.',
-      body: 'Art Direction, UX/UI, Branding, Video oder Product — schreib mir über das Formular oder direkt per Mail.',
+      body: 'Hobby-Softwareentwicklung, Art Direction, UX/UI, Branding, Video oder Product — schreib mir über das Formular oder direkt per Mail.',
       email: 'E-Mail',
       location: 'Standort',
       openMail: 'E-Mail öffnen',
@@ -105,9 +106,12 @@ export const copy = {
       body: 'WIP, Prototypen und Side Builds — hier darf gebastelt werden.',
     },
     footer: {
-      tagline: 'UX/UI Designer · Art Director',
+      tagline: 'Hobby-Softwareentwickler · UX/UI · Art Director',
       cv: 'Lebenslauf PDF',
       top: 'Nach oben',
+    },
+    brand: {
+      short: 'Hobby-Dev · UX/UI · Art Director',
     },
     hero: {
       openCase: 'Case öffnen',
@@ -130,7 +134,7 @@ export const copy = {
     home: {
       brand: 'Dennis Bierreth-Fernandez',
       headline: 'From brand imagery to apps',
-      support: 'Visual direction, UX/UI — from concept to working app.',
+      support: 'Hobby software development, visual direction, UX/UI — from concept to working app.',
       ctaWork: 'View work',
       ctaContact: 'Contact',
       marquee: [
@@ -138,6 +142,7 @@ export const copy = {
         'Berry',
         'Riftcast',
         'Floordirekt Studio',
+        'Hobby Software',
         'Product Design',
         'UI/UX Design',
         'Art Direction',
@@ -172,8 +177,8 @@ export const copy = {
     },
     about: {
       label: 'About',
-      role: 'Art Director & UI/UX Designer',
-      lead: '6+ years agency and in-house. Visual direction with UX/UI, branding, video and self-built products.',
+      role: 'Hobby Software Developer · Art Director & UI/UX Designer',
+      lead: 'Hobby software developer with 6+ years agency and in-house. Visual direction with UX/UI, branding, video and self-built products.',
       body: 'Currently Floordirekt, NEXUS, Berry, Riftcast and freelance. Before that Forever, performio, cyberWear and Johanniter FSJ.',
       linkedin: 'LinkedIn',
       contact: 'Contact',
@@ -209,7 +214,7 @@ export const copy = {
       label: 'Contact',
       title: "Let's build.",
       titleAccent: 'build.',
-      body: 'Art direction, UX/UI, branding, video or product — use the form or email me directly.',
+      body: 'Hobby software development, art direction, UX/UI, branding, video or product — use the form or email me directly.',
       email: 'Email',
       location: 'Location',
       openMail: 'Open email',
@@ -220,9 +225,12 @@ export const copy = {
       body: 'WIP, prototypes and side builds — the tinkering corner.',
     },
     footer: {
-      tagline: 'UX/UI Designer · Art Director',
+      tagline: 'Hobby Software Developer · UX/UI · Art Director',
       cv: 'CV PDF',
       top: 'Back to top',
+    },
+    brand: {
+      short: 'Hobby Dev · UX/UI · Art Director',
     },
     hero: {
       openCase: 'Open case',

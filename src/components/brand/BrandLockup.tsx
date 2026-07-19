@@ -1,7 +1,9 @@
+import { copy } from '../../lib/i18n';
 import BrandMark from './BrandMark';
 
 type Props = {
   name: string;
+  /** Optional single-language override (z. B. Editor). Sonst bilingual aus footer.tagline. */
   role?: string;
   className?: string;
   weight?: 'nav' | 'hero' | 'footer';
@@ -15,7 +17,7 @@ type Props = {
  */
 export default function BrandLockup({
   name,
-  role = 'UX/UI Designer · Art Director',
+  role,
   className = '',
   weight = 'hero',
   compact = false,
@@ -39,7 +41,14 @@ export default function BrandLockup({
             compact ? 'text-[0.58rem] leading-none' : 'text-[0.68rem] leading-none'
           }`}
         >
-          {role}
+          {role ? (
+            role
+          ) : (
+            <>
+              <span data-lang="de">{copy.de.footer.tagline}</span>
+              <span data-lang="en">{copy.en.footer.tagline}</span>
+            </>
+          )}
         </p>
       </div>
     </div>

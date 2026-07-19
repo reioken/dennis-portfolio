@@ -49,7 +49,13 @@ const personLd = {
     addressCountry: 'DE',
   },
   sameAs: [site.links.linkedin, site.links.github],
-  knowsAbout: ['Art Direction', 'UI/UX Design', 'Product Design', 'Branding'],
+  knowsAbout: [
+    'Hobby Software Development',
+    'Art Direction',
+    'UI/UX Design',
+    'Product Design',
+    'Branding',
+  ],
 };
 ---
 
@@ -104,7 +110,7 @@ const personLd = {
     <footer class="site-footer">
       <div class="wrap flex flex-col gap-5 py-8 md:flex-row md:items-end md:justify-between md:gap-6 md:py-7">
         <a href={p()} class="min-w-0 text-[var(--text)] transition-opacity hover:opacity-90" aria-label="Home">
-          <BrandLockup name={site.name} role={copy.de.footer.tagline} weight="footer" compact />
+          <BrandLockup name={site.name} weight="footer" compact />
         </a>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-3 md:justify-end">
           <nav

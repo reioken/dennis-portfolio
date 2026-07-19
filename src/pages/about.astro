@@ -9,7 +9,7 @@ import { p } from '../lib/paths';
 
 <BaseLayout
   title={`Über mich — ${site.name}`}
-  description={`${site.name} — Art Director & UI/UX Designer. 6+ Jahre Agentur und Inhouse: Floordirekt, NEXUS, Berry, Riftcast, Forever, performio.`}
+  description={`${site.name} — Hobby-Softwareentwickler · Art Director & UI/UX Designer. 6+ Jahre Agentur und Inhouse: Floordirekt, NEXUS, Berry, Riftcast, Forever, performio.`}
 >
   <section class="section overflow-hidden pt-[calc(var(--nav-h)+2rem)]" data-block-id="about-intro" data-block-type="about-intro" data-block-source="native" data-block-label="About Intro">
     <div class="wrap">
@@ -53,7 +53,8 @@ import { p } from '../lib/paths';
           client:visible
           src={p('media/me/portrait.webp')}
           name={site.name}
-          role={site.role}
+          roleDe={copy.de.about.role}
+          roleEn={copy.en.about.role}
         />
       </div>
     </div>

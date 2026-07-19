@@ -2,8 +2,8 @@ export const site = {
   name: 'Dennis Bierreth-Fernandez',
   shortName: 'Dennis',
   monogram: 'DBF',
-  tagline: 'UX/UI Designer · Art Director',
-  role: 'Art Director & UI/UX Designer',
+  tagline: 'Hobby-Softwareentwickler · UX/UI Designer · Art Director',
+  role: 'Hobby-Softwareentwickler · Art Director & UI/UX Designer',
   email: 'dennis@dennisbf.design',
   location: 'Raum Mannheim/Heidelberg',
   address: 'Deutschland',
@@ -15,11 +15,11 @@ export const site = {
   /** Only for Impressum / Datenschutz (§ 5 TMG) — not shown on marketing pages */
   legalAddress: '68542 Heddesheim',
   profile: {
-    de: '6+ Jahre Agentur und Inhouse. Art Direction, UX/UI, Branding, Video und eigene Product-Builds.',
-    en: '6+ years agency and in-house. Art direction, UX/UI, branding, video and self-built products.',
+    de: 'Hobby-Softwareentwickler mit 6+ Jahren Agentur und Inhouse. Art Direction, UX/UI, Branding, Video und eigene Product-Builds.',
+    en: 'Hobby software developer with 6+ years agency and in-house. Art direction, UX/UI, branding, video and self-built products.',
   },
   description:
-    'Art Director & UI/UX Designer — Floordirekt, NEXUS, Berry, Riftcast.',
+    'Hobby-Softwareentwickler · Art Director & UI/UX Designer — Floordirekt, NEXUS, Berry, Riftcast.',
   url: 'https://www.dennisbf.design/',
   links: {
     github: 'https://github.com/reioken',

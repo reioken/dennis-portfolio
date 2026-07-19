@@ -20,7 +20,7 @@ const ROUTES = ['work', 'about', 'contact', 'lab', 'impressum', 'privacy'];
 /** Englische Titles/Descriptions je Route ('' = Startseite) */
 const META_EN = {
   '': {
-    desc: 'Art director & UI/UX designer — Floordirekt, NEXUS, Berry, Riftcast.',
+    desc: 'Hobby software developer · art director & UI/UX designer — Floordirekt, NEXUS, Berry, Riftcast.',
   },
   'work/': {
     title: 'Projects — Dennis Bierreth-Fernandez',
@@ -28,11 +28,11 @@ const META_EN = {
   },
   'about/': {
     title: 'About — Dennis Bierreth-Fernandez',
-    desc: 'Dennis Bierreth-Fernandez — art director & UI/UX designer. 6+ years agency and in-house: Floordirekt, NEXUS, Berry, Riftcast, Forever, performio.',
+    desc: 'Dennis Bierreth-Fernandez — hobby software developer, art director & UI/UX designer. 6+ years agency and in-house: Floordirekt, NEXUS, Berry, Riftcast, Forever, performio.',
   },
   'contact/': {
     title: 'Contact — Dennis Bierreth-Fernandez',
-    desc: 'Contact Dennis Bierreth-Fernandez — art direction, UX/UI, branding, video or product. Use the form or email directly.',
+    desc: 'Contact Dennis Bierreth-Fernandez — hobby software development, art direction, UX/UI, branding, video or product. Use the form or email directly.',
   },
   'lab/': {
     title: 'Lab — Dennis Bierreth-Fernandez',

@@ -163,7 +163,8 @@ export default function GlassNav({
               {brand}
             </span>
             <span className="truncate text-[0.52rem] font-medium leading-none uppercase tracking-[0.16em] text-[var(--faint)]">
-              UX/UI · Art Director
+              <span data-lang="de">{copy.de.brand.short}</span>
+              <span data-lang="en">{copy.en.brand.short}</span>
             </span>
           </span>
         </a>
