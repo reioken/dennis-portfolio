@@ -1317,7 +1317,10 @@ a:hover .brand-mark--nav {
   width: min(74%, 280px);
   display: grid;
   place-items: center;
-  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.42));
+  filter:
+    drop-shadow(0 8px 20px rgba(0, 0, 0, 0.38))
+    drop-shadow(0 0 14px rgba(244, 121, 107, 0.12))
+    drop-shadow(1px -1.5px 3px rgba(255, 232, 226, 0.14));
   transition:
     transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
     filter 0.4s ease;
@@ -1325,8 +1328,9 @@ a:hover .brand-mark--nav {
 .mina-live.is-hot {
   filter:
     drop-shadow(0 10px 24px rgba(0, 0, 0, 0.4))
-    drop-shadow(0 0 18px color-mix(in srgb, #f4796b 14%, transparent))
-    drop-shadow(1px -1.5px 3px rgba(255, 220, 210, 0.16));
+    drop-shadow(0 0 18px color-mix(in srgb, #f4796b 18%, transparent))
+    drop-shadow(0 0 28px color-mix(in srgb, #f4796b 8%, transparent))
+    drop-shadow(1.5px -1.5px 3px rgba(255, 232, 226, 0.22));
 }
 .mina-live__svg {
   width: 100%;
