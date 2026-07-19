@@ -80,7 +80,8 @@ export default function ProjectCard({
 
   const mark = logo || cover;
   const isLogo = Boolean(logo);
-  const ambient = !reduce;
+  /** Idle-Schweben nur auf großen Karten — Craft/Compact bleibt ruhig */
+  const ambient = !reduce && !compact;
   const liveActive = hovering && !reduce;
 
   const onMove = (e: React.MouseEvent) => {
@@ -106,7 +107,7 @@ export default function ProjectCard({
         featured
           ? 'rounded-[28px] md:col-span-2 md:grid md:grid-cols-2 md:gap-0'
           : compact
-            ? 'rounded-[14px]'
+            ? 'project-card--compact rounded-[14px]'
             : 'rounded-[var(--radius)]'
       }`}
       style={{
@@ -175,7 +176,7 @@ export default function ProjectCard({
                 <AnimatedLogo
                   src={logoLive}
                   title={coverAlt ?? `${title} logo`}
-                  className="project-logo-panel__mark project-logo-panel__mark--live is-ambient max-h-[70%] max-w-[78%] w-full h-full object-contain"
+                  className={`project-logo-panel__mark project-logo-panel__mark--live max-h-[70%] max-w-[78%] w-full h-full object-contain${ambient ? ' is-ambient' : ''}`}
                 />
               ) : (
                 <img
@@ -186,7 +187,7 @@ export default function ProjectCard({
                   loading="lazy"
                   decoding="async"
                   className={`project-logo-panel__mark max-h-full max-w-full object-contain ${
-                    logoLive || reduce ? '' : 'project-logo-panel__mark--idle'
+                    logoLive || reduce || compact ? '' : 'project-logo-panel__mark--idle'
                   }`}
                 />
               )}

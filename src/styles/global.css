@@ -583,6 +583,29 @@ a:hover .brand-mark--nav {
   opacity: 0.85;
   animation-duration: 5.5s;
 }
+/* Craft-/Compact-Kacheln: kein Idle-Schweben, ruhiger Glow */
+.project-card--compact .project-logo-panel__glow {
+  animation: none;
+  opacity: 0.45;
+}
+.project-card--compact .project-logo-panel__mark--idle,
+.project-card--compact .berry-live.is-ambient,
+.project-card--compact .rc-live.is-ambient,
+.project-card--compact .mina-live.is-ambient,
+.project-card--compact .fdl.is-ambient,
+.project-card--compact .nx-sp.is-live {
+  animation: none !important;
+  transform: none !important;
+}
+.project-card--compact .nx-sp.is-live .nx-sp__aura,
+.project-card--compact .nx-sp.is-live .nx-sp__aura--core,
+.project-card--compact .nx-sp.is-live .nx-sp__rays,
+.project-card--compact .nx-sp.is-live .nx-sp__wrap,
+.project-card--compact .nx-sp.is-live .nx-sp__glint,
+.project-card--compact .nx-sp.is-live .nx-sp__mote,
+.project-card--compact .nx-sp.is-live .nx-sp__mark {
+  animation: none !important;
+}
 .project-logo-panel__mark {
   max-height: 58%;
   max-width: 72%;
