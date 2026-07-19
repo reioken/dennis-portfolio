@@ -33,3 +33,6 @@ tools/.upscale-tmp/
 
 # local SDXL weight scratch
 .cache-sdxl/
+public/media/craft/_ai-logo/
+public/media/**/_preview*.jpg
+public/media/craft/mark-master.png
