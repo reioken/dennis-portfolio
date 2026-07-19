@@ -1,11 +1,11 @@
 /**
- * Website Designs card mark — stacked client site previews with ambient drift.
+ * Website Designs card mark — stacked newer client previews with ambient drift.
  */
 const SITES = [
-  { src: '/media/websites/gecam-cover.webp', alt: 'GECAM' },
-  { src: '/media/websites/leonardo-cover.webp', alt: 'Leonardo' },
-  { src: '/media/websites/aak-cover.webp', alt: 'AAK' },
-  { src: '/media/websites/bouche-cover.webp', alt: 'Bouche' },
+  { src: '/media/websites/baufinanz-cover.webp', alt: 'Baufinanz' },
+  { src: '/media/websites/willi-alt-cover.webp', alt: 'Willi Alt' },
+  { src: '/media/websites/ig-seidel-cover.webp', alt: 'IG Seidel' },
+  { src: '/media/sportmueller/category-1.webp', alt: 'SportMüller Shop' },
 ] as const;
 
 export default function WebsitesStackLogo({

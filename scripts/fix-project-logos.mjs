@@ -175,10 +175,10 @@ await sharp(ashSrc)
 
 // 7) Web Designs — collage of 4 client covers (no fake wordmark)
 const webCovers = [
-  media('websites', 'gecam-cover.webp'),
-  media('websites', 'leonardo-cover.webp'),
-  media('websites', 'aak-cover.webp'),
-  media('websites', 'bouche-cover.webp'),
+  media('websites', 'baufinanz-cover.webp'),
+  media('websites', 'willi-alt-cover.webp'),
+  media('websites', 'ig-seidel-cover.webp'),
+  media('sportmueller', 'category-1.webp'),
 ];
 const cell = 420;
 const gap = 16;

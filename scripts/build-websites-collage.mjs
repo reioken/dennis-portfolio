@@ -1,15 +1,15 @@
 /**
- * Website Designs fallback mark — stacked client websites (websites only).
+ * Website Designs fallback mark — stacked newer client work.
  */
 import sharp from 'sharp';
 import path from 'node:path';
 
-const dir = path.resolve('public/media/websites');
-const files = [
-  'gecam-cover.webp',
-  'leonardo-cover.webp',
-  'aak-cover.webp',
-  'bouche-cover.webp',
+const root = path.resolve('public/media');
+const picks = [
+  path.join(root, 'websites', 'baufinanz-cover.webp'),
+  path.join(root, 'websites', 'willi-alt-cover.webp'),
+  path.join(root, 'websites', 'ig-seidel-cover.webp'),
+  path.join(root, 'sportmueller', 'category-1.webp'),
 ];
 
 const W = 1200;
@@ -17,6 +17,7 @@ const H = 900;
 const cardW = 520;
 const cardH = Math.round(cardW * 0.62);
 const radius = 16;
+const outDir = path.join(root, 'websites');
 
 const bg = await sharp({
   create: {
@@ -38,12 +39,12 @@ const layouts = [
 
 const composites = [];
 
-for (let i = 0; i < files.length; i++) {
+for (let i = 0; i < picks.length; i++) {
   const { x, y, rot, scale } = layouts[i];
   const w = Math.round(cardW * scale);
   const h = Math.round(cardH * scale);
 
-  const resized = await sharp(path.join(dir, files[i]))
+  const resized = await sharp(picks[i])
     .resize(w, h, { fit: 'cover', position: 'top' })
     .png()
     .toBuffer();
@@ -69,7 +70,6 @@ for (let i = 0; i < files.length; i++) {
     .png()
     .toBuffer();
 
-  // Rotate on transparent canvas larger than card
   const pad = 80;
   const canvasW = w + pad * 2;
   const canvasH = h + pad * 2;
@@ -101,14 +101,15 @@ for (let i = 0; i < files.length; i++) {
 
 const composed = await sharp(bg).composite(composites).png().toBuffer();
 
-await sharp(composed).webp({ quality: 88, alphaQuality: 95 }).toFile(path.join(dir, 'stack.webp'));
-await sharp(composed).avif({ quality: 70 }).toFile(path.join(dir, 'stack.avif'));
-await sharp(composed).webp({ quality: 88, alphaQuality: 95 }).toFile(path.join(dir, 'logo.webp'));
-await sharp(composed).avif({ quality: 70 }).toFile(path.join(dir, 'logo.avif'));
+for (const name of ['stack.webp', 'stack-v2.webp', 'logo.webp']) {
+  await sharp(composed).webp({ quality: 88, alphaQuality: 95 }).toFile(path.join(outDir, name));
+}
+await sharp(composed).avif({ quality: 70 }).toFile(path.join(outDir, 'stack-v2.avif'));
+await sharp(composed).avif({ quality: 70 }).toFile(path.join(outDir, 'stack.avif'));
 await sharp(composed)
   .flatten({ background: { r: 12, g: 14, b: 22 } })
   .resize(1400, 875, { fit: 'cover' })
   .webp({ quality: 86 })
-  .toFile(path.join(dir, 'collage-cover.webp'));
+  .toFile(path.join(outDir, 'collage-cover.webp'));
 
-console.log('[websites-stack]', { count: files.length, out: 'stack.webp' });
+console.log('[websites-stack]', { count: picks.length, out: 'stack-v2.webp' });
