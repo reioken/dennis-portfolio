@@ -402,70 +402,58 @@ button {
 .hero-copy {
   opacity: 1;
 }
-/* Verfügbarkeits-Pill — Hero / About / Contact */
-.hero-status {
-  display: inline-flex;
+/* Verfügbarkeit — Hero / About / Contact */
+.avail {
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
-  max-width: min(100%, 38rem);
-  padding: 0.8rem 1.2rem;
-  border-radius: 1.15rem;
-  border: 1px solid color-mix(in srgb, var(--stroke-hi) 80%, transparent);
-  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  gap: 0.35rem;
+  max-width: min(100%, 28rem);
+  padding: 0.15rem 0 0.15rem 0.95rem;
+  border-left: 2px solid color-mix(in srgb, var(--ice) 45%, var(--stroke));
+  text-transform: none;
+}
+.avail__role,
+.avail__open,
+.avail__loc {
+  margin: 0;
+}
+.avail__role {
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  color: var(--text);
+}
+.avail__muted {
+  color: var(--faint);
+  font-weight: 500;
+}
+.avail__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   font-size: 0.84rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  line-height: 1.55;
-  color: var(--dim);
-  text-transform: none;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--ice) 70%, var(--text));
 }
-.hero-status__dot {
+.avail__open-mark {
   flex: 0 0 auto;
-  width: 0.55rem;
-  height: 0.55rem;
-  margin-top: 0.4rem;
-  border-radius: 999px;
-  background: #4ade80;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.7);
-  animation: status-pulse 2.4s ease-in-out infinite;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--ice);
+  opacity: 0.9;
 }
-.hero-status__body {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-.hero-status__lang {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: 0;
-  row-gap: 0.4rem;
-}
-.hero-status__sep {
-  margin-inline: 0.55rem;
-  opacity: 0.4;
+.avail__loc {
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
   font-weight: 500;
-}
-.hero-status__part--nohire {
-  color: color-mix(in srgb, var(--gold) 65%, var(--text));
-  font-weight: 700;
-}
-.hero-status__part--freelance {
-  color: color-mix(in srgb, #4ade80 50%, var(--text));
-  font-weight: 700;
-}
-@keyframes status-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-status__dot {
-    animation: none;
-  }
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--meta);
 }
 .hero-copy__item {
   opacity: 1;

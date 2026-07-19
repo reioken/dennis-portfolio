@@ -5,52 +5,30 @@ type Props = {
   className?: string;
 };
 
-/** Status-Pill: fest angestellt · nicht open for hire · Freelance willkommen */
+/** Quiet availability strip — role at employer + freelance openness */
 export default function AvailabilityStatus({ showLocation = false, className = '' }: Props) {
   const { de, en } = site.availability;
   return (
-    <p className={`hero-status ${className}`.trim()}>
-      <span className="hero-status__dot" aria-hidden />
-      <span className="hero-status__body">
-        <span data-lang="de" className="hero-status__lang">
-          <span className="hero-status__part">{de.role}</span>
-          <span className="hero-status__sep" aria-hidden>
-            ·
-          </span>
-          <span className="hero-status__part hero-status__part--nohire">{de.noHire}</span>
-          <span className="hero-status__sep" aria-hidden>
-            ·
-          </span>
-          <span className="hero-status__part hero-status__part--freelance">{de.freelance}</span>
-          {showLocation ? (
-            <>
-              <span className="hero-status__sep" aria-hidden>
-                ·
-              </span>
-              <span className="hero-status__part">{site.location}</span>
-            </>
-          ) : null}
+    <div className={`avail ${className}`.trim()}>
+      <p className="avail__role">
+        <span data-lang="de">
+          {de.role} <span className="avail__muted">bei</span> {de.employer}
         </span>
-        <span data-lang="en" className="hero-status__lang">
-          <span className="hero-status__part">{en.role}</span>
-          <span className="hero-status__sep" aria-hidden>
-            ·
-          </span>
-          <span className="hero-status__part hero-status__part--nohire">{en.noHire}</span>
-          <span className="hero-status__sep" aria-hidden>
-            ·
-          </span>
-          <span className="hero-status__part hero-status__part--freelance">{en.freelance}</span>
-          {showLocation ? (
-            <>
-              <span className="hero-status__sep" aria-hidden>
-                ·
-              </span>
-              <span className="hero-status__part">Mannheim/Heidelberg area</span>
-            </>
-          ) : null}
+        <span data-lang="en">
+          {en.role} <span className="avail__muted">at</span> {en.employer}
         </span>
-      </span>
-    </p>
+      </p>
+      <p className="avail__open">
+        <span className="avail__open-mark" aria-hidden />
+        <span data-lang="de">{de.open}</span>
+        <span data-lang="en">{en.open}</span>
+      </p>
+      {showLocation ? (
+        <p className="avail__loc">
+          <span data-lang="de">{site.location}</span>
+          <span data-lang="en">Mannheim/Heidelberg area</span>
+        </p>
+      ) : null}
+    </div>
   );
 }

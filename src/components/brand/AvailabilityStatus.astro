@@ -10,38 +10,26 @@ const { showLocation = false, class: className = '' } = Astro.props;
 const { de, en } = site.availability;
 ---
 
-<p class:list={['hero-status', className]}>
-  <span class="hero-status__dot" aria-hidden></span>
-  <span class="hero-status__body">
-    <span data-lang="de" class="hero-status__lang">
-      <span class="hero-status__part">{de.role}</span>
-      <span class="hero-status__sep" aria-hidden>·</span>
-      <span class="hero-status__part hero-status__part--nohire">{de.noHire}</span>
-      <span class="hero-status__sep" aria-hidden>·</span>
-      <span class="hero-status__part hero-status__part--freelance">{de.freelance}</span>
-      {
-        showLocation && (
-          <>
-            <span class="hero-status__sep" aria-hidden>·</span>
-            <span class="hero-status__part">{site.location}</span>
-          </>
-        )
-      }
+<div class:list={['avail', className]}>
+  <p class="avail__role">
+    <span data-lang="de">
+      {de.role} <span class="avail__muted">bei</span> {de.employer}
     </span>
-    <span data-lang="en" class="hero-status__lang">
-      <span class="hero-status__part">{en.role}</span>
-      <span class="hero-status__sep" aria-hidden>·</span>
-      <span class="hero-status__part hero-status__part--nohire">{en.noHire}</span>
-      <span class="hero-status__sep" aria-hidden>·</span>
-      <span class="hero-status__part hero-status__part--freelance">{en.freelance}</span>
-      {
-        showLocation && (
-          <>
-            <span class="hero-status__sep" aria-hidden>·</span>
-            <span class="hero-status__part">Mannheim/Heidelberg area</span>
-          </>
-        )
-      }
+    <span data-lang="en">
+      {en.role} <span class="avail__muted">at</span> {en.employer}
     </span>
-  </span>
-</p>
+  </p>
+  <p class="avail__open">
+    <span class="avail__open-mark" aria-hidden></span>
+    <span data-lang="de">{de.open}</span>
+    <span data-lang="en">{en.open}</span>
+  </p>
+  {
+    showLocation && (
+      <p class="avail__loc">
+        <span data-lang="de">{site.location}</span>
+        <span data-lang="en">Mannheim/Heidelberg area</span>
+      </p>
+    )
+  }
+</div>
