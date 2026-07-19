@@ -49,7 +49,7 @@ Diese drei Punkte verhindern aktuell, dass Anfragen überhaupt ankommen oder das
 
 ## Phase 4 — Strategischer Rebuild (größerer Aufwand, größte SEO-Reichweite)
 
-- [ ] **Echte Zweisprachigkeit mit eigenen `/en/`-Routen + hreflang** statt Client-seitigem `display:none`-Sprachwechsel
+- [x] **Echte Zweisprachigkeit mit eigenen `/en/`-Routen + hreflang** statt Client-seitigem `display:none`-Sprachwechsel
   - Astro-Routing um `src/pages/en/` erweitern (oder i18n-Routing-Feature nutzen)
   - `hreflang="de"`/`hreflang="en"`/`hreflang="x-default"` in `<head>` ergänzen
   - Sitemap um beide Sprachversionen erweitern
