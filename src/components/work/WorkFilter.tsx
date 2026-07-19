@@ -72,6 +72,10 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
 
   const visible = useMemo(() => {
     if (active === 'all') return items;
+    // Design-Filter: aktuelle Design-Cases — Archiv läuft separat
+    if (active === 'design') {
+      return items.filter((item) => item.tags.includes('design') && !item.tags.includes('archive'));
+    }
     return items.filter((item) => item.tags.includes(active));
   }, [active, items]);
 

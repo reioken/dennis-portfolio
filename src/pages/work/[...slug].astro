@@ -139,6 +139,17 @@ const breadcrumbLd = {
           )
         }
         <p class="case-page__eyebrow">
+          {
+            data.tags.includes('archive') && (
+              <>
+                <span>
+                  <span data-lang="de">Archiv</span>
+                  <span data-lang="en">Archive</span>
+                </span>
+                <span class="case-page__dot" aria-hidden="true">·</span>
+              </>
+            )
+          }
           <span>
             <span data-lang="de">{data.role}</span>
             <span data-lang="en">{data.roleEn ?? data.role}</span>

@@ -188,10 +188,14 @@ const collageShots = [
             <span data-lang="de" data-edit="home.archiveLabel.de">{copy.de.home.archiveLabel}</span>
             <span data-lang="en" data-edit="home.archiveLabel.en">{copy.en.home.archiveLabel}</span>
           </p>
-          <h2 class="display mb-5 text-[clamp(1.15rem,2.4vw,1.55rem)]">
+          <h2 class="display mb-3 text-[clamp(1.15rem,2.4vw,1.55rem)]">
             <span data-lang="de" data-edit="home.archiveTitle.de">{copy.de.home.archiveTitle}</span>
             <span data-lang="en" data-edit="home.archiveTitle.en">{copy.en.home.archiveTitle}</span>
           </h2>
+          <p class="mb-6 max-w-xl normal-case tracking-normal text-[0.95rem] text-[var(--dim)]">
+            <span data-lang="de" data-edit="home.archiveBody.de">{copy.de.home.archiveBody}</span>
+            <span data-lang="en" data-edit="home.archiveBody.en">{copy.en.home.archiveBody}</span>
+          </p>
           <div class="grid max-w-4xl grid-cols-2 gap-3 md:grid-cols-4 md:gap-3.5">
             {archive.map((w) => (
               <ProjectCard

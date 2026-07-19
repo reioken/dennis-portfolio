@@ -264,7 +264,7 @@ export default function GlassNav({
 
               {workLinks.length > 0
                 ? (() => {
-                    // Lange Liste visuell gruppieren: Product / Design & Craft / Lab
+                    // Lange Liste visuell gruppieren: Product / Design / Archiv / Lab
                     const groups = [
                       {
                         key: 'product',
@@ -273,10 +273,19 @@ export default function GlassNav({
                       },
                       {
                         key: 'design',
-                        labelDe: 'Design & Craft', labelEn: 'Design & craft',
+                        labelDe: 'Design', labelEn: 'Design',
                         links: workLinks.filter(
-                          (w) => !w.tags?.includes('product') && !w.tags?.includes('lab'),
+                          (w) =>
+                            w.tags?.includes('design') &&
+                            !w.tags?.includes('product') &&
+                            !w.tags?.includes('archive') &&
+                            !w.tags?.includes('lab'),
                         ),
+                      },
+                      {
+                        key: 'archive',
+                        labelDe: 'Archiv', labelEn: 'Archive',
+                        links: workLinks.filter((w) => w.tags?.includes('archive')),
                       },
                       {
                         key: 'lab',
