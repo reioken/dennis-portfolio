@@ -46,7 +46,8 @@ export default function CaseSurfaceStack({ title, surfaces }: Props) {
 
   const jump = (id: string) => {
     const el = document.getElementById(`surface-${id}`);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     setActiveId(id);
   };
 

@@ -2,7 +2,6 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroStage from '../components/hero/HeroStage';
 import ProjectCard from '../components/work/ProjectCard';
-import Reveal from '../components/motion/Reveal';
 import { getCollection } from 'astro:content';
 import { site } from '../lib/site';
 import { copy } from '../lib/i18n';
@@ -75,7 +74,7 @@ const collageShots = [
 
   <section class="section" data-block-id="featured" data-block-type="featured" data-block-source="native" data-block-label="Selected Work">
     <div class="wrap">
-      <Reveal client:visible>
+      <div data-reveal>
         <p class="section-label">
           <span data-lang="de" data-edit="home.featuredLabel.de">{copy.de.home.featuredLabel}</span>
           <span data-lang="en" data-edit="home.featuredLabel.en">{copy.en.home.featuredLabel}</span>
@@ -88,7 +87,7 @@ const collageShots = [
           <span data-lang="de" data-edit="home.featuredBody.de">{copy.de.home.featuredBody}</span>
           <span data-lang="en" data-edit="home.featuredBody.en">{copy.en.home.featuredBody}</span>
         </p>
-      </Reveal>
+      </div>
 
       <div class="grid gap-6 md:grid-cols-2">
         {

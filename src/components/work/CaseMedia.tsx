@@ -43,6 +43,19 @@ export default function CaseMedia({
   const [open, setOpen] = useState<number | null>(null);
   const [lang, setLang] = useState<Lang>('de');
   const phone = variant === 'phone';
+  /** Remember which thumb opened the lightbox so focus can return on close. */
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  const openAt = (i: number, el: HTMLElement) => {
+    triggerRef.current = el;
+    setOpen(i);
+  };
+
+  const close = () => {
+    setOpen(null);
+    triggerRef.current?.focus();
+    triggerRef.current = null;
+  };
 
   useEffect(() => {
     const sync = () => setLang(readLang());
@@ -76,7 +89,7 @@ export default function CaseMedia({
           <motion.button
             type="button"
             className={`shot-gallery__cover-trigger${phone ? ' shot-gallery__cover-trigger--phone' : ''}`}
-            onClick={() => setOpen(i)}
+            onClick={(e) => openAt(i, e.currentTarget)}
             aria-label={
               lang === 'en' ? `Open gallery — ${title}` : `Galerie öffnen — ${title}`
             }
@@ -125,7 +138,7 @@ export default function CaseMedia({
                     key={`${shot.src}-${abs}`}
                     type="button"
                     className="shot-gallery__card"
-                    onClick={() => setOpen(abs)}
+                    onClick={(e) => openAt(abs, e.currentTarget)}
                     aria-label={
                       lang === 'en'
                         ? `Open image ${abs + 1} of ${images.length}: ${shot.alt}`
@@ -176,7 +189,7 @@ export default function CaseMedia({
         lang={lang}
         reduce={!!reduce}
         phone={phone}
-        onClose={() => setOpen(null)}
+        onClose={close}
         onChange={setOpen}
       />
     </>
@@ -208,6 +221,9 @@ function GalleryLightbox({
   const total = images.length;
   const stageRef = useRef<HTMLDivElement>(null);
   const filmRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
   const dragX = useRef(0);
 
   const go = useCallback(
@@ -226,6 +242,28 @@ function GalleryLightbox({
       if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowLeft') go(-1);
       if (e.key === 'ArrowRight') go(1);
+      if (e.key === 'Tab') {
+        // Keep focus cycling inside the dialog
+        const root = dialogRef.current;
+        if (!root) return;
+        const focusables = root.querySelectorAll<HTMLElement>(
+          'button, [href], [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const current = document.activeElement as HTMLElement | null;
+        if (!current || !root.contains(current)) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && current === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && current === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -233,6 +271,17 @@ function GalleryLightbox({
       window.removeEventListener('keydown', onKey);
     };
   }, [index, onClose, go]);
+
+  // Move focus into the dialog when it opens
+  useEffect(() => {
+    const isOpen = index !== null;
+    if (isOpen && !wasOpen.current) {
+      const t = window.setTimeout(() => closeBtnRef.current?.focus(), 30);
+      wasOpen.current = true;
+      return () => window.clearTimeout(t);
+    }
+    if (!isOpen) wasOpen.current = false;
+  }, [index]);
 
   // Keep active filmstrip thumb in view
   useEffect(() => {
@@ -261,6 +310,7 @@ function GalleryLightbox({
     <AnimatePresence>
       {active && index !== null ? (
         <motion.div
+          ref={dialogRef}
           className={`gallery-view${phone ? ' gallery-view--phone' : ''}`}
           role="dialog"
           aria-modal="true"
@@ -281,6 +331,7 @@ function GalleryLightbox({
               </span>
             </p>
             <button
+              ref={closeBtnRef}
               type="button"
               className="gallery-view__icon-btn"
               onClick={onClose}

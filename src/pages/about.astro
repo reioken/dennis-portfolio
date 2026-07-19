@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Reveal from '../components/motion/Reveal';
 import PortraitStage from '../components/about/PortraitStage';
 import BrandLockup from '../components/brand/BrandLockup';
 import { site, skills, timeline, education, languages } from '../lib/site';
@@ -8,7 +7,10 @@ import { copy } from '../lib/i18n';
 import { p } from '../lib/paths';
 ---
 
-<BaseLayout title={`About — ${site.name}`} description={site.description}>
+<BaseLayout
+  title={`Über mich — ${site.name}`}
+  description={`${site.name} — Art Director & UI/UX Designer. 6+ Jahre Agentur und Inhouse: Floordirekt, NEXUS, Berry, Riftcast, Forever, performio.`}
+>
   <section class="section overflow-hidden pt-[calc(var(--nav-h)+2rem)]" data-block-id="about-intro" data-block-type="about-intro" data-block-source="native" data-block-label="About Intro">
     <div class="wrap">
       <div class="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
@@ -61,7 +63,7 @@ import { p } from '../lib/paths';
       <div class="grid gap-4 md:grid-cols-3">
         {
           skills.map((s, i) => (
-            <Reveal client:visible delay={i * 0.05}>
+            <div data-reveal style={`--reveal-delay:${i * 0.05}s`}>
               <div class="relative h-full overflow-hidden rounded-[var(--radius)] border border-[var(--stroke)] bg-[var(--panel-soft)] p-6">
                 <div
                   aria-hidden
@@ -84,7 +86,7 @@ import { p } from '../lib/paths';
                   ))}
                 </ul>
               </div>
-            </Reveal>
+            </div>
           ))
         }
       </div>
@@ -118,12 +120,14 @@ import { p } from '../lib/paths';
       <ol class="timeline">
         {
           timeline.map((t, i) => (
-            <Reveal
-              client:visible
-              delay={i * 0.04}
-              className={i === timeline.length - 1 ? 'timeline__row' : 'timeline__row timeline__row--gap'}
-            >
-              <li class="timeline__item">
+              <li
+                class:list={[
+                  'timeline__item',
+                  i === timeline.length - 1 ? 'timeline__row' : 'timeline__row timeline__row--gap',
+                ]}
+                data-reveal
+                style={`--reveal-delay:${i * 0.04}s`}
+              >
                 <div class="timeline__rail" aria-hidden="true">
                   <span class:list={['timeline__dot', i === 0 && 'timeline__dot--now']} />
                 </div>
@@ -142,7 +146,6 @@ import { p } from '../lib/paths';
                   </p>
                 </div>
               </li>
-            </Reveal>
           ))
         }
       </ol>
@@ -158,7 +161,7 @@ import { p } from '../lib/paths';
           <div class="grid gap-4 sm:grid-cols-2">
         {
           education.map((e, i) => (
-            <Reveal client:visible delay={i * 0.05}>
+            <div data-reveal style={`--reveal-delay:${i * 0.05}s`}>
               <div class="h-full rounded-[var(--radius)] border border-[var(--stroke)] bg-[var(--panel-soft)] p-5">
                 <div class="mb-2 text-[0.72rem] font-bold uppercase tracking-[0.16em] text-[var(--meta)]" data-edit={`education.${i}.year`}>{e.year}</div>
                 <h3 class="display mb-2 text-base text-[var(--text)]">
@@ -184,7 +187,7 @@ import { p } from '../lib/paths';
                   ) : null
                 }
               </div>
-            </Reveal>
+            </div>
           ))
         }
       </div>

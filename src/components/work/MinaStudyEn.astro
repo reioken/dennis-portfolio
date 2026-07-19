@@ -1,0 +1,709 @@
+---
+/**
+ * English rebuild of the Mina case study deck (original is a German PDF export).
+ * Same visual language: yellow header band, colored callout panels, persona
+ * cards, journey and clickflow. Language-neutral crops from the original deck
+ * are used as figures.
+ */
+import { p } from '../../lib/paths';
+
+const img = (name: string) => p(`media/mina/${name}`);
+
+const painpoints = [
+  'Lack of trust & safety when contacting neighbours',
+  'Unclear agreements on time, place and compensation',
+  'Little flexibility — many can only help (or accept help) spontaneously',
+  'Uncertainty around payment or exchange (when, how much, in what form)',
+  'Social isolation, especially among older people who wish for more contact',
+];
+
+const stats = [
+  { value: '80%', label: 'Trust', tone: 'coral' },
+  { value: '70%', label: 'Community & neighbourhood', tone: 'yellow' },
+  { value: '65%', label: 'Time as a factor', tone: 'green' },
+  { value: '50%', label: 'Local earning / exchange / volunteering', tone: 'teal' },
+];
+
+const personas = [
+  {
+    name: 'Hilde',
+    meta: 'Retired (72)',
+    lead: true,
+    motivation: 'Everyday help — groceries, small repairs, moving furniture. Trusted contacts, one simple solution.',
+    needs: 'Large type, plain language, simple navigation, verified helpers.',
+    pain: 'Distrust of strangers, fear of scams, overwhelmed by technology.',
+  },
+  {
+    name: 'Guido',
+    meta: 'Student (23)',
+    motivation: 'Earn money flexibly, take spontaneous jobs, meet new people.',
+    needs: 'Quick matching, clear compensation, low commitment.',
+    pain: 'Rigid schedules, unclear expectations.',
+  },
+  {
+    name: 'Angela',
+    meta: 'Employee (54)',
+    motivation: 'Wants to help, strengthen the community and build personal connections.',
+    needs: 'Safety and structure for her engagement.',
+    pain: 'No reliable framework for offering help.',
+  },
+];
+
+const principles = [
+  {
+    title: 'Consistency rules',
+    body: 'Primary green for trust, supporting secondary colours, one type system and shared components.',
+    tone: 'green',
+  },
+  {
+    title: 'Interaction patterns',
+    body: 'Consistent feedback patterns, e.g. success messages and confirmation screens.',
+    tone: 'yellow',
+  },
+  {
+    title: 'Accessibility',
+    body: 'Contrast, readability and screen-reader compatibility from the start.',
+    tone: 'coral',
+  },
+  {
+    title: 'Tone of voice',
+    body: 'Simple, informal address — reinforced through success messages and confirmations.',
+    tone: 'dark',
+  },
+];
+
+const journey = [
+  { step: 'Open the app', note: 'Needs to find her way quickly.', pain: 'Low tech affinity' },
+  { step: 'Create a help request', note: 'Enters urgency, frequency and type of help.', pain: 'Too many steps or unclear wording' },
+  { step: 'Wait for a reply', note: '', pain: 'Uncertainty whether and when someone reacts' },
+  { step: 'Check the helper profile', note: 'Reviews the profile for trustworthiness.', pain: 'Missing personal connection' },
+  { step: 'Build trust', note: 'Verification and ratings do the heavy lifting.', pain: '' },
+  { step: 'Rate the helper', note: 'Job done — Hilde rates her helper.', pain: 'Unsure how ratings work or why they matter' },
+];
+
+const clickflow = [
+  'Open the app',
+  'New help request',
+  'Fill in the form',
+  'Publish the request',
+  'View notification',
+  'View profile',
+  'Verify profile',
+  'Confirm the request',
+  'Send a direct message',
+  'Complete the request',
+  'Write a review',
+  'Publish the review',
+];
+---
+
+<article class="mstudy">
+  <!-- Header band -->
+  <header class="mstudy__band">
+    <div>
+      <strong>Neue Fische</strong>
+      <span>UX/UI Design Bootcamp</span>
+    </div>
+    <div class="mstudy__band-right">
+      <strong>Case Study <em>Mina</em></strong>
+      <span>Capstone project by Aurel, Dennis &amp; Laura</span>
+    </div>
+  </header>
+
+  <!-- Brand intro -->
+  <section class="mstudy__section mstudy__intro">
+    <div>
+      <h2 class="mstudy__h1">Mina — Miteinander Nachbarschaft</h2>
+      <p class="mstudy__sub">“Neighbourhood, together.” A native app that makes it easy to offer and accept help next door.</p>
+      <ul class="mstudy__chips" role="list">
+        <li>Prototype</li>
+        <li>Storytelling</li>
+        <li>UX design</li>
+        <li>Social</li>
+        <li>Communication design</li>
+        <li>Neighbourhood app</li>
+      </ul>
+    </div>
+    <img src={img('en-app-icon.webp')} alt="Mina app icon — the Mina cat waving on a yellow tile" width={400} height={430} loading="lazy" decoding="async" class="mstudy__icon" />
+  </section>
+
+  <!-- Framework -->
+  <section class="mstudy__section">
+    <h3 class="mstudy__h2">Framework</h3>
+    <p>
+      As the capstone of our <strong>UX/UI bootcamp</strong> we designed a <strong>native neighbourhood app</strong> in
+      <strong>4 weeks</strong>, working as a <strong>team of three</strong> — from research and concept all the way to a
+      high-fidelity prototype.
+    </p>
+    <div class="mstudy__panel mstudy__panel--mint">
+      <h4>Our hypothesis</h4>
+      <p>
+        If we build a neighbourhood app that <strong>creates trust</strong>, enables <strong>simple agreements</strong> and
+        offers <strong>flexible as well as fair forms of help</strong>, more people will be willing to support each other.
+      </p>
+      <p class="mstudy__small">Everyone benefits from an uncomplicated, safe and connecting platform.</p>
+    </div>
+  </section>
+
+  <!-- UX design -->
+  <section class="mstudy__section">
+    <div class="mstudy__panel mstudy__panel--yellow">
+      <h3 class="mstudy__h2">UX design</h3>
+      <p>
+        UX design in <strong>Mina</strong> means building an app that gives everyone something: the retiree finds
+        <strong>reliable help fast</strong>, the student <strong>earns a little on the side, flexibly</strong> — and the
+        engaged neighbour experiences real <strong>neighbourhood and community</strong>.
+      </p>
+    </div>
+  </section>
+
+  <!-- Painpoints -->
+  <section class="mstudy__section">
+    <h3 class="mstudy__h2 mstudy__center">Painpoints</h3>
+    <ul class="mstudy__pills" role="list">
+      {painpoints.map((point) => <li>{point}</li>)}
+    </ul>
+  </section>
+
+  <!-- Research -->
+  <section class="mstudy__section mstudy__panel mstudy__panel--mint mstudy__panel--flush">
+    <h3 class="mstudy__h2">Interviews &amp; online surveys</h3>
+    <p>Based on <strong>8 interviews</strong> and <strong>55 respondents</strong> in our online survey.</p>
+    <blockquote class="mstudy__quote">
+      “Feeling safe matters a lot to me. Most of the time I simply trust my gut.”
+    </blockquote>
+    <div class="mstudy__stats">
+      {stats.map((s) => (
+        <div class={`mstudy__stat mstudy__stat--${s.tone}`}>
+          <strong>{s.value}</strong>
+          <span>{s.label}</span>
+        </div>
+      ))}
+    </div>
+    <div class="mstudy__panel mstudy__panel--white">
+      <h4>Conclusion</h4>
+      <p>
+        Our research shows that <strong>trust is the central success factor</strong> — without verification and ratings,
+        many would not use the app at all. At the same time there is a <strong>strong need for more community</strong> and
+        neighbourhood contact, combined with a <strong>wish for flexible, spontaneous everyday help</strong>. Local
+        mini-jobs, small favours and volunteering are especially attractive — and money is often not the point;
+        togetherness is.
+      </p>
+    </div>
+  </section>
+
+  <!-- Personas -->
+  <section class="mstudy__section">
+    <h3 class="mstudy__h2">User personas &amp; storytelling</h3>
+    <p>
+      Our three personas mirror the key motivations and hurdles. <strong>Hilde</strong> is at the centre — she is the
+      focus of our clickflow. Together they show how Mina creates trust, makes help uncomplicated and keeps the
+      neighbourhood alive.
+    </p>
+    <div class="mstudy__personas">
+      {personas.map((pers) => (
+        <div class={`mstudy__persona${pers.lead ? ' mstudy__persona--lead' : ''}`}>
+          <h4>{pers.name} <span>{pers.meta}</span></h4>
+          <p><strong>Motivation:</strong> {pers.motivation}</p>
+          <p><strong>Needs:</strong> {pers.needs}</p>
+          <p><strong>Painpoints:</strong> {pers.pain}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- How might we -->
+  <section class="mstudy__section">
+    <div class="mstudy__panel mstudy__panel--coral">
+      <h3 class="mstudy__h2 mstudy__center">How might we?</h3>
+      <p class="mstudy__center">
+        How might we build a neighbourhood app that first and foremost <strong>creates trust</strong>, strengthens
+        <strong>social cohesion</strong>, enables <strong>time-flexible help</strong> — and at the same time leaves room
+        for <strong>local earning, exchange and volunteering</strong>?
+      </p>
+    </div>
+  </section>
+
+  <!-- Design system -->
+  <section class="mstudy__section">
+    <h3 class="mstudy__h2">Design system</h3>
+    <p>
+      Our design system is the app’s central building block — it combines <strong>trustworthy colours, highly readable
+      typography</strong>, soft radii and a <strong>friendly gamification layer</strong> into one consistent, inviting
+      experience.
+    </p>
+    <div class="mstudy__principles">
+      {principles.map((pr) => (
+        <div class={`mstudy__principle mstudy__principle--${pr.tone}`}>
+          <h4>{pr.title}</h4>
+          <p>{pr.body}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- UI design -->
+  <section class="mstudy__section mstudy__cols">
+    <div>
+      <h3 class="mstudy__h2">UI design</h3>
+      <p>
+        The UI builds on a harmonious palette of <strong>trustworthy green</strong>, fresh mint tones, <strong>warm
+        salmon</strong> and <strong>friendly yellow</strong>, backed by neutrals. The three base colours mirror core
+        needs and double as status colours — green for success, red for errors, yellow for “almost there”.
+        <strong>Generous white space keeps things clear</strong>, while Lucide icons, 20&nbsp;px corner radii and the
+        <strong>Baloo</strong> typeface create a warm, approachable look. Baloo also carries our informal tone of voice,
+        and <strong>Inter keeps body copy highly readable</strong>.
+      </p>
+    </div>
+    <figure class="mstudy__figure">
+      <img src={img('en-ui-kit.webp')} alt="Mina colour system — green, mint, dark grey, yellow and salmon swatches" width={460} height={530} loading="lazy" decoding="async" />
+      <figcaption>Colour system: green for trust, yellow and salmon as warm accents.</figcaption>
+    </figure>
+  </section>
+
+  <!-- Naming + key visual -->
+  <section class="mstudy__section mstudy__cols">
+    <figure class="mstudy__figure">
+      <img src={img('en-cat.webp')} alt="Mina the cat waving, surrounded by confetti" width={560} height={415} loading="lazy" decoding="async" />
+      <figcaption>Mina the cat — key visual and the app’s friendly companion.</figcaption>
+    </figure>
+    <div>
+      <h3 class="mstudy__h2">Naming &amp; key visual</h3>
+      <p>
+        The name <strong>Mina</strong> is short for <strong>„Miteinander Nachbarschaft“</strong> — roughly
+        “neighbourhood, together”. It had to be <strong>short, memorable and instantly understandable</strong> in
+        German-speaking countries, while feeling <strong>characterful and likeable</strong> — the cat association gives
+        the app a friendly, approachable personality.
+      </p>
+      <p>
+        The cat appears on <strong>successes</strong> — a published help request, a written review — where she
+        <strong>motivates, gives positive feedback</strong> and warmly guides people through the app.
+      </p>
+      <h4 class="mstudy__h3">Gamification</h4>
+      <p>
+        Characters and <strong>neighbour titles</strong> make the app likeable and motivating: Hilde becomes the
+        <strong>“Herzensnachbarin”</strong> — the heart-of-the-neighbourhood — because she mostly seeks help and stands
+        for her warm nature.
+      </p>
+    </div>
+  </section>
+
+  <!-- Scenario + journey -->
+  <section class="mstudy__section">
+    <h3 class="mstudy__h2">Scenario</h3>
+    <p>
+      <strong>Hilde needs help</strong>, but Angela can’t always step in. With <strong>Mina</strong>, Hilde posts a help
+      request for the first time — <strong>guided step by step</strong> — and gains confidence. Angela recommends Guido:
+      Hilde gets support, Guido <strong>earns flexibly</strong>, and through Hilde’s <strong>review</strong> the chain of
+      trust keeps growing.
+    </p>
+    <h3 class="mstudy__h2">User journey</h3>
+    <p>
+      Hilde experiences <strong>safety and self-efficacy</strong> because she is guided step by step despite her tech
+      scepticism — which is exactly why her journey is central for <strong>clear click paths, trust and simplicity</strong>.
+    </p>
+    <ol class="mstudy__journey" role="list">
+      {journey.map((j, i) => (
+        <li>
+          <span class="mstudy__journey-num">{i + 1}</span>
+          <div>
+            <strong>{j.step}</strong>
+            {j.note && <p>{j.note}</p>}
+            {j.pain && <p class="mstudy__pain">Painpoint: {j.pain}</p>}
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <!-- Clickflow -->
+  <section class="mstudy__section mstudy__panel mstudy__panel--dark mstudy__panel--flush">
+    <div class="mstudy__cols">
+      <div>
+        <h3 class="mstudy__h2">Clickflow</h3>
+        <p>
+          Using <strong>Hilde</strong> — the persona with the biggest trust painpoint — the clickflow shows how a help
+          request can be created <strong>fast, simply and without hurdles</strong>.
+        </p>
+        <ol class="mstudy__flow" role="list">
+          {clickflow.map((step, i) => (
+            <li class={i % 2 === 1 ? 'is-accent' : ''}>{step}</li>
+          ))}
+        </ol>
+      </div>
+      <figure class="mstudy__figure mstudy__figure--dark">
+        <img src={img('en-wireframes.webp')} alt="Low-fidelity wireframes of the Mina app — home, help request form and neighbourhood map" width={860} height={980} loading="lazy" decoding="async" />
+        <figcaption>Wireframes: home, help request and neighbourhood map.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Closing -->
+  <section class="mstudy__section">
+    <h3 class="mstudy__h2">Together, not side by side</h3>
+    <p>
+      Mina is a neighbourhood app that strengthens <strong>trust and community</strong> by making it easy to offer or
+      accept help — <strong>fast and flexibly</strong>, whether as volunteering, in exchange, or for a small payment.
+    </p>
+  </section>
+
+  <footer class="mstudy__band mstudy__band--footer">
+    <span><strong>Credits</strong> — a collaboration by Aurel Cornea, Dennis Bierreth &amp; Laura Kolde</span>
+  </footer>
+</article>
+
+<style>
+  .mstudy {
+    background: #fff;
+    color: #1e2430;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    letter-spacing: 0;
+  }
+  .mstudy :global(p) {
+    margin: 0 0 0.85rem;
+  }
+  .mstudy__band {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+    padding: 1.5rem 2.25rem;
+    background: #ffd34e;
+  }
+  .mstudy__band strong {
+    display: block;
+    font-size: 1.15rem;
+    line-height: 1.3;
+  }
+  .mstudy__band span {
+    font-size: 0.85rem;
+    color: #4d4630;
+  }
+  .mstudy__band-right {
+    text-align: right;
+  }
+  .mstudy__band--footer {
+    justify-content: center;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  .mstudy__band--footer strong {
+    display: inline;
+    font-size: 0.9rem;
+  }
+  .mstudy__section {
+    padding: 2rem 2.25rem;
+  }
+  .mstudy__section + .mstudy__section {
+    padding-top: 0.5rem;
+  }
+  .mstudy__intro {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem;
+    align-items: center;
+    padding-top: 2.5rem;
+  }
+  .mstudy__icon {
+    width: clamp(120px, 18vw, 190px);
+    height: auto;
+    border-radius: 22px;
+  }
+  .mstudy__h1 {
+    margin: 0 0 0.5rem;
+    font-family: inherit;
+    font-size: clamp(1.5rem, 3.4vw, 2.2rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-transform: none;
+  }
+  .mstudy__h2 {
+    margin: 0 0 0.7rem;
+    font-size: clamp(1.25rem, 2.6vw, 1.7rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-transform: none;
+    color: #1e2430;
+  }
+  .mstudy__h3 {
+    margin: 1.1rem 0 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 800;
+  }
+  .mstudy__sub {
+    color: #555e70;
+    max-width: 46ch;
+  }
+  .mstudy__center {
+    text-align: center;
+  }
+  .mstudy__small {
+    font-size: 0.9rem;
+    color: #47506a;
+    margin-bottom: 0 !important;
+  }
+  .mstudy__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.85rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mstudy__chips li {
+    background: #ffd34e;
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+  .mstudy__panel {
+    border-radius: 20px;
+    padding: 1.5rem 1.75rem;
+    margin: 1rem 0 0;
+  }
+  .mstudy__panel h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+  .mstudy__panel--mint {
+    background: #a5e8c3;
+  }
+  .mstudy__panel--yellow {
+    background: linear-gradient(135deg, #ffe27a, #ffd34e);
+  }
+  .mstudy__panel--coral {
+    background: linear-gradient(160deg, #f4796b, #ff9d8f);
+    color: #241412;
+  }
+  .mstudy__panel--white {
+    background: #fff;
+    margin-top: 1.25rem;
+  }
+  .mstudy__panel--dark {
+    background: #2b2f36;
+    color: #f2f4f8;
+  }
+  .mstudy__panel--dark .mstudy__h2 {
+    color: #fff;
+  }
+  .mstudy__panel--flush {
+    border-radius: 0;
+    margin: 1.5rem 0 0;
+    padding: 2rem 2.25rem;
+  }
+  .mstudy__pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mstudy__pills li {
+    background: #33373f;
+    color: #f2f4f8;
+    border-radius: 16px;
+    padding: 0.8rem 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    max-width: 30ch;
+    text-align: center;
+  }
+  .mstudy__quote {
+    margin: 0.75rem 0 1.25rem;
+    padding: 1rem 1.35rem;
+    background: #fff;
+    border-radius: 18px 18px 18px 4px;
+    font-style: italic;
+    font-weight: 600;
+    max-width: 46ch;
+  }
+  .mstudy__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .mstudy__stat {
+    text-align: center;
+    border-radius: 18px;
+    padding: 1.1rem 0.75rem;
+    background: #fff;
+  }
+  .mstudy__stat strong {
+    display: block;
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .mstudy__stat span {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #47506a;
+  }
+  .mstudy__stat--coral strong { color: #ef6a5b; }
+  .mstudy__stat--yellow strong { color: #e0a800; }
+  .mstudy__stat--green strong { color: #17b26a; }
+  .mstudy__stat--teal strong { color: #2e8b6e; }
+  .mstudy__personas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .mstudy__persona {
+    border-radius: 18px;
+    background: #f4f5f8;
+    padding: 1.2rem 1.3rem;
+    font-size: 0.92rem;
+  }
+  .mstudy__persona--lead {
+    background: #ffd34e;
+  }
+  .mstudy__persona h4 {
+    margin: 0 0 0.6rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+  .mstudy__persona h4 span {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #55503a;
+  }
+  .mstudy__persona p {
+    margin: 0 0 0.5rem;
+  }
+  .mstudy__principles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .mstudy__principle {
+    border-radius: 18px;
+    padding: 1.1rem 1.2rem;
+    font-size: 0.9rem;
+  }
+  .mstudy__principle h4 {
+    margin: 0 0 0.45rem;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+  .mstudy__principle p {
+    margin: 0;
+  }
+  .mstudy__principle--green { background: #59d99a; }
+  .mstudy__principle--yellow { background: #ffd34e; }
+  .mstudy__principle--coral { background: #f4796b; }
+  .mstudy__principle--dark { background: #2b2f36; color: #f2f4f8; }
+  .mstudy__cols {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 1.75rem;
+    align-items: center;
+  }
+  .mstudy__figure {
+    margin: 0;
+  }
+  .mstudy__figure img {
+    width: 100%;
+    height: auto;
+    border-radius: 16px;
+    background: #f4f5f8;
+  }
+  .mstudy__figure figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+    color: #6a7288;
+  }
+  .mstudy__figure--dark figcaption {
+    color: #aab2c4;
+  }
+  .mstudy__journey {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: none;
+  }
+  .mstudy__journey li {
+    display: flex;
+    gap: 0.7rem;
+    background: #f4f5f8;
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    font-size: 0.88rem;
+  }
+  .mstudy__journey strong {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  .mstudy__journey p {
+    margin: 0 0 0.3rem;
+  }
+  .mstudy__journey-num {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 999px;
+    background: #17b26a;
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.85rem;
+  }
+  .mstudy__pain {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #b4443a;
+  }
+  .mstudy__flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mstudy__flow li {
+    border-radius: 999px;
+    padding: 0.6rem 1.1rem;
+    background: #fff;
+    color: #1e2430;
+    font-weight: 700;
+    font-size: 0.88rem;
+    text-align: center;
+  }
+  .mstudy__flow li.is-accent {
+    background: #34d399;
+    color: #0d2b1d;
+  }
+  @media (max-width: 760px) {
+    .mstudy__band,
+    .mstudy__section,
+    .mstudy__panel--flush {
+      padding-inline: 1.25rem;
+    }
+    .mstudy__band-right {
+      text-align: left;
+    }
+    .mstudy__intro,
+    .mstudy__cols {
+      grid-template-columns: 1fr;
+    }
+    .mstudy__figure {
+      order: 2;
+    }
+  }
+</style>

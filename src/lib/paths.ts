@@ -10,7 +10,13 @@ export function p(path = '') {
   return `${base}${clean}`;
 }
 
-const LOGO_LIVE_TOKENS = new Set(['nexus-splash', 'berry-laugh']);
+const LOGO_LIVE_TOKENS = new Set([
+  'nexus-splash',
+  'berry-laugh',
+  'riftcast-cast',
+  'mina-heart',
+  'fd-flash',
+]);
 
 /** Resolve logoLive: keep motion tokens, asset-prefix file paths. */
 export function resolveLogoLive(value?: string) {

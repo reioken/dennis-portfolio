@@ -6,7 +6,7 @@
   /* Type scale — keep these visually distinct */
   --text: #f7f8fc; /* titles / primary */
   --dim: #8188a1; /* body copy */
-  --faint: #52586c; /* quiet chrome */
+  --faint: #727990; /* quiet chrome — ≥4.5:1 on --bg for small text (WCAG AA) */
   --meta: #b79cff; /* dates, labels, meta */
 
   /* NEXUS brand trio — smooth violet → blue → ice */

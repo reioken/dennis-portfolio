@@ -15,7 +15,7 @@ export const copy = {
     home: {
       brand: 'Dennis Bierreth-Fernandez',
       headline: 'Vom Markenbild zur App',
-      support: 'Visuelle Richtung, UX/UI und Product Shipping.',
+      support: 'Visuelle Richtung, UX/UI — vom Konzept bis zur fertigen App.',
       ctaWork: 'Arbeit ansehen',
       ctaContact: 'Kontakt',
       marquee: [
@@ -29,20 +29,21 @@ export const copy = {
         'Prototyping',
         'Figma',
         'Cursor & Claude',
+        'ComfyUI',
         'Electron',
         'Capacitor',
       ],
       featuredLabel: 'Product Apps',
-      featuredTitle: 'Aktueller Stand',
-      featuredBody: 'NEXUS, Berry, Riftcast und Floordirekt Studio — live Screenshots aus den Produkten.',
+      featuredTitle: 'Aktuelle Builds',
+      featuredBody: 'NEXUS, Berry, Riftcast, Floordirekt Studio und die Mina Case Study — live Screenshots aus den Produkten.',
       allProjects: 'Alle Projekte',
       processLabel: 'Arbeitsweise',
       processTitle: 'Klarer Prozess',
-      processBody: 'Richtung setzen, System bauen, shippen.',
+      processBody: 'Richtung setzen, System bauen, sauber umsetzen.',
       processSteps: [
         { title: 'Richtung', body: 'Haltung, Zielgruppe, Constraints.' },
         { title: 'System', body: 'Tokens, Hierarchie, Komponenten.' },
-        { title: 'Ship', body: 'Prototyp, Polish, Launch.' },
+        { title: 'Build', body: 'Prototyp, Polish, fertige App.' },
       ],
       proofLabel: 'Kontext',
       proofTitle: 'Wo die Arbeit sitzt',
@@ -57,7 +58,7 @@ export const copy = {
     about: {
       label: 'Über mich',
       role: 'Art Director & UI/UX Designer',
-      lead: '6+ Jahre Agentur und Inhouse. Visuelle Richtung mit UX/UI, Branding, Video und Shipping.',
+      lead: '6+ Jahre Agentur und Inhouse. Visuelle Richtung mit UX/UI, Branding, Video und eigenen Product-Builds.',
       body: 'Aktuell Floordirekt, NEXUS, Berry, Riftcast und Freelance. Davor Forever, performio, cyberWear und Johanniter FSJ.',
       linkedin: 'LinkedIn',
       contact: 'Kontakt',
@@ -79,7 +80,7 @@ export const copy = {
     work: {
       label: 'Arbeit',
       title: 'Projekte',
-      body: 'Product, Design, Craft und Lab.',
+      body: 'Product-Apps, Design-Systeme, Craft — und ein bisschen Lab.',
       filterAll: 'Alle',
       filterProduct: 'Product',
       filterDesign: 'Design',
@@ -101,7 +102,7 @@ export const copy = {
     lab: {
       label: 'Labor',
       title: 'Experimente',
-      body: 'WIP und Side Builds.',
+      body: 'WIP, Prototypen und Side Builds — hier darf gebastelt werden.',
     },
     footer: {
       tagline: 'UX/UI Designer · Art Director',
@@ -129,7 +130,7 @@ export const copy = {
     home: {
       brand: 'Dennis Bierreth-Fernandez',
       headline: 'From brand imagery to apps',
-      support: 'Visual direction, UX/UI and product shipping.',
+      support: 'Visual direction, UX/UI — from concept to working app.',
       ctaWork: 'View work',
       ctaContact: 'Contact',
       marquee: [
@@ -143,20 +144,21 @@ export const copy = {
         'Prototyping',
         'Figma',
         'Cursor & Claude',
+        'ComfyUI',
         'Electron',
         'Capacitor',
       ],
       featuredLabel: 'Product Apps',
-      featuredTitle: 'Current stand',
-      featuredBody: 'NEXUS, Berry, Riftcast and Floordirekt Studio — live product screenshots.',
+      featuredTitle: 'Current builds',
+      featuredBody: 'NEXUS, Berry, Riftcast, Floordirekt Studio and the Mina case study — live product screenshots.',
       allProjects: 'All projects',
       processLabel: 'Approach',
       processTitle: 'A clear process',
-      processBody: 'Set direction, build the system, ship.',
+      processBody: 'Set direction, build the system, make it real.',
       processSteps: [
         { title: 'Direction', body: 'Stance, audience, constraints.' },
         { title: 'System', body: 'Tokens, hierarchy, components.' },
-        { title: 'Ship', body: 'Prototype, polish, launch.' },
+        { title: 'Build', body: 'Prototype, polish, working app.' },
       ],
       proofLabel: 'Context',
       proofTitle: 'Where the work sits',
@@ -171,7 +173,7 @@ export const copy = {
     about: {
       label: 'About',
       role: 'Art Director & UI/UX Designer',
-      lead: '6+ years agency and in-house. Visual direction with UX/UI, branding, video and shipping.',
+      lead: '6+ years agency and in-house. Visual direction with UX/UI, branding, video and self-built products.',
       body: 'Currently Floordirekt, NEXUS, Berry, Riftcast and freelance. Before that Forever, performio, cyberWear and Johanniter FSJ.',
       linkedin: 'LinkedIn',
       contact: 'Contact',
@@ -193,7 +195,7 @@ export const copy = {
     work: {
       label: 'Work',
       title: 'Projects',
-      body: 'Product, design, craft and lab.',
+      body: 'Product apps, design systems, craft — and a bit of lab.',
       filterAll: 'All',
       filterProduct: 'Product',
       filterDesign: 'Design',
@@ -215,7 +217,7 @@ export const copy = {
     lab: {
       label: 'Lab',
       title: 'Experiments',
-      body: 'WIP and side builds.',
+      body: 'WIP, prototypes and side builds — the tinkering corner.',
     },
     footer: {
       tagline: 'UX/UI Designer · Art Director',

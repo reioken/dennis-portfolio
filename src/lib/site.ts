@@ -10,8 +10,8 @@ export const site = {
   /** Only for Impressum / Datenschutz (§ 5 TMG) — not shown on marketing pages */
   legalAddress: '68542 Heddesheim',
   profile: {
-    de: '6+ Jahre Agentur und Inhouse. Art Direction, UX/UI, Branding, Video und Shipping.',
-    en: '6+ years agency and in-house. Art direction, UX/UI, branding, video and shipping.',
+    de: '6+ Jahre Agentur und Inhouse. Art Direction, UX/UI, Branding, Video und eigene Product-Builds.',
+    en: '6+ years agency and in-house. Art direction, UX/UI, branding, video and self-built products.',
   },
   description:
     'Art Director & UI/UX Designer — Floordirekt, NEXUS, Berry, Riftcast.',
@@ -36,15 +36,29 @@ export const skills = [
   {
     group: { de: 'Design Tools', en: 'Design Tools' },
     items: {
-      de: ['Photoshop & Illustrator', 'InDesign', 'Premiere & After Effects', 'Figma', 'Cursor, Claude & KI-Tools'],
-      en: ['Photoshop & Illustrator', 'InDesign', 'Premiere & After Effects', 'Figma', 'Cursor, Claude & AI tools'],
+      de: [
+        'Photoshop & Illustrator',
+        'InDesign',
+        'Premiere & After Effects',
+        'Figma',
+        'ComfyUI & Gen-AI-Pipelines',
+        'Cursor & Claude Code',
+      ],
+      en: [
+        'Photoshop & Illustrator',
+        'InDesign',
+        'Premiere & After Effects',
+        'Figma',
+        'ComfyUI & gen-AI pipelines',
+        'Cursor & Claude Code',
+      ],
     },
   },
   {
     group: { de: 'Web & Product', en: 'Web & Product' },
     items: {
-      de: ['HTML / CSS', 'WordPress / CMS', 'Desktop Apps', 'Mobile Apps', 'App Shipping', 'Product Systems'],
-      en: ['HTML / CSS', 'WordPress / CMS', 'Desktop apps', 'Mobile apps', 'App shipping', 'Product systems'],
+      de: ['HTML / CSS', 'WordPress / CMS', 'Desktop Apps', 'Mobile Apps', 'Electron & Capacitor', 'Product Systems'],
+      en: ['HTML / CSS', 'WordPress / CMS', 'Desktop apps', 'Mobile apps', 'Electron & Capacitor', 'Product systems'],
     },
   },
   {
@@ -61,7 +75,7 @@ export const skills = [
         'Moderne Websites',
         'Motion & Micro-Animations',
         'Landing Experiences',
-        'Intensive KI-Zusammenarbeit',
+        'KI-Workflows im Alltag — von Prompt bis Pipeline',
       ],
       en: [
         'Art direction',
@@ -74,7 +88,7 @@ export const skills = [
         'Modern websites',
         'Motion & micro-animations',
         'Landing experiences',
-        'High-intensity AI collaboration',
+        'Everyday AI workflows — prompt to pipeline',
       ],
     },
   },
@@ -106,8 +120,8 @@ export const timeline = [
       en: 'Product Design — NEXUS, Berry & Riftcast',
     },
     body: {
-      de: 'NEXUS: Premium Desktop Game Library (UI, Landing, Installer). Berry: Mobile Collector App (Product Design, App-UI, Design-System). Riftcast: Remote Desktop. Konzept bis Shipping.',
-      en: 'NEXUS: premium desktop game library (UI, landing, installer). Berry: mobile collector app (product design, app UI, design system). Riftcast: remote desktop. Concept to shipping.',
+      de: 'NEXUS: Premium Desktop Game Library (UI, Landing, Installer). Berry: Mobile Collector App (Product Design, App-UI, Design-System). Riftcast: Remote Desktop. Von Konzept bis funktionierender App.',
+      en: 'NEXUS: premium desktop game library (UI, landing, installer). Berry: mobile collector app (product design, app UI, design system). Riftcast: remote desktop. Concept to working app.',
     },
   },
   {

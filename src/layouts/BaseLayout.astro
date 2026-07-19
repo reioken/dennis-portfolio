@@ -10,6 +10,7 @@ import { p } from '../lib/paths';
 import { GATE } from '../lib/gate-config';
 import { getCollection } from 'astro:content';
 import BackToTop from '../components/footer/BackToTop';
+import outfitWoff2 from '@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2?url';
 
 interface Props {
   title?: string;
@@ -32,6 +33,8 @@ const canonical = new URL(path, Astro.site ?? site.url).toString();
 const favicon = p('favicon.svg');
 const appleIcon = p('apple-touch-icon.png');
 const og = new URL(p(ogImage.replace(/^\//, '')), Astro.site ?? site.url).toString();
+/** Only the default OG asset is a true 1200×630 card — don't claim that for case covers. */
+const ogIsDefault = ogImage.replace(/^\//, '') === 'og/default.png';
 const gateOn = GATE.lockSite || GATE.editor;
 const personLd = {
   '@context': 'https://schema.org',
@@ -54,6 +57,7 @@ const personLd = {
     <meta name="description" content={description} />
     <meta name="theme-color" content="#07080c" />
     <link rel="canonical" href={canonical} />
+    <link rel="preload" as="font" type="font/woff2" href={outfitWoff2} crossorigin />
     <link rel="icon" type="image/svg+xml" href={`${favicon}?v=3`} />
     <link rel="icon" type="image/png" sizes="32x32" href={`${p('favicon-32.png')}?v=3`} />
     <link rel="apple-touch-icon" href={`${appleIcon}?v=3`} />
@@ -77,8 +81,8 @@ const personLd = {
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={og} />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    {ogIsDefault && <meta property="og:image:width" content="1200" />}
+    {ogIsDefault && <meta property="og:image:height" content="630" />}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
@@ -114,20 +118,20 @@ const personLd = {
             class="flex flex-wrap gap-x-4 gap-y-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]"
             aria-label="Footer"
           >
-            <a class="transition-colors hover:text-[var(--text)]" href={p('work')}>
+            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('work')}>
               <span data-lang="de">{copy.de.nav.work}</span>
               <span data-lang="en">{copy.en.nav.work}</span>
             </a>
-            <a class="transition-colors hover:text-[var(--text)]" href={p('about')}>
+            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('about')}>
               <span data-lang="de">{copy.de.nav.about}</span>
               <span data-lang="en">{copy.en.nav.about}</span>
             </a>
-            <a class="transition-colors hover:text-[var(--text)]" href={p('contact')}>
+            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('contact')}>
               <span data-lang="de">{copy.de.nav.contact}</span>
               <span data-lang="en">{copy.en.nav.contact}</span>
             </a>
-            <a class="transition-colors hover:text-[var(--text)]" href={p('impressum')}>Impressum</a>
-            <a class="transition-colors hover:text-[var(--text)]" href={p('privacy')}>
+            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('impressum')}>Impressum</a>
+            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('privacy')}>
               <span data-lang="de">Datenschutz</span>
               <span data-lang="en">Privacy</span>
             </a>
@@ -145,5 +149,34 @@ const personLd = {
         </div>
       </div>
     </footer>
+    <script>
+      // Scroll-reveal for [data-reveal] — arms hiding only when it can also reveal.
+      const els = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (els.length && !reduce && 'IntersectionObserver' in window) {
+        document.documentElement.classList.add('js-reveal');
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-in');
+                io.unobserve(entry.target);
+              }
+            }
+          },
+          { rootMargin: '0px 0px -10% 0px' },
+        );
+        const vh = window.innerHeight;
+        for (const el of els) {
+          const r = el.getBoundingClientRect();
+          if (r.top < vh * 0.92 && r.bottom > 0) {
+            // Already on screen: play the entrance right away, no observer round-trip
+            window.setTimeout(() => el.classList.add('is-in'), 20);
+          } else {
+            io.observe(el);
+          }
+        }
+      }
+    </script>
   </body>
 </html>

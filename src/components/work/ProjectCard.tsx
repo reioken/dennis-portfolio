@@ -3,6 +3,17 @@ import { motion, useReducedMotion } from 'motion/react';
 import AnimatedLogo from './AnimatedLogo';
 import BerryLiveLogo from './BerryLiveLogo';
 import NexusSplashMark from './NexusSplashMark';
+import RiftcastLiveLogo from './RiftcastLiveLogo';
+import MinaLiveLogo from './MinaLiveLogo';
+import FdStudioLiveLogo from './FdStudioLiveLogo';
+
+/** Tag slugs are data values — show localized labels on the cards. */
+const TAG_LABELS: Record<string, { de: string; en: string }> = {
+  product: { de: 'Product', en: 'Product' },
+  design: { de: 'Design', en: 'Design' },
+  archive: { de: 'Archiv', en: 'Archive' },
+  lab: { de: 'Labor', en: 'Lab' },
+};
 
 type Props = {
   href: string;
@@ -49,7 +60,6 @@ export default function ProjectCard({
 
   const mark = logo || cover;
   const isLogo = Boolean(logo);
-  const lightLogoPanel = Boolean(logo && /\/mina\//i.test(logo));
   const liveActive = hovering && !reduce;
 
   const onMove = (e: React.MouseEvent) => {
@@ -95,7 +105,7 @@ export default function ProjectCard({
       <div
         className={`relative overflow-hidden ${
           isLogo
-            ? `project-logo-panel${lightLogoPanel ? ' project-logo-panel--light' : ''}${featured ? ' md:min-h-[320px] md:aspect-auto md:h-full' : ''}`
+            ? `project-logo-panel${featured ? ' md:min-h-[320px] md:aspect-auto md:h-full' : ''}`
             : featured
               ? 'md:min-h-[320px]'
               : ''
@@ -117,6 +127,24 @@ export default function ProjectCard({
                 />
               ) : logoLive === 'berry-laugh' ? (
                 <BerryLiveLogo
+                  active={liveActive}
+                  title={coverAlt ?? `${title} logo`}
+                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                />
+              ) : logoLive === 'riftcast-cast' ? (
+                <RiftcastLiveLogo
+                  active={liveActive}
+                  title={coverAlt ?? `${title} logo`}
+                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                />
+              ) : logoLive === 'mina-heart' ? (
+                <MinaLiveLogo
+                  active={liveActive}
+                  title={coverAlt ?? `${title} logo`}
+                  className="project-logo-panel__mark project-logo-panel__mark--live"
+                />
+              ) : logoLive === 'fd-flash' ? (
+                <FdStudioLiveLogo
                   active={liveActive}
                   title={coverAlt ?? `${title} logo`}
                   className="project-logo-panel__mark project-logo-panel__mark--live"
@@ -161,27 +189,17 @@ export default function ProjectCard({
         )}
         <div
           className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${
-            isLogo
-              ? lightLogoPanel
-                ? 'opacity-30 group-hover:opacity-40'
-                : 'opacity-40 group-hover:opacity-55'
-              : 'opacity-70 group-hover:opacity-85'
+            isLogo ? 'opacity-40 group-hover:opacity-55' : 'opacity-70 group-hover:opacity-85'
           }`}
           style={{
-            background: lightLogoPanel
-              ? 'linear-gradient(180deg, rgba(247,248,251,0.05) 0%, rgba(247,248,251,0.15) 50%, rgba(20,24,34,0.18) 100%)'
-              : isLogo
-                ? 'linear-gradient(180deg, rgba(6,7,10,0.15) 0%, rgba(6,7,10,0.05) 45%, rgba(6,7,10,0.55) 100%)'
-                : 'linear-gradient(180deg, rgba(6,7,10,0.55) 0%, rgba(6,7,10,0.12) 42%, rgba(6,7,10,0.72) 100%)',
+            background: isLogo
+              ? 'linear-gradient(180deg, rgba(6,7,10,0.15) 0%, rgba(6,7,10,0.05) 45%, rgba(6,7,10,0.55) 100%)'
+              : 'linear-gradient(180deg, rgba(6,7,10,0.55) 0%, rgba(6,7,10,0.12) 42%, rgba(6,7,10,0.72) 100%)',
           }}
           aria-hidden
         />
         <span
-          className={`absolute rounded-md font-[family-name:var(--font-mono)] tracking-[0.1em] shadow-[0_1px_2px_rgba(0,0,0,0.45)] backdrop-blur-sm ${
-            lightLogoPanel
-              ? 'bg-[rgba(20,24,34,0.82)] text-white'
-              : 'bg-[rgba(6,7,10,0.78)] text-[var(--text)]'
-          } ${
+          className={`absolute rounded-md bg-[rgba(6,7,10,0.78)] font-[family-name:var(--font-mono)] tracking-[0.1em] text-[var(--text)] shadow-[0_1px_2px_rgba(0,0,0,0.45)] backdrop-blur-sm ${
             compact
               ? 'left-2 top-2 px-1.5 py-0.5 text-[0.62rem]'
               : 'left-3 top-3 px-2 py-1 text-[0.7rem]'
@@ -225,16 +243,26 @@ export default function ProjectCard({
           {summary}
         </p>
         <div className={`flex flex-wrap ${compact ? 'gap-1.5' : 'gap-2'}`}>
-          {tags.slice(0, featured ? 5 : compact ? 2 : 3).map((tag) => (
-            <span
-              key={tag}
-              className={`rounded-md border border-[var(--stroke)] uppercase tracking-[0.1em] text-[var(--faint)] ${
-                compact ? 'px-1.5 py-px text-[0.58rem]' : 'px-2 py-0.5 text-[0.68rem]'
-              }`}
-            >
-              {tag}
-            </span>
-          ))}
+          {tags.slice(0, featured ? 5 : compact ? 2 : 3).map((tag) => {
+            const label = TAG_LABELS[tag];
+            return (
+              <span
+                key={tag}
+                className={`rounded-md border border-[var(--stroke)] uppercase tracking-[0.1em] text-[var(--faint)] ${
+                  compact ? 'px-1.5 py-px text-[0.58rem]' : 'px-2 py-0.5 text-[0.68rem]'
+                }`}
+              >
+                {label ? (
+                  <>
+                    <span data-lang="de">{label.de}</span>
+                    <span data-lang="en">{label.en}</span>
+                  </>
+                ) : (
+                  tag
+                )}
+              </span>
+            );
+          })}
         </div>
         <span
           className={`inline-flex items-center gap-2 font-semibold uppercase tracking-[0.14em] text-[var(--ice)] transition group-hover:text-[var(--text)] ${

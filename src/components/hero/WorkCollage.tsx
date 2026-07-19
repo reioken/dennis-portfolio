@@ -118,6 +118,10 @@ function CollageCard({
   priority?: boolean;
 }) {
   const phone = format === 'phone';
+  // Cards render at ≤360px CSS width — the @sm variant (720w, see scripts/build-thumbs.mjs)
+  // covers 1x displays, the full asset serves 2x.
+  const sm = src.replace(/\.webp$/, '@sm.webp');
+  const srcSet = sm !== src ? `${sm} 1x, ${src} 2x` : undefined;
   return (
     <div
       className={`hero-collage__card ${phone ? 'hero-collage__card--phone' : ''} ${format === 'wide' ? 'hero-collage__card--wide' : ''}`}
@@ -125,6 +129,7 @@ function CollageCard({
     >
       <img
         src={src}
+        srcSet={srcSet}
         alt=""
         width={phone ? 390 : 720}
         height={phone ? 844 : 450}

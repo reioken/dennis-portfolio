@@ -16,12 +16,17 @@ export type WorkItem = {
 };
 
 const filterIds = ['all', 'product', 'design', 'archive', 'lab'] as const;
+type FilterId = (typeof filterIds)[number];
+
+function isFilterId(v: string | null): v is FilterId {
+  return !!v && (filterIds as readonly string[]).includes(v);
+}
 
 type Props = { items: WorkItem[]; basePath?: string };
 
 export default function WorkFilter({ items, basePath = '/' }: Props) {
   const root = basePath.endsWith('/') ? basePath : `${basePath}/`;
-  const [active, setActive] = useState<(typeof filterIds)[number]>('all');
+  const [active, setActive] = useState<FilterId>('all');
   const [lang, setLang] = useState<Lang>('de');
 
   useEffect(() => {
@@ -31,6 +36,20 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-lang'] });
     return () => obs.disconnect();
   }, []);
+
+  // Restore filter from URL (?filter=product) so filtered views are shareable
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('filter');
+    if (isFilterId(fromUrl)) setActive(fromUrl);
+  }, []);
+
+  const select = (id: FilterId) => {
+    setActive(id);
+    const url = new URL(window.location.href);
+    if (id === 'all') url.searchParams.delete('filter');
+    else url.searchParams.set('filter', id);
+    window.history.replaceState(null, '', url);
+  };
 
   const labelMap = {
     all: copy[lang].work.filterAll,
@@ -52,23 +71,26 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
 
   return (
     <div>
-      <div className="work-filter" role="tablist" aria-label={copy[lang].work.filterAria}>
+      <div className="work-filter" role="group" aria-label={copy[lang].work.filterAria}>
         {filters.map((f) => {
           const on = active === f.id;
           return (
             <button
               key={f.id}
               type="button"
-              role="tab"
-              aria-selected={on}
+              aria-pressed={on}
               className={`work-filter__tab ${on ? 'is-active' : ''}`}
-              onClick={() => setActive(f.id)}
+              onClick={() => select(f.id)}
             >
               {f.label}
             </button>
           );
         })}
       </div>
+
+      <p className="sr-only" role="status" aria-live="polite">
+        {lang === 'en' ? `${visible.length} projects shown` : `${visible.length} Projekte angezeigt`}
+      </p>
 
       {visible.length === 0 ? (
         <p className="normal-case tracking-normal text-[var(--dim)]">{copy[lang].work.filterEmpty}</p>

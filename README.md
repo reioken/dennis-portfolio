@@ -4,7 +4,7 @@ Persönliche Portfolio-Website von **Dennis Bierreth Fernandez** — Hybrid Desi
 
 ## Stack
 
-- Astro 5 + React islands
+- Astro 7 + React islands
 - Tailwind CSS v4 + Design Tokens (`src/styles/tokens.css`)
 - MDX Content Collections (`src/content/work`)
 - Motion (Framer) für Nav / Hero / Cards

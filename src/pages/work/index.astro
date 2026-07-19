@@ -23,7 +23,10 @@ const works = (await getCollection('work'))
   }));
 ---
 
-<BaseLayout title={`Work — ${site.name}`} description={site.description}>
+<BaseLayout
+  title={`Projekte — ${site.name}`}
+  description={`Projekte von ${site.name}: NEXUS, Berry, Riftcast, Floordirekt Studio — Product Design, UX/UI, Branding und Craft.`}
+>
   <section class="section pt-[calc(var(--nav-h)+2.5rem)]">
     <div class="wrap">
       <p class="section-label">

@@ -4,6 +4,9 @@ import path from 'node:path';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CaseMedia from '../../components/work/CaseMedia';
 import CaseSurfaceStack from '../../components/work/CaseSurfaceStack';
+import CaseDocument from '../../components/work/CaseDocument';
+import MinaStudyEn from '../../components/work/MinaStudyEn.astro';
+import CertificateCard from '../../components/work/CertificateCard.astro';
 import CaseAdjacent from '../../components/work/CaseAdjacent.astro';
 import { getCollection, render } from 'astro:content';
 import { site } from '../../lib/site';
@@ -59,6 +62,11 @@ const images = [
   })),
 ];
 
+const docPages = (data.document?.pages ?? []).map((page, i) => ({
+  src: asset(page),
+  alt: `${data.title} Case Study — Abschnitt ${i + 1}`,
+}));
+
 const surfaces = (data.surfaces ?? []).map((surface) => ({
   id: surface.id,
   labelDe: surface.labelDe,
@@ -76,6 +84,27 @@ const surfaces = (data.surfaces ?? []).map((surface) => ({
 const when = data.timeline || data.year;
 const hasBody = (entry.body ?? '').replace(/<[^>]+>/g, '').trim().length > 0;
 const logoSrc = data.logo ? asset(data.logo) : undefined;
+
+const siteUrl = (Astro.site ?? site.url).toString();
+const caseLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CreativeWork',
+  name: data.title,
+  description: data.summary,
+  creator: { '@type': 'Person', name: site.name, url: siteUrl },
+  url: new URL(p(`work/${entry.id}`), siteUrl).toString(),
+  image: new URL(coverSrc.replace(/^\//, ''), siteUrl).toString(),
+  dateCreated: data.year,
+};
+const breadcrumbLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Start', item: siteUrl },
+    { '@type': 'ListItem', position: 2, name: 'Work', item: new URL(p('work'), siteUrl).toString() },
+    { '@type': 'ListItem', position: 3, name: data.title },
+  ],
+};
 ---
 
 <BaseLayout
@@ -83,6 +112,8 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
   description={data.summary}
   ogImage={asset(data.cover)}
 >
+  <script type="application/ld+json" set:html={JSON.stringify(caseLd)} />
+  <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
   <article class="case-page">
     <header class="case-page__intro wrap">
       <div class="case-page__main">
@@ -150,6 +181,36 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
     {
       surfaces.length > 0 ? (
         <CaseSurfaceStack client:load title={data.title} surfaces={surfaces} />
+      ) : docPages.length > 0 && data.document ? (
+        entry.id === 'mina' ? (
+          <>
+            {/* DE: original deck as sliced image reader · EN: full HTML rebuild */}
+            <div data-lang="de">
+              <CaseDocument
+                client:load
+                labelDe={data.document.labelDe}
+                labelEn={data.document.labelEn}
+                pages={docPages}
+              />
+            </div>
+            <div data-lang="en">
+              <CaseDocument
+                client:load
+                labelDe={data.document.labelDe}
+                labelEn={data.document.labelEn}
+              >
+                <MinaStudyEn />
+              </CaseDocument>
+            </div>
+          </>
+        ) : (
+          <CaseDocument
+            client:load
+            labelDe={data.document.labelDe}
+            labelEn={data.document.labelEn}
+            pages={docPages}
+          />
+        )
       ) : (
         <CaseMedia
           client:load
@@ -160,6 +221,8 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
         />
       )
     }
+
+    {entry.id === 'mina' && <CertificateCard />}
 
     <div class="wrap">
       <CaseAdjacent prev={prev} next={next} index={idx} total={all.length} />

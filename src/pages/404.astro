@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../lib/site';
+import { p } from '../lib/paths';
+---
+
+<BaseLayout title={`404 — ${site.name}`} description="Seite nicht gefunden · Page not found">
+  <section class="section flex min-h-[70dvh] items-center pt-[calc(var(--nav-h)+2.5rem)]">
+    <div class="wrap">
+      <p class="section-label">404</p>
+      <h1 class="display mb-4 text-[clamp(2rem,5.5vw,3.4rem)] leading-[1.05]">
+        <span class="gradient-text">
+          <span data-lang="de">Seite nicht gefunden</span>
+          <span data-lang="en">Page not found</span>
+        </span>
+      </h1>
+      <p class="mb-9 max-w-[46ch] text-[1.05rem] normal-case tracking-normal text-[var(--dim)]">
+        <span data-lang="de">
+          Diese Seite existiert nicht (mehr). Vielleicht hilft eine der folgenden Abzweigungen.
+        </span>
+        <span data-lang="en">
+          This page doesn't exist (anymore). One of these paths should help.
+        </span>
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a href={p()} class="btn btn--primary">
+          <span data-lang="de">Zur Startseite</span>
+          <span data-lang="en">Go home</span>
+        </a>
+        <a href={p('work')} class="btn">
+          <span data-lang="de">Projekte ansehen</span>
+          <span data-lang="en">View work</span>
+        </a>
+        <a href={p('contact')} class="btn">
+          <span data-lang="de">Kontakt</span>
+          <span data-lang="en">Contact</span>
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

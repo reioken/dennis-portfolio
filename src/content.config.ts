@@ -19,6 +19,15 @@ const work = defineCollection({
     /** Animated logo — only played on card hover */
     logoLive: z.string().optional(),
     gallery: z.array(z.string()).default([]),
+    /** Long-form case study (sliced PDF/deck) rendered as one continuous document
+        instead of a thumbnail gallery. Slices must be listed in reading order. */
+    document: z
+      .object({
+        labelDe: z.string(),
+        labelEn: z.string(),
+        pages: z.array(z.string()).min(1),
+      })
+      .optional(),
     /** Optional multi-surface galleries (e.g. Riftcast Host / Phone / Browser) */
     surfaces: z
       .array(

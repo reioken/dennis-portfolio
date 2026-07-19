@@ -1,0 +1,189 @@
+---
+/**
+ * Credential panel for case pages — seal, key facts and a verification link.
+ * Data comes from site.ts (education) so it stays in one place.
+ */
+import { education } from '../../lib/site';
+
+const cert = education.find((e) => 'url' in e && e.url);
+const focus = ['Design Thinking', 'User Research', 'Information Architecture', 'Figma', 'Design Systems'];
+---
+
+{
+  cert && 'url' in cert && (
+    <section class="wrap cert" aria-label="Zertifikat">
+      <div class="cert__panel glass-panel">
+        <div class="cert__seal" aria-hidden="true">
+          <svg viewBox="0 0 96 96" class="cert__seal-svg">
+            <defs>
+              <linearGradient id="certg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#ac8bfd" />
+                <stop offset="0.55" stop-color="#4a82fe" />
+                <stop offset="1" stop-color="#c8daf4" />
+              </linearGradient>
+            </defs>
+            {/* Rosette */}
+            <g fill="url(#certg)">
+              <circle cx="48" cy="42" r="26" opacity="0.25" />
+              <path d="M48 10 L54 16 L62.5 14 L65.5 22 L74 24 L72.5 32.5 L79 38.5 L73.5 45 L76 53.5 L68 56.5 L66 65 L57.5 63.5 L51.5 70 L48 66.5 L44.5 70 L38.5 63.5 L30 65 L28 56.5 L20 53.5 L22.5 45 L17 38.5 L23.5 32.5 L22 24 L30.5 22 L33.5 14 L42 16 Z" />
+            </g>
+            {/* Bänder */}
+            <path d="M36 62 L30 88 L42 80 L48 90 L48 66 Z" fill="#4a82fe" opacity="0.8" />
+            <path d="M60 62 L66 88 L54 80 L48 90 L48 66 Z" fill="#ac8bfd" opacity="0.8" />
+            {/* Check */}
+            <path
+              d="M37 42 L45 50 L60 32"
+              stroke="#07080c"
+              stroke-width="6.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+            />
+          </svg>
+        </div>
+
+        <div class="cert__body">
+          <p class="cert__eyebrow">
+            <span data-lang="de">Offiziell bestätigt</span>
+            <span data-lang="en">Officially verified</span>
+          </p>
+          <h2 class="cert__title">
+            <span data-lang="de">{cert.title.de}</span>
+            <span data-lang="en">{cert.title.en}</span>
+          </h2>
+          <p class="cert__meta">
+            neuefische GmbH · {cert.year}
+          </p>
+          <p class="cert__text">
+            <span data-lang="de">
+              Intensiv-Bootcamp mit der Mina Case Study als Capstone — abgeschlossen mit offiziellem Zertifikat.
+            </span>
+            <span data-lang="en">
+              Intensive bootcamp with the Mina case study as its capstone — completed with an official certificate.
+            </span>
+          </p>
+          <ul class="cert__chips" role="list">
+            {focus.map((item) => (
+              <li>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="cert__action">
+          <a class="btn btn--primary" href={cert.url} target="_blank" rel="noopener noreferrer">
+            <span data-lang="de">Zertifikat ansehen</span>
+            <span data-lang="en">View certificate</span>
+            <span aria-hidden="true">↗</span>
+          </a>
+          <p class="cert__hint">
+            <span data-lang="de">Verifizierbar über credential.net</span>
+            <span data-lang="en">Verifiable via credential.net</span>
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .cert {
+    margin: 2.25rem auto 2.5rem;
+  }
+  .cert__panel {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1.5rem 2rem;
+    padding: 1.6rem 2rem;
+    overflow: hidden;
+  }
+  .cert__panel::before {
+    content: '';
+    position: absolute;
+    inset: auto -15% -55% 55%;
+    height: 90%;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle, color-mix(in srgb, var(--violet) 22%, transparent), transparent 70%);
+  }
+  .cert__seal {
+    flex-shrink: 0;
+  }
+  .cert__seal-svg {
+    width: clamp(72px, 9vw, 96px);
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--violet) 25%, transparent));
+  }
+  .cert__eyebrow {
+    margin: 0 0 0.3rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--meta);
+  }
+  .cert__title {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .cert__meta {
+    margin: 0 0 0.55rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--dim);
+  }
+  .cert__text {
+    margin: 0 0 0.8rem;
+    max-width: 52ch;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: var(--dim);
+  }
+  .cert__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .cert__chips li {
+    padding: 0.24rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--stroke) 90%, transparent);
+    background: color-mix(in srgb, var(--elev) 55%, transparent);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .cert__action {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 0.5rem;
+  }
+  .cert__hint {
+    margin: 0;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  @media (max-width: 820px) {
+    .cert__panel {
+      grid-template-columns: auto 1fr;
+    }
+    .cert__action {
+      grid-column: 1 / -1;
+      justify-items: start;
+    }
+  }
+</style>
