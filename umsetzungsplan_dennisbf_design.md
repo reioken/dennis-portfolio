@@ -17,7 +17,7 @@ Diese drei Punkte verhindern aktuell, dass Anfragen überhaupt ankommen oder das
 ## Phase 1 — Quick Wins (alle < 1h, in einem Batch umsetzbar)
 
 - [x] Standortangabe auf `/contact/` von "Deutschland" auf "Mannheim/Heidelberg-Raum" konkretisieren
-- [ ] Cloudflare Web Analytics im Dashboard deaktivieren (behebt CSP-Konsolenfehler)
+- [x] Cloudflare Web Analytics im Dashboard deaktivieren (behebt CSP-Konsolenfehler)
 - [x] `fetchpriority="high"` auf das echte Hero-/LCP-Bild setzen, `low` nur für den Rest
 - [x] Mobile-Menü-Hintergrund undurchsichtig machen (Opazität/Blur erhöhen, behebt Text-Overlap)
 - [x] `address`-Feld (PostalAddress, Region Rhein-Neckar) im Person-JSON-LD ergänzen
@@ -59,9 +59,9 @@ Diese drei Punkte verhindern aktuell, dass Anfragen überhaupt ankommen oder das
 
 ## Phase 5 — Aufräumen (niedrige Priorität, bei Gelegenheit)
 
-- [ ] `/work/`-Mobile-Menü visuell gruppieren (Accordion oder klarere Sections statt einer langen Liste)
-- [ ] AVIF-Kaskade (`<picture>` AVIF→WebP→JPEG) für die größten Screenshot-Assets ergänzen
-- [ ] CSP `'unsafe-inline'` in `script-src`/`style-src` durch Nonce/Hash ersetzen, falls Build-Setup das zulässt
+- [x] `/work/`-Mobile-Menü visuell gruppieren (Accordion oder klarere Sections statt einer langen Liste)
+- [x] AVIF-Kaskade (`<picture>` AVIF→WebP→JPEG) für die größten Screenshot-Assets ergänzen
+- [x] CSP `'unsafe-inline'` in `script-src` durch build-zeitliche sha256-Hashes ersetzen (`scripts/csp-hashes.mjs`; `style-src` bleibt bewusst bei `unsafe-inline`)
 
 ---
 

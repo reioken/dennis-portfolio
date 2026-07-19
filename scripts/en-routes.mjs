@@ -42,35 +42,45 @@ const META_EN = {
     title: 'Privacy — Dennis Bierreth-Fernandez',
     desc: 'Privacy policy for dennisbf.design.',
   },
-  'impressum/': {
-    desc: 'Legal notice (Impressum) for dennisbf.design.',
-  },
   'work/nexus/': {
+    title: 'NEXUS — Dennis Bierreth-Fernandez',
     desc: 'Premium desktop game library — Steam, Riot, Blizzard and local libraries in one interface.',
   },
   'work/berry/': {
+    title: 'Berry — Dennis Bierreth-Fernandez',
     desc: 'Mobile collector app for card collections — product design, app UI and design system v3.',
   },
   'work/riftcast/': {
+    title: 'Riftcast — Dennis Bierreth-Fernandez',
     desc: 'Remote desktop for your own network — mirror, control and play your PC on phone and browser. No cloud account.',
   },
   'work/floordirekt/': {
+    title: 'Floordirekt Studio — Dennis Bierreth-Fernandez',
     desc: 'Studio workflow and imagery system for shop product images — variants, translations, batch export.',
   },
   'work/mina/': {
+    title: 'Mina – UX/UI Case Study — Dennis Bierreth-Fernandez',
     desc: 'UX/UI bootcamp case at neuefische — research, wireframes, usability tests and Figma prototypes.',
   },
   'work/forever/': {
+    title: 'Forever — Visual Craft — Dennis Bierreth-Fernandez',
     desc: 'Brand communication print & digital, social video, product photography and high-end retouching.',
   },
   'work/visual-craft/': {
+    title: 'Logos & Concepts — Dennis Bierreth-Fernandez',
     desc: 'Logo systems, brand mockups and landing concepts — curated craft.',
   },
   'work/web-clients/': {
+    title: 'Website Designs — Dennis Bierreth-Fernandez',
     desc: 'Client websites and shop/campaign work — clear hero hierarchy and retail UI.',
   },
   'work/ashwake/': {
+    title: 'Ashwake — Dennis Bierreth-Fernandez',
     desc: 'Godot lab — combat and atmosphere as an ongoing experiment.',
+  },
+  'impressum/': {
+    title: 'Legal notice — Dennis Bierreth-Fernandez',
+    desc: 'Legal notice (Impressum) for dennisbf.design.',
   },
 };
 
@@ -126,12 +136,58 @@ function toEnglish(html, rel) {
   const meta = META_EN[rel];
   if (meta?.title) {
     out = out.replace(/<title>[^<]*<\/title>/, `<title>${meta.title}</title>`);
+    out = out.replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${meta.title}$2`);
+    out = out.replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${meta.title}$2`);
   }
   if (meta?.desc) {
     out = out.replace(/(<meta name="description" content=")[^"]*(")/, `$1${meta.desc}$2`);
     out = out.replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${meta.desc}$2`);
     out = out.replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${meta.desc}$2`);
   }
+
+  // Cover-/Lightbox-Bilder: data-alt-en → alt (SSR backt sonst Deutsch ein)
+  out = out.replace(/<img\b[^>]*>/g, (tag) => {
+    const en = tag.match(/\sdata-alt-en="([^"]*)"/);
+    if (!en) return tag;
+    if (/\salt="[^"]*"/.test(tag)) {
+      return tag.replace(/\salt="[^"]*"/, ` alt="${en[1]}"`);
+    }
+    return tag.replace(/<img\b/, `<img alt="${en[1]}"`);
+  });
+
+  // Island-Props: altEn zur aktiven alt machen, damit Hydration zur EN-Kopie passt
+  out = out.replace(
+    /&quot;alt&quot;:&quot;((?:[^&]|&(?!quot;))*)&quot;,&quot;altEn&quot;:&quot;((?:[^&]|&(?!quot;))*)&quot;/g,
+    (_m, _de, en) => `&quot;alt&quot;:&quot;${en}&quot;,&quot;altEn&quot;:&quot;${en}&quot;`,
+  );
+
+  // JSON-LD: Case-Description + Breadcrumb „Start" → „Home"
+  out = out.replace(
+    /(<script type="application\/ld\+json">)([\s\S]*?)(<\/script>)/g,
+    (full, open, body, close) => {
+      if (!body.includes('"CreativeWork"') && !body.includes('"BreadcrumbList"')) return full;
+      let next = body;
+      if (body.includes('"CreativeWork"') && meta?.desc) {
+        next = next.replace(/"description":"[^"]*"/, `"description":${JSON.stringify(meta.desc)}`);
+      }
+      if (body.includes('"BreadcrumbList"')) {
+        next = next.replace(/"name":"Start"/, '"name":"Home"');
+      }
+      return open + next + close;
+    },
+  );
+
+  // Häufige SSR-Aria-Labels in Galerie-Buttons
+  out = out.replace(/aria-label="Galerie öffnen — /g, 'aria-label="Open gallery — ');
+  out = out.replace(
+    /aria-label="Bild (\d+) von (\d+) öffnen: /g,
+    'aria-label="Open image $1 of $2: ',
+  );
+  out = out.replace(/aria-label="Galerie schließen"/g, 'aria-label="Close gallery"');
+  out = out.replace(/aria-label="Vorheriges Bild"/g, 'aria-label="Previous image"');
+  out = out.replace(/aria-label="Nächstes Bild"/g, 'aria-label="Next image"');
+  out = out.replace(/aria-label="Galerie-Vorschaubilder"/g, 'aria-label="Gallery thumbnails"');
+  out = out.replace(/aria-label="Projektfilter"/g, 'aria-label="Project filters"');
 
   return out;
 }

@@ -108,7 +108,7 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
 
     setStatus('sending');
     setErrorKey('');
-    setInvalidFields([]);
+    setFieldErrors({});
     try {
       const res = await fetch(endpoint, {
         method: 'POST',

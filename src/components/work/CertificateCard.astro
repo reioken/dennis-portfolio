@@ -11,7 +11,9 @@ const focus = ['Design Thinking', 'User Research', 'Information Architecture', '
 
 {
   cert && 'url' in cert && (
-    <section class="wrap cert" aria-label="Zertifikat">
+    <section class="wrap cert" aria-labelledby="cert-label-de cert-label-en">
+      <span id="cert-label-de" data-lang="de" class="sr-only">Zertifikat</span>
+      <span id="cert-label-en" data-lang="en" class="sr-only">Certificate</span>
       <div class="cert__panel glass-panel">
         <div class="cert__seal" aria-hidden="true">
           <svg viewBox="0 0 96 96" class="cert__seal-svg">

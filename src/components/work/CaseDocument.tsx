@@ -35,11 +35,11 @@ export default function CaseDocument({ labelDe, labelEn, pages = [], children }:
   };
 
   return (
-    <section ref={rootRef} className="wrap case-doc" aria-label={labelDe}>
+    <section ref={rootRef} className="wrap case-doc" aria-labelledby="case-doc-label-de case-doc-label-en">
       <div className="case-doc__head">
         <p className="section-label mb-0">
-          <span data-lang="de">{labelDe}</span>
-          <span data-lang="en">{labelEn}</span>
+          <span id="case-doc-label-de" data-lang="de">{labelDe}</span>
+          <span id="case-doc-label-en" data-lang="en">{labelEn}</span>
         </p>
         {pages.length > 0 && (
           <p className="case-doc__hint">

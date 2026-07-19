@@ -112,6 +112,7 @@ export default function CaseMedia({
                 <img
                   src={shot.src}
                   alt={altFor(shot, lang)}
+                  {...(shot.altEn ? { 'data-alt-en': shot.altEn } : {})}
                   width={phone ? 390 : 1600}
                   height={phone ? 844 : 1000}
                   className="shot-gallery__cover-img"
@@ -407,6 +408,7 @@ function GalleryLightbox({
                   <img
                     src={src}
                     alt={altFor(active, lang)}
+                    {...(active.altEn ? { 'data-alt-en': active.altEn } : {})}
                     className="gallery-view__image"
                     decoding="async"
                     draggable={false}
