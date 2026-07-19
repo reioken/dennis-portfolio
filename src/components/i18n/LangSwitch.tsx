@@ -16,7 +16,10 @@ export default function LangSwitch() {
   }, []);
 
   const toggle = () => {
-    const next: Lang = lang === 'de' ? 'en' : 'de';
+    // Sprache zur Klickzeit aus dem DOM lesen (serverseitig pro Route gesetzt) —
+    // der React-State könnte direkt nach der Hydration noch beim Default stehen
+    const current: Lang = document.documentElement.dataset.lang === 'en' ? 'en' : 'de';
+    const next: Lang = current === 'de' ? 'en' : 'de';
     try {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {
