@@ -151,11 +151,11 @@ export default function GlassNav({
       <div className="glass-nav__bar relative mx-auto flex h-11 items-center justify-between gap-2">
         <a
           href={homeHref}
-          className="group flex h-9 items-center gap-2.5 px-1 text-[var(--text)]"
+          className="group flex h-9 items-center gap-3 px-1 text-[var(--text)]"
           aria-label={`${brand} — Home`}
         >
           <BrandMark size={30} weight="nav" title={brand} className="shrink-0" />
-          <span className="hidden min-w-0 max-w-[11.5rem] flex-col justify-center gap-0.5 md:flex lg:max-w-[16rem]">
+          <span className="hidden min-w-0 max-w-[11.5rem] flex-col justify-center gap-1 md:flex lg:max-w-[16rem]">
             <span
               className="truncate font-[family-name:var(--font-display)] text-[0.78rem] font-medium leading-none tracking-[-0.01em] text-[var(--text)]"
               data-edit="site.name"
