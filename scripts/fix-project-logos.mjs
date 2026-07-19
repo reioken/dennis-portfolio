@@ -73,42 +73,84 @@ await sharp(minaCover)
   console.log('webp mina/logo.webp (cropped)');
 }
 
-// 4) Forever white wordmark — strip black plate + K-tile white stroke
+// 4) Forever — key black plate, keep CMYK K fill, strip only its white stroke
 {
   const src = media('forever', 'logo-white.png');
-  const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data: srcData, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: w, height: h } = info;
+  const out = Buffer.from(srcData);
   const thr = 20;
-  for (let i = 0; i < data.length; i += 4) {
-    const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-    if (lum <= thr) data[i + 3] = 0;
-    else if (lum < thr + 28) data[i + 3] = Math.round(((lum - thr) / 28) * data[i + 3]);
+  for (let i = 0; i < out.length; i += 4) {
+    const lum = 0.2126 * out[i] + 0.7152 * out[i + 1] + 0.0722 * out[i + 2];
+    if (lum <= thr) out[i + 3] = 0;
+    else if (lum < thr + 28) out[i + 3] = Math.round(((lum - thr) / 28) * out[i + 3]);
   }
-  // Remove 4th CMYK tile (black) + its white border — invisible on dark cards anyway
-  for (let y = 0; y <= 42; y++) {
-    for (let x = 344; x < w; x++) {
-      const i = (y * w + x) * 4;
-      if (data[i + 3] < 5) continue;
-      const r = data[i],
-        g = data[i + 1],
-        b = data[i + 2];
-      if (r > 160 && g > 140 && b < 100) continue; // keep yellow
-      data[i] = data[i + 1] = data[i + 2] = 0;
-      data[i + 3] = 0;
+  const kLeft = 344;
+  const kBottom = 45;
+  const isK = new Uint8Array(w * h);
+  const qx = new Int32Array(w * h);
+  const qy = new Int32Array(w * h);
+  let qh = 0,
+    qt = 0;
+  const push = (x, y) => {
+    if (x < kLeft || y < 0 || x >= w || y > kBottom) return;
+    const idx = y * w + x;
+    if (isK[idx]) return;
+    const i = idx * 4;
+    const r = srcData[i],
+      g = srcData[i + 1],
+      b = srcData[i + 2];
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const sat = Math.max(r, g, b) - Math.min(r, g, b);
+    if (lum > 55 || sat > 40) return;
+    isK[idx] = 1;
+    qx[qt] = x;
+    qy[qt] = y;
+    qt++;
+  };
+  push(365, 20);
+  while (qh < qt) {
+    const x = qx[qh],
+      y = qy[qh];
+    qh++;
+    const i = (y * w + x) * 4;
+    out[i] = 12;
+    out[i + 1] = 12;
+    out[i + 2] = 14;
+    out[i + 3] = 255;
+    push(x + 1, y);
+    push(x - 1, y);
+    push(x, y + 1);
+    push(x, y - 1);
+  }
+  for (let y = 0; y <= kBottom; y++) {
+    for (let x = kLeft; x < w; x++) {
+      const idx = y * w + x;
+      if (isK[idx]) continue;
+      const i = idx * 4;
+      if (out[i + 3] < 5) continue;
+      const r = out[i],
+        g = out[i + 1],
+        b = out[i + 2];
+      if (r > 160 && g > 140 && b < 100) continue;
+      out[i + 3] = 0;
     }
   }
-  const out = sharp(data, { raw: { width: w, height: h, channels: 4 } });
-  await out
-    .clone()
-    .webp({ quality: 90, alphaQuality: 95, effort: 4 })
-    .toFile(media('forever', 'logo.webp'));
-  await sharp(data, { raw: { width: w, height: h, channels: 4 } })
+  for (const name of ['logo.webp', 'logo-cmyk.webp']) {
+    await sharp(out, { raw: { width: w, height: h, channels: 4 } })
+      .webp({ quality: 90, alphaQuality: 95, effort: 4 })
+      .toFile(media('forever', name));
+  }
+  await sharp(out, { raw: { width: w, height: h, channels: 4 } })
     .avif({ quality: 70 })
     .toFile(media('forever', 'logo.avif'));
-  await sharp(data, { raw: { width: w, height: h, channels: 4 } })
+  await sharp(out, { raw: { width: w, height: h, channels: 4 } })
+    .avif({ quality: 70 })
+    .toFile(media('forever', 'logo-cmyk.avif'));
+  await sharp(out, { raw: { width: w, height: h, channels: 4 } })
     .png()
     .toFile(media('forever', 'logo.png'));
-  console.log('webp forever/logo.webp (K-tile stroke removed)');
+  console.log('webp forever/logo-cmyk.webp (K fill kept, white stroke removed)');
 }
 
 // 5) SportMüller — strip black plate (keeps orange + white)
