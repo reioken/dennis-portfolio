@@ -8,6 +8,7 @@
   <link rel="icon" href="/studio/assets/studio_mark.png" />
   <script src="/studio/vendor/html-to-image.min.js"></script>
   <script src="/studio/vendor/jszip.min.js"></script>
+  <script src="/studio/vendor/ag-psd.bundle.js"></script>
 </head>
 <body>
   <div class="stage">
@@ -52,9 +53,20 @@
           </label>
 
           <label class="field">
-            Produktname <span class="opt">(optional)</span>
+            Produktname
             <input type="text" id="productName" placeholder="z. B. Gartenstuhl Mayfield" />
           </label>
+
+          <div class="field row-2">
+            <label>
+              Variante
+              <input type="text" id="variante" value="serie" placeholder="serie" />
+            </label>
+            <label>
+              Farbe
+              <input type="text" id="farbe" placeholder="z. B. gelb" />
+            </label>
+          </div>
 
           <div class="block">
             <p class="block-title">1 · Fotos laden</p>
@@ -95,7 +107,7 @@
             <p class="block-title">Text prüfen / ändern</p>
 
             <div class="field">
-              <span class="field-label">Sprache (Vorschau &amp; ZIP)</span>
+              <span class="field-label">Sprache (Vorschau)</span>
               <div class="lang-tabs" id="langTabs" role="tablist" aria-label="Sprache">
                 <button type="button" class="lang-tab is-active" data-lang="de">DE</button>
                 <button type="button" class="lang-tab" data-lang="en">EN</button>
@@ -129,6 +141,22 @@
               <button type="button" class="logo-color-tab" data-logo="dark">Schwarz</button>
             </div>
           </div>
+
+          <div class="block" id="packSection">
+            <p class="block-title">3 · Pack-Export</p>
+            <p class="nav-hint">Ordner: produkt/variante/farbe/sprache/ (+ no-logo + PSD)</p>
+            <fieldset class="psd-mode">
+              <legend>PSD pro Sprache</legend>
+              <label class="radio-row">
+                <input type="radio" name="psdMode" value="einzeln" checked />
+                <span>Einzeln — eine .psd pro Bild</span>
+              </label>
+              <label class="radio-row">
+                <input type="radio" name="psdMode" value="artworks" />
+                <span>Artworks — alle Bilder nebeneinander in einer .psd</span>
+              </label>
+            </fieldset>
+          </div>
         </div>
 
         <div class="side-foot">
@@ -151,11 +179,11 @@
     </div>
 
     <footer class="footer glass">
-      <div class="footer-status" id="status">1 Fotos laden · 2 Aktion wählen · 3 PNG/ZIP speichern</div>
+      <div class="footer-status" id="status">1 Fotos · 2 Aktion · 3 Pack herunterladen</div>
       <div class="footer-actions">
         <button type="button" class="btn btn-secondary" id="btnClear" disabled>Leeren</button>
-        <button type="button" class="btn btn-primary" id="btnZip" disabled>ZIP</button>
-        <button type="button" class="btn btn-primary" id="btnPng" disabled>PNG</button>
+        <button type="button" class="btn btn-secondary" id="btnPng" disabled>PNG</button>
+        <button type="button" class="btn btn-primary" id="btnPack" disabled>Pack laden</button>
       </div>
     </footer>
   </div>

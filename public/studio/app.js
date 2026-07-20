@@ -48,6 +48,14 @@ const BRANDS = {
 };
 
 const LANGS = ["de", "en", "fr", "it", "es", "pl"];
+const LANG_FOLDERS = {
+  de: "deutsch",
+  en: "english",
+  fr: "francais",
+  it: "italiano",
+  es: "espanol",
+  pl: "polski",
+};
 
 const state = {
   refs: [],
@@ -80,6 +88,7 @@ function syncActionButtons() {
   if ($("btnRegenText")) $("btnRegenText").disabled = on || !hasImages;
   if ($("btnGenImages")) $("btnGenImages").disabled = on || !hasRefs;
   if ($("btnPng")) $("btnPng").disabled = on || !ready;
+  if ($("btnPack")) $("btnPack").disabled = on || !ready;
   if ($("btnZip")) $("btnZip").disabled = on || !ready;
   if ($("btnClear")) $("btnClear").disabled = on || !hasImages;
 }
@@ -282,10 +291,21 @@ function syncRefsFromSeries() {
   }
 }
 
-async function buildConfig(img) {
+async function buildConfig(img, opts = {}) {
+  const showLogo = opts.showLogo !== false;
+  const lang = opts.lang || state.activeLang;
   const brandKey = $("brand").value;
   const b = BRANDS[brandKey];
-  const copy = activeCopy();
+  const pack = state.copyByLang[lang] || state.copyByLang.de || {
+    texts: { kicker: "", headline: "", subline: "" },
+    pills: [],
+  };
+  const texts = {
+    kicker: String(pack.texts?.kicker || ""),
+    headline: String(pack.texts?.headline || ""),
+    subline: String(pack.texts?.subline || ""),
+  };
+  const pills = Array.isArray(pack.pills) ? pack.pills : [];
   const layout = img?.layout;
   const palette = layout?.palette || {
     tintColor: "#888888", borderColor: "#ffffff", borderOpacity: 0.55,
@@ -294,14 +314,14 @@ async function buildConfig(img) {
   };
   const card = layout?.card || { left: 64, top: 2048 - 64 - 420, maxWidth: 920, padding: 52 };
   let logoDataUrl = img?.logoDataUrl || null;
-  if (img) {
+  if (img && showLogo) {
     const resolved = await resolveLogoDataUrl(brandKey, img.logoColor || "auto", img.dataUrl);
     logoDataUrl = resolved.dataUrl;
     img.logoDataUrl = logoDataUrl;
     img.resolvedLogoMode = resolved.resolvedMode;
   }
   return {
-    size: 2048, template: "legacy", lang: state.activeLang, overlayStyle: "scandi",
+    size: 2048, template: "legacy", lang, overlayStyle: "scandi",
     showMainCard: true, imageDataUrl: img?.dataUrl || null,
     brand: {
       radius: b.radius, blur: b.blur, tint: b.tint,
@@ -311,27 +331,23 @@ async function buildConfig(img) {
     },
     palette, card,
     logo: {
-      enabled: !!logoDataUrl, dataUrl: logoDataUrl,
+      enabled: showLogo && !!logoDataUrl, dataUrl: showLogo ? logoDataUrl : null,
       maxWidth: b.logoMaxWidth, maxHeight: b.logoMaxHeight,
       sizePercent: 100, offset: 64, left: 96, top: 86,
     },
-    texts: {
-      kicker: copy.texts.kicker || "",
-      headline: copy.texts.headline || "",
-      subline: copy.texts.subline || "",
-    },
+    texts,
     badge: { text: "", headline: "", subline: "" },
-    pills: resolvePillPixels(copy.pills), pillFontSize: 48,
+    pills: resolvePillPixels(pills), pillFontSize: 48,
     series: { logoOffset: 64, badgeMaxWidth: 1200, badgeForm: "pill" },
   };
 }
 
-async function applyToIframe(iframe) {
+async function applyToIframe(iframe, opts = {}) {
   const win = iframe?.contentWindow;
   if (!win || typeof win.__FD_APPLY__ !== "function") return false;
-  const img = activeImage();
+  const img = opts.img || activeImage();
   if (!img) return false;
-  win.__FD_APPLY__(await buildConfig(img));
+  win.__FD_APPLY__(await buildConfig(img, opts));
   return true;
 }
 
@@ -746,17 +762,92 @@ async function regenTextOnly() {
 
 function waitMs(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-async function capturePngDataUrl() {
+async function capturePngDataUrl(opts = {}) {
   const iframe = $("stage");
-  if (!(await applyToIframe(iframe))) {
+  if (!(await applyToIframe(iframe, opts))) {
     await waitMs(400);
-    if (!(await applyToIframe(iframe))) throw new Error("Overlay nicht bereit — Seite neu laden?");
+    if (!(await applyToIframe(iframe, opts))) throw new Error("Overlay nicht bereit — Seite neu laden?");
   }
   await waitMs(260);
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   const doc = iframe.contentDocument;
   if (!doc?.body) throw new Error("Keine Vorschau");
   return htmlToImage.toPng(doc.body, { width: 2048, height: 2048, pixelRatio: 1, cacheBust: true });
+}
+
+function slugify(value, fallback = "produkt") {
+  const s = String(value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
+  return s || fallback;
+}
+
+function packMeta() {
+  const productName = $("productName").value.trim() || "produkt";
+  const slug = slugify(productName, "produkt");
+  const variante = slugify($("variante")?.value || "serie", "serie");
+  const farbe = slugify($("farbe")?.value || "standard", "standard");
+  const psdMode = document.querySelector('input[name="psdMode"]:checked')?.value || "einzeln";
+  return { productName, slug, variante, farbe, psdMode };
+}
+
+function slotName(img, index) {
+  const raw = String(img?.name || "").replace(/\.[^.]+$/, "");
+  const cleaned = slugify(raw, "");
+  if (cleaned && !cleaned.startsWith("pending") && cleaned !== "studio" && cleaned.length < 48) {
+    return cleaned;
+  }
+  if (index === 0) return "main";
+  if (index < 4) return `main-${String(index + 1).padStart(2, "0")}`;
+  return String(index + 1).padStart(2, "0");
+}
+
+async function dataUrlToCanvas(dataUrl) {
+  const img = await loadImage(dataUrl);
+  const c = document.createElement("canvas");
+  c.width = img.width;
+  c.height = img.height;
+  c.getContext("2d").drawImage(img, 0, 0);
+  return c;
+}
+
+function writePsdBuffer(psd) {
+  if (!window.agPsd?.writePsd) throw new Error("PSD-Engine fehlt (ag-psd).");
+  const out = window.agPsd.writePsd(psd);
+  return out instanceof Uint8Array ? out : new Uint8Array(out);
+}
+
+async function makeSinglePsd(dataUrl, layerName) {
+  const canvas = await dataUrlToCanvas(dataUrl);
+  return writePsdBuffer({
+    width: canvas.width,
+    height: canvas.height,
+    children: [{ name: layerName || "Artwork", canvas }],
+  });
+}
+
+async function makeArtworksPsd(items) {
+  // items: [{ name, dataUrl }]
+  const gap = 48;
+  const size = 2048;
+  const canvases = [];
+  for (const item of items) {
+    canvases.push({ name: item.name, canvas: await dataUrlToCanvas(item.dataUrl) });
+  }
+  const width = canvases.length * size + Math.max(0, canvases.length - 1) * gap;
+  const height = size;
+  const children = canvases.map((c, i) => ({
+    name: c.name,
+    canvas: c.canvas,
+    left: i * (size + gap),
+    top: 0,
+  }));
+  return writePsdBuffer({ width, height, children });
 }
 
 async function bakeOnePreview(img) {
@@ -808,31 +899,100 @@ async function downloadPng() {
   }
 }
 
-async function downloadZipLang() {
+async function downloadPack() {
   if (!state.images.length || !hasCopy() || typeof JSZip === "undefined") return;
+  if (!window.agPsd?.writePsd) {
+    status("PSD-Engine nicht geladen — Seite neu laden.");
+    return;
+  }
+  const meta = packMeta();
+  if (!$("farbe")?.value.trim()) {
+    status("Bitte Farbe angeben (z. B. gelb).");
+    $("farbe")?.focus();
+    return;
+  }
   setBusy(true);
   const prevId = state.activeImageId;
+  const prevLang = state.activeLang;
   try {
     const zip = new JSZip();
-    for (let i = 0; i < state.images.length; i++) {
-      state.activeImageId = state.images[i].id;
-      status(`PNG ${i + 1}/${state.images.length}…`);
-      const dataUrl = await capturePngDataUrl();
-      const base = (state.images[i].name || `img_${i + 1}`).replace(/\.[^.]+$/, "");
-      zip.file(`${String(i + 1).padStart(2, "0")}_${base}_${state.activeLang}.png`, dataUrl.split(",")[1], { base64: true });
+    const root = `${meta.slug}/${meta.variante}/${meta.farbe}`;
+    zip.file(
+      `${meta.slug}/README.txt`,
+      [
+        `Floordirekt Studio Pack`,
+        `Produkt: ${meta.productName}`,
+        `Slug: ${meta.slug}`,
+        `Variante: ${meta.variante}`,
+        `Farbe: ${meta.farbe}`,
+        `PSD: ${meta.psdMode}`,
+        ``,
+        `Struktur:`,
+        `  ${meta.slug}/${meta.variante}/${meta.farbe}/{sprache}/`,
+        `    ${meta.slug}-${meta.farbe}-{slot}.png`,
+        `    no-logo/${meta.slug}-${meta.farbe}-no-logo-{slot}.png`,
+        `    PSD einzeln oder *-artworks.psd`,
+        ``,
+        `Sprachen: deutsch, english, francais, italiano, espanol, polski`,
+      ].join("\n"),
+    );
+
+    const langs = LANGS.filter((l) => state.copyByLang[l]);
+    for (const lang of langs) {
+      const langFolder = LANG_FOLDERS[lang] || lang;
+      const baseDir = `${root}/${langFolder}`;
+      const artworkItems = [];
+      state.activeLang = lang;
+
+      for (let i = 0; i < state.images.length; i++) {
+        const img = state.images[i];
+        const slot = slotName(img, i);
+        state.activeImageId = img.id;
+        status(`${langFolder}: Bild ${i + 1}/${state.images.length} (mit Logo)…`);
+        const withLogo = await capturePngDataUrl({ img, lang, showLogo: true });
+        status(`${langFolder}: Bild ${i + 1}/${state.images.length} (no-logo)…`);
+        const noLogo = await capturePngDataUrl({ img, lang, showLogo: false });
+
+        const pngName = `${meta.slug}-${meta.farbe}-${slot}.png`;
+        const nlName = `${meta.slug}-${meta.farbe}-no-logo-${slot}.png`;
+        zip.file(`${baseDir}/${pngName}`, withLogo.split(",")[1], { base64: true });
+        zip.file(`${baseDir}/no-logo/${nlName}`, noLogo.split(",")[1], { base64: true });
+
+        if (meta.psdMode === "einzeln") {
+          status(`${langFolder}: PSD ${i + 1}/${state.images.length}…`);
+          const psd = await makeSinglePsd(withLogo, slot);
+          zip.file(`${baseDir}/${meta.slug}-${meta.farbe}-${slot}.psd`, psd);
+        } else {
+          artworkItems.push({ name: slot, dataUrl: withLogo });
+        }
+      }
+
+      if (meta.psdMode === "artworks" && artworkItems.length) {
+        status(`${langFolder}: Artworks-PSD…`);
+        const psd = await makeArtworksPsd(artworkItems);
+        zip.file(`${baseDir}/${meta.slug}-${meta.farbe}-${langFolder}-artworks.psd`, psd);
+      }
     }
-    const blob = await zip.generateAsync({ type: "blob" });
+
+    status("ZIP wird gebaut…");
+    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `floordirekt-studio_${state.activeLang}.zip`;
+    a.download = `${meta.slug}-${meta.variante}-${meta.farbe}-pack.zip`;
     a.click();
     URL.revokeObjectURL(a.href);
-    status("ZIP gespeichert.");
+    status(`Pack fertig: ${meta.slug}/${meta.variante}/${meta.farbe}/…`);
+    setStep(3);
   } catch (e) {
     console.error(e);
-    status(String(e.message || "ZIP fehlgeschlagen."));
+    status(String(e.message || "Pack fehlgeschlagen."));
   } finally {
     state.activeImageId = prevId;
+    state.activeLang = prevLang;
+    syncTextFieldsFromState();
+    document.querySelectorAll(".lang-tab").forEach((t) => {
+      t.classList.toggle("is-active", t.dataset.lang === state.activeLang);
+    });
     renderGallery();
     setBusy(false);
   }
@@ -948,7 +1108,8 @@ $("btnGenImages").addEventListener("click", generateSeriesImages);
 $("btnRun").addEventListener("click", () => runSeries());
 $("btnRegenText").addEventListener("click", regenTextOnly);
 $("btnPng").addEventListener("click", downloadPng);
-$("btnZip").addEventListener("click", downloadZipLang);
+if ($("btnPack")) $("btnPack").addEventListener("click", downloadPack);
+if ($("btnZip")) $("btnZip").addEventListener("click", downloadPack);
 $("btnClear").addEventListener("click", clearSeries);
 $("btnLogout").addEventListener("click", async () => {
   await fetch(API.logout, { credentials: "same-origin" });
@@ -1012,4 +1173,4 @@ setStep(1);
 setBusy(false);
 syncActionButtons();
 renderGallery();
-status("1 Fotos laden · 2 Aktion wählen · 3 PNG/ZIP speichern");
+status("1 Fotos · 2 Aktion · 3 Pack laden");
