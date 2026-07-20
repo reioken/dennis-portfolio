@@ -73,10 +73,14 @@ const state = {
 };
 
 const $ = (id) => document.getElementById(id);
-const status = (msg) => { $("status").textContent = msg || ""; };
+const status = (msg) => {
+  const el = $("status");
+  if (el) el.textContent = msg || "";
+};
 
 function hasCopy() {
-  return !!state.copyByLang.de?.texts?.headline;
+  const t = state.copyByLang.de?.texts || {};
+  return !!(t.headline || t.kicker || t.subline);
 }
 
 function syncActionButtons() {
@@ -84,13 +88,19 @@ function syncActionButtons() {
   const hasImages = state.images.length > 0;
   const hasRefs = state.refs.length > 0 || hasImages;
   const ready = hasImages && hasCopy();
-  if ($("btnRun")) $("btnRun").disabled = on || !hasImages;
-  if ($("btnRegenText")) $("btnRegenText").disabled = on || !hasImages;
-  if ($("btnGenImages")) $("btnGenImages").disabled = on || !hasRefs;
-  if ($("btnPng")) $("btnPng").disabled = on || !ready;
-  if ($("btnPack")) $("btnPack").disabled = on || !ready;
-  if ($("btnZip")) $("btnZip").disabled = on || !ready;
-  if ($("btnClear")) $("btnClear").disabled = on || !hasImages;
+  [
+    ["btnRun", on || !hasImages],
+    ["btnRegenText", on || !hasImages],
+    ["btnGenImages", on || !hasRefs],
+    ["btnPng", on || !ready],
+    ["btnPack", on || !ready],
+    ["btnPackSide", on || !ready],
+    ["btnZip", on || !ready],
+    ["btnClear", on || !hasImages],
+  ].forEach(([id, disabled]) => {
+    const el = $(id);
+    if (el) el.disabled = disabled;
+  });
 }
 
 function setBusy(on) {
@@ -530,7 +540,10 @@ async function generateSeriesImages() {
     await runSeries({ skipIfBusy: false });
   } catch (err) {
     console.error(err);
-    status(String(err.message || err));
+    const msg = String(err.message || err);
+    status(/timeout|524|502|503|Image-Gen/i.test(msg)
+      ? `KI-Bilder fehlgeschlagen (Timeout/API). Weniger Anzahl oder «Text auf eigene Bilder» nutzen. ${msg.slice(0, 80)}`
+      : msg);
     state.refs = refBackup;
     state.images = state.images.filter((i) => !i.generating);
     updateDropCount();
@@ -691,11 +704,14 @@ async function runSeries(opts = {}) {
     setStep(3);
     status("Overlay-Vorschau wird gebaut…");
     await bakeAllPreviews();
-    status(`Fertig: ${state.images.length} Bilder · ${Object.keys(state.copyByLang).length} Sprachen — PNG/ZIP unten.`);
+    status(`Fertig: ${state.images.length} Bilder · ${Object.keys(state.copyByLang).length} Sprachen — jetzt Pack laden.`);
     if (state.lightboxOpen) await applyToIframe($("lightboxStage"));
   } catch (err) {
     console.error(err);
-    status(String(err.message || err));
+    const msg = String(err.message || err);
+    status(/timeout|524|502|503/i.test(msg)
+      ? "Server-Timeout — weniger Bilder oder nochmal versuchen."
+      : msg);
     setStep(hasCopy() ? 2 : 1);
   } finally {
     setBusy(false);
@@ -762,16 +778,31 @@ async function regenTextOnly() {
 
 function waitMs(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
+async function waitForOverlay(iframe, tries = 50) {
+  for (let i = 0; i < tries; i++) {
+    const win = iframe?.contentWindow;
+    if (win && typeof win.__FD_APPLY__ === "function") return true;
+    await waitMs(100);
+  }
+  return false;
+}
+
 async function capturePngDataUrl(opts = {}) {
   const iframe = $("stage");
-  if (!(await applyToIframe(iframe, opts))) {
-    await waitMs(400);
-    if (!(await applyToIframe(iframe, opts))) throw new Error("Overlay nicht bereit — Seite neu laden?");
+  if (!(await waitForOverlay(iframe))) {
+    throw new Error("Overlay nicht bereit — Seite neu laden?");
   }
-  await waitMs(260);
+  let applied = await applyToIframe(iframe, opts);
+  if (!applied) {
+    await waitMs(350);
+    applied = await applyToIframe(iframe, opts);
+  }
+  if (!applied) throw new Error("Overlay konnte Bild nicht setzen.");
+  await waitMs(280);
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   const doc = iframe.contentDocument;
   if (!doc?.body) throw new Error("Keine Vorschau");
+  if (typeof htmlToImage?.toPng !== "function") throw new Error("PNG-Export fehlt — Seite neu laden.");
   return htmlToImage.toPng(doc.body, { width: 2048, height: 2048, pixelRatio: 1, cacheBust: true });
 }
 
@@ -854,7 +885,7 @@ async function bakeOnePreview(img) {
   const prev = state.activeImageId;
   state.activeImageId = img.id;
   try {
-    img.previewDataUrl = await capturePngDataUrl();
+    img.previewDataUrl = await capturePngDataUrl({ img, lang: state.activeLang, showLogo: true });
   } catch (e) {
     console.warn("preview bake failed", e);
   } finally {
@@ -899,22 +930,61 @@ async function downloadPng() {
   }
 }
 
+function clearFieldErrors() {
+  ["productName", "farbe", "variante"].forEach((id) => $(id)?.classList.remove("is-invalid"));
+}
+
+function requirePackFields() {
+  clearFieldErrors();
+  const nameEl = $("productName");
+  const farbeEl = $("farbe");
+  if (!nameEl?.value.trim()) {
+    nameEl?.classList.add("is-invalid");
+    nameEl?.focus();
+    status("Produktname fehlt (z. B. Gartenstuhl Mayfield).");
+    return false;
+  }
+  if (!farbeEl?.value.trim()) {
+    farbeEl?.classList.add("is-invalid");
+    farbeEl?.focus();
+    status("Farbe fehlt (z. B. gelb).");
+    return false;
+  }
+  return true;
+}
+
 async function downloadPack() {
-  if (!state.images.length || !hasCopy() || typeof JSZip === "undefined") return;
-  if (!window.agPsd?.writePsd) {
-    status("PSD-Engine nicht geladen — Seite neu laden.");
+  if (state.busy) return;
+  if (!state.images.length) {
+    status("Zuerst Fotos laden und Text erzeugen.");
     return;
   }
-  const meta = packMeta();
-  if (!$("farbe")?.value.trim()) {
-    status("Bitte Farbe angeben (z. B. gelb).");
-    $("farbe")?.focus();
+  if (!hasCopy()) {
+    status("Zuerst «Text auf eigene Bilder» oder KI laufen lassen.");
     return;
   }
+  if (typeof JSZip === "undefined") {
+    status("ZIP-Engine fehlt — Seite neu laden.");
+    return;
+  }
+  if (!requirePackFields()) return;
+
+  const psdReady = !!window.agPsd?.writePsd;
+  if (!psdReady) {
+    status("Hinweis: PSD-Engine fehlt — Pack kommt nur mit PNGs.");
+  }
+
+  writeTextFieldsToState();
   setBusy(true);
+  setStep(3);
   const prevId = state.activeImageId;
   const prevLang = state.activeLang;
+  const meta = packMeta();
+  let psdErrors = 0;
   try {
+    if (!(await waitForOverlay($("stage")))) {
+      throw new Error("Overlay nicht bereit — Seite neu laden?");
+    }
     const zip = new JSZip();
     const root = `${meta.slug}/${meta.variante}/${meta.farbe}`;
     zip.file(
@@ -925,7 +995,7 @@ async function downloadPack() {
         `Slug: ${meta.slug}`,
         `Variante: ${meta.variante}`,
         `Farbe: ${meta.farbe}`,
-        `PSD: ${meta.psdMode}`,
+        `PSD: ${psdReady ? meta.psdMode : "übersprungen (Engine fehlte)"}`,
         ``,
         `Struktur:`,
         `  ${meta.slug}/${meta.variante}/${meta.farbe}/{sprache}/`,
@@ -938,7 +1008,10 @@ async function downloadPack() {
     );
 
     const langs = LANGS.filter((l) => state.copyByLang[l]);
-    for (const lang of langs) {
+    if (!langs.length) throw new Error("Keine Texte vorhanden.");
+
+    for (let li = 0; li < langs.length; li++) {
+      const lang = langs[li];
       const langFolder = LANG_FOLDERS[lang] || lang;
       const baseDir = `${root}/${langFolder}`;
       const artworkItems = [];
@@ -948,29 +1021,35 @@ async function downloadPack() {
         const img = state.images[i];
         const slot = slotName(img, i);
         state.activeImageId = img.id;
-        status(`${langFolder}: Bild ${i + 1}/${state.images.length} (mit Logo)…`);
+        status(`Pack ${langFolder} (${li + 1}/${langs.length}): Bild ${i + 1}/${state.images.length}…`);
         const withLogo = await capturePngDataUrl({ img, lang, showLogo: true });
-        status(`${langFolder}: Bild ${i + 1}/${state.images.length} (no-logo)…`);
         const noLogo = await capturePngDataUrl({ img, lang, showLogo: false });
 
-        const pngName = `${meta.slug}-${meta.farbe}-${slot}.png`;
-        const nlName = `${meta.slug}-${meta.farbe}-no-logo-${slot}.png`;
-        zip.file(`${baseDir}/${pngName}`, withLogo.split(",")[1], { base64: true });
-        zip.file(`${baseDir}/no-logo/${nlName}`, noLogo.split(",")[1], { base64: true });
+        zip.file(`${baseDir}/${meta.slug}-${meta.farbe}-${slot}.png`, withLogo.split(",")[1], { base64: true });
+        zip.file(`${baseDir}/no-logo/${meta.slug}-${meta.farbe}-no-logo-${slot}.png`, noLogo.split(",")[1], { base64: true });
 
-        if (meta.psdMode === "einzeln") {
-          status(`${langFolder}: PSD ${i + 1}/${state.images.length}…`);
-          const psd = await makeSinglePsd(withLogo, slot);
-          zip.file(`${baseDir}/${meta.slug}-${meta.farbe}-${slot}.psd`, psd);
-        } else {
+        if (psdReady && meta.psdMode === "einzeln") {
+          try {
+            const psd = await makeSinglePsd(withLogo, slot);
+            zip.file(`${baseDir}/${meta.slug}-${meta.farbe}-${slot}.psd`, psd);
+          } catch (err) {
+            console.warn("psd single failed", err);
+            psdErrors += 1;
+          }
+        } else if (psdReady) {
           artworkItems.push({ name: slot, dataUrl: withLogo });
         }
       }
 
-      if (meta.psdMode === "artworks" && artworkItems.length) {
-        status(`${langFolder}: Artworks-PSD…`);
-        const psd = await makeArtworksPsd(artworkItems);
-        zip.file(`${baseDir}/${meta.slug}-${meta.farbe}-${langFolder}-artworks.psd`, psd);
+      if (psdReady && meta.psdMode === "artworks" && artworkItems.length) {
+        try {
+          status(`Pack ${langFolder}: Artworks-PSD…`);
+          const psd = await makeArtworksPsd(artworkItems);
+          zip.file(`${baseDir}/${meta.slug}-${meta.farbe}-${langFolder}-artworks.psd`, psd);
+        } catch (err) {
+          console.warn("psd artworks failed", err);
+          psdErrors += 1;
+        }
       }
     }
 
@@ -981,7 +1060,11 @@ async function downloadPack() {
     a.download = `${meta.slug}-${meta.variante}-${meta.farbe}-pack.zip`;
     a.click();
     URL.revokeObjectURL(a.href);
-    status(`Pack fertig: ${meta.slug}/${meta.variante}/${meta.farbe}/…`);
+    status(
+      psdErrors
+        ? `Pack fertig (PNG ok, ${psdErrors} PSD-Fehler): ${meta.slug}/${meta.variante}/${meta.farbe}/`
+        : `Pack fertig: ${meta.slug}/${meta.variante}/${meta.farbe}/…`,
+    );
     setStep(3);
   } catch (e) {
     console.error(e);
@@ -1108,9 +1191,13 @@ $("btnGenImages").addEventListener("click", generateSeriesImages);
 $("btnRun").addEventListener("click", () => runSeries());
 $("btnRegenText").addEventListener("click", regenTextOnly);
 $("btnPng").addEventListener("click", downloadPng);
-if ($("btnPack")) $("btnPack").addEventListener("click", downloadPack);
-if ($("btnZip")) $("btnZip").addEventListener("click", downloadPack);
+["btnPack", "btnPackSide", "btnZip"].forEach((id) => {
+  $(id)?.addEventListener("click", downloadPack);
+});
 $("btnClear").addEventListener("click", clearSeries);
+["productName", "farbe"].forEach((id) => {
+  $(id)?.addEventListener("input", () => $(id)?.classList.remove("is-invalid"));
+});
 $("btnLogout").addEventListener("click", async () => {
   await fetch(API.logout, { credentials: "same-origin" });
   location.href = "/studio/login/";
@@ -1154,6 +1241,7 @@ document.addEventListener("keydown", (e) => {
 
 document.querySelectorAll(".lang-tab").forEach((tab) => {
   tab.addEventListener("click", async () => {
+    if (state.busy) return;
     writeTextFieldsToState();
     state.activeLang = tab.dataset.lang;
     document.querySelectorAll(".lang-tab").forEach((t) => t.classList.toggle("is-active", t === tab));
@@ -1161,16 +1249,34 @@ document.querySelectorAll(".lang-tab").forEach((tab) => {
     state.images.forEach((img) => { img.previewDataUrl = null; });
     schedulePreview(0);
     if (state.lightboxOpen) applyToIframe($("lightboxStage")).catch(console.error);
-    if (hasCopy()) await bakeAllPreviews();
+    if (hasCopy()) {
+      setBusy(true);
+      try {
+        status(`Vorschau ${state.activeLang.toUpperCase()}…`);
+        await bakeAllPreviews();
+        status(`Sprache ${state.activeLang.toUpperCase()} aktiv.`);
+      } finally {
+        setBusy(false);
+      }
+    }
   });
 });
 
 $("lightboxStage").addEventListener("load", () => {
   if (state.lightboxOpen) applyToIframe($("lightboxStage")).catch(console.error);
 });
+$("stage")?.addEventListener("load", () => {
+  // Overlay renderer bereit für Export/Pack
+});
 
 setStep(1);
 setBusy(false);
 syncActionButtons();
 renderGallery();
-status("1 Fotos · 2 Aktion · 3 Pack laden");
+status(
+  window.agPsd?.writePsd
+    ? "1 Fotos · 2 Aktion · 3 Pack laden"
+    : "1 Fotos · 2 Aktion · 3 Pack (PSD-Engine lädt ggf. noch…)",
+);
+// Falls ag-psd verzögert da ist
+setTimeout(() => syncActionButtons(), 0);
