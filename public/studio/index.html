@@ -25,39 +25,20 @@
       </div>
       <div></div>
       <div class="topbar-meta">
-        <p class="tagline">Serie · KI-Text · Export</p>
-        <p class="step-line">Auto-Studio · <span id="topStepHint">Bereit</span></p>
+        <p class="tagline">Einfach: Fotos → Aktion → Export</p>
+        <p class="step-line"><span id="topStepHint">1 · Fotos laden</span></p>
       </div>
     </div>
 
     <div class="body">
       <aside class="sidebar">
-        <div class="side-head">
-          <p class="ablauf">ABLAUF</p>
-          <p class="count" id="sideCount">1 / 3</p>
-        </div>
-        <div class="side-track" aria-hidden="true"><i id="sideFill" style="width:20%"></i></div>
-
-        <div class="steps" aria-label="Schritte">
-          <div class="step is-active" data-step="1">
-            <span class="rail"></span>
-            <span class="badge">1</span>
-            <span class="label">Serie</span>
-            <span class="hint"></span>
-          </div>
-          <div class="step" data-step="2">
-            <span class="rail"></span>
-            <span class="badge">2</span>
-            <span class="label">Text</span>
-            <span class="hint"></span>
-          </div>
-          <div class="step" data-step="3">
-            <span class="rail"></span>
-            <span class="badge">3</span>
-            <span class="label">Export</span>
-            <span class="hint"></span>
-          </div>
-        </div>
+        <nav class="simple-nav" aria-label="Ablauf">
+          <ol class="simple-steps">
+            <li class="simple-step is-active" data-step="1"><b>1</b> Fotos</li>
+            <li class="simple-step" data-step="2"><b>2</b> Aktion</li>
+            <li class="simple-step" data-step="3"><b>3</b> Export</li>
+          </ol>
+        </nav>
 
         <div class="side-form">
           <label class="field">
@@ -71,57 +52,50 @@
           </label>
 
           <label class="field">
-            Produktname <span class="opt">(hilft der KI)</span>
+            Produktname <span class="opt">(optional)</span>
             <input type="text" id="productName" placeholder="z. B. Gartenstuhl Mayfield" />
           </label>
 
-          <div class="dropzone dropzone-primary" id="dropzone">
-            <input type="file" id="imageInput" accept="image/*" multiple hidden />
-            <p class="drop-title">Fotos hier reinziehen</p>
-            <p class="drop-hint">Eigene Serie ODER Referenzen für neue KI-Bilder</p>
-            <p class="drop-count" id="dropCount">0 Bilder</p>
-          </div>
-
-          <div class="path-stack" role="group" aria-label="Hauptaktionen">
-            <p class="path-stack-label">Weg wählen</p>
-
-            <button type="button" class="path-card path-card--text" id="btnRun" disabled>
-              <span class="path-card-top">
-                <span class="path-card-num">A</span>
-                <span class="path-card-go">Start</span>
-              </span>
-              <span class="path-card-title">Eigene Bilder + Text</span>
-              <span class="path-card-sub">Deine Fotos behalten · Textboxen · KI-Text · Übersetzen</span>
-            </button>
-
-            <div class="path-card-wrap path-card-wrap--ai">
-              <button type="button" class="path-card path-card--ai" id="btnGenImages" disabled>
-                <span class="path-card-top">
-                  <span class="path-card-num">B</span>
-                  <span class="path-card-go">Start</span>
-                </span>
-                <span class="path-card-title">Neue KI-Bilder</span>
-                <span class="path-card-sub">Neue Motive erzeugen · danach Text + Übersetzen</span>
-              </button>
-              <label class="path-card-meta" id="genCountWrap">
-                <span>Anzahl KI-Bilder</span>
-                <select id="genCount">
-                  <option value="4" selected>4</option>
-                  <option value="6">6</option>
-                  <option value="8">8</option>
-                </select>
-              </label>
+          <div class="block">
+            <p class="block-title">1 · Fotos laden</p>
+            <div class="dropzone" id="dropzone">
+              <input type="file" id="imageInput" accept="image/*" multiple hidden />
+              <p class="drop-title">Hier klicken oder Fotos reinziehen</p>
+              <p class="drop-count" id="dropCount">0 Bilder</p>
             </div>
           </div>
 
-          <button type="button" class="btn btn-ghost btn-wide" id="btnRegenText" disabled>Nur Text neu schreiben</button>
+          <div class="block">
+            <p class="block-title">2 · Was soll passieren?</p>
 
-          <div class="side-section" id="textSection">
-            <p class="side-section-title">Text auf dem Bild</p>
-            <p class="side-section-hint">Nach „fertig machen“ hier prüfen oder ändern. Sprache gilt für Vorschau und ZIP/PNG.</p>
+            <button type="button" class="nav-btn nav-btn-main" id="btnRun" disabled>
+              Text auf eigene Bilder
+            </button>
+            <p class="nav-hint">Deine Fotos bleiben. Textboxen + KI-Text + Übersetzen.</p>
+
+            <button type="button" class="nav-btn nav-btn-alt" id="btnGenImages" disabled>
+              Neue KI-Bilder erzeugen
+            </button>
+            <div class="nav-row">
+              <label class="nav-count" id="genCountWrap" for="genCount">Anzahl</label>
+              <select id="genCount">
+                <option value="4" selected>4</option>
+                <option value="6">6</option>
+                <option value="8">8</option>
+              </select>
+            </div>
+            <p class="nav-hint">Neue Motive aus den Fotos, danach auch Text + Übersetzen.</p>
+
+            <button type="button" class="nav-btn nav-btn-quiet" id="btnRegenText" disabled>
+              Nur Text neu schreiben
+            </button>
+          </div>
+
+          <div class="block" id="textSection">
+            <p class="block-title">Text prüfen / ändern</p>
 
             <div class="field">
-              <span class="field-label">Sprache</span>
+              <span class="field-label">Sprache (Vorschau &amp; ZIP)</span>
               <div class="lang-tabs" id="langTabs" role="tablist" aria-label="Sprache">
                 <button type="button" class="lang-tab is-active" data-lang="de">DE</button>
                 <button type="button" class="lang-tab" data-lang="en">EN</button>
@@ -133,22 +107,21 @@
             </div>
 
             <label class="field">
-              Obere Zeile <span class="opt">(Kicker)</span>
-              <input type="text" id="kicker" placeholder="z. B. GARTENSTUHL" />
+              Obere Zeile
+              <input type="text" id="kicker" placeholder="—" />
             </label>
             <label class="field">
-              Große Überschrift
-              <textarea id="headline" rows="2" placeholder="Haupttext auf dem Bild"></textarea>
+              Überschrift
+              <textarea id="headline" rows="2" placeholder="—"></textarea>
             </label>
             <label class="field">
               Unterzeile
-              <textarea id="subline" rows="2" placeholder="Kurzer Zusatz"></textarea>
+              <textarea id="subline" rows="2" placeholder="—"></textarea>
             </label>
           </div>
 
-          <div class="side-section" id="imageTools">
-            <p class="side-section-title">Logo auf diesem Bild</p>
-            <p class="side-section-hint">Welches Bild links in der Galerie aktiv ist — Logo hell/dunkel anpassen.</p>
+          <div class="block" id="imageTools">
+            <p class="block-title">Logo-Farbe</p>
             <div class="logo-color-tabs" id="logoColorTabs" role="tablist" aria-label="Logo-Farbe">
               <button type="button" class="logo-color-tab is-active" data-logo="auto">Auto</button>
               <button type="button" class="logo-color-tab" data-logo="color">Bunt</button>
@@ -159,34 +132,30 @@
         </div>
 
         <div class="side-foot">
-          <button type="button" class="btn btn-ghost" id="btnLogout">Abmelden</button>
+          <button type="button" class="nav-btn nav-btn-quiet" id="btnLogout">Abmelden</button>
         </div>
       </aside>
 
       <section class="main">
         <div class="card glass">
           <div class="card-head">
-            <div class="accent-bars" aria-hidden="true">
-              <span class="bar-red"></span>
-              <span class="bar-gold"></span>
-            </div>
             <h1>Galerie</h1>
-            <p class="sub">Serie nebeneinander — Klick für Großansicht mit Overlay. KI-Motive haben ↻ zum Neu-Generieren.</p>
+            <p class="sub">Bilder anklicken = groß ansehen. Unten: PNG oder ZIP speichern.</p>
           </div>
           <div class="card-body card-body--gallery">
             <div class="gallery" id="gallery" aria-label="Bildergalerie"></div>
-            <p class="gallery-empty" id="galleryEmpty">Fotos links laden, dann «Text + Overlay» oder «KI-Bilder neu».</p>
+            <p class="gallery-empty" id="galleryEmpty">Noch keine Bilder — links Fotos laden.</p>
           </div>
         </div>
       </section>
     </div>
 
     <footer class="footer glass">
-      <div class="footer-status" id="status">Fotos laden → Text + Overlay ODER KI-Bilder neu → PNG/ZIP.</div>
+      <div class="footer-status" id="status">1 Fotos laden · 2 Aktion wählen · 3 PNG/ZIP speichern</div>
       <div class="footer-actions">
-        <button type="button" class="btn btn-secondary" id="btnClear" disabled>Serie leeren</button>
-        <button type="button" class="btn btn-secondary" id="btnZip" disabled>ZIP (aktuelle Sprache)</button>
-        <button type="button" class="btn btn-primary" id="btnPng" disabled>PNG speichern</button>
+        <button type="button" class="nav-btn nav-btn-quiet footer-btn" id="btnClear" disabled>Leeren</button>
+        <button type="button" class="nav-btn nav-btn-alt footer-btn" id="btnZip" disabled>ZIP</button>
+        <button type="button" class="nav-btn nav-btn-main footer-btn" id="btnPng" disabled>PNG</button>
       </div>
     </footer>
   </div>
@@ -202,9 +171,13 @@
     <button type="button" class="lightbox-nav next" id="lightboxNext" aria-label="Weiter">›</button>
     <div class="lightbox-meta">
       <span id="lightboxLabel"></span>
-      <button type="button" class="btn btn-secondary" id="lightboxRegen" hidden>↻ Bild neu</button>
+      <button type="button" class="nav-btn nav-btn-alt footer-btn" id="lightboxRegen" hidden>Bild neu</button>
     </div>
   </div>
+
+  <!-- Hidden for setStep compat -->
+  <span id="sideCount" hidden>1 / 3</span>
+  <i id="sideFill" hidden></i>
 
   <script src="/studio/placement.js"></script>
   <script src="/studio/app.js"></script>

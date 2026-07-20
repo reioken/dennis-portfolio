@@ -91,20 +91,22 @@ function setBusy(on) {
 
 function setStep(n) {
   const total = 3;
-  $("sideCount").textContent = `${n} / ${total}`;
-  $("sideFill").style.width = `${(n / total) * 100}%`;
-  document.querySelectorAll(".step").forEach((el) => {
+  const sideCount = $("sideCount");
+  const sideFill = $("sideFill");
+  if (sideCount) sideCount.textContent = `${n} / ${total}`;
+  if (sideFill) sideFill.style.width = `${(n / total) * 100}%`;
+  document.querySelectorAll(".simple-step, .step").forEach((el) => {
     const s = Number(el.dataset.step);
     el.classList.toggle("is-active", s === n);
     el.classList.toggle("is-done", s < n);
-    const badge = el.querySelector(".badge");
-    const hint = el.querySelector(".hint");
-    if (s < n) { badge.textContent = "✓"; hint.textContent = ""; }
-    else if (s === n) { badge.textContent = String(s); hint.textContent = "JETZT"; }
-    else { badge.textContent = String(s); hint.textContent = ""; }
   });
-  const labels = { 1: "Serie", 2: "Text", 3: "Export" };
-  $("topStepHint").textContent = labels[n] || "Bereit";
+  const labels = {
+    1: "1 · Fotos laden",
+    2: "2 · Aktion läuft",
+    3: "3 · Export bereit",
+  };
+  const hint = $("topStepHint");
+  if (hint) hint.textContent = labels[n] || "Bereit";
 }
 
 function schedulePreview(delay = 0) {
@@ -606,13 +608,13 @@ async function addSeriesFiles(fileList, { replace = false } = {}) {
   syncActionButtons();
   renderGallery();
 
-  status(`${state.images.length} Bilder geladen → links «Text + Overlay» oder «KI-Bilder neu».`);
+  status(`${state.images.length} Bilder geladen → jetzt Aktion wählen (rot oder gelb).`);
 }
 
 async function runSeries(opts = {}) {
   if (state.busy && opts.skipIfBusy !== false) return;
   if (!state.images.length) {
-    status("Zuerst Fotos hochladen, dann «Text + Overlay».");
+    status("Zuerst Fotos laden, dann den roten Button tippen.");
     return;
   }
   setBusy(true);
@@ -1010,4 +1012,4 @@ setStep(1);
 setBusy(false);
 syncActionButtons();
 renderGallery();
-status("Fotos laden → «Text + Overlay» ODER «KI-Bilder neu».");
+status("1 Fotos laden · 2 Aktion wählen · 3 PNG/ZIP speichern");
