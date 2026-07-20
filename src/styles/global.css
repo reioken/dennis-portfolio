@@ -2934,38 +2934,38 @@ html.js-reveal [data-reveal].is-in {
 
 .portrait-stage {
   position: relative;
-  isolation: isolate;
 }
-.portrait-stage::before {
-  content: "";
-  position: absolute;
-  inset: 12% 8% 8% 8%;
-  border-radius: 48% 52% 50% 50% / 46% 48% 52% 54%;
-  background:
-    radial-gradient(ellipse 75% 70% at 50% 52%, color-mix(in srgb, var(--violet) 12%, transparent), transparent 68%),
-    radial-gradient(ellipse 60% 55% at 55% 58%, color-mix(in srgb, var(--blue) 10%, transparent), transparent 64%);
-  filter: blur(44px);
-  z-index: -1;
-  opacity: calc(0.3 * var(--fx, 1));
-  animation: blob 14s ease-in-out infinite alternate;
-}
-@keyframes blob {
-  from {
-    transform: translate(0, 0) scale(1);
-  }
-  to {
-    transform: translate(-1.5%, 2%) scale(1.03);
-  }
-}
+/* No colored glow / blend behind the face — only a soft floor shadow */
 .portrait-cut {
+  position: relative;
   width: min(100%, 540px);
   margin-inline: auto;
-  filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.35));
+  isolation: isolate;
 }
-.portrait-cut img {
+.portrait-cut::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 2%;
+  height: 12%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4), transparent 70%);
+  filter: blur(14px);
+  pointer-events: none;
+}
+.portrait-cut__img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: auto;
   object-fit: contain;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  opacity: 1 !important;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .rule {

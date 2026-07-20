@@ -12,6 +12,7 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
 
   return (
     <div className="portrait-stage relative mx-auto w-full max-w-[560px]">
+      {/* Orbit stays outside the cutout — no overlays on the face */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-[-4%]"
@@ -38,17 +39,18 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
 
       <motion.div
         className="portrait-cut relative"
-        initial={reduce ? false : { opacity: 0, y: 40, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 1.1, ease: [0.215, 0.61, 0.355, 1] }}
+        initial={reduce ? false : { opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.9, ease: [0.215, 0.61, 0.355, 1] }}
       >
         <img
           src={src}
           alt={`Portrait von ${name}`}
-          width={720}
-          height={720}
-          className="relative z-10"
+          width={1024}
+          height={1024}
+          className="portrait-cut__img relative z-10"
           data-edit-img="img.portrait"
+          decoding="async"
         />
       </motion.div>
 
