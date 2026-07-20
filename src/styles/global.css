@@ -1710,6 +1710,10 @@ a:hover .brand-mark--nav {
 .process-rail {
   --rail-icon: 7.5rem;
   --rail-gap: clamp(1.5rem, 3vw, 2.5rem);
+  --rail-num-h: 0.68rem;
+  --rail-node-gap: 0.45rem;
+  /* icon center Y from step top (num + gap + half icon) */
+  --rail-y: calc(var(--rail-num-h) + var(--rail-node-gap) + var(--rail-icon) / 2);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1723,19 +1727,6 @@ a:hover .brand-mark--nav {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     column-gap: var(--rail-gap);
     row-gap: 0;
-    /* continuous rail through icon centers */
-    background-image: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--ice) 0%, transparent) 0%,
-      color-mix(in srgb, var(--ice) 42%, transparent) 18%,
-      color-mix(in srgb, var(--violet) 50%, transparent) 50%,
-      color-mix(in srgb, var(--blue) 40%, transparent) 82%,
-      color-mix(in srgb, var(--blue) 0%, transparent) 100%
-    );
-    background-size: calc(100% - var(--rail-icon)) 1px;
-    background-repeat: no-repeat;
-    background-position: center calc(1.55rem + var(--rail-icon) / 2);
-    animation: process-rail-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
 .process-rail__step {
@@ -1754,12 +1745,13 @@ a:hover .brand-mark--nav {
     justify-items: start;
   }
 }
-/* Mobile vertical rail */
+/* Mobile: vertical connector starts BELOW the icon well */
 .process-rail__step:not(:last-child)::before {
   content: '';
   position: absolute;
+  z-index: 0;
   left: calc(var(--rail-icon) / 2);
-  top: calc(1.55rem + var(--rail-icon));
+  top: calc(var(--rail-num-h) + var(--rail-node-gap) + var(--rail-icon));
   bottom: -2rem;
   width: 1px;
   transform: translateX(-50%);
@@ -1771,16 +1763,36 @@ a:hover .brand-mark--nav {
   );
   pointer-events: none;
 }
+/* Desktop: bridge only in the gap between icon wells (never through icons) */
 @media (min-width: 768px) {
   .process-rail__step:not(:last-child)::before {
     display: none;
+  }
+  .process-rail__step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    top: var(--rail-y);
+    left: var(--rail-icon);
+    width: calc(100% - var(--rail-icon) + var(--rail-gap));
+    height: 1px;
+    transform: translateY(-50%);
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ice) 0%, transparent) 0%,
+      color-mix(in srgb, var(--ice) 42%, transparent) 18%,
+      color-mix(in srgb, var(--violet) 50%, transparent) 50%,
+      color-mix(in srgb, var(--blue) 40%, transparent) 82%,
+      color-mix(in srgb, var(--blue) 0%, transparent) 100%
+    );
   }
 }
 .process-rail__node {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.45rem;
+  gap: var(--rail-node-gap);
   width: var(--rail-icon);
 }
 @media (min-width: 768px) {
@@ -1791,7 +1803,7 @@ a:hover .brand-mark--nav {
 }
 .process-rail__num {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--rail-num-h);
   font-weight: 600;
   letter-spacing: 0.16em;
   color: var(--meta);
@@ -1799,16 +1811,28 @@ a:hover .brand-mark--nav {
 }
 .process-rail__icon {
   position: relative;
+  z-index: 2;
   width: var(--rail-icon);
   height: var(--rail-icon);
   border-radius: 50%;
   display: grid;
   place-items: center;
   isolation: isolate;
+  /* Opaque plate so no connector shows through the well */
+  background: var(--bg);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--stroke) 55%, transparent),
+    inset 0 0 28px color-mix(in srgb, var(--ice) 6%, transparent);
+}
+.process-rail__icon::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  pointer-events: none;
   background:
-    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--panel) 88%, transparent) 0%, transparent 68%),
-    radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--ice) 10%, transparent), transparent 55%),
-    radial-gradient(circle at 65% 70%, color-mix(in srgb, var(--violet) 8%, transparent), transparent 60%);
+    radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--ice) 12%, transparent), transparent 55%),
+    radial-gradient(circle at 65% 70%, color-mix(in srgb, var(--violet) 10%, transparent), transparent 60%);
 }
 .process-rail__icon::after {
   content: '';
@@ -1872,21 +1896,8 @@ a:hover .brand-mark--nav {
     transform: translateY(-5px);
   }
 }
-@keyframes process-rail-in {
-  from {
-    background-size: 0 1px;
-    opacity: 0.65;
-  }
-  to {
-    background-size: calc(100% - var(--rail-icon)) 1px;
-    opacity: 1;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .process-rail__img {
-    animation: none !important;
-  }
-  .process-rail {
     animation: none !important;
   }
 }
