@@ -115,9 +115,9 @@ export const COLLAGE_MEDIA: MediaItem[] = [
   { src: '/media/mina/slide-4.webp', label: 'Slide 4', group: 'Mina' },
 
   // Process
-  { src: '/media/process/direction.webp', label: 'Direction', group: 'Process' },
-  { src: '/media/process/system.webp', label: 'System', group: 'Process' },
-  { src: '/media/process/build.webp', label: 'Build', group: 'Process' },
+  { src: '/media/process/direction-v2.webp', label: 'Direction', group: 'Process' },
+  { src: '/media/process/system-v2.webp', label: 'System', group: 'Process' },
+  { src: '/media/process/build-v2.webp', label: 'Build', group: 'Process' },
   // Craft
   { src: '/media/craft/category.webp', label: 'Category', group: 'Craft' },
   { src: '/media/craft/skate-logo.webp', label: 'Skate Logo', group: 'Craft' },
