@@ -82,28 +82,39 @@
             <p class="drop-count" id="dropCount">0 Bilder</p>
           </div>
 
-          <p class="action-duo-label">Danach einen Weg wählen:</p>
-          <div class="action-duo" role="group" aria-label="Hauptaktionen">
-            <button type="button" class="btn-duo btn-duo-primary" id="btnRun" disabled>
-              <span class="btn-duo-title">Text + Overlay</span>
-              <span class="btn-duo-sub">eigene Bilder behalten · Textboxen · KI-Text · Übersetzen</span>
+          <div class="path-stack" role="group" aria-label="Hauptaktionen">
+            <p class="path-stack-label">Weg wählen</p>
+
+            <button type="button" class="path-card path-card--text" id="btnRun" disabled>
+              <span class="path-card-top">
+                <span class="path-card-num">A</span>
+                <span class="path-card-go">Start</span>
+              </span>
+              <span class="path-card-title">Eigene Bilder + Text</span>
+              <span class="path-card-sub">Deine Fotos behalten · Textboxen · KI-Text · Übersetzen</span>
             </button>
-            <button type="button" class="btn-duo btn-duo-secondary" id="btnGenImages" disabled>
-              <span class="btn-duo-title">KI-Bilder neu</span>
-              <span class="btn-duo-sub">neue Motive generieren · danach auch Text + Übersetzen</span>
-            </button>
+
+            <div class="path-card-wrap path-card-wrap--ai">
+              <button type="button" class="path-card path-card--ai" id="btnGenImages" disabled>
+                <span class="path-card-top">
+                  <span class="path-card-num">B</span>
+                  <span class="path-card-go">Start</span>
+                </span>
+                <span class="path-card-title">Neue KI-Bilder</span>
+                <span class="path-card-sub">Neue Motive erzeugen · danach Text + Übersetzen</span>
+              </button>
+              <label class="path-card-meta" id="genCountWrap">
+                <span>Anzahl KI-Bilder</span>
+                <select id="genCount">
+                  <option value="4" selected>4</option>
+                  <option value="6">6</option>
+                  <option value="8">8</option>
+                </select>
+              </label>
+            </div>
           </div>
 
-          <label class="field field-inline" id="genCountWrap">
-            Anzahl neuer KI-Bilder
-            <select id="genCount">
-              <option value="4" selected>4</option>
-              <option value="6">6</option>
-              <option value="8">8</option>
-            </select>
-          </label>
-
-          <button type="button" class="btn btn-secondary btn-wide" id="btnRegenText" disabled>Nur Text neu von der KI</button>
+          <button type="button" class="btn btn-ghost btn-wide" id="btnRegenText" disabled>Nur Text neu schreiben</button>
 
           <div class="side-section" id="textSection">
             <p class="side-section-title">Text auf dem Bild</p>
