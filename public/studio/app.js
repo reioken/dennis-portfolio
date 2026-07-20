@@ -45,6 +45,20 @@ const BRANDS = {
     kickerSize: 28, headlineSize: 88, subtitleSize: 52,
     kickerTracking: 0.16, headlineTracking: -0.05, subtitleTracking: 0.04,
   },
+  MASTER_OF_BOARDS: {
+    logos: { color: "/studio/assets/logos/master-of-boards.png", light: null, dark: null },
+    logoMaxWidth: 280, logoMaxHeight: 62, radius: 34, blur: 38, tint: 10,
+    kickerSize: 28, headlineSize: 90, subtitleSize: 54,
+    kickerTracking: 0.15, headlineTracking: -0.05, subtitleTracking: 0.04,
+  },
+  // Logo liegt noch nicht vor. Ohne Datei rendert das Overlay ohne Logo,
+  // statt einen kaputten Bildpfad zu ziehen.
+  CASA_PURA: {
+    logos: { color: null, light: null, dark: null },
+    logoMaxWidth: 270, logoMaxHeight: 66, radius: 38, blur: 40, tint: 10,
+    kickerSize: 28, headlineSize: 90, subtitleSize: 54,
+    kickerTracking: 0.15, headlineTracking: -0.05, subtitleTracking: 0.04,
+  },
 };
 
 const LANGS = ["de", "en", "fr", "it", "es", "pl"];
@@ -204,6 +218,11 @@ async function suggestLogoColor(dataUrl) {
 
 async function resolveLogoDataUrl(brandKey, logoColor, imageDataUrl) {
   const brand = BRANDS[brandKey] || BRANDS.FLOORDIREKT;
+  // Marke ohne hinterlegtes Logo (aktuell Casa Pura): ohne Logo weiterrendern,
+  // statt fetch(null) laufen zu lassen und den Export abzubrechen.
+  if (!brand.logos || !brand.logos.color) {
+    return { dataUrl: null, resolvedMode: "none" };
+  }
   let mode = logoColor || "auto";
   if (mode === "auto") mode = imageDataUrl ? await suggestLogoColor(imageDataUrl) : "color";
   if (!["color", "light", "dark"].includes(mode)) mode = "color";

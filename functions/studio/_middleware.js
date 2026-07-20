@@ -10,6 +10,33 @@ function unauthorized() {
   return new Response("Unauthorized", { status: 401 });
 }
 
+/**
+ * Kein konfiguriertes Passwort => Zugang komplett verweigern (fail closed).
+ *
+ * Frueher stand hier ein hartkodierter Fallback. Da dieses Repo oeffentlich
+ * ist, war das Passwort damit fuer jeden lesbar und die dahinter liegenden
+ * OpenAI- und DeepL-Endpunkte auf fremde Rechnung nutzbar.
+ */
+function notConfigured() {
+  return new Response(
+    "Studio ist nicht konfiguriert: STUDIO_PASSWORD fehlt.\n" +
+      "Setzen mit: wrangler pages secret put STUDIO_PASSWORD --project-name=dennis-portfolio",
+    { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } },
+  );
+}
+
+/** Vergleich in konstanter Zeit, damit das Passwort nicht erratbar wird. */
+function secretsMatch(a, b) {
+  const left = String(a);
+  const right = String(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) {
+    diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 /** Strip duplicate global CSP/XFO so Firefox can frame overlay.html */
 function withStudioHeaders(response, pathname) {
   const headers = new Headers(response.headers);
@@ -32,16 +59,17 @@ function withStudioHeaders(response, pathname) {
 export async function onRequest(context) {
   const { request, env, next } = context;
   const url = new URL(request.url);
-  const password = env.STUDIO_PASSWORD || "penis123";
+  const password = String(env.STUDIO_PASSWORD || "");
 
   if (url.pathname === "/studio/api/login" && request.method === "POST") {
+    if (!password) return notConfigured();
     let body = {};
     try {
       body = await request.json();
     } catch {
       body = {};
     }
-    if (String(body.password || "") === String(password)) {
+    if (secretsMatch(body.password || "", password)) {
       return new Response(JSON.stringify({ ok: true }), {
         headers: {
           "Content-Type": "application/json",
@@ -78,6 +106,10 @@ export async function onRequest(context) {
   if (publicExact.has(url.pathname)) {
     return withStudioHeaders(await next(), url.pathname);
   }
+
+  // Ohne konfiguriertes Passwort auch bestehende Cookies nicht akzeptieren:
+  // sonst blieben alte Sessions gueltig, obwohl das Studio ungeschuetzt ist.
+  if (!password) return notConfigured();
 
   const cookie = request.headers.get("Cookie") || "";
   const authed = cookie.split(";").some((c) => c.trim() === `${COOKIE}=1`);

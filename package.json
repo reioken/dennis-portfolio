@@ -12,6 +12,8 @@
     "astro": "astro",
     "optimize:media": "node scripts/optimize-media.mjs",
     "upscale:gallery": "node scripts/upscale-gallery.mjs",
+    "sync:studio": "node scripts/sync-studio.mjs",
+    "sync:studio:check": "node scripts/sync-studio.mjs --check",
     "deploy:contact": "wrangler deploy -c workers/contact/wrangler.toml",
     "deploy": "npm run deploy:contact && astro build && wrangler pages deploy dist --project-name=dennis-portfolio --commit-dirty=true",
     "thumbs": "node scripts/build-thumbs.mjs",

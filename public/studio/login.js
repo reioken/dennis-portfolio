@@ -12,5 +12,5 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     err.hidden = false;
     return;
   }
-  location.href = "/studio/";
+  location.href = "/";
 });
