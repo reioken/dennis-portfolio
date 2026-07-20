@@ -10,26 +10,30 @@ import { p } from '../lib/paths';
 
 <BaseLayout
   title={`Über mich — ${site.name}`}
-  description={`${site.name} — Hobby-Softwareentwickler · Art Director & UI/UX Designer. Fest bei Floordirekt, keine Festanstellung — Freelance willkommen.`}
+  description={`${site.name} — Art Director · UX/UI · Product. Fest bei Floordirekt, Freelance willkommen.`}
 >
   <section class="section overflow-hidden pt-[calc(var(--nav-h)+2rem)]" data-block-id="about-intro" data-block-type="about-intro" data-block-source="native" data-block-label="About Intro">
     <div class="wrap">
       <div class="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-        <div>
-          <div class="mb-6 max-w-md">
-            <BrandLockup name={site.name} weight="hero" />
+        <div class="about-intro">
+          <div class="mb-7 max-w-md">
+            <BrandLockup name={site.name} weight="hero" role={copy.de.about.role} />
           </div>
-          <h1 class="mb-5">
-            <span class="name-lock gradient-text font-[family-name:var(--font-display)] text-[clamp(1.35rem,4.2vw,2.7rem)] font-semibold uppercase leading-[1.08] tracking-[0.05em]">
-              <span data-lang="de" data-edit="about.role.de">{copy.de.about.role}</span>
-              <span data-lang="en" data-edit="about.role.en">{copy.en.about.role}</span>
+          <h1 class="about-intro__title mb-4">
+            <span class="name-lock gradient-text font-[family-name:var(--font-display)] text-[clamp(2rem,5vw,3.25rem)] font-semibold uppercase leading-none tracking-[0.06em]">
+              <span data-lang="de">{copy.de.about.label}</span>
+              <span data-lang="en">{copy.en.about.label}</span>
             </span>
           </h1>
-          <p class="mb-5 max-w-[42ch] text-[1.15rem] normal-case tracking-normal text-[var(--dim)]">
+          <p class="about-intro__lead mb-3 max-w-[28ch] text-[1.2rem] leading-snug normal-case tracking-normal text-[var(--text)]">
             <span data-lang="de" data-edit="about.lead.de">{copy.de.about.lead}</span>
             <span data-lang="en" data-edit="about.lead.en">{copy.en.about.lead}</span>
           </p>
-          <div class="mb-9">
+          <p class="about-intro__body mb-7 max-w-[28ch] text-[1rem] leading-snug normal-case tracking-normal text-[var(--dim)]">
+            <span data-lang="de" data-edit="about.body.de">{copy.de.about.body}</span>
+            <span data-lang="en" data-edit="about.body.en">{copy.en.about.body}</span>
+          </p>
+          <div class="mb-8">
             <AvailabilityStatus showLocation />
           </div>
           <div class="flex flex-wrap gap-3">

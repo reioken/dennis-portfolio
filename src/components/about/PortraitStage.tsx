@@ -59,13 +59,13 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
       </motion.div>
 
       <motion.div
-        className="absolute -bottom-2 right-0 z-20 max-w-[200px] rounded-2xl border border-[var(--stroke)] bg-[var(--panel)] px-3.5 py-3 shadow-[var(--lg-depth)]"
+        className="absolute -bottom-2 right-0 z-20 max-w-[11.5rem] rounded-2xl border border-[var(--stroke)] bg-[var(--panel)] px-3.5 py-3 shadow-[var(--lg-depth)]"
         style={{ backdropFilter: 'var(--frost-nav)', WebkitBackdropFilter: 'var(--frost-nav)' }}
         initial={reduce ? false : { opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.55, type: 'spring', stiffness: 160, damping: 20 }}
       >
-        <p className="text-[0.88rem] font-semibold leading-snug">
+        <p className="text-[0.78rem] font-semibold uppercase leading-tight tracking-[0.08em] text-[var(--text)]">
           <span data-lang="de" data-edit="about.role.de">
             {roleDe}
           </span>
