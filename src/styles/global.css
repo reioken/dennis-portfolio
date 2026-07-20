@@ -3069,33 +3069,32 @@ html.js-reveal [data-reveal].is-in {
 }
 
 .portrait-orbit {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--bg), var(--bg)) padding-box,
-    linear-gradient(
-      125deg,
-      color-mix(in srgb, var(--pt-violet) 55%, transparent),
-      color-mix(in srgb, var(--pt-blue) 50%, transparent),
-      color-mix(in srgb, var(--pt-ice) 45%, transparent),
-      color-mix(in srgb, var(--pt-violet) 40%, transparent)
-    ) border-box;
-  background-size: 100% 100%, 220% 220%;
-  box-shadow:
-    0 0 28px color-mix(in srgb, var(--pt-violet) 12%, transparent),
-    inset 0 0 22px color-mix(in srgb, var(--pt-blue) 8%, transparent);
+  filter:
+    drop-shadow(0 0 10px color-mix(in srgb, var(--pt-violet) 28%, transparent))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--pt-blue) 16%, transparent));
+}
+.portrait-orbit__path {
+  stroke-dasharray: 38 220;
+  stroke-dashoffset: 0;
 }
 .portrait-stage.is-live .portrait-orbit {
   animation: portrait-orbit-shine 8s ease-in-out infinite;
 }
+.portrait-stage.is-live .portrait-orbit__path {
+  animation: portrait-orbit-dash 11s linear infinite;
+}
 @keyframes portrait-orbit-shine {
   0%,
   100% {
-    background-position: 0% 0%, 0% 40%;
-    opacity: 0.5;
+    opacity: 0.55;
   }
   50% {
-    background-position: 0% 0%, 100% 60%;
-    opacity: 0.72;
+    opacity: 0.85;
+  }
+}
+@keyframes portrait-orbit-dash {
+  to {
+    stroke-dashoffset: -258;
   }
 }
 
@@ -3210,8 +3209,12 @@ html.js-reveal [data-reveal].is-in {
   .portrait-stage.is-live .portrait-light--ice,
   .portrait-stage.is-live .portrait-cut__rim,
   .portrait-stage.is-live .portrait-cut__shimmer,
-  .portrait-stage.is-live .portrait-orbit {
+  .portrait-stage.is-live .portrait-orbit,
+  .portrait-stage.is-live .portrait-orbit__path {
     animation: none !important;
+  }
+  .portrait-orbit__path {
+    stroke-dasharray: none;
   }
 }
 

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
 
 export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
   const reduce = useReducedMotion();
+  const gid = useId().replace(/:/g, '');
 
   return (
     <div className={`portrait-stage relative mx-auto w-full max-w-[560px]${reduce ? '' : ' is-live'}`}>
@@ -19,19 +21,44 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
 
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-[-4%]"
+        className="pointer-events-none absolute inset-[-6%]"
         animate={reduce ? undefined : { rotate: 360 }}
-        transition={reduce ? undefined : { duration: 36, repeat: Infinity, ease: 'linear' }}
+        transition={reduce ? undefined : { duration: 42, repeat: Infinity, ease: 'linear' }}
       >
-        <motion.div
-          className="portrait-orbit absolute inset-0 rounded-full"
-          initial={reduce ? { opacity: 0.25 } : { opacity: 0, scale: 0.94, rotate: -8 }}
-          animate={reduce ? { opacity: 0.25 } : { opacity: 0.55, scale: 1, rotate: 0 }}
+        <motion.svg
+          className="portrait-orbit absolute inset-0 h-full w-full overflow-visible"
+          viewBox="0 0 100 100"
+          fill="none"
+          initial={reduce ? { opacity: 0.28 } : { opacity: 0, scale: 0.94, rotate: -10 }}
+          animate={reduce ? { opacity: 0.28 } : { opacity: 0.7, scale: 1, rotate: 0 }}
           transition={{ duration: 1.2, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--violet)] opacity-70" />
-          <span className="absolute bottom-[18%] right-0 h-1.5 w-1.5 translate-x-1/2 rounded-full bg-[var(--ice)] opacity-60" />
-        </motion.div>
+          <defs>
+            <linearGradient id={`pt-orbit-${gid}`} x1="8%" y1="12%" x2="92%" y2="88%">
+              <stop offset="0%" stopColor="var(--pt-violet)" stopOpacity="0.95" />
+              <stop offset="38%" stopColor="var(--pt-blue)" stopOpacity="0.9" />
+              <stop offset="68%" stopColor="var(--pt-ice)" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="var(--pt-violet)" stopOpacity="0.75" />
+            </linearGradient>
+          </defs>
+          {/* Soft asymmetric blob — not a circle */}
+          <path
+            className="portrait-orbit__path"
+            d="M52.4 3.8
+               C71.2 2.2 89.6 14.8 94.8 32.6
+               C99.6 49.8 93.2 70.4 80.4 83.2
+               C66.8 96.8 46.2 101.2 29.6 94.4
+               C14.2 88.2 4.4 72.6 3.6 55.8
+               C2.8 38.4 11.6 20.2 26.8 11.4
+               C35.8 6.2 44.2 4.6 52.4 3.8 Z"
+            stroke={`url(#pt-orbit-${gid})`}
+            strokeWidth="0.7"
+            strokeLinecap="round"
+          />
+          <circle cx="52.4" cy="3.8" r="1.05" fill="var(--pt-violet)" opacity="0.8" />
+          <circle cx="94.2" cy="48" r="0.9" fill="var(--pt-ice)" opacity="0.7" />
+          <circle cx="22" cy="90" r="0.85" fill="var(--pt-blue)" opacity="0.6" />
+        </motion.svg>
       </motion.div>
 
       <p
