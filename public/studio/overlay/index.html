@@ -1,0 +1,846 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FloorDirekt Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --size: 2048px;
+      --card-left: 64px;
+      --card-top: 1400px;
+      --card-max-width: 980px;
+      --radius: 46px;
+      --blur: 42px;
+      --tint: #888888;
+      --tint-strength: 0.12;
+      --border-color: #ffffff;
+      --border-opacity: 0.7;
+      --shade-color: #111111;
+      --haze-opacity: 0.03;
+      --kicker-color: #ffffff;
+      --headline-color: #ffffff;
+      --subtitle-color: #f1efe8;
+      --kicker-size: 31px;
+      --headline-size: 94px;
+      --subtitle-size: 58px;
+      --kicker-tracking: 0.175em;
+      --headline-tracking: -0.08em;
+      --subtitle-tracking: 0.05em;
+      --pad: 48px;
+      /* Logo-Safe-Zone (Recherche 4c): feste Position + Maximalmaße über
+         die ganze Serie, damit die Marke auf allen Bildern gleich sitzt. */
+      --logo-left: 96px;
+      --logo-top: 86px;
+      --logo-max-width: 260px;
+      --logo-max-height: 92px;
+      --pill-size: 48px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: var(--size);
+      height: var(--size);
+      overflow: hidden;
+      background: #000;
+      font-family: "Manrope", "Montserrat", sans-serif;
+    }
+
+    .stage {
+      position: relative;
+      width: var(--size);
+      height: var(--size);
+      overflow: hidden;
+    }
+
+    .bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .logo {
+      position: absolute;
+      left: var(--logo-left);
+      top: var(--logo-top);
+      max-width: var(--logo-max-width);
+      max-height: var(--logo-max-height);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      object-position: left top;
+      /* Never stretch or squash brand logos */
+      image-rendering: auto;
+      flex-shrink: 0;
+      z-index: 5;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.25));
+    }
+
+    .logo.hidden { display: none; }
+
+    .card {
+      position: absolute;
+      left: var(--card-left);
+      top: var(--card-top);
+      /* Explizite Breite: container-type:inline-size + width:auto kollabiert
+         sonst auf ~0px (zyklische Intrinsic-Größe in Chromium). */
+      width: var(--card-max-width);
+      max-width: var(--card-max-width);
+      z-index: 4;
+      border-radius: var(--radius);
+      overflow: hidden;
+      isolation: isolate;
+      container-type: inline-size;
+      container-name: fd-card;
+      box-shadow:
+        0 18px 50px rgba(0,0,0,0.28),
+        inset 0 1px 0 rgba(255,255,255,0.35),
+        inset 0 -1px 0 rgba(0,0,0,0.18);
+    }
+
+    .card.hidden { display: none; }
+
+    .card-glass {
+      position: absolute;
+      inset: 0;
+      backdrop-filter: blur(var(--blur)) saturate(1.15);
+      -webkit-backdrop-filter: blur(var(--blur)) saturate(1.15);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,var(--haze-opacity)), rgba(0,0,0,0.08)),
+        color-mix(in srgb, var(--tint) calc(var(--tint-strength) * 100%), transparent);
+    }
+
+    .card-border {
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      border: 3px solid color-mix(in srgb, var(--border-color) calc(var(--border-opacity) * 100%), transparent);
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--shade-color) 22%, transparent),
+        inset 0 1px 0 rgba(255,255,255,0.45);
+      pointer-events: none;
+    }
+
+    .card-content {
+      position: relative;
+      padding: var(--pad);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 520px;
+    }
+
+    /* ==========================================================
+       Container-Systeme (Recherche 07/2026, Kapitel 3b)
+       Ersetzen die schweren Glass Cards durch klare Hierarchie.
+       A = Editorial Solid Plate (Hero/Big Type/Corner Stack)
+       B = Gradient Scrim Type   (Lifestyle/Scale/Bottom Bar)
+       C = Light Commerce Tag    (Benefit/Detail/Chip)
+       ========================================================== */
+
+    /* --- System A: Editorial Plate — Default hell/skandinavisch --- */
+    .card.system-solid {
+      border-radius: 18px;
+      border: 1px solid rgba(10,10,15,0.10);
+      background: linear-gradient(135deg, rgba(248,246,241,0.97), rgba(239,231,218,0.94));
+      box-shadow: 0 22px 60px rgba(10,10,15,0.16), 0 2px 8px rgba(10,10,15,0.08);
+    }
+    /* Dunkle Variante (Premium-Look) bleibt umschaltbar */
+    .stage.style-dark .card.system-solid {
+      border-color: rgba(232,194,0,0.28);
+      background: linear-gradient(135deg, rgba(10,10,15,0.94), rgba(22,18,18,0.90));
+      box-shadow: 0 24px 70px rgba(0,0,0,0.34), 0 2px 8px rgba(0,0,0,0.22);
+    }
+    /* Glas + Doppelrand entfallen — sonst bleibt der schwere Look */
+    .card.system-solid .card-glass,
+    .card.system-solid .card-border { display: none; }
+    .card.system-solid .card-content {
+      padding: 56px 60px 52px;
+      gap: 0;
+    }
+    /* Akzentbalken statt Glaskante als Hierarchie-Signal */
+    .card.system-solid .card-content::before {
+      content: "";
+      display: block;
+      width: 96px;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #C01010, #E8C200);
+      margin-bottom: 34px;
+    }
+    .card.system-solid .kicker {
+      color: #C01010;
+      margin-bottom: 18px;
+      text-shadow: none;
+    }
+    .card.system-solid .headline {
+      color: #0A0A0F;
+      text-shadow: none;
+    }
+    .card.system-solid .subline {
+      color: rgba(10,10,15,0.70);
+      margin-top: 26px;
+      opacity: 1;
+      text-shadow: none;
+    }
+    .stage.style-dark .card.system-solid .kicker { color: #E8C200; }
+    .stage.style-dark .card.system-solid .headline { color: #FFFFFF; }
+    .stage.style-dark .card.system-solid .subline { color: rgba(255,255,255,0.84); }
+
+    /* --- System B: Gradient Scrim Type (Text ohne Card im Bild) --- */
+    .stage.system-scrim .card,
+    .stage.system-scrim .badge-panel {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    .stage.system-scrim .card-glass,
+    .stage.system-scrim .card-border,
+    .stage.system-scrim .badge-panel .card-glass,
+    .stage.system-scrim .badge-panel .card-border { display: none; }
+    /* Scrim hellt NUR die Textzone auf (skandinavisch), nicht das ganze Bild.
+       --scrim-strength skaliert die Stop-Alphas (Kontrast-Automatik 4b). */
+    .stage.system-scrim {
+      --scrim-strength: 1;
+      --scrim-text: #0A0A0F;
+      --scrim-sub: rgba(10,10,15,0.72);
+      --scrim-kicker: #C01010;
+      --scrim-shadow: 0 1px 2px rgba(255,255,255,0.45);
+    }
+    .stage.system-scrim::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(248,246,241, calc(0.88 * var(--scrim-strength))) 0%, rgba(248,246,241, calc(0.58 * var(--scrim-strength))) 34%, rgba(248,246,241, 0) 68%),
+        linear-gradient(0deg, rgba(248,246,241, calc(0.50 * var(--scrim-strength))) 0%, rgba(248,246,241, 0) 42%);
+    }
+    .stage.system-scrim.scrim-off::after { display: none; }
+    /* Dunkler Boost-Scrim wenn heller Default nicht reicht */
+    .stage.system-scrim.scrim-dark::after {
+      background:
+        linear-gradient(90deg, rgba(10,10,15, calc(0.74 * var(--scrim-strength))) 0%, rgba(10,10,15, calc(0.46 * var(--scrim-strength))) 34%, rgba(10,10,15, 0) 68%),
+        linear-gradient(0deg, rgba(10,10,15, calc(0.42 * var(--scrim-strength))) 0%, rgba(10,10,15, 0) 42%);
+    }
+    .stage.system-scrim .headline,
+    .stage.system-scrim .badge-headline {
+      color: var(--scrim-text);
+      text-shadow: var(--scrim-shadow);
+    }
+    .stage.system-scrim .subline,
+    .stage.system-scrim .badge-sub {
+      color: var(--scrim-sub);
+      opacity: 1;
+      text-shadow: var(--scrim-shadow);
+    }
+    .stage.system-scrim .kicker { color: var(--scrim-kicker); text-shadow: none; }
+    .stage.system-scrim .badge-chip {
+      background: #C01010;
+      color: #FFFFFF;
+      border: none;
+      text-shadow: none;
+    }
+    /* Dunkle Variante: klassischer dunkler Scrim mit weißer Schrift */
+    .stage.style-dark.system-scrim {
+      --scrim-text: #FFFFFF;
+      --scrim-sub: rgba(255,255,255,0.88);
+      --scrim-kicker: #E8C200;
+      --scrim-shadow: 0 2px 10px rgba(0,0,0,0.28);
+    }
+    .stage.style-dark.system-scrim::after {
+      background:
+        linear-gradient(90deg, rgba(10,10,15, calc(0.74 * var(--scrim-strength))) 0%, rgba(10,10,15, calc(0.46 * var(--scrim-strength))) 34%, rgba(10,10,15, 0) 68%),
+        linear-gradient(0deg, rgba(10,10,15, calc(0.42 * var(--scrim-strength))) 0%, rgba(10,10,15, 0) 42%);
+    }
+    .stage.style-dark.system-scrim .badge-chip {
+      background: rgba(232,194,0,0.96);
+      color: #0A0A0F;
+    }
+
+    /* --- System C: Light Commerce Tag --- */
+    .badge-panel.system-tag {
+      background: rgba(248,246,241,0.96);
+      border: 1px solid rgba(10,10,15,0.10);
+      border-left: 12px solid #C01010;
+      border-radius: 16px;
+      box-shadow: 0 18px 46px rgba(10,10,15,0.18), 0 2px 8px rgba(10,10,15,0.08);
+    }
+    .badge-panel.system-tag .card-glass,
+    .badge-panel.system-tag .card-border { display: none; }
+    .badge-panel.system-tag .card-content { padding: 34px 38px 32px; }
+    .badge-panel.system-tag .badge-chip {
+      background: transparent;
+      border: none;
+      color: #C01010;
+      padding: 0;
+      margin-bottom: 14px;
+      text-shadow: none;
+    }
+    .badge-panel.system-tag .badge-headline {
+      color: #0A0A0F;
+      text-shadow: none;
+    }
+    .badge-panel.system-tag .badge-sub {
+      color: rgba(10,10,15,0.70);
+      opacity: 1;
+      text-shadow: none;
+    }
+    /* Chip-Variante (minimal_chip): dunkler Pill mit Gold-Punkt */
+    .badge-panel.system-chip {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    .badge-panel.system-chip .card-glass,
+    .badge-panel.system-chip .card-border { display: none; }
+    .badge-panel.system-chip .badge-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      background: #0A0A0F;
+      color: #FFFFFF;
+      border: none;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.22);
+      text-shadow: none;
+    }
+    .badge-panel.system-chip .badge-chip::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: #E8C200;
+      box-shadow: 0 0 0 5px rgba(232,194,0,0.18);
+      flex-shrink: 0;
+    }
+
+    .kicker {
+      color: var(--kicker-color);
+      font-size: var(--kicker-size);
+      font-weight: 700;
+      letter-spacing: var(--kicker-tracking);
+      text-transform: uppercase;
+      line-height: 1.15;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.28), 0 0 18px rgba(0,0,0,0.12);
+    }
+
+    /* Letzte Sicherung: extrem lange Komposita nie über die Card laufen lassen.
+       hyphens:auto braucht korrektes lang= auf <html> (setzt __FD_APPLY__). */
+    .headline, .subline, .badge-headline, .badge-sub, .badge-chip, .kicker {
+      overflow-wrap: anywhere;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+    }
+    /* Notfall: nur wenn data-tight-fallback gesetzt (nicht Default) */
+    .headline.data-tight-fallback,
+    .subline.data-tight-fallback,
+    .badge-headline.data-tight-fallback,
+    .badge-sub.data-tight-fallback,
+    [data-tight-fallback] {
+      word-break: break-all;
+    }
+
+    @container fd-card (max-width: 720px) {
+      .card-content {
+        padding: calc(var(--pad) * 0.82) calc(var(--pad) * 0.88);
+        gap: 10px;
+      }
+      .headline { line-height: 1.02; }
+      .subline { line-height: 1.22; }
+    }
+    .headline {
+      color: var(--headline-color);
+      font-size: var(--headline-size);
+      font-weight: 800;
+      letter-spacing: var(--headline-tracking);
+      line-height: var(--headline-line-height, 1.05);
+      max-width: 18ch;
+      text-wrap: balance;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.32), 0 0 22px rgba(0,0,0,0.14);
+    }
+
+    .subline {
+      color: var(--subtitle-color);
+      font-size: var(--subtitle-size);
+      font-weight: 500;
+      letter-spacing: var(--subtitle-tracking);
+      line-height: 1.25;
+      max-width: 28ch;
+      opacity: 0.95;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.28), 0 0 16px rgba(0,0,0,0.12);
+    }
+
+    .pills {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    .pill {
+      position: absolute;
+      border-radius: 999px;
+      overflow: hidden;
+      isolation: isolate;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+    }
+
+    .pill-glass {
+      position: absolute;
+      inset: 0;
+      backdrop-filter: blur(28px) saturate(1.2);
+      -webkit-backdrop-filter: blur(28px) saturate(1.2);
+      background: color-mix(in srgb, var(--tint) 18%, rgba(255,255,255,0.18));
+    }
+
+    .pill-border {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      border: 2px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+      pointer-events: none;
+    }
+
+    .pill-text {
+      position: relative;
+      padding: 22px 34px;
+      font-size: var(--pill-size);
+      font-weight: 700;
+      color: var(--headline-color);
+      white-space: nowrap;
+      line-height: 1;
+    }
+
+    /* Series templates: benefit / lifestyle / detail / scale badge panel */
+    .badge-panel {
+      position: absolute;
+      z-index: 7;
+      left: var(--badge-left, 64px);
+      bottom: var(--badge-bottom, 96px);
+      max-width: var(--badge-max-width, 1100px);
+      border-radius: var(--radius);
+      overflow: hidden;
+      isolation: isolate;
+      box-shadow:
+        0 18px 50px rgba(0,0,0,0.28),
+        inset 0 1px 0 rgba(255,255,255,0.35);
+    }
+    .badge-panel.hidden { display: none; }
+    .badge-panel.template-lifestyle_caption {
+      left: 64px;
+      right: 64px;
+      bottom: 96px;
+      max-width: none;
+    }
+    .badge-panel.template-detail_callout,
+    .badge-panel.template-scale_callout {
+      left: auto;
+      right: 64px;
+      bottom: 96px;
+      max-width: 720px;
+    }
+    .badge-panel.template-benefit_badge {
+      left: 64px;
+      bottom: 120px;
+      max-width: var(--badge-max-width, 1200px);
+    }
+    .badge-panel.template-scale_callout .badge-chip {
+      border-radius: 16px;
+      letter-spacing: 0.04em;
+    }
+    .badge-panel.badge-form-rounded .badge-chip {
+      border-radius: 16px;
+    }
+    .badge-panel.template-scale_callout .badge-headline {
+      font-variant-numeric: tabular-nums;
+      max-width: 18ch;
+    }
+    .badge-chip {
+      display: inline-flex;
+      align-items: center;
+      margin: 0 0 12px 0;
+      padding: 14px 28px;
+      border-radius: 999px;
+      font-size: var(--badge-chip-size, calc(var(--kicker-size) * 1.05));
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--headline-color);
+      background: color-mix(in srgb, var(--tint) 35%, rgba(0,0,0,0.35));
+      border: 2px solid color-mix(in srgb, var(--border-color) 75%, transparent);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .badge-chip:empty { display: none; }
+    .badge-headline {
+      color: var(--headline-color);
+      font-size: calc(var(--headline-size) * 0.72);
+      font-weight: 800;
+      letter-spacing: var(--headline-tracking);
+      line-height: 1.08;
+      max-width: 16ch;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.32);
+    }
+    .badge-panel.template-benefit_badge .badge-headline {
+      font-size: calc(var(--headline-size) * 0.85);
+      max-width: 14ch;
+    }
+    .badge-sub {
+      color: var(--subtitle-color);
+      font-size: calc(var(--subtitle-size) * 0.85);
+      font-weight: 500;
+      letter-spacing: var(--subtitle-tracking);
+      line-height: 1.25;
+      max-width: 26ch;
+      opacity: 0.95;
+      margin-top: 8px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.28);
+    }
+    .badge-sub:empty { display: none; }
+    .stage.template-clean .card,
+    .stage.template-clean .badge-panel,
+    .stage.template-clean .pills,
+    .stage.template-clean .logo { display: none !important; }
+
+    /* big_type — thick typography, no glass box */
+    .stage.template-big_type .card {
+      box-shadow: none;
+      border-radius: 0;
+      max-width: min(var(--card-max-width), 1600px);
+    }
+    .stage.template-big_type .card-glass,
+    .stage.template-big_type .card-border { display: none !important; }
+    .stage.template-big_type .card-content {
+      min-width: 0;
+      padding: 24px 8px;
+      gap: 10px;
+    }
+    .stage.template-big_type .headline {
+      font-size: calc(var(--headline-size) * 1.05);
+      max-width: 12ch;
+      line-height: 0.98;
+      text-shadow:
+        0 4px 0 rgba(0,0,0,0.35),
+        0 10px 40px rgba(0,0,0,0.45);
+    }
+    .stage.template-big_type .kicker {
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    .stage.template-big_type .subline {
+      max-width: 22ch;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.45);
+    }
+
+    /* corner_stack — compact stacked type top-left */
+    .stage.template-corner_stack .card {
+      box-shadow: none;
+      border-radius: 0;
+    }
+    .stage.template-corner_stack .card-glass,
+    .stage.template-corner_stack .card-border { display: none !important; }
+    .stage.template-corner_stack .card-content {
+      min-width: 0;
+      padding: 12px 8px;
+      gap: 8px;
+    }
+    .stage.template-corner_stack .headline {
+      max-width: 11ch;
+      font-size: calc(var(--headline-size) * 0.92);
+      text-shadow: 0 3px 14px rgba(0,0,0,0.5);
+    }
+
+    /* bottom_bar — full-width flat strip */
+    .badge-panel.template-bottom_bar {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      max-width: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .badge-panel.template-bottom_bar .card-glass {
+      backdrop-filter: blur(18px) saturate(1.05);
+      -webkit-backdrop-filter: blur(18px) saturate(1.05);
+      background: linear-gradient(
+        180deg,
+        rgba(0,0,0,0.15),
+        rgba(0,0,0,0.55)
+      );
+    }
+    .badge-panel.template-bottom_bar .card-border { display: none; }
+    .badge-panel.template-bottom_bar .card-content {
+      padding: 36px 72px 48px;
+      flex-direction: row;
+      align-items: flex-end;
+      gap: 28px;
+      min-width: 0;
+    }
+    .badge-panel.template-bottom_bar .badge-chip { margin: 0; }
+    .badge-panel.template-bottom_bar .badge-headline {
+      max-width: none;
+      font-size: calc(var(--headline-size) * 0.55);
+    }
+
+    /* minimal_chip — small chip + one line */
+    .badge-panel.template-minimal_chip {
+      left: 64px;
+      bottom: 96px;
+      max-width: 720px;
+      border-radius: 999px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+    }
+    .badge-panel.template-minimal_chip .card-content {
+      padding: 22px 34px;
+      gap: 0;
+      min-width: 0;
+      flex-direction: row;
+      align-items: center;
+    }
+    .badge-panel.template-minimal_chip .badge-chip { margin: 0 18px 0 0; }
+    .badge-panel.template-minimal_chip .badge-headline {
+      font-size: calc(var(--headline-size) * 0.42);
+      max-width: 18ch;
+      margin: 0;
+    }
+    .badge-panel.template-minimal_chip .badge-sub { display: none; }
+
+    /* split_caption — asymmetric two-line bottom */
+    .badge-panel.template-split_caption {
+      left: 64px;
+      right: 64px;
+      bottom: 88px;
+      max-width: none;
+      border-radius: calc(var(--radius) * 0.7);
+    }
+    .badge-panel.template-split_caption .card-content {
+      padding: 40px 48px;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 24px 48px;
+      min-width: 0;
+      align-items: end;
+    }
+    .badge-panel.template-split_caption .badge-chip {
+      grid-column: 1;
+      justify-self: start;
+      margin: 0;
+    }
+    .badge-panel.template-split_caption .badge-headline {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      font-size: calc(var(--headline-size) * 0.62);
+      max-width: 14ch;
+      align-self: center;
+    }
+    .badge-panel.template-split_caption .badge-sub {
+      grid-column: 1;
+      max-width: 20ch;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <img class="bg" id="bg" alt="" />
+    <img class="logo" id="logo" alt="" />
+    <div class="card" id="card" data-fit-check="card">
+      <div class="card-glass"></div>
+      <div class="card-border"></div>
+      <div class="card-content">
+        <div class="kicker" id="kicker" data-fit-check="kicker"></div>
+        <div class="headline" id="headline" data-fit-check="headline"></div>
+        <div class="subline" id="subline" data-fit-check="subline"></div>
+      </div>
+    </div>
+    <div class="badge-panel hidden" id="badgePanel" data-fit-check="badge-panel">
+      <div class="card-glass"></div>
+      <div class="card-border"></div>
+      <div class="card-content">
+        <div class="badge-chip" id="badgeChip" data-fit-check="badge-chip"></div>
+        <div class="badge-headline" id="badgeHeadline" data-fit-check="badge-headline"></div>
+        <div class="badge-sub" id="badgeSub" data-fit-check="badge-sub"></div>
+      </div>
+    </div>
+    <div class="pills" id="pills"></div>
+  </div>
+  <script>
+    // Modul → Container-System (Recherche 07/2026, Kapitel 3c)
+    const SYSTEM_BY_TEMPLATE = {
+      brand_hero: "solid",
+      big_type: "scrim",
+      corner_stack: "solid",
+      split_caption: "solid",
+      lifestyle_caption: "scrim",
+      bottom_bar: "scrim",
+      scale_callout: "scrim",
+      benefit_badge: "tag",
+      detail_callout: "tag",
+      minimal_chip: "chip",
+      // legacy/clean behalten bewusst das bisherige Verhalten
+    };
+
+    window.__FD_APPLY__ = function applyConfig(cfg) {
+      const root = document.documentElement;
+      const set = (k, v) => root.style.setProperty(k, v);
+      const template = (cfg.template || "legacy");
+      const system = SYSTEM_BY_TEMPLATE[template] || "";
+      // Sprache für hyphens:auto (de/en/fr/it/es/pl)
+      const lang = (cfg.lang || cfg.language || "de").toString().slice(0, 8);
+      root.setAttribute("lang", lang);
+      document.documentElement.lang = lang;
+      // Gestaltungslinie: "scandi" (hell, Default) oder "dark" (Premium)
+      const style = (cfg.overlayStyle === "dark") ? "dark" : "scandi";
+      const stage = document.getElementById("stage");
+      stage.className = "stage template-" + template
+        + (system ? " system-" + system : "")
+        + " style-" + style;
+
+      // Kontrast-Automatik (compose → decide_text_over_image)
+      if (cfg.scrim && system === "scrim") {
+        if (cfg.scrim.enabled) {
+          stage.classList.add("scrim-dark");
+          const op = (typeof cfg.scrim.opacity === "number") ? cfg.scrim.opacity : 0.5;
+          // Basis-Stop ~0.58 → Strength so, dass Peak ≈ opacity
+          set("--scrim-strength", String(Math.max(0.35, Math.min(1.15, op / 0.58))));
+        } else {
+          stage.classList.add("scrim-off");
+        }
+        if (cfg.scrim.textColor) set("--scrim-text", cfg.scrim.textColor);
+        if (cfg.scrim.subColor) set("--scrim-sub", cfg.scrim.subColor);
+        if (cfg.scrim.kickerColor) set("--scrim-kicker", cfg.scrim.kickerColor);
+        if (cfg.scrim.textColor === "#FFFFFF" || (cfg.scrim.textColor || "").toLowerCase() === "#ffffff") {
+          set("--scrim-shadow", "0 2px 10px rgba(0,0,0,0.28)");
+        } else {
+          set("--scrim-shadow", "0 1px 2px rgba(255,255,255,0.45)");
+        }
+      }
+
+      set("--size", cfg.size + "px");
+      set("--card-left", (cfg.card && cfg.card.left != null ? cfg.card.left : 64) + "px");
+      set("--card-top", (cfg.card && cfg.card.top != null ? cfg.card.top : 1400) + "px");
+      set("--card-max-width", (cfg.card && cfg.card.maxWidth != null ? cfg.card.maxWidth : 980) + "px");
+      set("--radius", cfg.brand.radius + "px");
+      set("--blur", cfg.brand.blur + "px");
+      set("--tint", cfg.palette.tintColor);
+      set("--tint-strength", String(cfg.brand.tint / 100));
+      set("--border-color", cfg.palette.borderColor);
+      set("--border-opacity", String(cfg.palette.borderOpacity));
+      set("--shade-color", cfg.palette.edgeShadeColor);
+      set("--haze-opacity", String(cfg.palette.hazeOpacity));
+      set("--kicker-color", cfg.palette.kickerColor);
+      set("--headline-color", cfg.palette.headlineColor);
+      set("--subtitle-color", cfg.palette.subtitleColor);
+      set("--kicker-size", cfg.brand.kickerSize + "px");
+      set("--headline-size", cfg.brand.headlineSize + "px");
+      set("--subtitle-size", cfg.brand.subtitleSize + "px");
+      set("--kicker-tracking", cfg.brand.kickerTracking + "em");
+      set("--headline-tracking", cfg.brand.headlineTracking + "em");
+      set("--subtitle-tracking", cfg.brand.subtitleTracking + "em");
+      set("--pad", (cfg.card && cfg.card.padding != null ? cfg.card.padding : 48) + "px");
+      set("--logo-max-width", Math.round(cfg.logo.maxWidth * cfg.logo.sizePercent / 100) + "px");
+      set("--logo-max-height", Math.round(cfg.logo.maxHeight * cfg.logo.sizePercent / 100) + "px");
+      // Logo-Safe-Zone (Recherche 4c): getrennte x/y-Werte, damit die Marke
+      // auf allen Bildern der Serie exakt gleich sitzt. offset bleibt als
+      // Rückfall für ältere Konfigurationen.
+      const logoOff = (cfg.logo && cfg.logo.offset != null)
+        ? cfg.logo.offset
+        : ((cfg.series && cfg.series.logoOffset != null) ? cfg.series.logoOffset : 64);
+      const logoLeft = (cfg.logo && cfg.logo.left != null) ? cfg.logo.left : logoOff;
+      const logoTop = (cfg.logo && cfg.logo.top != null) ? cfg.logo.top : logoOff;
+      set("--logo-left", logoLeft + "px");
+      set("--logo-top", logoTop + "px");
+      set("--pill-size", cfg.pillFontSize + "px");
+      if (cfg.series && cfg.series.badgeMaxWidth) {
+        set("--badge-max-width", cfg.series.badgeMaxWidth + "px");
+      }
+
+      document.body.style.width = cfg.size + "px";
+      document.body.style.height = cfg.size + "px";
+      document.documentElement.style.width = cfg.size + "px";
+      document.documentElement.style.height = cfg.size + "px";
+
+      const bg = document.getElementById("bg");
+      bg.src = cfg.imageDataUrl;
+
+      const logo = document.getElementById("logo");
+      if (cfg.logo.enabled && cfg.logo.dataUrl && template !== "clean") {
+        logo.src = cfg.logo.dataUrl;
+        logo.classList.remove("hidden");
+      } else {
+        logo.removeAttribute("src");
+        logo.classList.add("hidden");
+      }
+
+      const card = document.getElementById("card");
+      const cardModes = ["legacy", "brand_hero", "big_type", "corner_stack"];
+      const showCard = !!cfg.showMainCard && cardModes.indexOf(template) >= 0;
+      stage.classList.toggle("template-" + template, true);
+      if (showCard) {
+        card.classList.remove("hidden");
+        card.className = "card template-" + template
+          + (system === "solid" ? " system-solid" : "");
+        document.getElementById("kicker").textContent = cfg.texts.kicker || "";
+        const headlineEl = document.getElementById("headline");
+        headlineEl.textContent = cfg.texts.headline || "";
+        // Zeilenlänge + Zeilenhöhe aus der Typo-Stufe (typography.py)
+        headlineEl.style.maxWidth = cfg.brand.headlineCh
+          ? cfg.brand.headlineCh + "ch"
+          : "";
+        if (cfg.brand.headlineLineHeight) {
+          set("--headline-line-height", String(cfg.brand.headlineLineHeight));
+        }
+        if (cfg.brand.headlineStep) {
+          headlineEl.dataset.size = cfg.brand.headlineStep;
+        }
+        document.getElementById("subline").textContent = cfg.texts.subline || "";
+      } else {
+        card.classList.add("hidden");
+        card.className = "card hidden";
+      }
+
+      const badgePanel = document.getElementById("badgePanel");
+      const badgeModes = [
+        "benefit_badge", "lifestyle_caption", "detail_callout", "scale_callout",
+        "bottom_bar", "minimal_chip", "split_caption"
+      ];
+      const showBadge = badgeModes.indexOf(template) >= 0 && cfg.badge && (cfg.badge.text || cfg.badge.headline || cfg.badge.subline);
+      const badgeForm = (cfg.series && cfg.series.badgeForm) || "pill";
+      badgePanel.className = "badge-panel"
+        + (showBadge ? " template-" + template : " hidden")
+        + (badgeForm === "rounded" ? " badge-form-rounded" : "")
+        + (showBadge && (system === "tag" || system === "chip")
+            ? " system-" + system : "");
+      if (showBadge) {
+        // Badge-Grad kommt bei Bedarf aus dem Fitting (typography.py)
+        if (cfg.badge && cfg.badge.fontSize) {
+          set("--badge-chip-size", cfg.badge.fontSize + "px");
+        }
+        document.getElementById("badgeChip").textContent = cfg.badge.text || "";
+        document.getElementById("badgeHeadline").textContent = cfg.badge.headline || cfg.texts.headline || "";
+        document.getElementById("badgeSub").textContent = cfg.badge.subline || cfg.texts.subline || "";
+      }
+
+      const pillsRoot = document.getElementById("pills");
+      pillsRoot.innerHTML = "";
+      if (template === "legacy" || template === "brand_hero") {
+        (cfg.pills || []).forEach((pill) => {
+          const el = document.createElement("div");
+          el.className = "pill";
+          el.style.left = pill.left + "px";
+          el.style.top = pill.top + "px";
+          el.innerHTML = '<div class="pill-glass"></div><div class="pill-border"></div><div class="pill-text"></div>';
+          el.querySelector(".pill-text").textContent = pill.text;
+          el.querySelector(".pill-text").style.color = pill.color || cfg.palette.headlineColor;
+          pillsRoot.appendChild(el);
+        });
+      }
+    };
+  </script>
+</body>
+</html>

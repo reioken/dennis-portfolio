@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Floordirekt Studio</title>
+  <link rel="stylesheet" href="/studio/styles.css" />
+  <link rel="icon" href="/studio/assets/studio_mark.png" />
+  <script src="/studio/vendor/html-to-image.min.js"></script>
+  <script src="/studio/vendor/jszip.min.js"></script>
+</head>
+<body>
+  <div class="stage">
+    <header class="titlebar">
+      <div class="titlebar-left">
+        <img src="/studio/assets/studio_mark.png" alt="" />
+        <span>STUDIO</span>
+      </div>
+      <div class="titlebar-right">BROWSER</div>
+    </header>
+
+    <div class="topbar glass">
+      <div class="topbar-brand">
+        <img class="lockup" src="/studio/assets/logos/floordirekt-studio-lockup.png" alt="Floordirekt Studio" />
+      </div>
+      <div></div>
+      <div class="topbar-meta">
+        <p class="tagline">KI-Bilder · Overlay · Übersetzen</p>
+        <p class="step-line">Auto-Studio · <span id="topStepHint">Bereit</span></p>
+      </div>
+    </div>
+
+    <div class="body">
+      <aside class="sidebar">
+        <div class="side-head">
+          <p class="ablauf">ABLAUF</p>
+          <p class="count" id="sideCount">1 / 4</p>
+        </div>
+        <div class="side-track" aria-hidden="true"><i id="sideFill" style="width:15%"></i></div>
+
+        <div class="steps" aria-label="Schritte">
+          <div class="step is-active" data-step="1">
+            <span class="rail"></span>
+            <span class="badge">1</span>
+            <span class="label">Refs</span>
+            <span class="hint"></span>
+          </div>
+          <div class="step" data-step="2">
+            <span class="rail"></span>
+            <span class="badge">2</span>
+            <span class="label">KI-Bilder</span>
+            <span class="hint"></span>
+          </div>
+          <div class="step" data-step="3">
+            <span class="rail"></span>
+            <span class="badge">3</span>
+            <span class="label">Text</span>
+            <span class="hint"></span>
+          </div>
+          <div class="step" data-step="4">
+            <span class="rail"></span>
+            <span class="badge">4</span>
+            <span class="label">Export</span>
+            <span class="hint"></span>
+          </div>
+        </div>
+
+        <div class="side-form">
+          <label class="field">
+            Marke
+            <select id="brand">
+              <option value="FLOORDIREKT">Floordirekt</option>
+              <option value="KARAT">Karat</option>
+              <option value="MAMMUT">Mammut</option>
+              <option value="OFFICE_MARSHAL">Office Marshal</option>
+            </select>
+          </label>
+
+          <label class="field">
+            Produktname <span class="opt">(optional)</span>
+            <input type="text" id="productName" placeholder="z. B. Gartenstuhl Mayfield" />
+          </label>
+
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="imageInput" accept="image/*" multiple hidden />
+            <p class="drop-title">Referenz-Fotos</p>
+            <p class="drop-hint">Produktfotos reinziehen — Basis für Consistency</p>
+            <p class="drop-count" id="dropCount">0 Refs</p>
+          </div>
+
+          <label class="field">
+            Anzahl KI-Bilder
+            <select id="genCount">
+              <option value="4" selected>4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </label>
+
+          <button type="button" class="btn btn-primary btn-wide" id="btnGenImages">KI-Bilder generieren</button>
+          <button type="button" class="btn btn-secondary btn-wide" id="btnRun">Overlay + Text + Übersetzen</button>
+
+          <div class="field image-tools" id="imageTools">
+            <span class="field-label">Logo-Farbe <span class="opt">(aktives Bild)</span></span>
+            <div class="logo-color-tabs" id="logoColorTabs" role="tablist" aria-label="Logo-Farbe">
+              <button type="button" class="logo-color-tab is-active" data-logo="auto">Auto</button>
+              <button type="button" class="logo-color-tab" data-logo="color">Farbe</button>
+              <button type="button" class="logo-color-tab" data-logo="light">Hell</button>
+              <button type="button" class="logo-color-tab" data-logo="dark">Dunkel</button>
+            </div>
+          </div>
+
+          <div class="lang-tabs" id="langTabs" role="tablist" aria-label="Sprache">
+            <button type="button" class="lang-tab is-active" data-lang="de">DE</button>
+            <button type="button" class="lang-tab" data-lang="en">EN</button>
+            <button type="button" class="lang-tab" data-lang="fr">FR</button>
+            <button type="button" class="lang-tab" data-lang="it">IT</button>
+            <button type="button" class="lang-tab" data-lang="es">ES</button>
+            <button type="button" class="lang-tab" data-lang="pl">PL</button>
+          </div>
+
+          <label class="field">
+            Kicker
+            <input type="text" id="kicker" placeholder="—" />
+          </label>
+          <label class="field">
+            Headline
+            <textarea id="headline" rows="2" placeholder="—"></textarea>
+          </label>
+          <label class="field">
+            Subline
+            <textarea id="subline" rows="2" placeholder="—"></textarea>
+          </label>
+        </div>
+
+        <div class="side-foot">
+          <button type="button" class="btn btn-ghost" id="btnLogout">Abmelden</button>
+          <p class="credit">
+            <strong>floordirekt.com</strong><br />
+            Dennis Bierreth-Fernandez
+          </p>
+        </div>
+      </aside>
+
+      <section class="main">
+        <div class="card glass">
+          <div class="card-head">
+            <div class="accent-bars" aria-hidden="true">
+              <span class="bar-red"></span>
+              <span class="bar-gold"></span>
+            </div>
+            <h1>Galerie</h1>
+            <p class="sub">Alle Motive nebeneinander — klicken für großes Karussell, ↻ zum Neu-Generieren.</p>
+          </div>
+          <div class="card-body card-body--gallery">
+            <div class="gallery" id="gallery" aria-label="Bildergalerie"></div>
+            <p class="gallery-empty" id="galleryEmpty">Referenz-Fotos hochladen oder KI-Bilder generieren.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="footer glass">
+      <div class="footer-status" id="status">Refs wählen — dann KI-Bilder oder Overlay starten.</div>
+      <div class="footer-actions">
+        <button type="button" class="btn btn-secondary" id="btnZip" disabled>ZIP Sprache</button>
+        <button type="button" class="btn btn-primary" id="btnPng" disabled>PNG</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Offscreen overlay renderer for export / lightbox -->
+  <iframe id="stage" class="stage-hidden" src="/studio/overlay/" title="Overlay Renderer"></iframe>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <button type="button" class="lightbox-close" id="lightboxClose" aria-label="Schließen">×</button>
+    <button type="button" class="lightbox-nav prev" id="lightboxPrev" aria-label="Zurück">‹</button>
+    <div class="lightbox-frame">
+      <iframe id="lightboxStage" src="/studio/overlay/" title="Overlay Großansicht"></iframe>
+    </div>
+    <button type="button" class="lightbox-nav next" id="lightboxNext" aria-label="Weiter">›</button>
+    <div class="lightbox-meta">
+      <span id="lightboxLabel"></span>
+      <button type="button" class="btn btn-secondary" id="lightboxRegen">↻ Neu generieren</button>
+    </div>
+  </div>
+
+  <script src="/studio/placement.js"></script>
+  <script src="/studio/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Floordirekt Studio — Login</title>
+  <link rel="stylesheet" href="/studio/styles.css" />
+  <link rel="icon" href="/studio/assets/studio_mark.png" />
+</head>
+<body class="login-body">
+  <main class="login-card glass">
+    <img class="lockup" src="/studio/assets/logos/floordirekt-studio-lockup.png" alt="Floordirekt Studio" />
+    <div class="accent-bars" aria-hidden="true">
+      <span class="bar-red"></span>
+      <span class="bar-gold"></span>
+    </div>
+    <h1>Browser-Zugang</h1>
+    <p class="lede">Passwort eingeben — dann Overlay-Vorschau wie in der Desktop-App nutzen.</p>
+    <form id="loginForm">
+      <label>
+        Passwort
+        <input type="password" id="pw" autocomplete="current-password" required autofocus />
+      </label>
+      <button class="btn btn-primary" type="submit">Öffnen</button>
+      <p id="err" class="err" hidden>Falsches Passwort.</p>
+    </form>
+    <p class="login-foot">Bilder · Texte · Overlay</p>
+  </main>
+  <script src="/studio/login.js"></script>
+</body>
+</html>
