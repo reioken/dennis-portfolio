@@ -2163,7 +2163,7 @@ a:hover .brand-mark--nav {
 .process-rail__img {
   position: relative;
   z-index: 1;
-  width: 72%;
+  width: 82%;
   height: auto;
   display: block;
   filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--blue) 22%, transparent));
