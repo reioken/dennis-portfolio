@@ -610,6 +610,31 @@ input:focus, select:focus, textarea:focus {
   font-size: 12px;
   font-weight: 700;
 }
+/* Produkttreue-Hinweis auf der Kachel. Erscheint nur, wenn das Bild die
+   Pruefung nicht bestanden hat oder gar nicht geprueft werden konnte —
+   bestandene Bilder bleiben unbeschriftet, damit der Hinweis auffaellt. */
+.gallery-fidelity {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  backdrop-filter: blur(6px);
+  cursor: help;
+}
+.gallery-fidelity.is-warn {
+  background: rgba(205, 18, 23, 0.92);
+  color: #fff;
+}
+.gallery-fidelity.is-unknown {
+  background: rgba(24, 24, 28, 0.72);
+  color: rgba(255, 255, 255, 0.86);
+}
+
 .gallery-bar {
   display: flex;
   align-items: center;

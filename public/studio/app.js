@@ -389,6 +389,46 @@ async function prepareImagePreview(img, brand) {
   img.resolvedLogoMode = resolved.resolvedMode;
 }
 
+/**
+ * Kurztext zum Treue-Urteil fuer die Statuszeile.
+ * Liefert null, wenn es nichts zu melden gibt (bestanden und geprueft).
+ */
+function fidelityStatusText(fidelity) {
+  if (!fidelity) return null;
+  if (fidelity.skipped) return "Bild erzeugt — Produkttreue nicht geprüft.";
+  if (!fidelity.pass) {
+    const what = [];
+    if (fidelity.color_match === false) what.push("Farbe");
+    if (fidelity.pattern_match === false) what.push("Muster");
+    const detail = what.length ? ` (${what.join(" und ")})` : "";
+    return `Achtung: Produkttreue nur ${fidelity.score}%${detail} — bitte prüfen oder neu generieren.`;
+  }
+  return null;
+}
+
+/** Warn-Badge fuer eine Galeriekachel, oder null wenn alles in Ordnung ist. */
+function fidelityBadge(fidelity) {
+  if (!fidelity) return null;
+  if (fidelity.pass && !fidelity.skipped) return null;
+
+  const badge = document.createElement("span");
+  badge.className = "gallery-fidelity";
+  if (fidelity.skipped) {
+    badge.classList.add("is-unknown");
+    badge.textContent = "ungeprüft";
+    badge.title = fidelity.reason || "Produkttreue wurde nicht geprüft.";
+  } else {
+    badge.classList.add("is-warn");
+    badge.textContent = `Treue ${fidelity.score}%`;
+    const issues = (fidelity.issues || []).join("; ");
+    badge.title =
+      `Unter Schwelle ${fidelity.threshold ?? 75}%. ` +
+      (fidelity.reason || "") +
+      (issues ? ` — ${issues}` : "");
+  }
+  return badge;
+}
+
 function renderGallery() {
   const root = $("gallery");
   const empty = $("galleryEmpty");
@@ -417,6 +457,8 @@ function renderGallery() {
       spin.textContent = "Generiert…";
       media.appendChild(spin);
     }
+    const badge = fidelityBadge(img.fidelity);
+    if (badge) media.appendChild(badge);
     media.addEventListener("click", () => openLightbox(img.id));
 
     const bar = document.createElement("div");
@@ -546,6 +588,7 @@ async function generateSeriesImages() {
         presetId,
         previewDataUrl: null,
         source: "ai",
+        fidelity: data.fidelity || null,
       };
       await prepareImagePreview(img, brand);
       if (idx >= 0) state.images[idx] = img;
@@ -556,7 +599,15 @@ async function generateSeriesImages() {
       renderGallery();
       syncLogoColorTabs();
     }
-    status(`KI-Bilder fertig (${state.images.length}) — jetzt Text + Overlay…`);
+    // Durchgefallene und ungepruefte Bilder zusammenfassen, damit sie im
+    // Stapel nicht untergehen. Die Kacheln zeigen zusaetzlich ein Badge.
+    const generated = state.images.filter((i) => i.source === "ai" && i.fidelity);
+    const failed = generated.filter((i) => i.fidelity && !i.fidelity.pass);
+    const unchecked = generated.filter((i) => i.fidelity && i.fidelity.skipped);
+    let summary = `KI-Bilder fertig (${state.images.length})`;
+    if (failed.length) summary += ` — ${failed.length} unter Treue-Schwelle, bitte prüfen`;
+    else if (unchecked.length) summary += ` — ${unchecked.length} ungeprüft`;
+    status(`${summary} — jetzt Text + Overlay…`);
     setBusy(false);
     await runSeries({ skipIfBusy: false });
   } catch (err) {
@@ -594,11 +645,12 @@ async function regenerateImage(id, stricter) {
     img.logoDataUrl = null;
     img.previewDataUrl = null;
     img.generating = false;
+    img.fidelity = data.fidelity || null;
     await prepareImagePreview(img, $("brand").value);
     if (hasCopy()) await bakeOnePreview(img);
     renderGallery();
     if (state.lightboxOpen) await applyToIframe($("lightboxStage"));
-    status("Bild neu generiert.");
+    status(fidelityStatusText(img.fidelity) || "Bild neu generiert.");
   } catch (err) {
     console.error(err);
     img.generating = false;

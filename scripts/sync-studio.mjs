@@ -5,10 +5,14 @@
  * unter "/", im Portfolio unter "/studio/" — deshalb werden beim Kopieren
  * die absoluten Pfade umgeschrieben.
  *
- * Bewusst NICHT synchronisiert: functions/. Die Portfolio-Variante setzt
- * zusaetzlich CSP- und X-Frame-Options-Header, damit overlay.html in einem
- * iframe laufen darf, und liegt unter functions/studio/ statt functions/.
- * Diese Dateien werden getrennt gepflegt.
+ * Die API-Endpunkte unter functions/api/ werden mitsynchronisiert: sie sind
+ * serverseitig und enthalten keine /studio/-relativen Pfade, laufen also
+ * unveraendert an beiden Orten.
+ *
+ * Bewusst NICHT synchronisiert: functions/_middleware.js. Die Portfolio-
+ * Variante setzt zusaetzlich CSP- und X-Frame-Options-Header, damit
+ * overlay.html in einem iframe laufen darf, und arbeitet mit /studio/-
+ * praefixierten Pfaden. Diese eine Datei wird getrennt gepflegt.
  *
  * Aufruf:
  *   node scripts/sync-studio.mjs            # kopieren
@@ -23,6 +27,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const PORTFOLIO = join(HERE, "..");
 const SOURCE = join(PORTFOLIO, "..", "..", "Documents", "Floordirekt", "fd-pipeline", "studio-web");
 const TARGET = join(PORTFOLIO, "public", "studio");
+
+const API_SOURCE = join(SOURCE, "functions", "api");
+const API_TARGET = join(PORTFOLIO, "functions", "studio", "api");
 
 const CHECK_ONLY = process.argv.includes("--check");
 
@@ -132,8 +139,33 @@ function main() {
     if (!CHECK_ONLY) cpSync(from, to, { recursive: true });
   }
 
+  // API-Endpunkte: 1:1, ohne Pfad-Rewrite. Sie laufen serverseitig und
+  // enthalten keine /studio/-relativen Pfade.
+  if (existsSync(API_SOURCE)) {
+    for (const name of readdirSync(API_SOURCE)) {
+      if (!name.endsWith(".js")) continue;
+      const from = join(API_SOURCE, name);
+      if (statSync(from).isDirectory()) continue;
+      const content = readFileSync(from, "utf8");
+      const to = join(API_TARGET, name);
+      const current = existsSync(to) ? readFileSync(to, "utf8") : null;
+      if (current === content) {
+        identical++;
+        continue;
+      }
+      changed++;
+      console.log(`  ${CHECK_ONLY ? "wuerde aendern" : "aktualisiert"}: functions/studio/api/${name}`);
+      if (!CHECK_ONLY) {
+        mkdirSync(dirname(to), { recursive: true });
+        writeFileSync(to, content, "utf8");
+      }
+    }
+  }
+
   console.log(`\n${changed} Aenderung(en), ${identical} unveraendert.`);
-  console.log("functions/studio/ wurde NICHT angefasst — wird getrennt gepflegt.");
+  console.log(
+    "functions/studio/_middleware.js wurde NICHT angefasst — wird getrennt gepflegt.",
+  );
 
   if (CHECK_ONLY && changed > 0) process.exit(1);
 }

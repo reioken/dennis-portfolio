@@ -1,5 +1,7 @@
 /** Product image edit via OpenAI Images API (gpt-image) — shop fidelity. */
 
+import { assessProductFidelity } from "./_fidelity.js";
+
 const PRODUCT_LOCK = `PRODUCT IDENTITY LOCK — USE THE INPUT PRODUCT AS THE SOURCE OF TRUTH
 The product shown in IMAGE 1 is the exact product that must appear in the final image. Preserve it literally: same silhouette, dimensions, proportions, edge shape, thickness, color distribution, pattern placement, weave/texture, material finish, seams, labels, logos, visible defects, and all distinctive details.
 
@@ -183,6 +185,22 @@ export async function onRequestPost(context) {
     return json({ error: "Keine Bilddaten in der Antwort." }, 502);
   }
 
+  // Produkttreue gegen das erste Referenzbild pruefen. Die Desktop-App macht
+  // das seit jeher, das Studio bisher nicht — dadurch hing die Bildqualitaet
+  // davon ab, wo jemand gerade arbeitet.
+  //
+  // Kein automatischer Retry an dieser Stelle: ein zweiter Generierungslauf
+  // wuerde die Antwortzeit verdoppeln, ohne dass die Oberflaeche etwas
+  // anzeigen kann. Stattdessen geht das Urteil mit zurueck, und der Nutzer
+  // entscheidet ueber den vorhandenen "Neu generieren"-Weg.
+  const skipQa = body.skipFidelityCheck === true;
+  const fidelity = skipQa
+    ? { skipped: true, pass: true, score: 100, issues: [], reason: "QA deaktiviert." }
+    : await assessProductFidelity(useRefs[0], imageDataUrl, {
+        apiKey: key,
+        model: String(env.OPENAI_QA_MODEL || "").trim() || undefined,
+      });
+
   return json({
     imageDataUrl,
     presetId,
@@ -190,5 +208,6 @@ export async function onRequestPost(context) {
     quality,
     size,
     seed,
+    fidelity,
   });
 }
