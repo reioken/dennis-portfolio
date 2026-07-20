@@ -35,5 +35,7 @@ tools/.upscale-tmp/
 .cache-sdxl/
 public/media/craft/_ai-logo/
 public/media/process/_ai-raw/
+public/media/me/_ai-portrait/
+public/media/me/_source-2026.png
 public/media/**/_preview*.jpg
 public/media/craft/mark-master.png
