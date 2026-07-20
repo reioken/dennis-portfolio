@@ -74,13 +74,14 @@ function hasCopy() {
 function syncActionButtons() {
   const on = state.busy;
   const hasImages = state.images.length > 0;
+  const hasRefs = state.refs.length > 0 || hasImages;
   const ready = hasImages && hasCopy();
-  $("btnRun").disabled = on || !hasImages;
-  $("btnRegenText").disabled = on || !hasImages;
-  $("btnGenImages").disabled = on || !state.refs.length;
-  $("btnPng").disabled = on || !ready;
-  $("btnZip").disabled = on || !ready;
-  $("btnClear").disabled = on || !hasImages;
+  if ($("btnRun")) $("btnRun").disabled = on || !hasImages;
+  if ($("btnRegenText")) $("btnRegenText").disabled = on || !hasImages;
+  if ($("btnGenImages")) $("btnGenImages").disabled = on || !hasRefs;
+  if ($("btnPng")) $("btnPng").disabled = on || !ready;
+  if ($("btnZip")) $("btnZip").disabled = on || !ready;
+  if ($("btnClear")) $("btnClear").disabled = on || !hasImages;
 }
 
 function setBusy(on) {
@@ -443,31 +444,35 @@ async function callImageApi({ presetId, stricter, quality }) {
 
 async function generateSeriesImages() {
   if (state.busy) return;
-  syncRefsFromSeries();
+  // Keep uploaded photos as refs even while replacing gallery with KI output
+  if (!state.refs.length) syncRefsFromSeries();
   if (!state.refs.length) {
-    status("Bitte zuerst Fotos hochladen (als Referenz).");
+    status("Zuerst Fotos hochladen — die werden als Referenz für neue KI-Bilder genutzt.");
     return;
   }
+  const refBackup = state.refs.slice(0, 4);
   setBusy(true);
   setStep(1);
   try {
     const product = $("productName").value.trim() || "product";
     state.seriesSeed = await seriesSeed(`${product}|${$("brand").value}`);
     const count = Math.max(1, Math.min(8, Number($("genCount").value) || 4));
-    status(`KI-Serie (${count}) · Seed ${state.seriesSeed}…`);
+    status(`KI-Bilder ${count}× erzeugen…`);
     state.images = [];
     state.activeImageId = null;
     state.copyByLang = {};
+    state.refs = refBackup;
     syncTextFieldsFromState();
+    updateDropCount();
     renderGallery();
 
     for (let i = 0; i < count; i++) {
       const presetId = SCENE_ORDER[i % SCENE_ORDER.length];
-      status(`Bild ${i + 1}/${count}: ${presetId}…`);
+      status(`KI-Bild ${i + 1}/${count}…`);
       const placeholder = {
         id: `pending_${i}`,
         name: presetId,
-        dataUrl: state.refs[0],
+        dataUrl: refBackup[0],
         layout: null,
         logoColor: "auto",
         generating: true,
@@ -497,17 +502,20 @@ async function generateSeriesImages() {
       if (idx >= 0) state.images[idx] = img;
       else state.images.push(img);
       state.activeImageId = img.id;
+      state.refs = refBackup;
       updateDropCount();
       renderGallery();
       syncLogoColorTabs();
     }
-    status(`KI-Serie fertig (${state.images.length}). Starte Text…`);
+    status(`KI-Bilder fertig (${state.images.length}) — jetzt Text + Overlay…`);
     setBusy(false);
     await runSeries({ skipIfBusy: false });
   } catch (err) {
     console.error(err);
     status(String(err.message || err));
+    state.refs = refBackup;
     state.images = state.images.filter((i) => !i.generating);
+    updateDropCount();
     renderGallery();
     setBusy(false);
   }
@@ -598,20 +606,13 @@ async function addSeriesFiles(fileList, { replace = false } = {}) {
   syncActionButtons();
   renderGallery();
 
-  const added = files.length;
-  status(`${added} Bild(er) · Serie: ${state.images.length}`);
-
-  if ($("autoRun")?.checked) {
-    await runSeries();
-  } else {
-    status(`${state.images.length} Bilder geladen — «Serie fertig machen» tippen.`);
-  }
+  status(`${state.images.length} Bilder geladen → links «Text + Overlay» oder «KI-Bilder neu».`);
 }
 
 async function runSeries(opts = {}) {
   if (state.busy && opts.skipIfBusy !== false) return;
   if (!state.images.length) {
-    status("Bitte zuerst eine Serie hochladen.");
+    status("Zuerst Fotos hochladen, dann «Text + Overlay».");
     return;
   }
   setBusy(true);
@@ -1009,3 +1010,4 @@ setStep(1);
 setBusy(false);
 syncActionButtons();
 renderGallery();
+status("Fotos laden → «Text + Overlay» ODER «KI-Bilder neu».");

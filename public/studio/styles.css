@@ -770,40 +770,65 @@ body.lightbox-open { overflow: hidden; }
   border-color: rgba(232, 194, 0, 0.35);
   background: rgba(62, 56, 32, 0.22);
 }
-.check-row {
-  display: flex;
-  align-items: flex-start;
+.action-duo-label {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.action-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.35;
-  cursor: pointer;
-  user-select: none;
 }
-.check-row input {
-  margin-top: 2px;
-  accent-color: var(--gold);
-}
-.optional-panel {
-  border: 1px solid var(--stroke-soft);
+.btn-duo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 108px;
+  padding: 12px 10px;
+  border: 0;
   border-radius: var(--r-md);
-  background: rgba(30, 30, 40, 0.55);
-  padding: 8px 10px 10px;
-}
-.optional-panel > summary {
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--muted);
-  list-style: none;
+  text-align: left;
+  transition: background 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
 }
-.optional-panel > summary::-webkit-details-marker { display: none; }
-.optional-panel[open] > summary { color: var(--text); margin-bottom: 8px; }
-.optional-hint {
-  margin: 0 0 10px;
-  font-size: 11px;
-  color: var(--muted2);
-  line-height: 1.4;
+.btn-duo:active { transform: scale(0.98); }
+.btn-duo:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-duo-title {
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+.btn-duo-sub {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.35;
+  opacity: 0.88;
+}
+.btn-duo-primary {
+  background: var(--red);
+  color: var(--white);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+.btn-duo-primary:hover:not(:disabled) { background: var(--red-hover); }
+.btn-duo-secondary {
+  background: var(--glass-soft);
+  color: var(--text);
+  border: 1px solid rgba(232, 194, 0, 0.35);
+}
+.btn-duo-secondary:hover:not(:disabled) { background: var(--elevated); }
+.btn-duo-secondary .btn-duo-title { color: var(--gold); }
+.field-inline {
+  margin-top: 2px;
 }
 
 .field-label {

@@ -77,32 +77,33 @@
 
           <div class="dropzone dropzone-primary" id="dropzone">
             <input type="file" id="imageInput" accept="image/*" multiple hidden />
-            <p class="drop-title">1. Serie hier reinziehen</p>
-            <p class="drop-hint">Deine fertigen Produktfotos (mehrere auf einmal)</p>
+            <p class="drop-title">Fotos hier reinziehen</p>
+            <p class="drop-hint">Eigene Serie ODER Referenzen für neue KI-Bilder</p>
             <p class="drop-count" id="dropCount">0 Bilder</p>
           </div>
 
-          <label class="check-row" title="Nach Upload sofort Texte und Overlay erzeugen">
-            <input type="checkbox" id="autoRun" checked />
-            <span>Danach sofort automatisch Text + Übersetzen</span>
+          <p class="action-duo-label">Danach einen Weg wählen:</p>
+          <div class="action-duo" role="group" aria-label="Hauptaktionen">
+            <button type="button" class="btn-duo btn-duo-primary" id="btnRun" disabled>
+              <span class="btn-duo-title">Text + Overlay</span>
+              <span class="btn-duo-sub">eigene Bilder behalten · Textboxen · KI-Text · Übersetzen</span>
+            </button>
+            <button type="button" class="btn-duo btn-duo-secondary" id="btnGenImages" disabled>
+              <span class="btn-duo-title">KI-Bilder neu</span>
+              <span class="btn-duo-sub">neue Motive generieren · danach auch Text + Übersetzen</span>
+            </button>
+          </div>
+
+          <label class="field field-inline" id="genCountWrap">
+            Anzahl neuer KI-Bilder
+            <select id="genCount">
+              <option value="4" selected>4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
           </label>
 
-          <button type="button" class="btn btn-primary btn-wide" id="btnRun" disabled>2. Serie fertig machen</button>
-          <button type="button" class="btn btn-secondary btn-wide" id="btnRegenText" disabled>Text neu von der KI</button>
-
-          <details class="optional-panel" id="kiPanel">
-            <summary>Nur wenn nötig: neue Bilder per KI</summary>
-            <p class="optional-hint">Hast du schon eine fertige Serie? Dann brauchst du das nicht. Sonst: Fotos oben laden, hier Anzahl wählen.</p>
-            <label class="field">
-              Wie viele KI-Bilder?
-              <select id="genCount">
-                <option value="4" selected>4</option>
-                <option value="6">6</option>
-                <option value="8">8</option>
-              </select>
-            </label>
-            <button type="button" class="btn btn-secondary btn-wide" id="btnGenImages" disabled>KI-Bilder erzeugen</button>
-          </details>
+          <button type="button" class="btn btn-secondary btn-wide" id="btnRegenText" disabled>Nur Text neu von der KI</button>
 
           <div class="side-section" id="textSection">
             <p class="side-section-title">Text auf dem Bild</p>
@@ -163,14 +164,14 @@
           </div>
           <div class="card-body card-body--gallery">
             <div class="gallery" id="gallery" aria-label="Bildergalerie"></div>
-            <p class="gallery-empty" id="galleryEmpty">Eigene Serie hochladen — oder optional KI-Bilder erzeugen.</p>
+            <p class="gallery-empty" id="galleryEmpty">Fotos links laden, dann «Text + Overlay» oder «KI-Bilder neu».</p>
           </div>
         </div>
       </section>
     </div>
 
     <footer class="footer glass">
-      <div class="footer-status" id="status">Links: Serie hochladen → fertig machen → hier PNG/ZIP laden.</div>
+      <div class="footer-status" id="status">Fotos laden → Text + Overlay ODER KI-Bilder neu → PNG/ZIP.</div>
       <div class="footer-actions">
         <button type="button" class="btn btn-secondary" id="btnClear" disabled>Serie leeren</button>
         <button type="button" class="btn btn-secondary" id="btnZip" disabled>ZIP (aktuelle Sprache)</button>
