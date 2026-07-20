@@ -39,7 +39,19 @@ export default function NexusSplashMark({
       <div className="nx-sp__aura" aria-hidden />
       <div className="nx-sp__aura nx-sp__aura--core" aria-hidden />
       <div className="nx-sp__rays" aria-hidden />
+      <div className="nx-sp__dust" aria-hidden>
+        {Array.from({ length: 10 }, (_, i) => (
+          <span key={i} className={`nx-sp__mote m${i + 1}`} />
+        ))}
+      </div>
       <div className="nx-sp__wrap" aria-hidden>
+        <span className="nx-sp__burst" />
+        <span className="nx-sp__glint g1" />
+        <span className="nx-sp__glint g2" />
+        <span className="nx-sp__glint g3" />
+        <span className="nx-sp__glint g4" />
+        <span className="nx-sp__glint g5" />
+        <span className="nx-sp__glint g6" />
         <div
           className="nx-sp__mark"
           dangerouslySetInnerHTML={{ __html: logoSvg }}

@@ -2,24 +2,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-30 -28 454.78 412.03" fill="none" role="img" aria-label="NEXUS">
   <defs>
 
-  <linearGradient id="nxg1" x1="1.55" y1="310.32" x2="124.37" y2="284.84" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ac8bfd"/><stop offset="1" stop-color="#ac8bfd"/></linearGradient>
-  <linearGradient id="nxg2" x1="-2.89" y1="345.16" x2="49.23" y2="215.89" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f2f7ff"/><stop offset="1" stop-color="#4a82fe"/></linearGradient>
-  <linearGradient id="nxg3" x1="47.41" y1="220.4" x2="75.01" y2="151.94" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".12" stop-color="#4a82fe"/><stop offset=".68" stop-color="#4a82fe"/><stop offset="1" stop-color="#4a82fe"/></linearGradient>
-  <linearGradient id="nxg4" x1="9.73" y1="138.47" x2="86.46" y2="79.63" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".2" stop-color="#4a82fe"/><stop offset=".52" stop-color="#365fc0"/><stop offset=".65" stop-color="#3560c2"/><stop offset=".8" stop-color="#4a82fe"/><stop offset=".97" stop-color="#4a82fe"/><stop offset="1" stop-color="#4a82fe"/></linearGradient>
-  <linearGradient id="nxg5" x1="99.73" y1="274.55" x2="114.42" y2="173.97" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".11" stop-color="#4a82fe"/><stop offset=".52" stop-color="#3560c2"/><stop offset=".67" stop-color="#365fc0"/><stop offset=".86" stop-color="#345bb2"/><stop offset="1" stop-color="#3358ad"/></linearGradient>
-  <linearGradient id="nxg6" x1="134.17" y1="223.68" x2="118.85" y2="166.17" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#345bb2"/><stop offset=".52" stop-color="#3154a5"/><stop offset="1" stop-color="#3154a5"/></linearGradient>
-  <linearGradient id="nxg7" x1="100.28" y1="157.4" x2="119.42" y2="143.19" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#21396f"/><stop offset=".52" stop-color="#25417f"/><stop offset=".63" stop-color="#264482"/><stop offset=".76" stop-color="#2c4d94"/><stop offset=".91" stop-color="#2e519d"/><stop offset="1" stop-color="#3154a5"/></linearGradient>
-  <linearGradient id="nxg8" x1="174.52" y1="194.04" x2="69.36" y2="18.7" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".2" stop-color="#4a82fe"/><stop offset=".46" stop-color="#4a82fe"/><stop offset=".46" stop-color="#4a82fe"/><stop offset=".48" stop-color="#4a82fe"/><stop offset=".49" stop-color="#4a82fe"/><stop offset=".52" stop-color="#4a82fe"/><stop offset=".58" stop-color="#4a82fe"/><stop offset=".63" stop-color="#4a82fe"/><stop offset=".74" stop-color="#dcebff"/><stop offset=".84" stop-color="#f2f7ff"/><stop offset=".93" stop-color="#f2f7ff"/><stop offset="1" stop-color="#f2f7ff"/></linearGradient>
-  <linearGradient id="nxg9" x1="222.64" y1="143.81" x2="105.31" y2="8.39" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".06" stop-color="#4a82fe"/><stop offset=".12" stop-color="#4a82fe"/><stop offset=".17" stop-color="#4a82fe"/><stop offset=".23" stop-color="#4a82fe"/><stop offset=".33" stop-color="#4a82fe"/><stop offset=".46" stop-color="#4a82fe"/><stop offset=".46" stop-color="#4a82fe"/><stop offset=".48" stop-color="#4a82fe"/><stop offset=".49" stop-color="#4a82fe"/><stop offset=".52" stop-color="#4a82fe"/><stop offset=".58" stop-color="#4a82fe"/><stop offset=".63" stop-color="#4a82fe"/><stop offset=".74" stop-color="#dcebff"/><stop offset=".84" stop-color="#f2f7ff"/><stop offset=".93" stop-color="#f2f7ff"/><stop offset="1" stop-color="#f2f7ff"/></linearGradient>
-  <linearGradient id="nxg10" x1="309.06" y1="309.96" x2="166.62" y2="191.38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ac8bfd"/><stop offset="0" stop-color="#ac8bfd"/><stop offset=".1" stop-color="#ac8bfd"/><stop offset=".17" stop-color="#ac8bfd"/><stop offset=".2" stop-color="#ac8bfd"/><stop offset=".26" stop-color="#ac8bfd"/><stop offset=".33" stop-color="#ac8bfd"/><stop offset=".42" stop-color="#ac8bfd"/><stop offset=".44" stop-color="#ac8bfd"/><stop offset=".52" stop-color="#ac8bfd"/><stop offset=".6" stop-color="#ac8bfd"/><stop offset=".66" stop-color="#ac8bfd"/><stop offset=".66" stop-color="#ac8bfd"/><stop offset=".79" stop-color="#4a82fe"/><stop offset=".91" stop-color="#4a82fe"/><stop offset="1" stop-color="#4a82fe"/></linearGradient>
-  <linearGradient id="nxg11" x1="330.89" y1="334.51" x2="227.52" y2="152.44" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ac8bfd"/><stop offset=".11" stop-color="#ac8bfd"/><stop offset=".27" stop-color="#ac8bfd"/><stop offset=".36" stop-color="#ac8bfd"/><stop offset=".52" stop-color="#ac8bfd"/><stop offset=".54" stop-color="#ac8bfd"/><stop offset=".57" stop-color="#4a82fe"/><stop offset=".61" stop-color="#4a82fe"/><stop offset=".66" stop-color="#4a82fe"/><stop offset=".7" stop-color="#4a82fe"/><stop offset=".77" stop-color="#4a82fe"/><stop offset=".84" stop-color="#4a82fe"/><stop offset=".89" stop-color="#4a82fe"/></linearGradient>
-  <linearGradient id="nxg12" x1="291.56" y1="224.3" x2="263.28" y2="132.96" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#274686"/><stop offset=".14" stop-color="#2b4c92"/><stop offset=".27" stop-color="#2d509b"/><stop offset=".33" stop-color="#2d509b"/><stop offset=".52" stop-color="#3053a2"/><stop offset=".52" stop-color="#3053a2"/><stop offset=".58" stop-color="#3156a7"/><stop offset=".66" stop-color="#3156a7"/><stop offset=".76" stop-color="#3257aa"/><stop offset=".89" stop-color="#3358ad"/></linearGradient>
-  <linearGradient id="nxg13" x1="293.07" y1="196" x2="295.39" y2="81.25" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3359af"/><stop offset=".13" stop-color="#345cb4"/><stop offset=".27" stop-color="#365fc0"/><stop offset=".28" stop-color="#365fc0"/><stop offset=".52" stop-color="#4a82fe"/><stop offset=".53" stop-color="#4a82fe"/><stop offset=".59" stop-color="#4a82fe"/><stop offset=".66" stop-color="#4a82fe"/><stop offset=".78" stop-color="#4a82fe"/><stop offset=".89" stop-color="#4a82fe"/></linearGradient>
-  <linearGradient id="nxg14" x1="307.56" y1="71.69" x2="385.61" y2="3.28" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".27" stop-color="#4a82fe"/><stop offset=".52" stop-color="#4a82fe"/><stop offset=".54" stop-color="#4a82fe"/><stop offset=".57" stop-color="#4a82fe"/><stop offset=".61" stop-color="#4a82fe"/><stop offset=".66" stop-color="#4a82fe"/><stop offset=".71" stop-color="#4a82fe"/><stop offset=".81" stop-color="#dcebff"/><stop offset=".89" stop-color="#dcebff"/></linearGradient>
-  <linearGradient id="nxg15" x1="305.92" y1="321.59" x2="336.16" y2="178.85" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7d66b9"/><stop offset=".21" stop-color="#7e67bb"/><stop offset=".31" stop-color="#365fc0"/><stop offset=".44" stop-color="#4a82fe"/><stop offset=".66" stop-color="#4a82fe"/><stop offset=".79" stop-color="#4a82fe"/><stop offset=".89" stop-color="#4a82fe"/></linearGradient>
-  <linearGradient id="nxg16" x1="321.18" y1="203.76" x2="330.26" y2="125.46" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3359af"/><stop offset=".21" stop-color="#365fc0"/><stop offset=".28" stop-color="#3560c2"/><stop offset=".45" stop-color="#3660bf"/><stop offset=".63" stop-color="#3660bf"/><stop offset=".68" stop-color="#4a82fe"/><stop offset=".79" stop-color="#4a82fe"/><stop offset=".87" stop-color="#4a82fe"/></linearGradient>
-  <linearGradient id="nxg17" x1="335.45" y1="141.49" x2="431.04" y2="57.7" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".13" stop-color="#4a82fe"/><stop offset=".2" stop-color="#4a82fe"/><stop offset=".29" stop-color="#4a82fe"/><stop offset=".36" stop-color="#4a82fe"/><stop offset=".66" stop-color="#dcebff"/><stop offset=".78" stop-color="#f2f7ff"/><stop offset=".88" stop-color="#f2f7ff"/><stop offset=".93" stop-color="#f2f7ff"/></linearGradient>
-  <!-- Facetten-Körper einmal definieren → Sichtbar + Silhouetten-Clip teilen sich die Geometrie -->
+  <linearGradient id="nxg1" x1="1.55" y1="310.32" x2="124.37" y2="284.84" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ac8bfd"/><stop offset=".45" stop-color="#9a7ef0"/><stop offset="1" stop-color="#7e66d4"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;10 -6;-6.0 4.2;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="9s" begin="0s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg2" x1="-2.89" y1="345.16" x2="49.23" y2="215.89" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e8f0ff"/><stop offset=".35" stop-color="#dcebff"/><stop offset=".7" stop-color="#4a82fe"/><stop offset="1" stop-color="#2f59b8"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;12 -14;-7.2 9.8;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="8s" begin="0.2s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg3" x1="47.41" y1="220.4" x2="75.01" y2="151.94" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3d72e8"/><stop offset=".5" stop-color="#4a82fe"/><stop offset="1" stop-color="#5a8fff"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;8 10;-4.8 -7.0;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="10s" begin="0.4s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg4" x1="9.73" y1="138.47" x2="86.46" y2="79.63" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".35" stop-color="#3d72e8"/><stop offset=".55" stop-color="#365fc0"/><stop offset=".78" stop-color="#3d72e8"/><stop offset="1" stop-color="#4a82fe"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;-10 8;6.0 -5.6;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="9.5s" begin="0.6s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg5" x1="99.73" y1="274.55" x2="114.42" y2="173.97" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".3" stop-color="#3d72e8"/><stop offset=".55" stop-color="#365fc0"/><stop offset=".8" stop-color="#345bb2"/><stop offset="1" stop-color="#3358ad"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;6 -12;-3.6 8.4;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="8.8s" begin="0.3s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg6" x1="134.17" y1="223.68" x2="118.85" y2="166.17" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3a63c4"/><stop offset=".5" stop-color="#3154a5"/><stop offset="1" stop-color="#2c4d94"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;-8 6;4.8 -4.2;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="11s" begin="0.8s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg7" x1="100.28" y1="157.4" x2="119.42" y2="143.19" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#25417f"/><stop offset=".4" stop-color="#264482"/><stop offset=".75" stop-color="#2e519d"/><stop offset="1" stop-color="#3154a5"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;5 -5;-3.0 3.5;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="10.5s" begin="1s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg8" x1="174.52" y1="194.04" x2="69.36" y2="18.7" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3d72e8"/><stop offset=".4" stop-color="#4a82fe"/><stop offset=".62" stop-color="#8fb4ff"/><stop offset=".78" stop-color="#dcebff"/><stop offset=".9" stop-color="#e8f0ff"/><stop offset="1" stop-color="#f2f7ff"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;16 -12;-9.6 8.4;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="7.5s" begin="0s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg9" x1="222.64" y1="143.81" x2="105.31" y2="8.39" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3d72e8"/><stop offset=".38" stop-color="#4a82fe"/><stop offset=".6" stop-color="#9ec0ff"/><stop offset=".76" stop-color="#dcebff"/><stop offset=".9" stop-color="#e8f0ff"/><stop offset="1" stop-color="#f2f7ff"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;14 -10;-8.4 7.0;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="7.5s" begin="0.35s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg10" x1="309.06" y1="309.96" x2="166.62" y2="191.38" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ac8bfd"/><stop offset=".4" stop-color="#9a7ef0"/><stop offset=".62" stop-color="#7d8ef5"/><stop offset=".8" stop-color="#4a82fe"/><stop offset="1" stop-color="#3d72e8"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;-14 8;8.4 -5.6;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="8.2s" begin="0.15s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg11" x1="330.89" y1="334.51" x2="227.52" y2="152.44" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ac8bfd"/><stop offset=".45" stop-color="#9680f0"/><stop offset=".62" stop-color="#6f8af5"/><stop offset=".85" stop-color="#4a82fe"/><stop offset="1" stop-color="#3d72e8"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;-12 10;7.2 -7.0;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="8.6s" begin="0.5s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg12" x1="291.56" y1="224.3" x2="263.28" y2="132.96" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#274686"/><stop offset=".35" stop-color="#2d509b"/><stop offset=".65" stop-color="#3156a7"/><stop offset="1" stop-color="#3358ad"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;7 -7;-4.2 4.9;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="11.5s" begin="0.9s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg13" x1="293.07" y1="196" x2="295.39" y2="81.25" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3359af"/><stop offset=".3" stop-color="#365fc0"/><stop offset=".55" stop-color="#3d72e8"/><stop offset=".8" stop-color="#4a82fe"/><stop offset="1" stop-color="#5b90ff"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;5 -14;-3.0 9.8;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="9.2s" begin="0.25s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg14" x1="307.56" y1="71.69" x2="385.61" y2="3.28" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".45" stop-color="#6e9cff"/><stop offset=".7" stop-color="#dcebff"/><stop offset=".88" stop-color="#e8f0ff"/><stop offset="1" stop-color="#f2f7ff"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;18 -8;-10.8 5.6;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="7.5s" begin="0.1s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg15" x1="305.92" y1="321.59" x2="336.16" y2="178.85" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7d66b9"/><stop offset=".28" stop-color="#6a70c4"/><stop offset=".48" stop-color="#365fc0"/><stop offset=".7" stop-color="#3d72e8"/><stop offset="1" stop-color="#4a82fe"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;-10 12;6.0 -8.4;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="9s" begin="0.7s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg16" x1="321.18" y1="203.76" x2="330.26" y2="125.46" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3359af"/><stop offset=".35" stop-color="#365fc0"/><stop offset=".6" stop-color="#3d72e8"/><stop offset=".85" stop-color="#4a82fe"/><stop offset="1" stop-color="#5a8fff"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;6 -9;-3.6 6.3;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="10s" begin="0.45s" repeatCount="indefinite"/></linearGradient>
+  <linearGradient id="nxg17" x1="335.45" y1="141.49" x2="431.04" y2="57.7" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a82fe"/><stop offset=".4" stop-color="#6e9cff"/><stop offset=".65" stop-color="#dcebff"/><stop offset=".85" stop-color="#e8f0ff"/><stop offset="1" stop-color="#f2f7ff"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;16 -10;-9.6 7.0;0 0" keyTimes="0;.35;.7;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="7.5s" begin="0.2s" repeatCount="indefinite"/></linearGradient>
+    <!-- Facetten-Körper einmal definieren → Sichtbar + Silhouetten-Clip teilen sich die Geometrie -->
   <g id="nxBody">
     <polygon fill="url(#nxg1)" points="0 356.03 125.43 285.1 75.34 249.63 0 356.03"/>
     <polygon fill="url(#nxg2)" points="40.68 138.6 75.34 249.63 0 356.03 40.68 138.6"/>
@@ -44,107 +44,117 @@
   <!-- Kristall-Sweep: Violet→Blau→Eis (Splash + Mark-Idle + Brand-Hover) -->
   <linearGradient id="nxSweep" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0" stop-color="#ac8bfd" stop-opacity="0"/>
-    <stop offset=".38" stop-color="#ac8bfd" stop-opacity="0"/>
-    <stop offset=".46" stop-color="#ac8bfd" stop-opacity=".5"/>
-    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".68"/>
-    <stop offset=".54" stop-color="#dcebff" stop-opacity=".42"/>
-    <stop offset=".62" stop-color="#4a82fe" stop-opacity="0"/>
+    <stop offset=".32" stop-color="#ac8bfd" stop-opacity="0"/>
+    <stop offset=".44" stop-color="#ac8bfd" stop-opacity=".28"/>
+    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".42"/>
+    <stop offset=".56" stop-color="#dcebff" stop-opacity=".28"/>
+    <stop offset=".68" stop-color="#4a82fe" stop-opacity="0"/>
     <stop offset="1" stop-color="#ac8bfd" stop-opacity="0"/>
   </linearGradient>
   <linearGradient id="nxBrandSweep" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0" stop-color="#ac8bfd" stop-opacity="0"/>
-    <stop offset=".38" stop-color="#ac8bfd" stop-opacity="0"/>
-    <stop offset=".46" stop-color="#ac8bfd" stop-opacity=".55"/>
-    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".7"/>
-    <stop offset=".54" stop-color="#dcebff" stop-opacity=".45"/>
-    <stop offset=".62" stop-color="#4a82fe" stop-opacity="0"/>
+    <stop offset=".32" stop-color="#ac8bfd" stop-opacity="0"/>
+    <stop offset=".44" stop-color="#ac8bfd" stop-opacity=".32"/>
+    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".48"/>
+    <stop offset=".56" stop-color="#dcebff" stop-opacity=".3"/>
+    <stop offset=".68" stop-color="#4a82fe" stop-opacity="0"/>
     <stop offset="1" stop-color="#ac8bfd" stop-opacity="0"/>
   </linearGradient>
-  <!-- Harter Specular-Streifen (Glas-Reflex) — enger Peak -->
+  <!-- Soft specular ribbon -->
   <linearGradient id="nxSpec" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
-    <stop offset=".46" stop-color="#dcebff" stop-opacity=".15"/>
-    <stop offset=".5" stop-color="#ffffff" stop-opacity="1"/>
-    <stop offset=".54" stop-color="#dcebff" stop-opacity=".15"/>
+    <stop offset=".38" stop-color="#dcebff" stop-opacity=".12"/>
+    <stop offset=".5" stop-color="#ffffff" stop-opacity=".55"/>
+    <stop offset=".62" stop-color="#dcebff" stop-opacity=".12"/>
     <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
   </linearGradient>
-  <!-- Prismatisches Refraktionsband (Regenbogen-Kante hinter dem Specular) -->
+  <!-- Soft prismatic refraction -->
   <linearGradient id="nxPrisma" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0" stop-color="#ac8bfd" stop-opacity="0"/>
-    <stop offset=".3" stop-color="#e86bd0" stop-opacity=".38"/>
-    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".5"/>
-    <stop offset=".7" stop-color="#35d0f2" stop-opacity=".42"/>
+    <stop offset=".28" stop-color="#e86bd0" stop-opacity=".18"/>
+    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".28"/>
+    <stop offset=".72" stop-color="#35d0f2" stop-opacity=".2"/>
     <stop offset="1" stop-color="#9ad7ff" stop-opacity="0"/>
   </linearGradient>
+  <!-- Soft 4-point sparkle (premium, not cartoon) -->
+  <filter id="nxSparkGlow" x="-80%" y="-80%" width="260%" height="260%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <g id="nxSpark" filter="url(#nxSparkGlow)">
+    <circle r="3.2" fill="currentColor" opacity=".45"/>
+    <path d="M0,-16 C0.9,-3.2 1.4,-1.4 16,0 C1.4,1.4 0.9,3.2 0,16 C-0.9,3.2 -1.4,1.4 -16,0 C-1.4,-1.4 -0.9,-3.2 0,-16 Z" fill="currentColor" opacity=".92"/>
+    <path d="M0,-7.5 L0.45,-0.45 L7.5,0 L0.45,0.45 L0,7.5 L-0.45,0.45 L-7.5,0 L-0.45,-0.45 Z" fill="currentColor"/>
+  </g>
   <!-- Weicher Aussen-Halo (subtil) -->
   <filter id="nxRim" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
-    <feMorphology in="SourceAlpha" operator="dilate" radius="1.6" result="dil"/>
-    <feGaussianBlur in="dil" stdDeviation="10" result="halo"/>
-    <feFlood flood-color="#4a82fe" flood-opacity=".26"><animate attributeName="flood-opacity" values=".18;.32;.18" dur="4.2s" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite"/></feFlood>
+    <feMorphology in="SourceAlpha" operator="dilate" radius="2.2" result="dil"/>
+    <feGaussianBlur in="dil" stdDeviation="14" result="halo"/>
+    <feFlood flood-color="#4a82fe" flood-opacity=".32"><animate attributeName="flood-opacity" values=".22;.38;.22" dur="4.2s" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite"/></feFlood>
     <feComposite in2="halo" operator="in" result="oglow"/>
     <feMerge><feMergeNode in="oglow"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>
-  <!-- Knackiges Kanten-Bloom: wenig Soft, harter Specular bleibt lesbar -->
-  <filter id="nxEdgeSoft" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
-    <feGaussianBlur in="SourceGraphic" stdDeviation="1.05" result="b"/>
-    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  <!-- Weiches Kanten-Bloom (Premium-Rim, kein harter Strich) -->
+  <filter id="nxEdgeSoft" x="-45%" y="-45%" width="190%" height="190%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>
-  <!-- Wanderndes Specular — enger Peak, hell & knackig -->
+  <!-- Wanderndes Specular — weicher Peak, Eis statt reinem Weiß -->
   <linearGradient id="nxEdgeSpec" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="400" y2="0">
     <stop offset="0" stop-color="#4a82fe" stop-opacity="0"/>
-    <stop offset=".38" stop-color="#ac8bfd" stop-opacity="0"/>
-    <stop offset=".46" stop-color="#dcebff" stop-opacity=".45"/>
-    <stop offset=".5" stop-color="#ffffff" stop-opacity=".95"/>
-    <stop offset=".54" stop-color="#9ad7ff" stop-opacity=".4"/>
-    <stop offset=".62" stop-color="#4a82fe" stop-opacity="0"/>
+    <stop offset=".3" stop-color="#ac8bfd" stop-opacity=".08"/>
+    <stop offset=".4" stop-color="#dcebff" stop-opacity=".18"/>
+    <stop offset=".5" stop-color="#f2f7ff" stop-opacity=".38"/>
+    <stop offset=".6" stop-color="#9ad7ff" stop-opacity=".16"/>
+    <stop offset=".72" stop-color="#35d0f2" stop-opacity=".1"/>
     <stop offset="1" stop-color="#ac8bfd" stop-opacity="0"/>
-    <animateTransform attributeName="gradientTransform" type="rotate" from="0 197 178" to="360 197 178" dur="7.5s" repeatCount="indefinite"/>
+    <animateTransform attributeName="gradientTransform" type="rotate" from="0 197 178" to="360 197 178" dur="11s" repeatCount="indefinite"/>
   </linearGradient>
-  <!-- Prismatisches Band (knappe Refraktion hinter dem Spec) -->
+  <!-- Prismatisches Band (dezente Refraktion) -->
   <linearGradient id="nxEdgePrisma" gradientUnits="userSpaceOnUse" x1="0" y1="356" x2="395" y2="0">
     <stop offset="0" stop-color="#ac8bfd" stop-opacity="0"/>
-    <stop offset=".36" stop-color="#e86bd0" stop-opacity=".22"/>
-    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".38"/>
-    <stop offset=".64" stop-color="#35d0f2" stop-opacity=".26"/>
+    <stop offset=".32" stop-color="#e86bd0" stop-opacity=".18"/>
+    <stop offset=".5" stop-color="#4a82fe" stop-opacity=".28"/>
+    <stop offset=".68" stop-color="#35d0f2" stop-opacity=".2"/>
     <stop offset="1" stop-color="#dcebff" stop-opacity="0"/>
-    <animateTransform attributeName="gradientTransform" type="rotate" from="180 197 178" to="540 197 178" dur="9.5s" repeatCount="indefinite"/>
+    <animateTransform attributeName="gradientTransform" type="rotate" from="180 197 178" to="540 197 178" dur="14s" repeatCount="indefinite"/>
   </linearGradient>
   
   </defs>
 
     <!-- Körper mit weichem Aussen-Halo -->
     <g filter="url(#nxRim)"><use href="#nxBody"/></g>
-    <!-- Premium-Kanten: knappes Bloom + harter Specular, Licht wandert -->
+    <!-- Premium-Kanten: weiches Bloom + dezenter Specular, Licht wandert -->
     <g id="nxEdges" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#nxEdgeSoft)" style="mix-blend-mode:screen">
-      <g opacity=".42" stroke="url(#nxEdgePrisma)">
-        <polyline class="nx-e nx-e--a" points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="3.2"/>
-        <polyline class="nx-e nx-e--b" points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="2.8"/>
-        <line class="nx-e nx-e--c" x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="2.4"/>
-        <line class="nx-e nx-e--d" x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="2.2"/>
-        <line class="nx-e nx-e--e" x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="2.2"/>
-        <polyline class="nx-e nx-e--f" points="394.78,0 358.29,210.96 334.09,346.11" stroke-width="2"/>
-        <line class="nx-e nx-e--g" x1="0" y1="356.03" x2="125.43" y2="285.1" stroke-width="1.8"/>
-        <line class="nx-e nx-e--h" x1="156.43" y1="232.68" x2="201.99" y2="171.03" stroke-width="1.8"/>
+      <g opacity=".38" stroke="url(#nxEdgePrisma)">
+        <polyline class="nx-e nx-e--a" points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="7"/>
+        <polyline class="nx-e nx-e--b" points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="6.5"/>
+        <line class="nx-e nx-e--c" x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="5.5"/>
+        <line class="nx-e nx-e--d" x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="5"/>
+        <line class="nx-e nx-e--e" x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="5"/>
+        <polyline class="nx-e nx-e--f" points="394.78,0 358.29,210.96 334.09,346.11" stroke-width="4.5"/>
+        <line class="nx-e nx-e--g" x1="0" y1="356.03" x2="125.43" y2="285.1" stroke-width="4"/>
+        <line class="nx-e nx-e--h" x1="156.43" y1="232.68" x2="201.99" y2="171.03" stroke-width="4"/>
       </g>
       <g stroke="url(#nxEdgeSpec)">
-        <polyline class="nx-e nx-e--a" points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="1.15" opacity=".85"/>
-        <polyline class="nx-e nx-e--b" points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="1.05" opacity=".8"/>
-        <line class="nx-e nx-e--c" x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width=".95" opacity=".7"/>
-        <line class="nx-e nx-e--d" x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width=".85" opacity=".55"/>
-        <line class="nx-e nx-e--e" x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width=".85" opacity=".55"/>
-        <polyline class="nx-e nx-e--f" points="394.78,0 358.29,210.96 334.09,346.11" stroke-width=".8" opacity=".5"/>
-        <line class="nx-e nx-e--g" x1="0" y1="356.03" x2="125.43" y2="285.1" stroke-width=".75" opacity=".48"/>
-        <line class="nx-e nx-e--h" x1="156.43" y1="232.68" x2="201.99" y2="171.03" stroke-width=".75" opacity=".5"/>
+        <polyline class="nx-e nx-e--a" points="64.91,9.89 201.99,171.03 334.09,346.11" stroke-width="1.4" opacity=".55"/>
+        <polyline class="nx-e nx-e--b" points="273.22,67.57 324.6,90.98 394.78,0" stroke-width="1.25" opacity=".5"/>
+        <line class="nx-e nx-e--c" x1="64.91" y1="9.89" x2="110.61" y2="121.51" stroke-width="1.1" opacity=".42"/>
+        <line class="nx-e nx-e--d" x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke-width="1" opacity=".32"/>
+        <line class="nx-e nx-e--e" x1="324.6" y1="90.98" x2="297.34" y2="206.4" stroke-width="1" opacity=".3"/>
+        <polyline class="nx-e nx-e--f" points="394.78,0 358.29,210.96 334.09,346.11" stroke-width=".9" opacity=".28"/>
+        <line class="nx-e nx-e--g" x1="0" y1="356.03" x2="125.43" y2="285.1" stroke-width=".9" opacity=".25"/>
+        <line class="nx-e nx-e--h" x1="156.43" y1="232.68" x2="201.99" y2="171.03" stroke-width=".9" opacity=".26"/>
       </g>
     </g>
-    <!-- Schnelle Kanten-Hits — knackige Specular-Peaks -->
+    <!-- Pro-Kante Soft-Pulse (Licht wandert — Peak max ~0.4) -->
     <g fill="none" stroke-linecap="round" pointer-events="none" style="mix-blend-mode:screen">
-      <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke="#ffffff" stroke-width="1.35" opacity="0"><animate attributeName="opacity" values="0;.72;0;0;0" keyTimes="0;.08;.16;.38;1" dur="5.2s" calcMode="spline" keySplines="0.2 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1" repeatCount="indefinite"/></polyline>
-      <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke="#f2f7ff" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;0;.78;0;0" keyTimes="0;.18;.26;.4;1" dur="5.2s" calcMode="spline" keySplines="0.4 0 0.2 1;0.2 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1" repeatCount="indefinite"/></polyline>
-      <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke="#dcebff" stroke-width="1.05" opacity="0"><animate attributeName="opacity" values="0;0;0;.62;0" keyTimes="0;.36;.44;.52;1" dur="5.2s" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.2 0 0.2 1;0.4 0 0.2 1" repeatCount="indefinite"/></line>
-      <polyline points="394.78,0 358.29,210.96 334.09,346.11" stroke="#9ad7ff" stroke-width="1.05" opacity="0"><animate attributeName="opacity" values="0;0;0;0;.58;0" keyTimes="0;.52;.6;.68;.76;1" dur="5.2s" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1;0.2 0 0.2 1;0.4 0 0.2 1" repeatCount="indefinite"/></polyline>
-      <line x1="0" y1="356.03" x2="75.34" y2="249.63" stroke="#ac8bfd" stroke-width="1.05" opacity="0"><animate attributeName="opacity" values="0;.5;0;0;0" keyTimes="0;.72;.82;.92;1" dur="5.2s" begin="0.35s" calcMode="spline" keySplines="0.2 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1" repeatCount="indefinite"/></line>
-      <line x1="297.34" y1="206.4" x2="265.16" y2="122.3" stroke="#4a82fe" stroke-width="1.05" opacity="0"><animate attributeName="opacity" values="0;0;.55;0;0" keyTimes="0;.08;.16;.3;1" dur="5.2s" begin="1s" calcMode="spline" keySplines="0.4 0 0.2 1;0.2 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1" repeatCount="indefinite"/></line>
+      <polyline points="64.91,9.89 201.99,171.03 334.09,346.11" stroke="#dcebff" stroke-width="1.6" opacity="0"><animate attributeName="opacity" values="0;.4;0;0;0" keyTimes="0;.12;.3;.5;1" dur="9s" repeatCount="indefinite"/></polyline>
+      <polyline points="273.22,67.57 324.6,90.98 394.78,0" stroke="#f2f7ff" stroke-width="1.4" opacity="0"><animate attributeName="opacity" values="0;0;.42;0;0" keyTimes="0;.2;.36;.54;1" dur="9s" repeatCount="indefinite"/></polyline>
+      <line x1="64.91" y1="9.89" x2="40.68" y2="138.6" stroke="#dcebff" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;0;0;.35;0" keyTimes="0;.35;.48;.64;1" dur="9s" repeatCount="indefinite"/></line>
+      <polyline points="394.78,0 358.29,210.96 334.09,346.11" stroke="#9ad7ff" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;0;0;0;.32;0" keyTimes="0;.5;.62;.76;.9;1" dur="9s" repeatCount="indefinite"/></polyline>
+      <line x1="0" y1="356.03" x2="75.34" y2="249.63" stroke="#ac8bfd" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;.28;0;0;0" keyTimes="0;.7;.86;.95;1" dur="9s" begin="0.5s" repeatCount="indefinite"/></line>
+      <line x1="297.34" y1="206.4" x2="265.16" y2="122.3" stroke="#4a82fe" stroke-width="1.2" opacity="0"><animate attributeName="opacity" values="0;0;.3;0;0" keyTimes="0;.1;.26;.42;1" dur="9s" begin="1.4s" repeatCount="indefinite"/></line>
     </g>
     <!-- Facetten-Schillern — dezent -->
     <g style="mix-blend-mode:screen">
@@ -157,20 +167,31 @@
     <!-- Diagonaler Lichtreflex — weicher Glas-Sweep -->
     <g clip-path="url(#nxSil)" style="mix-blend-mode:screen">
       <g transform="rotate(-22 197 178)">
-        <rect y="-160" width="56" height="640" fill="url(#nxSpec)" opacity="0"><animate attributeName="x" values="-380;540" dur="3.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.7;.7;0" keyTimes="0;.08;.9;1" dur="3.4s" repeatCount="indefinite"/></rect>
-        <rect y="-160" width="40" height="640" fill="url(#nxPrisma)" opacity="0"><animate attributeName="x" values="-420;500" dur="3.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.4;.4;0" keyTimes="0;.08;.9;1" dur="3.4s" repeatCount="indefinite"/></rect>
-        <rect y="-160" width="90" height="640" fill="url(#nxSweep)" opacity="0"><animate attributeName="x" values="-360;520" dur="5.2s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.38;.38;0" keyTimes="0;.1;.9;1" dur="5.2s" begin="1s" repeatCount="indefinite"/></rect>
+        <rect y="-160" width="120" height="640" fill="url(#nxSpec)" opacity="0"><animate attributeName="x" values="-380;540" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.45;.45;0" keyTimes="0;.1;.88;1" dur="4s" repeatCount="indefinite"/></rect>
+        <rect y="-160" width="72" height="640" fill="url(#nxPrisma)" opacity="0"><animate attributeName="x" values="-450;470" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.35;.35;0" keyTimes="0;.1;.88;1" dur="4s" repeatCount="indefinite"/></rect>
+        <rect y="-160" width="150" height="640" fill="url(#nxSweep)" opacity="0"><animate attributeName="x" values="-360;520" dur="6.5s" begin="1.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.4;.4;0" keyTimes="0;.12;.9;1" dur="6.5s" begin="1.2s" repeatCount="indefinite"/></rect>
       </g>
       <g transform="rotate(34 197 178)">
-        <rect y="-220" width="36" height="760" fill="url(#nxSpec)" opacity="0"><animate attributeName="x" values="560;-420" dur="4.2s" begin="0.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.32;.32;0" keyTimes="0;.1;.9;1" dur="4.2s" begin="0.8s" repeatCount="indefinite"/></rect>
+        <rect y="-220" width="70" height="760" fill="url(#nxSpec)" opacity="0"><animate attributeName="x" values="560;-420" dur="5s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;.22;.22;0" keyTimes="0;.12;.88;1" dur="5s" begin="1s" repeatCount="indefinite"/></rect>
+      </g>
+      <g fill="#f2f7ff">
+        <polygon points="64.91 9.89 156.43 232.68 201.99 171.03 64.91 9.89" opacity="0"><animate attributeName="opacity" values="0;0;.28;0;0" keyTimes="0;.08;.14;.26;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="201.99 171.03 243.17 116.45 334.09 346.11 201.99 171.03" opacity="0"><animate attributeName="opacity" values="0;0;.24;0;0" keyTimes="0;.22;.28;.4;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="273.22 67.57 394.78 0 324.6 90.98 273.22 67.57" opacity="0"><animate attributeName="opacity" values="0;0;.32;0;0" keyTimes="0;.36;.42;.54;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="358.29 210.96 319.71 111.69 324.6 90.98 394.78 0 358.29 210.96" opacity="0"><animate attributeName="opacity" values="0;0;.22;0;0" keyTimes="0;.5;.56;.68;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="0 356.03 125.43 285.1 75.34 249.63 0 356.03" opacity="0"><animate attributeName="opacity" values="0;0;.24;0;0" keyTimes="0;.64;.7;.82;1" dur="4.2s" repeatCount="indefinite"/></polygon>
+        <polygon points="40.68 138.6 101.42 154.43 110.61 121.51 64.91 9.89 40.68 138.6" opacity="0"><animate attributeName="opacity" values="0;0;.2;0;0" keyTimes="0;.78;.84;.94;1" dur="4.2s" repeatCount="indefinite"/></polygon>
       </g>
     </g>
-    <!-- Vertex pin-lights — micro points only (outside clip so tips stay sharp) -->
-    <g style="mix-blend-mode:screen" pointer-events="none">
-      <circle cx="394.78" cy="0" r="1.6" fill="#ffffff" opacity="0"><animate attributeName="opacity" values="0;.45;0;0" keyTimes="0;.08;.18;1" dur="5.2s" repeatCount="indefinite"/></circle>
-      <circle cx="64.91" cy="9.89" r="1.4" fill="#dcebff" opacity="0"><animate attributeName="opacity" values="0;0;.4;0;0" keyTimes="0;.18;.26;.36;1" dur="5.2s" repeatCount="indefinite"/></circle>
-      <circle cx="334.09" cy="346.11" r="1.35" fill="#ac8bfd" opacity="0"><animate attributeName="opacity" values="0;0;0;.36;0" keyTimes="0;.52;.62;.72;1" dur="5.2s" repeatCount="indefinite"/></circle>
-      <circle cx="0" cy="356.03" r="1.3" fill="#4a82fe" opacity="0"><animate attributeName="opacity" values="0;.32;0;0" keyTimes="0;.76;.88;1" dur="5.2s" begin="0.35s" repeatCount="indefinite"/></circle>
+    <!-- Spitzen-Glints — dichter, heller, nahtlos geloopte Diamant-Funken -->
+    <g style="mix-blend-mode:screen" opacity=".95">
+      <g transform="translate(394.78 0)" style="color:#ffffff"><use href="#nxSpark" opacity="0"><animate attributeName="opacity" values="0;.62;0" keyTimes="0;.45;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="3.8s" begin="0s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="scale" values=".2;.72;.2" keyTimes="0;.45;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="3.8s" begin="0s" repeatCount="indefinite"/></use></g>
+      <g transform="translate(64.91 9.89)" style="color:#dcebff"><use href="#nxSpark" opacity="0"><animate attributeName="opacity" values="0;.55;0" keyTimes="0;.45;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.1s" begin="0.55s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="scale" values=".2;.62;.2" keyTimes="0;.45;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.1s" begin="0.55s" repeatCount="indefinite"/></use></g>
+      <g transform="translate(0 356.03)" style="color:#4a82fe"><use href="#nxSpark" opacity="0"><animate attributeName="opacity" values="0;.48;0" keyTimes="0;.45;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.4s" begin="1.1s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="scale" values=".18;.55;.18" keyTimes="0;.45;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.4s" begin="1.1s" repeatCount="indefinite"/></use></g>
+      <g transform="translate(334.09 346.11)" style="color:#ac8bfd"><use href="#nxSpark" opacity="0"><animate attributeName="opacity" values="0;.52;0" keyTimes="0;.45;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4s" begin="0.3s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="scale" values=".2;.58;.2" keyTimes="0;.45;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4s" begin="0.3s" repeatCount="indefinite"/></use></g>
+      <g transform="translate(201.99 171.03)" style="color:#ffffff"><use href="#nxSpark" opacity="0"><animate attributeName="opacity" values="0;.45;0" keyTimes="0;.4;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.6s" begin="1.6s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="scale" values=".16;.42;.16" keyTimes="0;.4;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.6s" begin="1.6s" repeatCount="indefinite"/></use></g>
+      <g transform="translate(273.22 67.57)" style="color:#dcebff"><use href="#nxSpark" opacity="0"><animate attributeName="opacity" values="0;.5;0" keyTimes="0;.42;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.3s" begin="2s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="scale" values=".18;.5;.18" keyTimes="0;.42;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.3s" begin="2s" repeatCount="indefinite"/></use></g>
+      <g transform="translate(156.43 232.68)" style="color:#4a82fe"><use href="#nxSpark" opacity="0"><animate attributeName="opacity" values="0;.42;0" keyTimes="0;.4;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.8s" begin="0.85s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="scale" values=".16;.45;.16" keyTimes="0;.4;1" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1" dur="4.8s" begin="0.85s" repeatCount="indefinite"/></use></g>
     </g>
   
 </svg>
