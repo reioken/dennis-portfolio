@@ -2163,13 +2163,10 @@ a:hover .brand-mark--nav {
 .process-rail__img {
   position: relative;
   z-index: 1;
-  width: 78%;
+  width: 72%;
   height: auto;
   display: block;
-  /* Soft mask: fade black studio plate into the well */
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 52%, transparent 74%);
-  mask-image: radial-gradient(circle at 50% 50%, #000 52%, transparent 74%);
-  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--blue) 22%, transparent));
   animation: process-float 7.2s ease-in-out infinite;
   transform-origin: 50% 55%;
 }

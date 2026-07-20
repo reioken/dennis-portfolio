@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="System">
+  <defs>
+    <linearGradient id="sy-a" x1="16" y1="112" x2="112" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ac8bfd"/>
+      <stop offset=".42" stop-color="#7d8ef5"/>
+      <stop offset="1" stop-color="#4a82fe"/>
+    </linearGradient>
+    <linearGradient id="sy-b" x1="32" y1="24" x2="96" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e8f0ff"/>
+      <stop offset=".5" stop-color="#4a82fe"/>
+      <stop offset="1" stop-color="#2c4d94"/>
+    </linearGradient>
+    <linearGradient id="sy-c" x1="48" y1="48" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#dcebff"/>
+      <stop offset="1" stop-color="#ac8bfd"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer crystal module -->
+  <polygon fill="url(#sy-a)" points="64 6 116 64 64 122 12 64"/>
+  <!-- Nested frame -->
+  <polygon fill="url(#sy-b)" points="64 20 102 64 64 108 26 64"/>
+  <!-- 2×2 token grid (design system cells) -->
+  <polygon fill="#6e9cff" points="64 28 78 42 64 56 50 42"/>
+  <polygon fill="#ac8bfd" points="80 48 98 64 80 72 68 58"/>
+  <polygon fill="#3154a5" points="78 76 98 64 80 88 64 80"/>
+  <polygon fill="#4a82fe" points="64 72 78 86 64 100 50 86"/>
+  <polygon fill="#3d72e8" points="48 76 50 86 30 64 48 56"/>
+  <polygon fill="#8fb4ff" points="48 48 50 42 64 28 48 56 30 64"/>
+  <!-- Center token -->
+  <polygon fill="url(#sy-c)" points="64 46 78 64 64 82 50 64"/>
+  <polygon fill="#f2f7ff" opacity=".65" points="64 46 78 64 64 64"/>
+  <polygon fill="#4a82fe" opacity=".5" points="64 64 78 64 64 82"/>
+</svg>
