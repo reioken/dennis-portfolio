@@ -8,6 +8,20 @@
   Cross-Origin-Opener-Policy: same-origin
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 
+# HTML must not stick on edge/browser after year/badge copy updates
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/work/*
+  Cache-Control: public, max-age=0, must-revalidate
+/en/*
+  Cache-Control: public, max-age=0, must-revalidate
+/about/*
+  Cache-Control: public, max-age=0, must-revalidate
+/lab/*
+  Cache-Control: public, max-age=0, must-revalidate
+
 /media/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=3600
 
