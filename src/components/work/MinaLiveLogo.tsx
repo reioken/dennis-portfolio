@@ -2,8 +2,7 @@ import { useId } from 'react';
 
 /**
  * Mina lockup — white wordmark + speech bubble, coral heart.
- * On hover (`active`) the bubble gives a little nudge, the heart beats and
- * two mini hearts float up out of the bubble.
+ * On hover (`active`): sustained bubble sway, heartbeat, rising mini hearts.
  * Soft coral/cream rim behind the strokes for a premium edge catch.
  */
 export default function MinaLiveLogo({
@@ -50,13 +49,13 @@ export default function MinaLiveLogo({
             <stop offset="58%" stopColor="#ffb4a8" stopOpacity="0.45" />
             <stop offset="78%" stopColor="#f4796b" stopOpacity="0.35" />
             <stop offset="100%" stopColor="#f4796b" stopOpacity="0" />
-            {ambient ? (
+            {ambient || active ? (
               <animateTransform
                 attributeName="gradientTransform"
                 type="rotate"
                 from="0 0.5 0.5"
                 to="360 0.5 0.5"
-                dur="11s"
+                dur={active ? '6.5s' : '11s'}
                 repeatCount="indefinite"
               />
             ) : null}
@@ -67,13 +66,13 @@ export default function MinaLiveLogo({
             <stop offset="50%" stopColor="#ffffff" stopOpacity="0.55" />
             <stop offset="58%" stopColor="#f4796b" stopOpacity="0.4" />
             <stop offset="100%" stopColor="#fff6f4" stopOpacity="0" />
-            {ambient ? (
+            {ambient || active ? (
               <animateTransform
                 attributeName="gradientTransform"
                 type="rotate"
                 from="180 0.5 0.5"
                 to="540 0.5 0.5"
-                dur="13s"
+                dur={active ? '7.5s' : '13s'}
                 repeatCount="indefinite"
               />
             ) : null}
@@ -169,6 +168,12 @@ export default function MinaLiveLogo({
           d="M180 38 C175.5 28.5 161 28.5 157.5 39 C154 49 164 56 180 68 C196 56 206 49 202.5 39 C199 28.5 184.5 28.5 180 38 Z"
           fill="#ffffff"
           transform="translate(120 -2) scale(0.26)"
+        />
+        <path
+          className="mina-live__mini mina-live__mini--3"
+          d="M180 38 C175.5 28.5 161 28.5 157.5 39 C154 49 164 56 180 68 C196 56 206 49 202.5 39 C199 28.5 184.5 28.5 180 38 Z"
+          fill="#ffb4a8"
+          transform="translate(148 -8) scale(0.22)"
         />
       </svg>
     </div>

@@ -2,7 +2,7 @@ import { useId } from 'react';
 
 /**
  * Riftcast R mark — clean rebuild of the speed-R (pennant arm, bowl, blade, slash leg).
- * On hover (`active`) the mark "casts": quick tilt, glow pulse and broadcast rings.
+ * On hover (`active`) the mark "casts": sustained tilt, glow pulse and broadcast rings.
  */
 export default function RiftcastLiveLogo({
   className = '',
@@ -14,6 +14,7 @@ export default function RiftcastLiveLogo({
   active?: boolean;
 }) {
   const gradId = `rcg-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
+  const rimDur = active ? '5.5s' : '10s';
 
   return (
     <div
@@ -23,6 +24,7 @@ export default function RiftcastLiveLogo({
     >
       <span className="rc-live__ring rc-live__ring--1" aria-hidden />
       <span className="rc-live__ring rc-live__ring--2" aria-hidden />
+      <span className="rc-live__ring rc-live__ring--3" aria-hidden />
       <svg viewBox="0 0 64 64" aria-hidden className="rc-live__mark">
         <defs>
           <linearGradient id={gradId} x1="8" y1="2" x2="54" y2="62" gradientUnits="userSpaceOnUse">
@@ -41,7 +43,7 @@ export default function RiftcastLiveLogo({
               type="rotate"
               from="0 32 32"
               to="360 32 32"
-              dur="10s"
+              dur={rimDur}
               repeatCount="indefinite"
             />
           </linearGradient>

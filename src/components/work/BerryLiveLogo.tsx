@@ -1,7 +1,7 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId } from 'react';
 
 /**
- * Berry-Bot mark — same laugh as the app header brand, triggered on hover.
+ * Berry-Bot mark — continuous laugh loop while the card is hovered.
  */
 export default function BerryLiveLogo({
   className = '',
@@ -12,27 +12,8 @@ export default function BerryLiveLogo({
   title?: string;
   active?: boolean;
 }) {
-  const [laughing, setLaughing] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wasActive = useRef(false);
   const uid = `berry-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
   const ambient = className.includes('is-ambient');
-
-  useEffect(() => {
-    if (active && !wasActive.current) {
-      if (timer.current) clearTimeout(timer.current);
-      setLaughing(true);
-      timer.current = setTimeout(() => setLaughing(false), 700);
-    }
-    wasActive.current = active;
-    if (!active) {
-      setLaughing(false);
-      if (timer.current) clearTimeout(timer.current);
-    }
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [active]);
 
   return (
     <div
@@ -44,7 +25,7 @@ export default function BerryLiveLogo({
         viewBox="0 0 96 96"
         aria-hidden
         className="berry-live__bot"
-        data-laugh={laughing || undefined}
+        data-laugh={active || undefined}
       >
         <defs>
           <linearGradient id={`${uid}-rim`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -53,13 +34,13 @@ export default function BerryLiveLogo({
             <stop offset="48%" stopColor="#f4fffa" stopOpacity="0.55" />
             <stop offset="62%" stopColor="#5ce6a0" stopOpacity="0.28" />
             <stop offset="100%" stopColor="#e8fff2" stopOpacity="0" />
-            {ambient ? (
+            {ambient || active ? (
               <animateTransform
                 attributeName="gradientTransform"
                 type="rotate"
                 from="0 0.5 0.5"
                 to="360 0.5 0.5"
-                dur="10s"
+                dur={active ? '5s' : '10s'}
                 repeatCount="indefinite"
               />
             ) : null}

@@ -1,7 +1,7 @@
 /**
  * Floordirekt Studio lockup — rebuilt with the site font (Outfit, skewed for the
  * italic brand look), dotless ı carrying the yellow check, red STUDIO tag.
- * On hover (`active`): studio-flash glow sweep, check pop, STUDIO blinks on air.
+ * On hover (`active`): looping studio flash, check pop, STUDIO on-air pulse.
  */
 export default function FdStudioLiveLogo({
   className = '',
