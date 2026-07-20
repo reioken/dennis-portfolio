@@ -34,7 +34,6 @@ export const BLOCK_CATALOG: BlockDef[] = [
   { type: 'skills', label: 'Skills', description: 'Fähigkeiten-Grid', source: 'native', pages: ['about'] },
   { type: 'timeline', label: 'Timeline', description: 'Berufserfahrung', source: 'native', pages: ['about'] },
   { type: 'education', label: 'Ausbildung', description: 'Education-Karten', source: 'native', pages: ['about'] },
-  { type: 'cv', label: 'CV Download', description: 'Lebenslauf-Block', source: 'native', pages: ['about'] },
 
   // Native contact
   { type: 'contact', label: 'Contact', description: 'Kontakt-Bereich', source: 'native', pages: ['contact'] },

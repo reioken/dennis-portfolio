@@ -33,8 +33,6 @@ export const site = {
     github: 'https://github.com/reioken',
     linkedin: 'https://www.linkedin.com/in/dennis-b-b08834272/',
   },
-  cvPdf: 'cv/Dennis-Bierreth-Fernandez-Lebenslauf-2026.pdf',
-  cvMd: 'cv/Dennis-Bierreth-Fernandez-CV-2026.md',
 } as const;
 
 export const navItems = [

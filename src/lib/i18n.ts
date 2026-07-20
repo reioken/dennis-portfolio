@@ -79,7 +79,6 @@ export const copy = {
       body: 'Fest bei Floordirekt. Freelance willkommen.',
       linkedin: 'LinkedIn',
       contact: 'Kontakt',
-      cv: 'Lebenslauf 2026',
       accent: 'Accent',
       skillsLabel: 'Skills',
       skillsTitle: 'Fähigkeiten',
@@ -88,11 +87,6 @@ export const copy = {
       timelineTitle: 'Weg',
       educationLabel: 'Ausbildung',
       educationTitle: 'Ausbildung',
-      cvLabel: 'CV',
-      cvTitle: 'Lebenslauf 2026',
-      cvBody: 'Stand 2026 — inkl. Floordirekt, NEXUS, Berry, Riftcast.',
-      cvPdf: 'PDF herunterladen',
-      cvMd: 'Markdown',
     },
     work: {
       label: 'Arbeit',
@@ -123,7 +117,6 @@ export const copy = {
     },
     footer: {
       tagline: 'Hobby-Softwareentwickler · UX/UI · Art Director',
-      cv: 'Lebenslauf PDF',
       top: 'Nach oben',
     },
     brand: {
@@ -214,7 +207,6 @@ export const copy = {
       body: 'Full-time at Floordirekt. Freelance welcome.',
       linkedin: 'LinkedIn',
       contact: 'Contact',
-      cv: 'CV 2026',
       accent: 'Accent',
       skillsLabel: 'Skills',
       skillsTitle: 'Capabilities',
@@ -223,11 +215,6 @@ export const copy = {
       timelineTitle: 'Path',
       educationLabel: 'Education',
       educationTitle: 'Education',
-      cvLabel: 'CV',
-      cvTitle: 'Résumé 2026',
-      cvBody: 'Updated 2026 — incl. Floordirekt, NEXUS, Berry, Riftcast.',
-      cvPdf: 'Download PDF',
-      cvMd: 'Markdown',
     },
     work: {
       label: 'Work',
@@ -258,7 +245,6 @@ export const copy = {
     },
     footer: {
       tagline: 'Hobby Software Developer · UX/UI · Art Director',
-      cv: 'CV PDF',
       top: 'Back to top',
     },
     brand: {
