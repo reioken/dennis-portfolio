@@ -2935,37 +2935,15 @@ html.js-reveal [data-reveal].is-in {
 .portrait-stage {
   position: relative;
 }
-/* No colored glow / blend behind the face — only a soft floor shadow */
 .portrait-cut {
-  position: relative;
   width: min(100%, 540px);
   margin-inline: auto;
-  isolation: isolate;
-}
-.portrait-cut::after {
-  content: "";
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  bottom: 2%;
-  height: 12%;
-  z-index: 0;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4), transparent 70%);
-  filter: blur(14px);
-  pointer-events: none;
 }
 .portrait-cut__img {
-  position: relative;
-  z-index: 1;
   width: 100%;
   height: auto;
   object-fit: contain;
-  filter: none !important;
-  mix-blend-mode: normal !important;
-  opacity: 1 !important;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+  display: block;
 }
 
 .rule {
