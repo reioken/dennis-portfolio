@@ -11,22 +11,22 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
   const reduce = useReducedMotion();
 
   return (
-    <div className="portrait-stage relative mx-auto w-full max-w-[440px]">
-      {/* Orbiting ring — continuous spin on the outer wrapper, entrance on the inner ring */}
+    <div className="portrait-stage relative mx-auto w-full max-w-[560px]">
+      {/* Orbiting ring — quieter, further out so it doesn't crowd the face */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-[-8%]"
+        className="pointer-events-none absolute inset-[-4%]"
         animate={reduce ? undefined : { rotate: 360 }}
-        transition={reduce ? undefined : { duration: 28, repeat: Infinity, ease: 'linear' }}
+        transition={reduce ? undefined : { duration: 36, repeat: Infinity, ease: 'linear' }}
       >
         <motion.div
-          className="absolute inset-0 rounded-full border border-dashed border-[color-mix(in_srgb,var(--ice)_35%,transparent)]"
-          initial={reduce ? { opacity: 0.4 } : { opacity: 0, scale: 0.9, rotate: -8 }}
-          animate={reduce ? { opacity: 0.4 } : { opacity: 1, scale: 1, rotate: 0 }}
+          className="absolute inset-0 rounded-full border border-dashed border-[color-mix(in_srgb,var(--ice)_18%,transparent)]"
+          initial={reduce ? { opacity: 0.25 } : { opacity: 0, scale: 0.94, rotate: -8 }}
+          animate={reduce ? { opacity: 0.25 } : { opacity: 0.55, scale: 1, rotate: 0 }}
           transition={{ duration: 1.2, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <span className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--ember)] shadow-[0_0_18px_var(--ember)]" />
-          <span className="absolute bottom-[18%] right-0 h-2 w-2 translate-x-1/2 rounded-full bg-[var(--ice)] shadow-[0_0_14px_var(--ice)]" />
+          <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--ember)] opacity-70" />
+          <span className="absolute bottom-[18%] right-0 h-1.5 w-1.5 translate-x-1/2 rounded-full bg-[var(--ice)] opacity-60" />
         </motion.div>
       </motion.div>
 
@@ -44,22 +44,18 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 1.1, ease: [0.215, 0.61, 0.355, 1] }}
       >
-        <div
-          aria-hidden
-          className="absolute inset-[12%_18%_8%] rounded-[40%_60%_55%_45%/45%_40%_60%_55%] border border-[color-mix(in_srgb,var(--gold)_40%,transparent)]"
-        />
         <img
           src={src}
           alt={`Portrait von ${name}`}
-          width={640}
-          height={800}
+          width={720}
+          height={720}
           className="relative z-10"
           data-edit-img="img.portrait"
         />
       </motion.div>
 
       <motion.div
-        className="absolute -bottom-2 right-0 z-20 max-w-[11.5rem] rounded-2xl border border-[var(--stroke)] bg-[var(--panel)] px-3.5 py-3 shadow-[var(--lg-depth)]"
+        className="absolute bottom-1 right-1 z-20 max-w-[11.5rem] rounded-2xl border border-[var(--stroke)] bg-[var(--panel)] px-3.5 py-3 shadow-[var(--lg-depth)]"
         style={{ backdropFilter: 'var(--frost-nav)', WebkitBackdropFilter: 'var(--frost-nav)' }}
         initial={reduce ? false : { opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
