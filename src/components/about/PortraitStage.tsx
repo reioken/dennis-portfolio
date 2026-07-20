@@ -43,25 +43,14 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
 
       <motion.div
         className="portrait-cut relative"
+        style={{ ['--pt-mask' as string]: `url(${src})` }}
         initial={reduce ? false : { opacity: 0, y: 40, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 1.1, ease: [0.215, 0.61, 0.355, 1] }}
       >
-        {/* Soft colored rim — masked to the cutout silhouette */}
-        <span
-          className="portrait-cut__rim"
-          aria-hidden
-          style={{
-            WebkitMaskImage: `url(${src})`,
-            maskImage: `url(${src})`,
-            WebkitMaskSize: '100% auto',
-            maskSize: '100% auto',
-            WebkitMaskRepeat: 'no-repeat',
-            maskRepeat: 'no-repeat',
-            WebkitMaskPosition: 'center',
-            maskPosition: 'center',
-          }}
-        />
+        {/* Soft rim + site-gradient shimmer — masked to the cutout */}
+        <span className="portrait-cut__rim" aria-hidden />
+        <span className="portrait-cut__shimmer" aria-hidden />
         <img
           src={src}
           alt={`Portrait von ${name}`}

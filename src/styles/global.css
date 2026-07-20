@@ -3069,10 +3069,34 @@ html.js-reveal [data-reveal].is-in {
 }
 
 .portrait-orbit {
-  border: 1px dashed color-mix(in srgb, var(--pt-ice) 22%, transparent);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--bg), var(--bg)) padding-box,
+    linear-gradient(
+      125deg,
+      color-mix(in srgb, var(--pt-violet) 55%, transparent),
+      color-mix(in srgb, var(--pt-blue) 50%, transparent),
+      color-mix(in srgb, var(--pt-ice) 45%, transparent),
+      color-mix(in srgb, var(--pt-violet) 40%, transparent)
+    ) border-box;
+  background-size: 100% 100%, 220% 220%;
   box-shadow:
-    0 0 24px color-mix(in srgb, var(--pt-violet) 10%, transparent),
-    inset 0 0 20px color-mix(in srgb, var(--pt-blue) 8%, transparent);
+    0 0 28px color-mix(in srgb, var(--pt-violet) 12%, transparent),
+    inset 0 0 22px color-mix(in srgb, var(--pt-blue) 8%, transparent);
+}
+.portrait-stage.is-live .portrait-orbit {
+  animation: portrait-orbit-shine 8s ease-in-out infinite;
+}
+@keyframes portrait-orbit-shine {
+  0%,
+  100% {
+    background-position: 0% 0%, 0% 40%;
+    opacity: 0.5;
+  }
+  50% {
+    background-position: 0% 0%, 100% 60%;
+    opacity: 0.72;
+  }
 }
 
 .portrait-cut {
@@ -3083,7 +3107,7 @@ html.js-reveal [data-reveal].is-in {
     drop-shadow(0 0 22px color-mix(in srgb, var(--pt-violet) 12%, transparent))
     drop-shadow(0 0 18px color-mix(in srgb, var(--pt-blue) 10%, transparent));
 }
-/* Soft edge catch — brand colors along the silhouette only (mask set in JSX) */
+/* Soft edge catch — brand colors along the silhouette only */
 .portrait-cut__rim {
   position: absolute;
   inset: 0;
@@ -3095,6 +3119,14 @@ html.js-reveal [data-reveal].is-in {
     radial-gradient(ellipse 55% 70% at 8% 45%, color-mix(in srgb, var(--pt-violet) 42%, transparent), transparent 58%),
     radial-gradient(ellipse 50% 65% at 94% 40%, color-mix(in srgb, var(--pt-ice) 38%, transparent), transparent 56%),
     radial-gradient(ellipse 60% 40% at 50% 96%, color-mix(in srgb, var(--pt-blue) 26%, transparent), transparent 60%);
+  -webkit-mask-image: var(--pt-mask);
+  mask-image: var(--pt-mask);
+  -webkit-mask-size: 100% auto;
+  mask-size: 100% auto;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 .portrait-stage.is-live .portrait-cut__rim {
   animation: portrait-rim 9s ease-in-out infinite;
@@ -3106,6 +3138,53 @@ html.js-reveal [data-reveal].is-in {
   }
   50% {
     opacity: 0.4;
+  }
+}
+/* Same language as .gradient-text — violet → blue → ice, drifting shimmer */
+.portrait-cut__shimmer {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: 0.4;
+  background: linear-gradient(
+    115deg,
+    color-mix(in srgb, var(--pt-violet) 72%, transparent) 0%,
+    color-mix(in srgb, var(--pt-blue) 58%, transparent) 36%,
+    color-mix(in srgb, var(--pt-ice) 68%, transparent) 55%,
+    color-mix(in srgb, var(--pt-blue) 48%, transparent) 76%,
+    color-mix(in srgb, var(--pt-violet) 58%, transparent) 100%
+  );
+  background-size: 240% 100%;
+  /* Silhouette ∩ face-protect (stronger wash on sweater / lower half) */
+  -webkit-mask-image:
+    linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 26%, rgba(0, 0, 0, 0.5) 46%, #000 68%, #000 100%),
+    var(--pt-mask);
+  mask-image:
+    linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 26%, rgba(0, 0, 0, 0.5) 46%, #000 68%, #000 100%),
+    var(--pt-mask);
+  -webkit-mask-size: 100% 100%, 100% auto;
+  mask-size: 100% 100%, 100% auto;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center, center;
+  mask-position: center, center;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+.portrait-stage.is-live .portrait-cut__shimmer {
+  animation: portrait-gradient-shimmer 9s ease-in-out infinite;
+}
+@keyframes portrait-gradient-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.32;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.52;
   }
 }
 /* Extra CSS dissolve so the asset blends into --bg (face stays solid) */
@@ -3129,7 +3208,9 @@ html.js-reveal [data-reveal].is-in {
   .portrait-stage.is-live .portrait-light--violet,
   .portrait-stage.is-live .portrait-light--blue,
   .portrait-stage.is-live .portrait-light--ice,
-  .portrait-stage.is-live .portrait-cut__rim {
+  .portrait-stage.is-live .portrait-cut__rim,
+  .portrait-stage.is-live .portrait-cut__shimmer,
+  .portrait-stage.is-live .portrait-orbit {
     animation: none !important;
   }
 }
