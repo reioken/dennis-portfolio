@@ -48,37 +48,48 @@ const BRANDS = {
 };
 
 const LANGS = ["de", "en", "fr", "it", "es", "pl"];
-const LOGO_MODES = ["auto", "color", "light", "dark"];
 
 const state = {
-  refs: [], // reference dataUrls for consistency
-  images: [], // series items
+  refs: [],
+  images: [],
   copyByLang: {},
   glossary: [],
   activeLang: "de",
   activeImageId: null,
   busy: false,
-  pendingPreview: false,
   logoCache: {},
   previewTimer: null,
   seriesSeed: null,
   lightboxOpen: false,
+  bakingPreviews: false,
 };
 
 const $ = (id) => document.getElementById(id);
 const status = (msg) => { $("status").textContent = msg || ""; };
 
+function hasCopy() {
+  return !!state.copyByLang.de?.texts?.headline;
+}
+
+function syncActionButtons() {
+  const on = state.busy;
+  const hasImages = state.images.length > 0;
+  const ready = hasImages && hasCopy();
+  $("btnRun").disabled = on || !hasImages;
+  $("btnRegenText").disabled = on || !hasImages;
+  $("btnGenImages").disabled = on || !state.refs.length;
+  $("btnPng").disabled = on || !ready;
+  $("btnZip").disabled = on || !ready;
+  $("btnClear").disabled = on || !hasImages;
+}
+
 function setBusy(on) {
   state.busy = on;
-  const hasSeries = state.images.length > 0 && !!state.copyByLang.de;
-  $("btnRun").disabled = on;
-  $("btnGenImages").disabled = on || !state.refs.length;
-  $("btnPng").disabled = on || !hasSeries;
-  $("btnZip").disabled = on || !hasSeries;
+  syncActionButtons();
 }
 
 function setStep(n) {
-  const total = 4;
+  const total = 3;
   $("sideCount").textContent = `${n} / ${total}`;
   $("sideFill").style.width = `${(n / total) * 100}%`;
   document.querySelectorAll(".step").forEach((el) => {
@@ -91,7 +102,7 @@ function setStep(n) {
     else if (s === n) { badge.textContent = String(s); hint.textContent = "JETZT"; }
     else { badge.textContent = String(s); hint.textContent = ""; }
   });
-  const labels = { 1: "Refs", 2: "KI-Bilder", 3: "Text", 4: "Export" };
+  const labels = { 1: "Serie", 2: "Text", 3: "Export" };
   $("topStepHint").textContent = labels[n] || "Bereit";
 }
 
@@ -253,8 +264,19 @@ function syncLogoColorTabs() {
 }
 
 function updateDropCount() {
-  const n = state.refs.length;
-  $("dropCount").textContent = n === 1 ? "1 Ref" : `${n} Refs`;
+  const n = state.images.length;
+  $("dropCount").textContent = n === 1 ? "1 Bild" : `${n} Bilder`;
+}
+
+function syncRefsFromSeries() {
+  // KI-Gen refs = erste Uploads / Serie (max 4)
+  state.refs = state.images
+    .filter((i) => i.source === "upload" || i.source === "ai")
+    .slice(0, 4)
+    .map((i) => i.dataUrl);
+  if (!state.refs.length && state.images.length) {
+    state.refs = state.images.slice(0, 4).map((i) => i.dataUrl);
+  }
 }
 
 async function buildConfig(img) {
@@ -290,7 +312,11 @@ async function buildConfig(img) {
       maxWidth: b.logoMaxWidth, maxHeight: b.logoMaxHeight,
       sizePercent: 100, offset: 64, left: 96, top: 86,
     },
-    texts: { kicker: copy.texts.kicker || "", headline: copy.texts.headline || "", subline: copy.texts.subline || "" },
+    texts: {
+      kicker: copy.texts.kicker || "",
+      headline: copy.texts.headline || "",
+      subline: copy.texts.subline || "",
+    },
     badge: { text: "", headline: "", subline: "" },
     pills: resolvePillPixels(copy.pills), pillFontSize: 48,
     series: { logoOffset: 64, badgeMaxWidth: 1200, badgeForm: "pill" },
@@ -330,7 +356,7 @@ function renderGallery() {
     const media = document.createElement("button");
     media.type = "button";
     media.className = "gallery-media";
-    media.title = "Großansicht";
+    media.title = "Großansicht mit Overlay";
     const pic = document.createElement("img");
     pic.src = img.previewDataUrl || img.dataUrl;
     pic.alt = img.name || `Bild ${idx + 1}`;
@@ -347,25 +373,34 @@ function renderGallery() {
     bar.className = "gallery-bar";
     const label = document.createElement("span");
     label.className = "gallery-label";
-    label.textContent = img.presetId ? img.presetId.replace(/_/g, " ") : (img.name || `#${idx + 1}`);
-    const regen = document.createElement("button");
-    regen.type = "button";
-    regen.className = "gallery-regen";
-    regen.title = "Neu generieren";
-    regen.setAttribute("aria-label", "Neu generieren");
-    regen.innerHTML = "↻";
-    regen.disabled = !!img.generating || !state.refs.length;
-    regen.addEventListener("click", (e) => {
-      e.stopPropagation();
-      regenerateImage(img.id, true);
-    });
-    bar.append(label, regen);
+    const kind = img.source === "ai" ? "KI" : "Serie";
+    label.textContent = img.presetId
+      ? `${kind} · ${img.presetId.replace(/_/g, " ")}`
+      : `${kind} · ${img.name || `#${idx + 1}`}`;
+    bar.appendChild(label);
+
+    if (img.source === "ai") {
+      const regen = document.createElement("button");
+      regen.type = "button";
+      regen.className = "gallery-regen";
+      regen.title = "Bild neu generieren";
+      regen.setAttribute("aria-label", "Bild neu generieren");
+      regen.textContent = "↻";
+      regen.disabled = !!img.generating || state.busy || !state.refs.length;
+      regen.addEventListener("click", (e) => {
+        e.stopPropagation();
+        regenerateImage(img.id, true);
+      });
+      bar.appendChild(regen);
+    }
+
     card.append(media, bar);
     card.addEventListener("click", (e) => {
       if (e.target.closest(".gallery-regen")) return;
       state.activeImageId = img.id;
       syncLogoColorTabs();
       renderGallery();
+      syncLightboxRegen();
     });
     root.appendChild(card);
   });
@@ -406,42 +441,24 @@ async function callImageApi({ presetId, stricter, quality }) {
   return data;
 }
 
-async function addImageFromGen(data, presetId) {
-  const brand = $("brand").value;
-  const img = {
-    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    name: presetId,
-    dataUrl: data.imageDataUrl,
-    layout: null,
-    logoColor: "auto",
-    logoDataUrl: null,
-    resolvedLogoMode: null,
-    presetId,
-    generating: false,
-    previewDataUrl: null,
-  };
-  await prepareImagePreview(img, brand);
-  state.images.push(img);
-  if (!state.activeImageId) state.activeImageId = img.id;
-  return img;
-}
-
 async function generateSeriesImages() {
   if (state.busy) return;
+  syncRefsFromSeries();
   if (!state.refs.length) {
-    status("Bitte zuerst Referenz-Fotos hochladen.");
+    status("Bitte zuerst Fotos hochladen (als Referenz).");
     return;
   }
   setBusy(true);
-  setStep(2);
+  setStep(1);
   try {
     const product = $("productName").value.trim() || "product";
     state.seriesSeed = await seriesSeed(`${product}|${$("brand").value}`);
     const count = Math.max(1, Math.min(8, Number($("genCount").value) || 4));
     status(`KI-Serie (${count}) · Seed ${state.seriesSeed}…`);
-    // Keep existing uploaded series? Replace generated ones — clear previous gens, keep none
     state.images = [];
     state.activeImageId = null;
+    state.copyByLang = {};
+    syncTextFieldsFromState();
     renderGallery();
 
     for (let i = 0; i < count; i++) {
@@ -455,6 +472,7 @@ async function generateSeriesImages() {
         logoColor: "auto",
         generating: true,
         presetId,
+        source: "ai",
       };
       state.images.push(placeholder);
       if (!state.activeImageId) state.activeImageId = placeholder.id;
@@ -473,31 +491,33 @@ async function generateSeriesImages() {
         generating: false,
         presetId,
         previewDataUrl: null,
+        source: "ai",
       };
       await prepareImagePreview(img, brand);
       if (idx >= 0) state.images[idx] = img;
       else state.images.push(img);
       state.activeImageId = img.id;
+      updateDropCount();
       renderGallery();
       syncLogoColorTabs();
     }
-    status(`Fertig: ${state.images.length} KI-Bilder · Consistency-Seed ${state.seriesSeed}`);
-    setStep(2);
+    status(`KI-Serie fertig (${state.images.length}). Starte Text…`);
+    setBusy(false);
+    await runSeries({ skipIfBusy: false });
   } catch (err) {
     console.error(err);
     status(String(err.message || err));
-    // drop pending placeholders
     state.images = state.images.filter((i) => !i.generating);
     renderGallery();
-  } finally {
     setBusy(false);
   }
 }
 
 async function regenerateImage(id, stricter) {
   const img = state.images.find((i) => i.id === id);
-  if (!img || !state.refs.length) return;
-  if (state.busy) return;
+  if (!img || img.source !== "ai") return;
+  syncRefsFromSeries();
+  if (!state.refs.length || state.busy) return;
   setBusy(true);
   img.generating = true;
   state.activeImageId = id;
@@ -508,20 +528,17 @@ async function regenerateImage(id, stricter) {
     }
     const presetId = img.presetId || SCENE_ORDER[0];
     status(`Neu generieren: ${presetId}…`);
-    const data = await callImageApi({
-      presetId,
-      stricter: !!stricter,
-      quality: "high",
-    });
+    const data = await callImageApi({ presetId, stricter: !!stricter, quality: "high" });
     img.dataUrl = data.imageDataUrl;
     img.layout = null;
     img.logoDataUrl = null;
     img.previewDataUrl = null;
     img.generating = false;
     await prepareImagePreview(img, $("brand").value);
+    if (hasCopy()) await bakeOnePreview(img);
     renderGallery();
     if (state.lightboxOpen) await applyToIframe($("lightboxStage"));
-    status("Neu generiert.");
+    status("Bild neu generiert.");
   } catch (err) {
     console.error(err);
     img.generating = false;
@@ -532,42 +549,69 @@ async function regenerateImage(id, stricter) {
   }
 }
 
-async function addRefFiles(fileList) {
-  const files = Array.from(fileList || []).filter((f) => f.type.startsWith("image/"));
-  if (!files.length) return;
-  for (const file of files) {
-    state.refs.push(await fileToDataUrl(file));
+function naturalSortName(a, b) {
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+}
+
+async function addSeriesFiles(fileList, { replace = false } = {}) {
+  const files = Array.from(fileList || [])
+    .filter((f) => f.type.startsWith("image/"))
+    .sort((a, b) => naturalSortName(a.name, b.name));
+  if (!files.length) {
+    status("Keine Bilder erkannt.");
+    return;
   }
-  // Also offer refs as initial gallery if no generated images yet
-  if (!state.images.length) {
-    const brand = $("brand").value;
-    for (let i = 0; i < state.refs.length; i++) {
-      const img = {
-        id: `ref_${Date.now()}_${i}`,
-        name: files[i]?.name || `Ref ${i + 1}`,
-        dataUrl: state.refs[i],
-        layout: null,
-        logoColor: "auto",
-        presetId: null,
-        generating: false,
-      };
-      await prepareImagePreview(img, brand);
-      state.images.push(img);
-    }
-    state.activeImageId = state.images[0].id;
+
+  if (replace || !state.images.length) {
+    state.images = [];
+    state.activeImageId = null;
+    state.copyByLang = {};
+    syncTextFieldsFromState();
   }
+
+  const brand = $("brand").value;
+  const startLen = state.images.length;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const dataUrl = await fileToDataUrl(file);
+    const img = {
+      id: `up_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+      name: file.name || `Bild ${startLen + i + 1}`,
+      dataUrl,
+      layout: null,
+      logoColor: "auto",
+      logoDataUrl: null,
+      presetId: null,
+      generating: false,
+      previewDataUrl: null,
+      source: "upload",
+    };
+    await prepareImagePreview(img, brand);
+    state.images.push(img);
+  }
+
+  if (!state.activeImageId) state.activeImageId = state.images[0].id;
+  syncRefsFromSeries();
   updateDropCount();
   syncLogoColorTabs();
   setStep(1);
-  setBusy(false);
+  syncActionButtons();
   renderGallery();
-  status(`${state.refs.length} Ref(s) · KI-Bilder generieren oder Overlay starten.`);
+
+  const added = files.length;
+  status(`${added} Bild(er) · Serie: ${state.images.length}`);
+
+  if ($("autoRun")?.checked) {
+    await runSeries();
+  } else {
+    status(`${state.images.length} Bilder geladen — «Serie fertig machen» tippen.`);
+  }
 }
 
-async function runSeries() {
-  if (state.busy) return;
+async function runSeries(opts = {}) {
+  if (state.busy && opts.skipIfBusy !== false) return;
   if (!state.images.length) {
-    status("Bitte Refs/Bilder laden oder generieren.");
+    status("Bitte zuerst eine Serie hochladen.");
     return;
   }
   setBusy(true);
@@ -575,18 +619,22 @@ async function runSeries() {
   const brand = $("brand").value;
   const productName = $("productName").value.trim();
   try {
-    setStep(3);
+    setStep(2);
     status("Placement & Kontrast…");
     for (let i = 0; i < state.images.length; i++) {
+      const img = state.images[i];
+      img.layout = null;
+      img.previewDataUrl = null;
       status(`Placement ${i + 1}/${state.images.length}…`);
-      await prepareImagePreview(state.images[i], brand);
+      await prepareImagePreview(img, brand);
     }
     renderGallery();
 
-    status("KI-Text…");
+    status("KI schreibt Texte…");
     const vision = await FDPlacement.shrinkForVision(state.images[0].dataUrl);
     const genRes = await fetch(API.generate, {
-      method: "POST", credentials: "same-origin",
+      method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ brand, productName, imageDataUrl: vision }),
     });
@@ -594,18 +642,26 @@ async function runSeries() {
     if (!genRes.ok) throw new Error(gen.error || gen.detail || "Text fehlgeschlagen");
 
     state.glossary = gen.glossary || [];
-    state.copyByLang = { de: { texts: gen.texts || { kicker: "", headline: "", subline: "" }, pills: gen.pills || [] } };
+    state.copyByLang = {
+      de: {
+        texts: gen.texts || { kicker: "", headline: "", subline: "" },
+        pills: gen.pills || [],
+      },
+    };
     state.activeLang = "de";
     syncTextFieldsFromState();
     document.querySelectorAll(".lang-tab").forEach((t) => t.classList.toggle("is-active", t.dataset.lang === "de"));
     schedulePreview(0);
 
-    status("Übersetzungen…");
+    status("KI übersetzt (EN/FR/IT/ES/PL)…");
     const trRes = await fetch(API.translate, {
-      method: "POST", credentials: "same-origin",
+      method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        texts: gen.texts, pills: gen.pills, glossary: state.glossary,
+        texts: gen.texts,
+        pills: gen.pills,
+        glossary: state.glossary,
         targets: ["en", "fr", "it", "es", "pl"],
       }),
     });
@@ -613,14 +669,73 @@ async function runSeries() {
     if (!trRes.ok) throw new Error(tr.error || tr.detail || "Übersetzung fehlgeschlagen");
     LANGS.forEach((lang) => { if (tr[lang]) state.copyByLang[lang] = tr[lang]; });
 
-    setStep(4);
-    schedulePreview(0);
-    status(`Fertig: ${state.images.length} Bilder · ${Object.keys(state.copyByLang).length} Sprachen.`);
+    setStep(3);
+    status("Overlay-Vorschau wird gebaut…");
+    setBusy(false);
+    await bakeAllPreviews();
+    status(`Fertig: ${state.images.length} Bilder · ${Object.keys(state.copyByLang).length} Sprachen — PNG/ZIP unten.`);
+    if (state.lightboxOpen) await applyToIframe($("lightboxStage"));
   } catch (err) {
     console.error(err);
     status(String(err.message || err));
-    setStep(state.copyByLang.de ? 3 : 2);
-  } finally {
+    setStep(hasCopy() ? 2 : 1);
+    setBusy(false);
+  }
+}
+
+async function regenTextOnly() {
+  if (state.busy || !state.images.length) return;
+  setBusy(true);
+  const brand = $("brand").value;
+  const productName = $("productName").value.trim();
+  try {
+    setStep(2);
+    status("KI schreibt neue Texte…");
+    const vision = await FDPlacement.shrinkForVision(state.images[0].dataUrl);
+    const genRes = await fetch(API.generate, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brand, productName, imageDataUrl: vision }),
+    });
+    const gen = await parseJsonResponse(genRes);
+    if (!genRes.ok) throw new Error(gen.error || gen.detail || "Text fehlgeschlagen");
+
+    state.glossary = gen.glossary || [];
+    state.copyByLang = {
+      de: {
+        texts: gen.texts || { kicker: "", headline: "", subline: "" },
+        pills: gen.pills || [],
+      },
+    };
+    state.activeLang = "de";
+    syncTextFieldsFromState();
+    document.querySelectorAll(".lang-tab").forEach((t) => t.classList.toggle("is-active", t.dataset.lang === "de"));
+
+    status("Übersetzungen…");
+    const trRes = await fetch(API.translate, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        texts: gen.texts,
+        pills: gen.pills,
+        glossary: state.glossary,
+        targets: ["en", "fr", "it", "es", "pl"],
+      }),
+    });
+    const tr = await parseJsonResponse(trRes);
+    if (!trRes.ok) throw new Error(tr.error || tr.detail || "Übersetzung fehlgeschlagen");
+    LANGS.forEach((lang) => { if (tr[lang]) state.copyByLang[lang] = tr[lang]; });
+
+    setStep(3);
+    setBusy(false);
+    await bakeAllPreviews();
+    status("Neue Texte fertig.");
+    if (state.lightboxOpen) await applyToIframe($("lightboxStage"));
+  } catch (err) {
+    console.error(err);
+    status(String(err.message || err));
     setBusy(false);
   }
 }
@@ -630,18 +745,47 @@ function waitMs(ms) { return new Promise((r) => setTimeout(r, ms)); }
 async function capturePngDataUrl() {
   const iframe = $("stage");
   if (!(await applyToIframe(iframe))) {
-    await waitMs(300);
-    if (!(await applyToIframe(iframe))) throw new Error("Overlay nicht bereit");
+    await waitMs(400);
+    if (!(await applyToIframe(iframe))) throw new Error("Overlay nicht bereit — Seite neu laden?");
   }
-  await waitMs(220);
+  await waitMs(260);
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   const doc = iframe.contentDocument;
   if (!doc?.body) throw new Error("Keine Vorschau");
   return htmlToImage.toPng(doc.body, { width: 2048, height: 2048, pixelRatio: 1, cacheBust: true });
 }
 
+async function bakeOnePreview(img) {
+  const prev = state.activeImageId;
+  state.activeImageId = img.id;
+  try {
+    img.previewDataUrl = await capturePngDataUrl();
+  } catch (e) {
+    console.warn("preview bake failed", e);
+  } finally {
+    state.activeImageId = prev;
+  }
+}
+
+async function bakeAllPreviews() {
+  if (!hasCopy() || !state.images.length) return;
+  state.bakingPreviews = true;
+  const prev = state.activeImageId;
+  try {
+    for (let i = 0; i < state.images.length; i++) {
+      status(`Vorschau ${i + 1}/${state.images.length}…`);
+      await bakeOnePreview(state.images[i]);
+      renderGallery();
+    }
+  } finally {
+    state.activeImageId = prev;
+    state.bakingPreviews = false;
+    renderGallery();
+  }
+}
+
 async function downloadPng() {
-  if (!state.images.length) return;
+  if (!state.images.length || !hasCopy()) return;
   setBusy(true);
   try {
     status("PNG…");
@@ -654,14 +798,14 @@ async function downloadPng() {
     status("PNG gespeichert.");
   } catch (e) {
     console.error(e);
-    status("PNG fehlgeschlagen.");
+    status(String(e.message || "PNG fehlgeschlagen."));
   } finally {
     setBusy(false);
   }
 }
 
 async function downloadZipLang() {
-  if (!state.images.length || typeof JSZip === "undefined") return;
+  if (!state.images.length || !hasCopy() || typeof JSZip === "undefined") return;
   setBusy(true);
   const prevId = state.activeImageId;
   try {
@@ -670,7 +814,8 @@ async function downloadZipLang() {
       state.activeImageId = state.images[i].id;
       status(`PNG ${i + 1}/${state.images.length}…`);
       const dataUrl = await capturePngDataUrl();
-      zip.file(`${String(i + 1).padStart(2, "0")}_${state.activeLang}.png`, dataUrl.split(",")[1], { base64: true });
+      const base = (state.images[i].name || `img_${i + 1}`).replace(/\.[^.]+$/, "");
+      zip.file(`${String(i + 1).padStart(2, "0")}_${base}_${state.activeLang}.png`, dataUrl.split(",")[1], { base64: true });
     }
     const blob = await zip.generateAsync({ type: "blob" });
     const a = document.createElement("a");
@@ -681,7 +826,7 @@ async function downloadZipLang() {
     status("ZIP gespeichert.");
   } catch (e) {
     console.error(e);
-    status("ZIP fehlgeschlagen.");
+    status(String(e.message || "ZIP fehlgeschlagen."));
   } finally {
     state.activeImageId = prevId;
     renderGallery();
@@ -689,7 +834,29 @@ async function downloadZipLang() {
   }
 }
 
-/* Lightbox */
+function clearSeries() {
+  if (state.busy) return;
+  state.images = [];
+  state.refs = [];
+  state.copyByLang = {};
+  state.activeImageId = null;
+  state.seriesSeed = null;
+  syncTextFieldsFromState();
+  updateDropCount();
+  setStep(1);
+  syncActionButtons();
+  renderGallery();
+  status("Serie geleert — neue Bilder hochladen.");
+}
+
+function syncLightboxRegen() {
+  const img = activeImage();
+  const btn = $("lightboxRegen");
+  if (!btn) return;
+  const show = img?.source === "ai";
+  btn.hidden = !show;
+}
+
 function openLightbox(id) {
   state.activeImageId = id;
   state.lightboxOpen = true;
@@ -698,6 +865,7 @@ function openLightbox(id) {
   syncLogoColorTabs();
   renderGallery();
   updateLightboxLabel();
+  syncLightboxRegen();
   applyToIframe($("lightboxStage")).catch(console.error);
 }
 
@@ -715,6 +883,7 @@ function lightboxStep(delta) {
   syncLogoColorTabs();
   renderGallery();
   updateLightboxLabel();
+  syncLightboxRegen();
   applyToIframe($("lightboxStage")).catch(console.error);
 }
 
@@ -733,11 +902,13 @@ dropzone.addEventListener("click", () => imageInput.click());
 dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("is-drag"); });
 dropzone.addEventListener("dragleave", () => dropzone.classList.remove("is-drag"));
 dropzone.addEventListener("drop", async (e) => {
-  e.preventDefault(); dropzone.classList.remove("is-drag");
-  await addRefFiles(e.dataTransfer.files);
+  e.preventDefault();
+  dropzone.classList.remove("is-drag");
+  // Neue Auswahl = neue Serie (alte ersetzen)
+  await addSeriesFiles(e.dataTransfer.files, { replace: true });
 });
 imageInput.addEventListener("change", async () => {
-  await addRefFiles(imageInput.files);
+  await addSeriesFiles(imageInput.files, { replace: true });
   imageInput.value = "";
 });
 
@@ -746,9 +917,12 @@ $("brand").addEventListener("change", async () => {
   const brand = $("brand").value;
   for (const img of state.images) {
     img.logoDataUrl = null;
+    img.layout = null;
+    img.previewDataUrl = null;
     await prepareImagePreview(img, brand);
   }
   schedulePreview(0);
+  if (hasCopy()) bakeAllPreviews().catch(console.error);
 });
 
 document.querySelectorAll(".logo-color-tab").forEach((tab) => {
@@ -757,17 +931,21 @@ document.querySelectorAll(".logo-color-tab").forEach((tab) => {
     if (!img) { status("Zuerst ein Bild wählen."); return; }
     img.logoColor = tab.dataset.logo;
     img.logoDataUrl = null;
+    img.previewDataUrl = null;
     document.querySelectorAll(".logo-color-tab").forEach((t) => t.classList.toggle("is-active", t === tab));
     await prepareImagePreview(img, $("brand").value);
+    if (hasCopy()) await bakeOnePreview(img);
     schedulePreview(0);
     if (state.lightboxOpen) applyToIframe($("lightboxStage")).catch(console.error);
   });
 });
 
 $("btnGenImages").addEventListener("click", generateSeriesImages);
-$("btnRun").addEventListener("click", runSeries);
+$("btnRun").addEventListener("click", () => runSeries());
+$("btnRegenText").addEventListener("click", regenTextOnly);
 $("btnPng").addEventListener("click", downloadPng);
 $("btnZip").addEventListener("click", downloadZipLang);
+$("btnClear").addEventListener("click", clearSeries);
 $("btnLogout").addEventListener("click", async () => {
   await fetch(API.logout, { credentials: "same-origin" });
   location.href = "/studio/login/";
@@ -778,7 +956,7 @@ $("lightboxPrev").addEventListener("click", () => lightboxStep(-1));
 $("lightboxNext").addEventListener("click", () => lightboxStep(1));
 $("lightboxRegen").addEventListener("click", () => {
   const img = activeImage();
-  if (img) regenerateImage(img.id, true);
+  if (img?.source === "ai") regenerateImage(img.id, true);
 });
 $("lightbox").addEventListener("click", (e) => {
   if (e.target.id === "lightbox") closeLightbox();
@@ -792,33 +970,41 @@ document.addEventListener("keydown", (e) => {
 
 ["kicker", "headline", "subline"].forEach((id) => {
   const el = $(id);
-  const sync = () => { writeTextFieldsToState(); schedulePreview(0); };
+  const sync = () => {
+    writeTextFieldsToState();
+    const img = activeImage();
+    if (img) img.previewDataUrl = null;
+    schedulePreview(0);
+    if (hasCopy() && img) {
+      clearTimeout(el._fdBakeT);
+      el._fdBakeT = setTimeout(() => bakeOnePreview(img).then(() => renderGallery()), 400);
+    }
+  };
   el.addEventListener("change", sync);
   el.addEventListener("input", () => {
     clearTimeout(el._fdPreviewT);
-    el._fdPreviewT = setTimeout(sync, 120);
+    el._fdPreviewT = setTimeout(sync, 160);
   });
 });
 
 document.querySelectorAll(".lang-tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
+  tab.addEventListener("click", async () => {
     writeTextFieldsToState();
     state.activeLang = tab.dataset.lang;
     document.querySelectorAll(".lang-tab").forEach((t) => t.classList.toggle("is-active", t === tab));
     syncTextFieldsFromState();
+    state.images.forEach((img) => { img.previewDataUrl = null; });
     schedulePreview(0);
     if (state.lightboxOpen) applyToIframe($("lightboxStage")).catch(console.error);
+    if (hasCopy()) await bakeAllPreviews();
   });
 });
 
-$("stage").addEventListener("load", () => { /* ready for export */ });
 $("lightboxStage").addEventListener("load", () => {
   if (state.lightboxOpen) applyToIframe($("lightboxStage")).catch(console.error);
 });
 
 setStep(1);
 setBusy(false);
-$("btnPng").disabled = true;
-$("btnZip").disabled = true;
-$("btnGenImages").disabled = true;
+syncActionButtons();
 renderGallery();

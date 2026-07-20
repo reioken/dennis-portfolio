@@ -741,6 +741,46 @@ body.lightbox-open { overflow: hidden; }
   font-weight: 700;
   color: var(--gold);
 }
+.dropzone-primary {
+  border-style: solid;
+  border-color: rgba(232, 194, 0, 0.35);
+  background: rgba(62, 56, 32, 0.22);
+}
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+}
+.check-row input {
+  margin-top: 2px;
+  accent-color: var(--gold);
+}
+.optional-panel {
+  border: 1px solid var(--stroke-soft);
+  border-radius: var(--r-md);
+  background: rgba(30, 30, 40, 0.55);
+  padding: 8px 10px 10px;
+}
+.optional-panel > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+  list-style: none;
+}
+.optional-panel > summary::-webkit-details-marker { display: none; }
+.optional-panel[open] > summary { color: var(--text); margin-bottom: 8px; }
+.optional-hint {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: var(--muted2);
+  line-height: 1.4;
+}
 
 .field-label {
   display: block;
