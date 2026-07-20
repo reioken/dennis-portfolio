@@ -45,19 +45,21 @@ const BRANDS = {
     kickerSize: 28, headlineSize: 88, subtitleSize: 52,
     kickerTracking: 0.16, headlineTracking: -0.05, subtitleTracking: 0.04,
   },
+  // Werte gespiegelt aus fd_pipeline/brands.py, damit Desktop-App und
+  // Studio dasselbe Ergebnis liefern.
   MASTER_OF_BOARDS: {
     logos: { color: "/studio/assets/logos/master-of-boards.png", light: null, dark: null },
-    logoMaxWidth: 280, logoMaxHeight: 62, radius: 34, blur: 38, tint: 10,
+    logoMaxWidth: 280, logoMaxHeight: 62, radius: 34, blur: 38, tint: 12,
     kickerSize: 28, headlineSize: 90, subtitleSize: 54,
     kickerTracking: 0.15, headlineTracking: -0.05, subtitleTracking: 0.04,
   },
   // Logo liegt noch nicht vor. Ohne Datei rendert das Overlay ohne Logo,
-  // statt einen kaputten Bildpfad zu ziehen.
+  // statt das falsche Markenlogo zu ziehen.
   CASA_PURA: {
     logos: { color: null, light: null, dark: null },
-    logoMaxWidth: 270, logoMaxHeight: 66, radius: 38, blur: 40, tint: 10,
-    kickerSize: 28, headlineSize: 90, subtitleSize: 54,
-    kickerTracking: 0.15, headlineTracking: -0.05, subtitleTracking: 0.04,
+    logoMaxWidth: 260, logoMaxHeight: 72, radius: 62, blur: 56, tint: 16,
+    kickerSize: 30, headlineSize: 90, subtitleSize: 55,
+    kickerTracking: 0.17, headlineTracking: -0.02, subtitleTracking: 0.08,
   },
 };
 
