@@ -52,8 +52,6 @@ export default function NexusSplashMark({
         <span className="nx-sp__glint g4" />
         <span className="nx-sp__glint g5" />
         <span className="nx-sp__glint g6" />
-        <span className="nx-sp__glint g7" />
-        <span className="nx-sp__glint g8" />
         <div
           className="nx-sp__mark"
           dangerouslySetInnerHTML={{ __html: logoSvg }}
