@@ -77,72 +77,77 @@
 
           <div class="dropzone dropzone-primary" id="dropzone">
             <input type="file" id="imageInput" accept="image/*" multiple hidden />
-            <p class="drop-title">Eigene Serie hochladen</p>
-            <p class="drop-hint">Fertige Produktbilder reinziehen — Textboxen + Übersetzungen kommen per KI</p>
+            <p class="drop-title">1. Serie hier reinziehen</p>
+            <p class="drop-hint">Deine fertigen Produktfotos (mehrere auf einmal)</p>
             <p class="drop-count" id="dropCount">0 Bilder</p>
           </div>
 
-          <label class="check-row" title="Nach Upload sofort Placement, KI-Text und Übersetzungen starten">
+          <label class="check-row" title="Nach Upload sofort Texte und Overlay erzeugen">
             <input type="checkbox" id="autoRun" checked />
-            <span>Nach Upload automatisch fertig machen</span>
+            <span>Danach sofort automatisch Text + Übersetzen</span>
           </label>
 
-          <button type="button" class="btn btn-primary btn-wide" id="btnRun" disabled>Serie fertig machen</button>
-          <button type="button" class="btn btn-secondary btn-wide" id="btnRegenText" disabled>Text neu generieren</button>
+          <button type="button" class="btn btn-primary btn-wide" id="btnRun" disabled>2. Serie fertig machen</button>
+          <button type="button" class="btn btn-secondary btn-wide" id="btnRegenText" disabled>Text neu von der KI</button>
 
           <details class="optional-panel" id="kiPanel">
-            <summary>Optional: neue KI-Bilder erzeugen</summary>
-            <p class="optional-hint">Nur nötig, wenn du noch keine Serie hast. Nutzt deine Fotos als Referenz (Consistency).</p>
+            <summary>Nur wenn nötig: neue Bilder per KI</summary>
+            <p class="optional-hint">Hast du schon eine fertige Serie? Dann brauchst du das nicht. Sonst: Fotos oben laden, hier Anzahl wählen.</p>
             <label class="field">
-              Anzahl
+              Wie viele KI-Bilder?
               <select id="genCount">
                 <option value="4" selected>4</option>
                 <option value="6">6</option>
                 <option value="8">8</option>
               </select>
             </label>
-            <button type="button" class="btn btn-secondary btn-wide" id="btnGenImages" disabled>KI-Bilder generieren</button>
+            <button type="button" class="btn btn-secondary btn-wide" id="btnGenImages" disabled>KI-Bilder erzeugen</button>
           </details>
 
-          <div class="field image-tools" id="imageTools">
-            <span class="field-label">Logo-Farbe <span class="opt">(aktives Bild)</span></span>
+          <div class="side-section" id="textSection">
+            <p class="side-section-title">Text auf dem Bild</p>
+            <p class="side-section-hint">Nach „fertig machen“ hier prüfen oder ändern. Sprache gilt für Vorschau und ZIP/PNG.</p>
+
+            <div class="field">
+              <span class="field-label">Sprache</span>
+              <div class="lang-tabs" id="langTabs" role="tablist" aria-label="Sprache">
+                <button type="button" class="lang-tab is-active" data-lang="de">DE</button>
+                <button type="button" class="lang-tab" data-lang="en">EN</button>
+                <button type="button" class="lang-tab" data-lang="fr">FR</button>
+                <button type="button" class="lang-tab" data-lang="it">IT</button>
+                <button type="button" class="lang-tab" data-lang="es">ES</button>
+                <button type="button" class="lang-tab" data-lang="pl">PL</button>
+              </div>
+            </div>
+
+            <label class="field">
+              Obere Zeile <span class="opt">(Kicker)</span>
+              <input type="text" id="kicker" placeholder="z. B. GARTENSTUHL" />
+            </label>
+            <label class="field">
+              Große Überschrift
+              <textarea id="headline" rows="2" placeholder="Haupttext auf dem Bild"></textarea>
+            </label>
+            <label class="field">
+              Unterzeile
+              <textarea id="subline" rows="2" placeholder="Kurzer Zusatz"></textarea>
+            </label>
+          </div>
+
+          <div class="side-section" id="imageTools">
+            <p class="side-section-title">Logo auf diesem Bild</p>
+            <p class="side-section-hint">Welches Bild links in der Galerie aktiv ist — Logo hell/dunkel anpassen.</p>
             <div class="logo-color-tabs" id="logoColorTabs" role="tablist" aria-label="Logo-Farbe">
               <button type="button" class="logo-color-tab is-active" data-logo="auto">Auto</button>
-              <button type="button" class="logo-color-tab" data-logo="color">Farbe</button>
-              <button type="button" class="logo-color-tab" data-logo="light">Hell</button>
-              <button type="button" class="logo-color-tab" data-logo="dark">Dunkel</button>
+              <button type="button" class="logo-color-tab" data-logo="color">Bunt</button>
+              <button type="button" class="logo-color-tab" data-logo="light">Weiß</button>
+              <button type="button" class="logo-color-tab" data-logo="dark">Schwarz</button>
             </div>
           </div>
-
-          <div class="lang-tabs" id="langTabs" role="tablist" aria-label="Sprache">
-            <button type="button" class="lang-tab is-active" data-lang="de">DE</button>
-            <button type="button" class="lang-tab" data-lang="en">EN</button>
-            <button type="button" class="lang-tab" data-lang="fr">FR</button>
-            <button type="button" class="lang-tab" data-lang="it">IT</button>
-            <button type="button" class="lang-tab" data-lang="es">ES</button>
-            <button type="button" class="lang-tab" data-lang="pl">PL</button>
-          </div>
-
-          <label class="field">
-            Kicker
-            <input type="text" id="kicker" placeholder="—" />
-          </label>
-          <label class="field">
-            Headline
-            <textarea id="headline" rows="2" placeholder="—"></textarea>
-          </label>
-          <label class="field">
-            Subline
-            <textarea id="subline" rows="2" placeholder="—"></textarea>
-          </label>
         </div>
 
         <div class="side-foot">
           <button type="button" class="btn btn-ghost" id="btnLogout">Abmelden</button>
-          <p class="credit">
-            <strong>floordirekt.com</strong><br />
-            Dennis Bierreth-Fernandez
-          </p>
         </div>
       </aside>
 
@@ -165,11 +170,11 @@
     </div>
 
     <footer class="footer glass">
-      <div class="footer-status" id="status">Marke wählen, Serie hochladen — fertig.</div>
+      <div class="footer-status" id="status">Links: Serie hochladen → fertig machen → hier PNG/ZIP laden.</div>
       <div class="footer-actions">
         <button type="button" class="btn btn-secondary" id="btnClear" disabled>Serie leeren</button>
-        <button type="button" class="btn btn-secondary" id="btnZip" disabled>ZIP Sprache</button>
-        <button type="button" class="btn btn-primary" id="btnPng" disabled>PNG</button>
+        <button type="button" class="btn btn-secondary" id="btnZip" disabled>ZIP (aktuelle Sprache)</button>
+        <button type="button" class="btn btn-primary" id="btnPng" disabled>PNG speichern</button>
       </div>
     </footer>
   </div>
