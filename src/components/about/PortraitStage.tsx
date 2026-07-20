@@ -11,8 +11,12 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
   const reduce = useReducedMotion();
 
   return (
-    <div className="portrait-stage relative mx-auto w-full max-w-[560px]">
-      {/* Orbiting ring — quieter, further out so it doesn't crowd the face */}
+    <div className={`portrait-stage relative mx-auto w-full max-w-[560px]${reduce ? '' : ' is-live'}`}>
+      {/* Soft brand lights — sit behind the cutout, never over the face */}
+      <div className="portrait-light portrait-light--violet" aria-hidden />
+      <div className="portrait-light portrait-light--blue" aria-hidden />
+      <div className="portrait-light portrait-light--ice" aria-hidden />
+
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-[-4%]"
@@ -20,17 +24,16 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
         transition={reduce ? undefined : { duration: 36, repeat: Infinity, ease: 'linear' }}
       >
         <motion.div
-          className="absolute inset-0 rounded-full border border-dashed border-[color-mix(in_srgb,var(--ice)_18%,transparent)]"
+          className="portrait-orbit absolute inset-0 rounded-full"
           initial={reduce ? { opacity: 0.25 } : { opacity: 0, scale: 0.94, rotate: -8 }}
           animate={reduce ? { opacity: 0.25 } : { opacity: 0.55, scale: 1, rotate: 0 }}
           transition={{ duration: 1.2, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--ember)] opacity-70" />
+          <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--violet)] opacity-70" />
           <span className="absolute bottom-[18%] right-0 h-1.5 w-1.5 translate-x-1/2 rounded-full bg-[var(--ice)] opacity-60" />
         </motion.div>
       </motion.div>
 
-      {/* Vertical name rail */}
       <p
         aria-hidden
         className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 -rotate-90 origin-center whitespace-nowrap font-[family-name:var(--font-display)] text-[0.72rem] font-bold tracking-[0.35em] uppercase text-[var(--meta)] md:block"
@@ -44,6 +47,21 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 1.1, ease: [0.215, 0.61, 0.355, 1] }}
       >
+        {/* Soft colored rim — masked to the cutout silhouette */}
+        <span
+          className="portrait-cut__rim"
+          aria-hidden
+          style={{
+            WebkitMaskImage: `url(${src})`,
+            maskImage: `url(${src})`,
+            WebkitMaskSize: '100% auto',
+            maskSize: '100% auto',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+          }}
+        />
         <img
           src={src}
           alt={`Portrait von ${name}`}

@@ -2933,22 +2933,41 @@ html.js-reveal [data-reveal].is-in {
 }
 
 .portrait-stage {
+  --pt-violet: var(--violet);
+  --pt-blue: var(--blue);
+  --pt-ice: var(--ice);
   position: relative;
   isolation: isolate;
 }
-/* Soft wash behind the cutout — sits in the page bg */
+/* Ambient brand wash behind the cutout */
 .portrait-stage::before {
   content: "";
   position: absolute;
   inset: 14% 0% 0% 8%;
   border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
   background:
-    radial-gradient(circle at 38% 36%, color-mix(in srgb, var(--violet) 18%, transparent), transparent 62%),
-    radial-gradient(circle at 68% 62%, color-mix(in srgb, var(--blue) 14%, transparent), transparent 58%);
+    radial-gradient(circle at 38% 36%, color-mix(in srgb, var(--pt-violet) 20%, transparent), transparent 62%),
+    radial-gradient(circle at 68% 62%, color-mix(in srgb, var(--pt-blue) 16%, transparent), transparent 58%);
   filter: blur(40px);
   z-index: -1;
-  opacity: calc(0.38 * var(--fx, 1));
+  opacity: calc(0.4 * var(--fx, 1));
   animation: blob 12s ease-in-out infinite alternate;
+}
+.portrait-stage::after {
+  content: "";
+  position: absolute;
+  inset: 8% -6% 18% -4%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 45% 55% at 12% 48%, color-mix(in srgb, var(--pt-violet) 22%, transparent), transparent 70%),
+    radial-gradient(ellipse 42% 50% at 90% 42%, color-mix(in srgb, var(--pt-ice) 18%, transparent), transparent 68%),
+    radial-gradient(ellipse 50% 40% at 55% 92%, color-mix(in srgb, var(--pt-blue) 14%, transparent), transparent 72%);
+  filter: blur(36px);
+  opacity: calc(0.28 * var(--fx, 1));
+}
+.portrait-stage.is-live::after {
+  animation: portrait-side-wash 14s ease-in-out infinite;
 }
 @keyframes blob {
   from {
@@ -2958,10 +2977,136 @@ html.js-reveal [data-reveal].is-in {
     transform: translate(-2%, 3%) scale(1.04);
   }
 }
+@keyframes portrait-side-wash {
+  0%,
+  100% {
+    opacity: calc(0.22 * var(--fx, 1));
+    transform: translate(0, 0) scale(1);
+  }
+  45% {
+    opacity: calc(0.34 * var(--fx, 1));
+    transform: translate(1.5%, -1%) scale(1.03);
+  }
+  70% {
+    opacity: calc(0.26 * var(--fx, 1));
+    transform: translate(-1%, 1.5%) scale(0.99);
+  }
+}
+
+/* Floating color pools — left violet, right ice/blue */
+.portrait-light {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(28px);
+  opacity: calc(0.22 * var(--fx, 1));
+  mix-blend-mode: screen;
+}
+.portrait-light--violet {
+  left: -8%;
+  top: 28%;
+  width: 42%;
+  height: 48%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--pt-violet) 55%, transparent), transparent 70%);
+}
+.portrait-light--blue {
+  right: -10%;
+  top: 22%;
+  width: 44%;
+  height: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--pt-blue) 48%, transparent), transparent 72%);
+}
+.portrait-light--ice {
+  left: 28%;
+  bottom: 4%;
+  width: 46%;
+  height: 28%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--pt-ice) 40%, transparent), transparent 70%);
+  opacity: calc(0.16 * var(--fx, 1));
+}
+.portrait-stage.is-live .portrait-light--violet {
+  animation: portrait-light-a 11s ease-in-out infinite;
+}
+.portrait-stage.is-live .portrait-light--blue {
+  animation: portrait-light-b 13s ease-in-out infinite;
+}
+.portrait-stage.is-live .portrait-light--ice {
+  animation: portrait-light-c 10s ease-in-out infinite;
+}
+@keyframes portrait-light-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: calc(0.18 * var(--fx, 1));
+  }
+  50% {
+    transform: translate(4%, -3%) scale(1.08);
+    opacity: calc(0.3 * var(--fx, 1));
+  }
+}
+@keyframes portrait-light-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: calc(0.16 * var(--fx, 1));
+  }
+  50% {
+    transform: translate(-3%, 4%) scale(1.06);
+    opacity: calc(0.28 * var(--fx, 1));
+  }
+}
+@keyframes portrait-light-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: calc(0.12 * var(--fx, 1));
+  }
+  50% {
+    transform: translate(2%, -2%);
+    opacity: calc(0.22 * var(--fx, 1));
+  }
+}
+
+.portrait-orbit {
+  border: 1px dashed color-mix(in srgb, var(--pt-ice) 22%, transparent);
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--pt-violet) 10%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--pt-blue) 8%, transparent);
+}
+
 .portrait-cut {
   width: min(100%, 540px);
   margin-inline: auto;
-  filter: drop-shadow(0 22px 36px rgba(0, 0, 0, 0.28));
+  filter:
+    drop-shadow(0 22px 36px rgba(0, 0, 0, 0.28))
+    drop-shadow(0 0 22px color-mix(in srgb, var(--pt-violet) 12%, transparent))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--pt-blue) 10%, transparent));
+}
+/* Soft edge catch — brand colors along the silhouette only (mask set in JSX) */
+.portrait-cut__rim {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+  opacity: 0.32;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse 55% 70% at 8% 45%, color-mix(in srgb, var(--pt-violet) 42%, transparent), transparent 58%),
+    radial-gradient(ellipse 50% 65% at 94% 40%, color-mix(in srgb, var(--pt-ice) 38%, transparent), transparent 56%),
+    radial-gradient(ellipse 60% 40% at 50% 96%, color-mix(in srgb, var(--pt-blue) 26%, transparent), transparent 60%);
+}
+.portrait-stage.is-live .portrait-cut__rim {
+  animation: portrait-rim 9s ease-in-out infinite;
+}
+@keyframes portrait-rim {
+  0%,
+  100% {
+    opacity: 0.26;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 /* Extra CSS dissolve so the asset blends into --bg (face stays solid) */
 .portrait-cut img {
@@ -2979,8 +3124,13 @@ html.js-reveal [data-reveal].is-in {
   mask-composite: intersect;
 }
 @media (prefers-reduced-motion: reduce) {
-  .portrait-stage::before {
-    animation: none;
+  .portrait-stage::before,
+  .portrait-stage.is-live::after,
+  .portrait-stage.is-live .portrait-light--violet,
+  .portrait-stage.is-live .portrait-light--blue,
+  .portrait-stage.is-live .portrait-light--ice,
+  .portrait-stage.is-live .portrait-cut__rim {
+    animation: none !important;
   }
 }
 
