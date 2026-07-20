@@ -38,23 +38,13 @@
   ! X-Frame-Options
   ! Cross-Origin-Opener-Policy
   X-Frame-Options: SAMEORIGIN
+  Cache-Control: public, max-age=0, must-revalidate
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
 /studio/overlay.html
   ! Content-Security-Policy
   ! X-Frame-Options
   ! Cross-Origin-Opener-Policy
   X-Frame-Options: SAMEORIGIN
+  Cache-Control: public, max-age=0, must-revalidate
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
-
-# Studio assets must update immediately (work browsers / CDN)
-/studio/
-  Cache-Control: public, max-age=0, must-revalidate
-/studio/index.html
-  Cache-Control: public, max-age=0, must-revalidate
-/studio/app.js
-  Cache-Control: public, max-age=0, must-revalidate
-/studio/styles.css
-  Cache-Control: public, max-age=0, must-revalidate
-/studio/placement.js
-  Cache-Control: public, max-age=0, must-revalidate
 

@@ -671,7 +671,6 @@ async function runSeries(opts = {}) {
 
     setStep(3);
     status("Overlay-Vorschau wird gebaut…");
-    setBusy(false);
     await bakeAllPreviews();
     status(`Fertig: ${state.images.length} Bilder · ${Object.keys(state.copyByLang).length} Sprachen — PNG/ZIP unten.`);
     if (state.lightboxOpen) await applyToIframe($("lightboxStage"));
@@ -679,6 +678,7 @@ async function runSeries(opts = {}) {
     console.error(err);
     status(String(err.message || err));
     setStep(hasCopy() ? 2 : 1);
+  } finally {
     setBusy(false);
   }
 }
@@ -729,13 +729,14 @@ async function regenTextOnly() {
     LANGS.forEach((lang) => { if (tr[lang]) state.copyByLang[lang] = tr[lang]; });
 
     setStep(3);
-    setBusy(false);
+    status("Overlay-Vorschau…");
     await bakeAllPreviews();
     status("Neue Texte fertig.");
     if (state.lightboxOpen) await applyToIframe($("lightboxStage"));
   } catch (err) {
     console.error(err);
     status(String(err.message || err));
+  } finally {
     setBusy(false);
   }
 }
