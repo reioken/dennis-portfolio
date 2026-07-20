@@ -126,7 +126,7 @@ function buildHtml({ name, email, subject, message, when }) {
           </tr>
         </table>
         <div style="max-width:560px;margin-top:14px;font-size:11px;line-height:1.45;color:#7a8699;text-align:center;">
-          Art Director &amp; UI/UX Designer · dennisbf.design
+          Art Director · UX/UI · Hobby Dev · dennisbf.design
         </div>
       </td>
     </tr>

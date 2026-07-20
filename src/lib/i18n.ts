@@ -23,10 +23,10 @@ export const copy = {
         'Berry',
         'Riftcast',
         'Floordirekt Studio',
+        'Art Direction',
+        'UI/UX Design',
         'Hobby Software',
         'Product Design',
-        'UI/UX Design',
-        'Art Direction',
         'Prototyping',
         'Figma',
         'Cursor & Claude',
@@ -74,7 +74,7 @@ export const copy = {
     },
     about: {
       label: 'Über mich',
-      role: 'Art Director · UX/UI · Product',
+      role: 'Art Director · UX/UI · Hobby-Dev',
       lead: '6+ Jahre Agentur und Inhouse — Richtung, Branding und eigene Builds.',
       body: 'Fest bei Floordirekt. Freelance willkommen.',
       linkedin: 'LinkedIn',
@@ -116,11 +116,11 @@ export const copy = {
       body: 'WIP, Prototypen und Side Builds — hier darf gebastelt werden.',
     },
     footer: {
-      tagline: 'Hobby-Softwareentwickler · UX/UI · Art Director',
+      tagline: 'Art Director · UX/UI · Hobby-Softwareentwickler',
       top: 'Nach oben',
     },
     brand: {
-      short: 'Hobby-Dev · UX/UI · Art Director',
+      short: 'Art Director · UX/UI · Hobby-Dev',
     },
     hero: {
       openCase: 'Case öffnen',
@@ -151,10 +151,10 @@ export const copy = {
         'Berry',
         'Riftcast',
         'Floordirekt Studio',
+        'Art Direction',
+        'UI/UX Design',
         'Hobby Software',
         'Product Design',
-        'UI/UX Design',
-        'Art Direction',
         'Prototyping',
         'Figma',
         'Cursor & Claude',
@@ -202,7 +202,7 @@ export const copy = {
     },
     about: {
       label: 'About',
-      role: 'Art Director · UX/UI · Product',
+      role: 'Art Director · UX/UI · Hobby Dev',
       lead: '6+ years agency and in-house — direction, branding, and self-built products.',
       body: 'Full-time at Floordirekt. Freelance welcome.',
       linkedin: 'LinkedIn',
@@ -244,11 +244,11 @@ export const copy = {
       body: 'WIP, prototypes and side builds — the tinkering corner.',
     },
     footer: {
-      tagline: 'Hobby Software Developer · UX/UI · Art Director',
+      tagline: 'Art Director · UX/UI · Hobby Software Developer',
       top: 'Back to top',
     },
     brand: {
-      short: 'Hobby Dev · UX/UI · Art Director',
+      short: 'Art Director · UX/UI · Hobby Dev',
     },
     hero: {
       openCase: 'Open case',

@@ -1,6 +1,6 @@
 # Dennis Bierreth-Fernandez
 
-**Art Director & UI/UX Designer**  
+**Art Director · UX/UI · Hobby Dev**  
 Deutschland · dennis@dennisbf.design  
 Portfolio: https://dennisbf.design/  
 LinkedIn: https://www.linkedin.com/in/dennis-b-b08834272/
