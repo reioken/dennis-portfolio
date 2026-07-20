@@ -40,8 +40,7 @@ export const copy = {
       allProjects: 'Alle Projekte',
       processLabel: 'UX-Prozess',
       processTitle: 'Klarer Prozess',
-      processBody: 'Kompakt wie in der Mina Case Study: verstehen, strukturieren, am Nutzer prüfen — dann bauen.',
-      processNote: 'Vertieft in der Mina Case Study',
+      processBody: 'Verstehen, strukturieren, am Nutzer prüfen — dann bauen.',
       processSteps: [
         {
           title: 'Research',
@@ -176,8 +175,7 @@ export const copy = {
       allProjects: 'All projects',
       processLabel: 'UX process',
       processTitle: 'A clear process',
-      processBody: 'Condensed from the Mina case study: understand, structure, validate with users — then build.',
-      processNote: 'See the full flow in the Mina case study',
+      processBody: 'Understand, structure, validate with users — then build.',
       processSteps: [
         {
           title: 'Research',
