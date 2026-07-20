@@ -2933,39 +2933,222 @@ html.js-reveal [data-reveal].is-in {
 }
 
 .portrait-stage {
+  --pt-violet: var(--violet);
+  --pt-blue: var(--blue);
+  --pt-ice: var(--ice);
   position: relative;
   isolation: isolate;
 }
-.portrait-stage::before {
+/* Soft multi-stop wash — drifts with the edge sheen, no hard color blobs */
+.portrait-stage::before,
+.portrait-stage::after {
   content: "";
   position: absolute;
-  inset: 18% 2% 4% 22%;
-  border-radius: 40% 60% 55% 45% / 45% 40% 60% 55%;
-  background:
-    radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--violet) 22%, transparent), transparent 58%),
-    radial-gradient(circle at 70% 65%, color-mix(in srgb, var(--blue) 16%, transparent), transparent 55%);
-  filter: blur(36px);
+  pointer-events: none;
   z-index: -1;
-  opacity: calc(0.42 * var(--fx, 1));
-  animation: blob 12s ease-in-out infinite alternate;
+  border-radius: 46% 54% 52% 48% / 48% 44% 56% 52%;
+  filter: blur(42px);
+  opacity: calc(0.55 * var(--fx, 1));
 }
-@keyframes blob {
-  from {
+.portrait-stage::before {
+  inset: 16% 4% 6% 18%;
+  background:
+    radial-gradient(
+      ellipse 70% 65% at 38% 36%,
+      color-mix(in srgb, var(--pt-ice) 18%, transparent) 0%,
+      color-mix(in srgb, var(--pt-violet) 14%, transparent) 34%,
+      color-mix(in srgb, var(--pt-blue) 10%, transparent) 58%,
+      transparent 78%
+    );
+}
+.portrait-stage.is-live::before {
+  animation: portrait-wash-a 14s ease-in-out infinite;
+}
+.portrait-stage::after {
+  inset: 22% 8% 10% 12%;
+  background:
+    radial-gradient(
+      ellipse 65% 70% at 68% 62%,
+      color-mix(in srgb, var(--pt-blue) 16%, transparent) 0%,
+      color-mix(in srgb, var(--pt-violet) 10%, transparent) 42%,
+      transparent 72%
+    );
+  opacity: calc(0.4 * var(--fx, 1));
+  filter: blur(48px);
+}
+.portrait-stage.is-live::after {
+  animation: portrait-wash-b 11s ease-in-out infinite;
+}
+@keyframes portrait-wash-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: calc(0.48 * var(--fx, 1));
+  }
+  40% {
+    transform: translate(3%, -2%) scale(1.04);
+    opacity: calc(0.62 * var(--fx, 1));
+  }
+  70% {
+    transform: translate(-2%, 3%) scale(0.98);
+    opacity: calc(0.42 * var(--fx, 1));
+  }
+}
+@keyframes portrait-wash-b {
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
-  to {
-    transform: translate(-2%, 3%) scale(1.04);
+  50% {
+    transform: translate(-4%, 2%) scale(1.06);
   }
 }
+
+.portrait-orbit__ring {
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--pt-ice) 12%, transparent);
+  box-shadow: inset 0 0 24px color-mix(in srgb, var(--pt-blue) 6%, transparent);
+}
+/* Soft 4-point sparks on the orbit — same language as NEXUS, calmer */
+.portrait-spark {
+  --spark: var(--pt-ice);
+  position: absolute;
+  width: 1.15rem;
+  height: 1.15rem;
+  opacity: 0.35;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--spark) 70%, #fff) 0%,
+      color-mix(in srgb, var(--spark) 28%, transparent) 22%,
+      transparent 50%
+    ),
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--spark) 45%, transparent) 46%,
+      color-mix(in srgb, var(--spark) 80%, #fff) 50%,
+      color-mix(in srgb, var(--spark) 45%, transparent) 54%,
+      transparent 100%
+    ),
+    linear-gradient(
+      0deg,
+      transparent 0%,
+      color-mix(in srgb, var(--spark) 38%, transparent) 46%,
+      color-mix(in srgb, var(--spark) 75%, #fff) 50%,
+      color-mix(in srgb, var(--spark) 38%, transparent) 54%,
+      transparent 100%
+    );
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size:
+    55% 55%,
+    100% 1px,
+    1px 100%;
+  filter: blur(0.4px);
+}
+.portrait-stage.is-live .portrait-spark {
+  animation: portrait-spark 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.portrait-spark--a {
+  left: 50%;
+  top: 0;
+  translate: -50% -50%;
+  --spark: var(--pt-ice);
+}
+.portrait-spark--b {
+  right: 0;
+  bottom: 22%;
+  translate: 50% 0;
+  --spark: var(--pt-blue);
+  animation-delay: 1.6s !important;
+}
+.portrait-spark--c {
+  left: 8%;
+  bottom: 12%;
+  translate: -40% 0;
+  --spark: var(--pt-violet);
+  width: 0.9rem;
+  height: 0.9rem;
+  animation-delay: 3s !important;
+}
+@keyframes portrait-spark {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.7);
+  }
+  45% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+}
+
 .portrait-cut {
   width: min(100%, 540px);
   margin-inline: auto;
-  filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.35));
+  filter:
+    drop-shadow(0 18px 34px rgba(0, 0, 0, 0.32))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--pt-blue) 10%, transparent));
 }
 .portrait-cut img {
   width: 100%;
   height: auto;
   object-fit: contain;
+  opacity: 0.94;
+}
+/* Soft edge sheen — travels across the cutout like crystal light */
+.portrait-cut__sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 28%,
+    color-mix(in srgb, var(--pt-violet) 18%, transparent) 42%,
+    color-mix(in srgb, var(--pt-ice) 28%, transparent) 50%,
+    color-mix(in srgb, var(--pt-blue) 16%, transparent) 58%,
+    transparent 72%
+  );
+}
+.portrait-stage.is-live .portrait-cut__sheen {
+  animation: portrait-sheen 7.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes portrait-sheen {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translateX(-18%) skewX(-8deg);
+  }
+  28%,
+  42% {
+    opacity: 0.55;
+  }
+  58%,
+  100% {
+    opacity: 0;
+    transform: translateX(18%) skewX(-8deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portrait-stage.is-live::before,
+  .portrait-stage.is-live::after,
+  .portrait-stage.is-live .portrait-spark,
+  .portrait-stage.is-live .portrait-cut__sheen {
+    animation: none !important;
+  }
+  .portrait-cut__sheen,
+  .portrait-spark {
+    opacity: 0;
+  }
+  .portrait-stage::before,
+  .portrait-stage::after {
+    opacity: calc(0.35 * var(--fx, 1));
+  }
 }
 
 .rule {

@@ -11,26 +11,21 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
   const reduce = useReducedMotion();
 
   return (
-    <div className="portrait-stage relative mx-auto w-full max-w-[560px]">
-      {/* Orbiting ring — quieter, further out so it doesn't crowd the face */}
+    <div className={`portrait-stage relative mx-auto w-full max-w-[560px]${reduce ? '' : ' is-live'}`}>
+      {/* Soft orbit — slow, far out, no hard dashed ring */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-[-4%]"
+        className="portrait-orbit pointer-events-none absolute inset-[-6%]"
         animate={reduce ? undefined : { rotate: 360 }}
-        transition={reduce ? undefined : { duration: 36, repeat: Infinity, ease: 'linear' }}
+        transition={reduce ? undefined : { duration: 48, repeat: Infinity, ease: 'linear' }}
       >
-        <motion.div
-          className="absolute inset-0 rounded-full border border-dashed border-[color-mix(in_srgb,var(--ice)_18%,transparent)]"
-          initial={reduce ? { opacity: 0.25 } : { opacity: 0, scale: 0.94, rotate: -8 }}
-          animate={reduce ? { opacity: 0.25 } : { opacity: 0.55, scale: 1, rotate: 0 }}
-          transition={{ duration: 1.2, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--ember)] opacity-70" />
-          <span className="absolute bottom-[18%] right-0 h-1.5 w-1.5 translate-x-1/2 rounded-full bg-[var(--ice)] opacity-60" />
-        </motion.div>
+        <div className="portrait-orbit__ring absolute inset-0">
+          <span className="portrait-spark portrait-spark--a" />
+          <span className="portrait-spark portrait-spark--b" />
+          <span className="portrait-spark portrait-spark--c" />
+        </div>
       </motion.div>
 
-      {/* Vertical name rail */}
       <p
         aria-hidden
         className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 -rotate-90 origin-center whitespace-nowrap font-[family-name:var(--font-display)] text-[0.72rem] font-bold tracking-[0.35em] uppercase text-[var(--meta)] md:block"
@@ -44,6 +39,20 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 1.1, ease: [0.215, 0.61, 0.355, 1] }}
       >
+        <span
+          className="portrait-cut__sheen"
+          aria-hidden
+          style={{
+            WebkitMaskImage: `url(${src})`,
+            maskImage: `url(${src})`,
+            WebkitMaskSize: '100% auto',
+            maskSize: '100% auto',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+          }}
+        />
         <img
           src={src}
           alt={`Portrait von ${name}`}
