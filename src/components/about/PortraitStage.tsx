@@ -61,15 +61,12 @@ export default function PortraitStage({ src, name, roleDe, roleEn }: Props) {
         </motion.svg>
       </motion.div>
 
-      <p
-        aria-hidden
-        className="pointer-events-none absolute -left-2 top-1/2 hidden -translate-y-1/2 -rotate-90 origin-center whitespace-nowrap font-[family-name:var(--font-display)] text-[0.72rem] font-bold tracking-[0.35em] uppercase text-[var(--meta)] md:block"
-      >
+      <p className="portrait-name" aria-hidden>
         {name}
       </p>
 
       <motion.div
-        className="portrait-cut relative"
+        className="portrait-cut relative z-[2]"
         style={{ ['--pt-mask' as string]: `url(${src})` }}
         initial={reduce ? false : { opacity: 0, y: 40, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

@@ -3098,6 +3098,25 @@ html.js-reveal [data-reveal].is-in {
   }
 }
 
+/* Soft name plate sitting just behind the cutout */
+.portrait-name {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  z-index: 1;
+  margin: 0;
+  pointer-events: none;
+  transform: translate(-52%, -50%) rotate(-90deg);
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 5.2vw, 2.85rem);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text) 22%, var(--pt-violet) 18%);
+  opacity: 0.55;
+  user-select: none;
+}
 .portrait-cut {
   width: min(100%, 540px);
   margin-inline: auto;
