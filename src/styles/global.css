@@ -1926,166 +1926,157 @@ a:hover .brand-mark--nav {
   padding: clamp(4rem, 10vw, 7.5rem) 0;
 }
 
-/* —— Klarer Prozess — visual flow, no cards —— */
-.process-flow {
-  --process-gap-x: 2.25rem;
+/* —— Klarer Prozess — horizontal rail / mobile timeline —— */
+.process-rail {
+  --rail-icon: 7.5rem;
+  --rail-gap: clamp(1.5rem, 3vw, 2.5rem);
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: clamp(2.25rem, 5vw, 3rem);
+  gap: 2rem;
   position: relative;
 }
 @media (min-width: 768px) {
-  .process-flow {
+  .process-rail {
+    --rail-icon: 8.75rem;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    column-gap: var(--process-gap-x);
-    row-gap: 1.25rem;
-    align-items: start;
+    column-gap: var(--rail-gap);
+    row-gap: 0;
+    /* continuous rail through icon centers */
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ice) 0%, transparent) 0%,
+      color-mix(in srgb, var(--ice) 42%, transparent) 18%,
+      color-mix(in srgb, var(--violet) 50%, transparent) 50%,
+      color-mix(in srgb, var(--blue) 40%, transparent) 82%,
+      color-mix(in srgb, var(--blue) 0%, transparent) 100%
+    );
+    background-size: calc(100% - var(--rail-icon)) 1px;
+    background-repeat: no-repeat;
+    background-position: center calc(1.55rem + var(--rail-icon) / 2);
+    animation: process-rail-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
-.process-flow__step {
+.process-rail__step {
   position: relative;
   z-index: 1;
   margin: 0;
-  text-align: center;
-  max-width: 22rem;
-  margin-inline: auto;
-  container-type: inline-size;
-  container-name: process-step;
+  display: grid;
+  grid-template-columns: var(--rail-icon) minmax(0, 1fr);
+  column-gap: 1.15rem;
+  align-items: start;
+  text-align: left;
 }
 @media (min-width: 768px) {
-  .process-flow__step {
-    max-width: none;
+  .process-rail__step {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 }
-.process-flow__visual {
-  position: relative;
-  width: min(100%, 220px);
-  aspect-ratio: 1;
-  margin: 0 auto 1.15rem;
-  display: grid;
-  place-items: center;
-  isolation: isolate;
-}
-/* Soft plate behind the mark (no connector line through the icon) */
-.process-flow__visual::before {
+/* Mobile vertical rail */
+.process-rail__step:not(:last-child)::before {
   content: '';
   position: absolute;
-  inset: 12%;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--bg) 0%, var(--bg) 56%, transparent 74%);
-  z-index: 0;
+  left: calc(var(--rail-icon) / 2);
+  top: calc(1.55rem + var(--rail-icon));
+  bottom: -2rem;
+  width: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ice) 45%, transparent),
+    color-mix(in srgb, var(--violet) 35%, transparent),
+    transparent
+  );
   pointer-events: none;
-}
-/* Centered bridge between icon centers — only desktop */
-.process-flow__bridge {
-  display: none;
 }
 @media (min-width: 768px) {
-  .process-flow__bridge {
-    display: grid;
-    place-items: center;
-    position: absolute;
-    z-index: 0;
-    top: 50%;
-    left: 100%;
-    /* from this icon edge → across step padding + column gap → to next icon edge */
-    width: calc(100cqi - 100% + var(--process-gap-x));
-    height: 1.25rem;
-    transform: translateY(-50%);
-    pointer-events: none;
-  }
-  .process-flow__bridge-rail {
-    position: absolute;
-    inset: 50% 12% auto;
-    height: 1px;
-    transform: translateY(-50%);
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--ice) 0%, transparent) 0%,
-      color-mix(in srgb, var(--ice) 38%, transparent) 22%,
-      color-mix(in srgb, var(--violet) 48%, transparent) 50%,
-      color-mix(in srgb, var(--blue) 36%, transparent) 78%,
-      color-mix(in srgb, var(--blue) 0%, transparent) 100%
-    );
-    opacity: 0.7;
-  }
-  .process-flow__bridge-node {
-    position: relative;
-    z-index: 1;
-    width: 7px;
-    height: 7px;
-    rotate: 45deg;
-    border-radius: 1.5px;
-    background: color-mix(in srgb, var(--ice) 55%, var(--violet));
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--ice) 22%, transparent),
-      0 0 14px color-mix(in srgb, var(--violet) 35%, transparent);
+  .process-rail__step:not(:last-child)::before {
+    display: none;
   }
 }
-.process-flow__glow {
-  position: absolute;
-  inset: 16%;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 45% 40%, color-mix(in srgb, var(--ice) 14%, transparent), transparent 58%),
-    radial-gradient(circle at 60% 65%, color-mix(in srgb, var(--violet) 12%, transparent), transparent 62%),
-    radial-gradient(circle at 40% 70%, color-mix(in srgb, var(--blue) 10%, transparent), transparent 65%);
-  filter: blur(30px);
-  opacity: 0.4;
-  pointer-events: none;
-  z-index: 0;
-  animation: process-glow 7.5s ease-in-out infinite;
+.process-rail__node {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  width: var(--rail-icon);
 }
-.process-flow__step:nth-child(2) .process-flow__glow {
-  animation-delay: -2.4s;
+@media (min-width: 768px) {
+  .process-rail__node {
+    width: 100%;
+    margin-bottom: 1.25rem;
+  }
 }
-.process-flow__step:nth-child(3) .process-flow__glow {
-  animation-delay: -4.8s;
-}
-.process-flow__img {
-  position: relative;
-  z-index: 1;
-  width: 86%;
-  height: auto;
-  display: block;
-  /* Drop leftover black studio plates on the dark page */
-  mix-blend-mode: lighten;
-  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.4));
-  animation: process-float 6.8s ease-in-out infinite;
-  transform-origin: 50% 60%;
-}
-.process-flow__step:nth-child(2) .process-flow__img {
-  animation-delay: -2.2s;
-}
-.process-flow__step:nth-child(3) .process-flow__img {
-  animation-delay: -4.4s;
-}
-.process-flow__index {
-  position: absolute;
-  left: 6%;
-  top: 8%;
-  z-index: 2;
+.process-rail__num {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.16em;
-  color: color-mix(in srgb, var(--meta) 85%, var(--text));
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+  color: var(--meta);
+  line-height: 1;
+}
+.process-rail__icon {
+  position: relative;
+  width: var(--rail-icon);
+  height: var(--rail-icon);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--panel) 88%, transparent) 0%, transparent 68%),
+    radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--ice) 10%, transparent), transparent 55%),
+    radial-gradient(circle at 65% 70%, color-mix(in srgb, var(--violet) 8%, transparent), transparent 60%);
+}
+.process-rail__icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--stroke) 70%, transparent);
   pointer-events: none;
 }
-.process-flow__title {
-  margin: 0 0 0.45rem;
+.process-rail__img {
+  position: relative;
+  z-index: 1;
+  width: 78%;
+  height: auto;
+  display: block;
+  /* Soft mask: fade black studio plate into the well */
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 52%, transparent 74%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 52%, transparent 74%);
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.45));
+  animation: process-float 7.2s ease-in-out infinite;
+  transform-origin: 50% 55%;
+}
+.process-rail__step:nth-child(2) .process-rail__img {
+  animation-delay: -2.4s;
+}
+.process-rail__step:nth-child(3) .process-rail__img {
+  animation-delay: -4.8s;
+}
+.process-rail__copy {
+  min-width: 0;
+  padding-top: 0.15rem;
+}
+@media (min-width: 768px) {
+  .process-rail__copy {
+    padding-top: 0;
+    max-width: 20rem;
+  }
+}
+.process-rail__title {
+  margin: 0 0 0.4rem;
   font-family: var(--font-display);
   font-size: clamp(1.15rem, 2.2vw, 1.4rem);
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text);
 }
-.process-flow__body {
-  margin: 0 auto;
-  max-width: 19rem;
+.process-rail__body {
+  margin: 0;
   font-size: 0.95rem;
   line-height: 1.5;
   letter-spacing: normal;
@@ -2098,23 +2089,24 @@ a:hover .brand-mark--nav {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-7px);
+    transform: translateY(-5px);
   }
 }
-@keyframes process-glow {
-  0%,
-  100% {
-    opacity: 0.28;
-    transform: scale(0.96);
+@keyframes process-rail-in {
+  from {
+    background-size: 0 1px;
+    opacity: 0.65;
   }
-  50% {
-    opacity: 0.48;
-    transform: scale(1.05);
+  to {
+    background-size: calc(100% - var(--rail-icon)) 1px;
+    opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .process-flow__img,
-  .process-flow__glow {
+  .process-rail__img {
+    animation: none !important;
+  }
+  .process-rail {
     animation: none !important;
   }
 }

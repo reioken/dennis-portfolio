@@ -159,41 +159,37 @@ const collageShots = [
         </p>
       </div>
 
-      <ol class="process-flow" aria-label={copy.de.home.processTitle}>
+      <ol class="process-rail" aria-label={copy.de.home.processTitle}>
         {
           copy.de.home.processSteps.map((step, i) => {
             const en = copy.en.home.processSteps[i];
+            const num = String(i + 1).padStart(2, '0');
             return (
-              <li class="process-flow__step" data-reveal style={`--reveal-delay:${i * 0.08}s`}>
-                <div class="process-flow__visual">
-                  <span class="process-flow__glow" aria-hidden="true" />
-                  <img
-                    class="process-flow__img"
-                    src={asset(step.image)}
-                    alt={step.imageAlt}
-                    width={896}
-                    height={896}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <span class="process-flow__index" aria-hidden="true">0{i + 1}</span>
-                  {
-                    i < copy.de.home.processSteps.length - 1 && (
-                      <span class="process-flow__bridge" aria-hidden="true">
-                        <span class="process-flow__bridge-rail" />
-                        <span class="process-flow__bridge-node" />
-                      </span>
-                    )
-                  }
+              <li class="process-rail__step" data-reveal style={`--reveal-delay:${i * 0.1}s`}>
+                <div class="process-rail__node">
+                  <span class="process-rail__num" aria-hidden="true">{num}</span>
+                  <div class="process-rail__icon">
+                    <img
+                      class="process-rail__img"
+                      src={asset(step.image)}
+                      alt={step.imageAlt}
+                      width={896}
+                      height={896}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
                 </div>
-                <h3 class="process-flow__title">
-                  <span data-lang="de">{step.title}</span>
-                  <span data-lang="en">{en.title}</span>
-                </h3>
-                <p class="process-flow__body">
-                  <span data-lang="de">{step.body}</span>
-                  <span data-lang="en">{en.body}</span>
-                </p>
+                <div class="process-rail__copy">
+                  <h3 class="process-rail__title">
+                    <span data-lang="de">{step.title}</span>
+                    <span data-lang="en">{en.title}</span>
+                  </h3>
+                  <p class="process-rail__body">
+                    <span data-lang="de">{step.body}</span>
+                    <span data-lang="en">{en.body}</span>
+                  </p>
+                </div>
               </li>
             );
           })
