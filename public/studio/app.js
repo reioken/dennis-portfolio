@@ -390,6 +390,15 @@ async function prepareImagePreview(img, brand) {
 }
 
 /**
+ * Was der Treue-Check nachweislich abdeckt. Gemessen 2026-07-20:
+ * Farbabweichung und falsches Produkt werden zuverlaessig erkannt,
+ * moderate Musterdrift (Florhoehe, Webdichte) NICHT — auch nicht mit
+ * hoeherer Aufloesung, staerkerem Modell oder geschaerftem Prompt.
+ * Details in fd_pipeline/ai_image_qa.py.
+ */
+const FIDELITY_SCOPE = "Geprüft werden Farbe und Form. Florhöhe und Webdichte selbst prüfen.";
+
+/**
  * Kurztext zum Treue-Urteil fuer die Statuszeile.
  * Liefert null, wenn es nichts zu melden gibt (bestanden und geprueft).
  */
@@ -403,6 +412,8 @@ function fidelityStatusText(fidelity) {
     const detail = what.length ? ` (${what.join(" und ")})` : "";
     return `Achtung: Produkttreue nur ${fidelity.score}%${detail} — bitte prüfen oder neu generieren.`;
   }
+  // Bestanden heisst "Farbe und Form stimmen", nicht "Muster stimmt".
+  // Deshalb hier kein Entwarnungstext, der mehr verspricht als geprueft wurde.
   return null;
 }
 
@@ -416,7 +427,7 @@ function fidelityBadge(fidelity) {
   if (fidelity.skipped) {
     badge.classList.add("is-unknown");
     badge.textContent = "ungeprüft";
-    badge.title = fidelity.reason || "Produkttreue wurde nicht geprüft.";
+    badge.title = `${fidelity.reason || "Produkttreue wurde nicht geprüft."}`;
   } else {
     badge.classList.add("is-warn");
     badge.textContent = `Treue ${fidelity.score}%`;
@@ -424,7 +435,8 @@ function fidelityBadge(fidelity) {
     badge.title =
       `Unter Schwelle ${fidelity.threshold ?? 75}%. ` +
       (fidelity.reason || "") +
-      (issues ? ` — ${issues}` : "");
+      (issues ? ` — ${issues}` : "") +
+      `\n\n${FIDELITY_SCOPE}`;
   }
   return badge;
 }
