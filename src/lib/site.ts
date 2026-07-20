@@ -115,12 +115,12 @@ export const timeline = [
     year: '2025 – heute',
     yearEn: '2025 – present',
     title: {
-      de: 'Art Direction & Studio Tools — Floordirekt',
-      en: 'Art Direction & Studio Tools — Floordirekt',
+      de: 'Art Director — Floordirekt',
+      en: 'Art Director — Floordirekt',
     },
     body: {
-      de: 'Floordirekt Studio / Produktbild Studio: Imagery-System und Studio-Workflow für Shop-Produktbilder — Varianten, mehrsprachige Overlays, Batch-Export, visuelle Standards.',
-      en: 'Floordirekt Studio / Product Image Studio: imagery system and studio workflow for shop product shots — variants, multilingual overlays, batch export, visual standards.',
+      de: 'Visuelle Richtung für Marke und Shop: Design-Systeme, Kampagnen, Bildsprache und UX/UI quer über Touchpoints.',
+      en: 'Visual direction for brand and shop: design systems, campaigns, imagery language, and UX/UI across touchpoints.',
     },
   },
   {
