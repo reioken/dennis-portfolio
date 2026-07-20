@@ -1928,6 +1928,7 @@ a:hover .brand-mark--nav {
 
 /* —— Klarer Prozess — visual flow, no cards —— */
 .process-flow {
+  --process-gap-x: 2.25rem;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1938,61 +1939,9 @@ a:hover .brand-mark--nav {
 @media (min-width: 768px) {
   .process-flow {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.25rem 1.75rem;
+    column-gap: var(--process-gap-x);
+    row-gap: 1.25rem;
     align-items: start;
-  }
-  /* Connector sits behind icons; mask punches gaps at each mark */
-  .process-flow::before {
-    content: '';
-    position: absolute;
-    top: clamp(5.5rem, 12vw, 7.25rem);
-    left: 10%;
-    right: 10%;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      color-mix(in srgb, var(--ice) 22%, transparent) 18%,
-      color-mix(in srgb, var(--violet) 32%, transparent) 50%,
-      color-mix(in srgb, var(--blue) 26%, transparent) 82%,
-      transparent 100%
-    );
-    pointer-events: none;
-    z-index: 0;
-    -webkit-mask-image: linear-gradient(
-      90deg,
-      #000 0%,
-      #000 calc(16.666% - 6.5rem),
-      transparent calc(16.666% - 6.5rem),
-      transparent calc(16.666% + 6.5rem),
-      #000 calc(16.666% + 6.5rem),
-      #000 calc(50% - 6.5rem),
-      transparent calc(50% - 6.5rem),
-      transparent calc(50% + 6.5rem),
-      #000 calc(50% + 6.5rem),
-      #000 calc(83.333% - 6.5rem),
-      transparent calc(83.333% - 6.5rem),
-      transparent calc(83.333% + 6.5rem),
-      #000 calc(83.333% + 6.5rem),
-      #000 100%
-    );
-    mask-image: linear-gradient(
-      90deg,
-      #000 0%,
-      #000 calc(16.666% - 6.5rem),
-      transparent calc(16.666% - 6.5rem),
-      transparent calc(16.666% + 6.5rem),
-      #000 calc(16.666% + 6.5rem),
-      #000 calc(50% - 6.5rem),
-      transparent calc(50% - 6.5rem),
-      transparent calc(50% + 6.5rem),
-      #000 calc(50% + 6.5rem),
-      #000 calc(83.333% - 6.5rem),
-      transparent calc(83.333% - 6.5rem),
-      transparent calc(83.333% + 6.5rem),
-      #000 calc(83.333% + 6.5rem),
-      #000 100%
-    );
   }
 }
 .process-flow__step {
@@ -2002,6 +1951,8 @@ a:hover .brand-mark--nav {
   text-align: center;
   max-width: 22rem;
   margin-inline: auto;
+  container-type: inline-size;
+  container-name: process-step;
 }
 @media (min-width: 768px) {
   .process-flow__step {
@@ -2017,15 +1968,61 @@ a:hover .brand-mark--nav {
   place-items: center;
   isolation: isolate;
 }
-/* Page-colored disc so residual line never reads through the mark */
+/* Soft plate behind the mark (no connector line through the icon) */
 .process-flow__visual::before {
   content: '';
   position: absolute;
-  inset: 10%;
+  inset: 12%;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--bg) 0%, var(--bg) 58%, transparent 72%);
+  background: radial-gradient(circle, var(--bg) 0%, var(--bg) 56%, transparent 74%);
   z-index: 0;
   pointer-events: none;
+}
+/* Centered bridge between icon centers — only desktop */
+.process-flow__bridge {
+  display: none;
+}
+@media (min-width: 768px) {
+  .process-flow__bridge {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    z-index: 0;
+    top: 50%;
+    left: 100%;
+    /* from this icon edge → across step padding + column gap → to next icon edge */
+    width: calc(100cqi - 100% + var(--process-gap-x));
+    height: 1.25rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  .process-flow__bridge-rail {
+    position: absolute;
+    inset: 50% 12% auto;
+    height: 1px;
+    transform: translateY(-50%);
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ice) 0%, transparent) 0%,
+      color-mix(in srgb, var(--ice) 38%, transparent) 22%,
+      color-mix(in srgb, var(--violet) 48%, transparent) 50%,
+      color-mix(in srgb, var(--blue) 36%, transparent) 78%,
+      color-mix(in srgb, var(--blue) 0%, transparent) 100%
+    );
+    opacity: 0.7;
+  }
+  .process-flow__bridge-node {
+    position: relative;
+    z-index: 1;
+    width: 7px;
+    height: 7px;
+    rotate: 45deg;
+    border-radius: 1.5px;
+    background: color-mix(in srgb, var(--ice) 55%, var(--violet));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--ice) 22%, transparent),
+      0 0 14px color-mix(in srgb, var(--violet) 35%, transparent);
+  }
 }
 .process-flow__glow {
   position: absolute;

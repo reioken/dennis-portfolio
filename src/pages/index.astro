@@ -177,6 +177,14 @@ const collageShots = [
                     decoding="async"
                   />
                   <span class="process-flow__index" aria-hidden="true">0{i + 1}</span>
+                  {
+                    i < copy.de.home.processSteps.length - 1 && (
+                      <span class="process-flow__bridge" aria-hidden="true">
+                        <span class="process-flow__bridge-rail" />
+                        <span class="process-flow__bridge-node" />
+                      </span>
+                    )
+                  }
                 </div>
                 <h3 class="process-flow__title">
                   <span data-lang="de">{step.title}</span>
