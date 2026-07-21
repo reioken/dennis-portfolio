@@ -212,7 +212,7 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
           name="message"
           required
           rows={6}
-          maxLength={4000}
+          maxLength={8000}
           aria-invalid={isInvalid('message') || undefined}
           aria-describedby={isInvalid('message') ? 'fe-message' : undefined}
         />

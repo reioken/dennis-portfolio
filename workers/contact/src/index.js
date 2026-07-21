@@ -1,7 +1,9 @@
 import { EmailMessage } from 'cloudflare:email';
 
-const MAX = { name: 80, email: 160, subject: 120, message: 4000 };
+const MAX = { name: 80, email: 160, subject: 120, message: 8000 };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** SMTP soft line limit — keep payload lines well under 998 octets. */
+const MIME_LINE = 76;
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -28,6 +30,41 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+/** Quoted-printable (RFC 2045) — prevents MTAs from mangling/truncating long 8-bit lines. */
+function toQuotedPrintable(input) {
+  const bytes = new TextEncoder().encode(String(input ?? ''));
+  let out = '';
+  let lineLen = 0;
+
+  const pushSoftBreak = () => {
+    out += '=\r\n';
+    lineLen = 0;
+  };
+
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i];
+    let chunk;
+    if (b === 0x0a) {
+      // Normalize lone LF / already-handled CR LF
+      out += '\r\n';
+      lineLen = 0;
+      continue;
+    }
+    if (b === 0x0d) {
+      if (bytes[i + 1] === 0x0a) i++;
+      out += '\r\n';
+      lineLen = 0;
+      continue;
+    }
+    const literal = b === 0x09 || (b >= 0x20 && b <= 0x7e && b !== 0x3d);
+    chunk = literal ? String.fromCharCode(b) : `=${b.toString(16).toUpperCase().padStart(2, '0')}`;
+    if (lineLen + chunk.length > MIME_LINE - 1) pushSoftBreak();
+    out += chunk;
+    lineLen += chunk.length;
+  }
+  return out;
+}
+
 function formatWhen(date = new Date()) {
   return new Intl.DateTimeFormat('de-DE', {
     timeZone: 'Europe/Berlin',
@@ -36,7 +73,7 @@ function formatWhen(date = new Date()) {
   }).format(date);
 }
 
-function buildPlainText({ name, email, subject, message, when }) {
+function buildPlainText({ name, email, subject, message, when, charCount }) {
   return [
     'DENNIS BIERRETH-FERNANDEZ',
     'Portfolio inquiry',
@@ -47,6 +84,7 @@ function buildPlainText({ name, email, subject, message, when }) {
     `Subject:  ${subject}`,
     `Received: ${when} (Europe/Berlin)`,
     `Source:   dennisbf.design/contact`,
+    `Length:   ${charCount} characters`,
     '',
     'Message',
     '────────────────────────────────────────',
@@ -55,10 +93,11 @@ function buildPlainText({ name, email, subject, message, when }) {
     '────────────────────────────────────────',
     `Reply to this email to answer ${name} directly.`,
     'Their address is set as Reply-To.',
+    '— end of message —',
   ].join('\n');
 }
 
-function buildHtml({ name, email, subject, message, when }) {
+function buildHtml({ name, email, subject, message, when, charCount }) {
   const safeName = escapeHtml(name);
   const safeEmail = escapeHtml(email);
   const safeSubject = escapeHtml(subject);
@@ -113,7 +152,7 @@ function buildHtml({ name, email, subject, message, when }) {
           <tr>
             <td style="padding:16px 28px 8px;">
               <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6b778c;font-weight:700;margin-bottom:10px;">Message</div>
-              <div style="font-size:15px;line-height:1.6;color:#1a1f2b;white-space:normal;">${safeMessage}</div>
+              <div style="font-size:15px;line-height:1.65;color:#1a1f2b;white-space:pre-wrap;word-break:break-word;">${safeMessage}</div>
             </td>
           </tr>
           <tr>
@@ -121,6 +160,7 @@ function buildHtml({ name, email, subject, message, when }) {
               <div style="border-top:1px solid #e3e8f0;padding-top:16px;font-size:12px;line-height:1.5;color:#6b778c;">
                 Reply to this email to answer <strong style="color:#121826;">${safeName}</strong> directly.
                 Their address is set as Reply-To.
+                <div style="margin-top:8px;font-size:11px;color:#8b95a8;">Full message · ${charCount} characters · end of message</div>
               </div>
             </td>
           </tr>
@@ -151,26 +191,28 @@ function buildRawMime({ fromAddr, fromName, to, replyTo, subject, text, html }) 
     '',
     `--${boundary}`,
     'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: 8bit',
+    'Content-Transfer-Encoding: quoted-printable',
     '',
-    text,
+    toQuotedPrintable(text),
     '',
     `--${boundary}`,
     'Content-Type: text/html; charset=UTF-8',
-    'Content-Transfer-Encoding: 8bit',
+    'Content-Transfer-Encoding: quoted-printable',
     '',
-    html,
+    toQuotedPrintable(html),
     '',
     `--${boundary}--`,
     '',
   ].join('\r\n');
 }
 
+/** Trim + UTF-8-safe length cap (won't split surrogate pairs / code points). */
 function clean(value, max) {
-  return String(value ?? '')
+  const s = String(value ?? '')
     .replace(/\r\n/g, '\n')
-    .trim()
-    .slice(0, max);
+    .replace(/\r/g, '\n')
+    .trim();
+  return [...s].slice(0, max).join('');
 }
 
 /** Branded result page for no-JS form posts (progressive enhancement fallback). */
@@ -250,6 +292,7 @@ async function handleContact(request, env) {
   const email = clean(body.email, MAX.email).toLowerCase();
   const subject = clean(body.subject, MAX.subject) || 'General inquiry';
   const message = clean(body.message, MAX.message);
+  const charCount = [...message].length;
 
   if (!name || !email || !message) {
     return respond({ ok: false, error: 'missing_fields' }, 400);
@@ -265,8 +308,8 @@ async function handleContact(request, env) {
   const fromAddr = env.CONTACT_FROM || 'contact@dennisbf.design';
   const when = formatWhen();
   const mailSubject = `${subject} — ${name}`;
-  const text = buildPlainText({ name, email, subject, message, when });
-  const html = buildHtml({ name, email, subject, message, when });
+  const text = buildPlainText({ name, email, subject, message, when, charCount });
+  const html = buildHtml({ name, email, subject, message, when, charCount });
 
   const raw = buildRawMime({
     fromAddr,
@@ -280,6 +323,7 @@ async function handleContact(request, env) {
 
   try {
     await env.CONTACT.send(new EmailMessage(fromAddr, to, raw));
+    console.log('contact mail sent', { charCount, subject: mailSubject.slice(0, 80) });
     return respond({ ok: true }, 200);
   } catch (err) {
     console.error('contact mail failed', err?.message || err);
