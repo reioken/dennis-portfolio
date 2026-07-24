@@ -173,6 +173,22 @@ const breadcrumbLd = {
           <span data-lang="en">{data.summaryEn ?? data.summary}</span>
         </p>
         {
+          data.externalUrl && (
+            <div class="case-page__cta mt-6">
+              <a
+                class="btn btn--primary"
+                href={data.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span data-lang="de">App öffnen</span>
+                <span data-lang="en">Open app</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          )
+        }
+        {
           hasBody && (
             <div class="case-page__copy prose-case">
               <Content />
