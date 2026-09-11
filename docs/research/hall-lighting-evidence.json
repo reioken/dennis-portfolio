@@ -1,0 +1,305 @@
+{
+  "scope": "Local development scene; Three.js r181; 1600x1000; 2026-09-11; no production source mutation",
+  "methods": {
+    "ablation": "Frozen camera and navigation after room ignition. Restore each source to baseline before next variant. Screenshot PNGs at identical viewport. Extract ROI to a buffer before computing Sharp stats.",
+    "regions": {
+      "wall": {
+        "left": 200,
+        "top": 130,
+        "width": 350,
+        "height": 500
+      },
+      "cabinetLower": {
+        "left": 715,
+        "top": 686,
+        "width": 172,
+        "height": 123
+      }
+    },
+    "limits": "RGB screenshot means are nonlinear display values, not energy contributions. One initial scene only. Reflection HDR inputs were measured, not the exact clipped output after blur."
+  },
+  "inventory": {
+    "lights": [
+      {
+        "type": "AmbientLight",
+        "name": "",
+        "intensity": 2.2,
+        "color": "2a2f45",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "HemisphereLight",
+        "name": "",
+        "intensity": 1.2,
+        "color": "3a3f5c",
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "SpotLight",
+        "name": "",
+        "intensity": 26,
+        "color": "d8dff0",
+        "position": [
+          -8,
+          4.05,
+          1.2
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "SpotLight",
+        "name": "",
+        "intensity": 26,
+        "color": "d8dff0",
+        "position": [
+          -4,
+          4.05,
+          1.2
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "SpotLight",
+        "name": "",
+        "intensity": 26,
+        "color": "d8dff0",
+        "position": [
+          0,
+          4.05,
+          1.2
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "SpotLight",
+        "name": "",
+        "intensity": 26,
+        "color": "d8dff0",
+        "position": [
+          4,
+          4.05,
+          1.2
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "SpotLight",
+        "name": "",
+        "intensity": 26,
+        "color": "d8dff0",
+        "position": [
+          8,
+          4.05,
+          1.2
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "RectAreaLight",
+        "name": "",
+        "intensity": 8.459999999999999,
+        "color": "ffffff",
+        "position": [
+          2.465,
+          3.2199999999999998,
+          -1.1
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "PointLight",
+        "name": "",
+        "intensity": 1.88,
+        "color": "ffffff",
+        "position": [
+          2.465,
+          2.9099999999999993,
+          -1.17
+        ],
+        "castShadow": false
+      }
+    ],
+    "shadowMap": false,
+    "environment": 0.38,
+    "exposure": 0.98,
+    "lite": false,
+    "perf": 2,
+    "stations": [
+      {
+        "slug": "kasse",
+        "brand": "c8daf4",
+        "x": 0
+      },
+      {
+        "slug": "riftback",
+        "brand": "c9a45c",
+        "x": 2.465
+      },
+      {
+        "slug": "nexus",
+        "brand": "ac8bfd",
+        "x": 4.935
+      },
+      {
+        "slug": "lowlight",
+        "brand": "d8c3a5",
+        "x": 7.4399999999999995
+      },
+      {
+        "slug": "saute-survivors",
+        "brand": "e03a2f",
+        "x": 9.85
+      },
+      {
+        "slug": "echo-frequency",
+        "brand": "58c2ba",
+        "x": 12.13
+      },
+      {
+        "slug": "safeplate",
+        "brand": "c6a57b",
+        "x": 14.280000000000001
+      },
+      {
+        "slug": "cab-no-9",
+        "brand": "e4d8b8",
+        "x": 16.44
+      },
+      {
+        "slug": "hookline",
+        "brand": "d4ff3a",
+        "x": 18.78
+      },
+      {
+        "slug": "berry",
+        "brand": "5ce6a0",
+        "x": 20.98
+      },
+      {
+        "slug": "carillon",
+        "brand": "e0663a",
+        "x": 23.15
+      },
+      {
+        "slug": "riftcast",
+        "brand": "b69cff",
+        "x": 25.544999999999998
+      },
+      {
+        "slug": "briefly",
+        "brand": "8c2f1d",
+        "x": 27.79
+      },
+      {
+        "slug": "mina",
+        "brand": "f2d33c",
+        "x": 29.81
+      },
+      {
+        "slug": "telefon",
+        "brand": "c8daf4",
+        "x": 31.88
+      }
+    ],
+    "mirrorType": 1016,
+    "errors": []
+  },
+  "ablation": [
+    {
+      "variant": "baseline",
+      "wallMean": [
+        15.801045714285713,
+        14.652188571428571,
+        14.624857142857143
+      ],
+      "cabinetLowerMean": [
+        37.56092834184156,
+        39.761533371147664,
+        45.58115900926451
+      ]
+    },
+    {
+      "variant": "ambient18",
+      "wallMean": [
+        15.68241142857143,
+        14.555965714285714,
+        14.458
+      ],
+      "cabinetLowerMean": [
+        37.21261107959917,
+        39.30728871242201,
+        44.61996596710153
+      ]
+    },
+    {
+      "variant": "spots20",
+      "wallMean": [
+        15.189565714285715,
+        14.033902857142857,
+        13.911085714285715
+      ],
+      "cabinetLowerMean": [
+        26.689118926072982,
+        28.328842881452072,
+        31.873038381546607
+      ]
+    },
+    {
+      "variant": "environment15",
+      "wallMean": [
+        0.9418171428571429,
+        0.7793828571428572,
+        0.8719485714285714
+      ],
+      "cabinetLowerMean": [
+        11.908158442049537,
+        13.610134240877292,
+        17.915768576290414
+      ]
+    },
+    {
+      "variant": "tv0",
+      "wallMean": [
+        15.586417142857142,
+        14.454554285714286,
+        14.430302857142857
+      ],
+      "cabinetLowerMean": [
+        37.29901682737758,
+        39.50165437700888,
+        45.31168462847419
+      ]
+    }
+  ],
+  "reflection": {
+    "mirror": {
+      "width": 512,
+      "height": 256,
+      "type": 1016
+    },
+    "blurTargets": [
+      {
+        "width": 512,
+        "height": 256,
+        "type": 1009
+      },
+      {
+        "width": 512,
+        "height": 256,
+        "type": 1009
+      }
+    ],
+    "channelsAboveOne": 252,
+    "maxChannel": 4.02734375
+  }
+}
