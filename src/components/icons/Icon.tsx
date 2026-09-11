@@ -1,39 +1,45 @@
-/** Nucleo Sharp / 24px outline. Selected from the owner's local Nucleo collection.
- * Source IDs are recorded in nucleo-sources.json. Keep the original drawing/stroke geometry.
- */
-const icons = {
-  'home': (<g><path d="M9 21V16C9 14.3431 10.3431 13 12 13C13.6569 13 15 14.3431 15 16V21" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M12 2L2 9.5V10.5L4 11V21H20V11L22 10.5V9.5L12 2Z" stroke="currentColor" strokeWidth="2" fill="none"></path></g>),
-  'work': (<g><path d="M16 7V2H8V7" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M21 7V11.4399C15.4839 14.8477 8.51612 14.8477 3 11.4399V7H21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path><path d="M22 22H2V14.3164C2.64874 14.7005 3.31725 15.0398 4 15.3369V20H20V15.3359C20.6828 15.0386 21.3512 14.6988 22 14.3145V22Z" fill="currentColor" data-stroke="none"></path></g>),
-  'about': (<g><path d="M16 6C16 8.20914 14.2091 10 12 10C9.79086 10 8 8.20914 8 6C8 3.79086 9.79086 2 12 2C14.2091 2 16 3.79086 16 6Z" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M21 21.0001V16.3096C15.4029 13.2001 8.59712 13.2001 3 16.3096V21.0001H21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
-  'lab': (<g><path d="M5 16L5.80474 16.503C7.80916 17.7557 10.2963 17.9599 12.4782 17.0508C14.1043 16.3732 15.9206 16.3069 17.5918 16.8639L19.5 17.5" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M8 2H10V11C6.3228 12.8386 4 16.597 4 20.7082V22H20V20.7082C20 16.597 17.6772 12.8386 14 11V2H16" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
-  'contact': (<g><path d="M2 6V8L12 13L22 8V6" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path> <path d="M2 4V20H22V4H2Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" fill="none"></path></g>),
-  'menu': (<g><path d="M3 12L12 12L21 12" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path><path d="M3 5L21 5" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path><path d="M3 19L21 19" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
-  'close': (<g><path d="M20 4L4 20" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M4 4L20 20" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'external': (<g><path d="M4 20L20 4L19.801 4.19902" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M13 4H20V11" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'expand': (<g><path d="M3 16L3 21L8 21" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path> <path d="M21 8L21 3L16 3" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path> <path d="M21 16L21 21L16 21" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path> <path d="M3 8L3 3L8 3" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'chevron-left': (<g><path d="M16 20.5L7.5 12L16 3.5" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'chevron-right': (<g><path d="M8 20.5L16.5 12L8 3.5" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'arrow-up-right': (<g><path d="M4 20L20 4L19.801 4.19902" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M13 4H20V11" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'arrow-left': (<g><path d="M21 12L3 12L3.5 12" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M10 19L3 12L10 5" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'arrow-up': (<g><path d="M12 21V3.00003V3.50003" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M19 10L12 3L5 10" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'grid': (<g><path d="M10 14L10 21L3 21L3 14L10 14Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M10 3L10 10L3 10L3 3L10 3Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M21 3L21 10L14 10L14 3L21 3Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M21 14L21 21L14 21L14 14L21 14Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
-  'info': (<g><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M12 16V12H10" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M12 8.01V8" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
-} as const;
-
-export type IconName = keyof typeof icons;
-type Props = {
-  name: IconName;
-  size?: number;
-  className?: string;
-  /** Compatibility with existing callers; Nucleo's original stroke is preserved. */
-  weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone';
-};
-
-export default function Icon({ name, size = 18, className }: Props) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-      className={className} aria-hidden="true" focusable="false" style={{ flexShrink: 0 }}>
-      {icons[name]}
-    </svg>
-  );
-}
+/** Nucleo Sharp / 24px outline. Selected from the owner's local Nucleo collection.
+ * Source IDs are recorded in nucleo-sources.json. Keep the original drawing/stroke geometry.
+ */
+const icons = {
+  'pen-nib': (<g ><path d="M8.50001 15.5L2.99994 21.0001" stroke="currentColor" strokeWidth="2" data-color="color-2" fill="none"></path><path d="M2.99992 20.9999L3.99998 9.00002L12.5 6.50002L12.423 6.03809C12.1575 4.44531 12.6776 2.82237 13.8194 1.68057L14 1.50002L22.5 10L22.3194 10.1806C21.1776 11.3224 19.5547 11.8425 17.9619 11.577L17.5 11.5L15 20L2.99992 20.9999Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M12.0001 14C12.0001 12.8954 11.1046 12 10.0001 12C8.89551 12 8.00008 12.8954 8.00008 14C8.00008 15.1046 8.89551 16 10.0001 16C11.1046 16 12.0001 15.1046 12.0001 14Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'cursor': (<g ><path d="M4 4.00001L21 9L20.9999 10.0606L13 13L10.0606 21L9 21L4 4.00001Z" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path> <path d="M4 4.00001L21 9L20.9999 10.0606L13 13L10.0606 21L9 21L4 4.00001Z" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" strokeLinecap="square" fill="none"></path> <path d="M4 4.00001L21 9L20.9999 10.0606L13 13L10.0606 21L9 21L4 4.00001Z" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" strokeLinecap="square" fill="none"></path> <path d="M4 4.00001L21 9L20.9999 10.0606L13 13L10.0606 21L9 21L4 4.00001Z" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
+  'cube': (<g ><path d="M12 22.5V11" stroke="currentColor" strokeWidth="2" data-color="color-2" fill="none"></path><path d="M22 6.57895L12 11L2 6.57895" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" data-color="color-2" fill="none"></path><path d="M22 18.0789V5.92105L12 1.5L2 5.92105V18.0789L12 22.5L22 18.0789Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" fill="none"></path></g>),
+  'education': (<g ><path d="M12.499 0.62207L23.4795 6.62207L24 6.90723V9.0918L23.4814 9.37598L18.9736 11.8525L18.4922 10.9756L18.0107 10.0996L21.8311 8.00098L12.0176 2.63867L2.16992 8L12.0176 13.3916L14.3379 12.1162L16.4209 13.2549L12.501 15.4082L12.0195 15.6729L11.5391 15.4092L0.519531 9.37695L0 9.09277V6.90625L0.521484 6.62207L11.541 0.62207L12.0195 0.361328L12.499 0.62207Z" fill="currentColor" data-stroke="none"></path><path d="M19.4736 10.373L19.9941 10.6572V16H17.9941V11.8418L11.1172 8.0791L11.4873 7.87793L13.2051 6.94238L19.4736 10.373Z" fill="currentColor" data-stroke="none"></path><path d="M22 19L19.375 22H18.625L16 19L18.625 16H19.375L22 19Z" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M5 14.1123V18.3848C7.47532 19.5885 10.1841 20.1181 12.8652 19.9736L13.3398 20.5156L14.9062 22.3047L14.4863 21.8252C10.7718 22.3426 6.93207 21.696 3.5293 19.8828L3 19.6006V13.0176L5 14.1123Z" fill="currentColor" data-color="color-2" data-stroke="none"></path></g>),
+  'location': (<g ><path d="M9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10Z" stroke="currentColor" strokeWidth="2" data-color="color-2" fill="none"></path><path d="M6.34315 4.42641C3.21895 7.66162 3.21895 12.9069 6.34315 16.1421L12 22L17.6569 16.1421C20.781 12.9069 20.781 7.66162 17.6569 4.42641C14.5327 1.1912 9.46734 1.1912 6.34315 4.42641Z" stroke="currentColor" strokeWidth="2" fill="none"></path></g>),
+
+  'home': (<g><path d="M9 21V16C9 14.3431 10.3431 13 12 13C13.6569 13 15 14.3431 15 16V21" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M12 2L2 9.5V10.5L4 11V21H20V11L22 10.5V9.5L12 2Z" stroke="currentColor" strokeWidth="2" fill="none"></path></g>),
+  'work': (<g><path d="M16 7V2H8V7" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M21 7V11.4399C15.4839 14.8477 8.51612 14.8477 3 11.4399V7H21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path><path d="M22 22H2V14.3164C2.64874 14.7005 3.31725 15.0398 4 15.3369V20H20V15.3359C20.6828 15.0386 21.3512 14.6988 22 14.3145V22Z" fill="currentColor" data-stroke="none"></path></g>),
+  'about': (<g><path d="M16 6C16 8.20914 14.2091 10 12 10C9.79086 10 8 8.20914 8 6C8 3.79086 9.79086 2 12 2C14.2091 2 16 3.79086 16 6Z" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M21 21.0001V16.3096C15.4029 13.2001 8.59712 13.2001 3 16.3096V21.0001H21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
+  'lab': (<g><path d="M5 16L5.80474 16.503C7.80916 17.7557 10.2963 17.9599 12.4782 17.0508C14.1043 16.3732 15.9206 16.3069 17.5918 16.8639L19.5 17.5" stroke="currentColor" strokeWidth="2" fill="none"></path><path d="M8 2H10V11C6.3228 12.8386 4 16.597 4 20.7082V22H20V20.7082C20 16.597 17.6772 12.8386 14 11V2H16" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
+  'contact': (<g><path d="M2 6V8L12 13L22 8V6" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path> <path d="M2 4V20H22V4H2Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" fill="none"></path></g>),
+  'menu': (<g><path d="M3 12L12 12L21 12" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path><path d="M3 5L21 5" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path><path d="M3 19L21 19" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
+  'close': (<g><path d="M20 4L4 20" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M4 4L20 20" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'external': (<g><path d="M4 20L20 4L19.801 4.19902" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M13 4H20V11" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'expand': (<g><path d="M3 16L3 21L8 21" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path> <path d="M21 8L21 3L16 3" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path> <path d="M21 16L21 21L16 21" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path> <path d="M3 8L3 3L8 3" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'chevron-left': (<g><path d="M16 20.5L7.5 12L16 3.5" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'chevron-right': (<g><path d="M8 20.5L16.5 12L8 3.5" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'arrow-up-right': (<g><path d="M4 20L20 4L19.801 4.19902" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M13 4H20V11" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'arrow-left': (<g><path d="M21 12L3 12L3.5 12" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M10 19L3 12L10 5" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'arrow-up': (<g><path d="M12 21V3.00003V3.50003" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M19 10L12 3L5 10" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'grid': (<g><path d="M10 14L10 21L3 21L3 14L10 14Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M10 3L10 10L3 10L3 3L10 3Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M21 3L21 10L14 10L14 3L21 3Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M21 14L21 21L14 21L14 14L21 14Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path></g>),
+  'info': (<g><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M12 16V12H10" stroke="currentColor" strokeWidth="2" strokeMiterlimit="10" strokeLinecap="square" fill="none"></path><path d="M12 8.01V8" stroke="currentColor" strokeWidth="2" strokeLinecap="square" fill="none"></path></g>),
+} as const;
+
+export type IconName = keyof typeof icons;
+type Props = {
+  name: IconName;
+  size?: number;
+  className?: string;
+  /** Compatibility with existing callers; Nucleo's original stroke is preserved. */
+  weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone';
+};
+
+export default function Icon({ name, size = 18, className }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+      className={className} aria-hidden="true" focusable="false" style={{ flexShrink: 0 }}>
+      {icons[name]}
+    </svg>
+  );
+}

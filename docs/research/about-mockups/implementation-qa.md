@@ -17,3 +17,11 @@ Validation:
 - Screenshots and detailed results retained locally in .source-assets/about-poster-qa/.
 
 The existing large-JavaScript-chunk build warning remains; this change adds no client-side component or animation dependency.
+
+## Mockup fidelity correction
+
+- Constrained the portrait to the poster height with contain sizing, so ultrawide cards cannot magnify and crop the face.
+- Added the three specialty links, real Nucleo Sharp pen/cursor/cube icons, and compact role/experience/location facts from the selected mockup.
+- Added lavender, ice-blue and pearl-pink iridescent accents to the specialty band, buttons, section details and lower orientation lines; preserved the hall navigation animation and reduced-motion support.
+- Bounded the ultrawide cabinet/profile group to 2100px with a 1440px content panel. Predictive camera framing uses identical geometry to avoid entry resizing.
+- Rechecked at 3789×1896 (user screenshot dimensions), 2560×1440, 1440×900, 390×844 and 320×740, including content completeness, anchors, reading mode and browser errors. Typecheck, 26 regressions and 54-page build audit passed.

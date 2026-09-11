@@ -2,10 +2,10 @@
    The outer hall geometry and its navigation stay owned by hall-panel.css. */
 :root .hall-panel--about .about-poster-body { display: block; padding: 0; background: #101216; scroll-padding-top: 76px; }
 .hall-panel--about { --about-ink: #f0f0f3; --about-muted: #b3b6c1; --about-line: #ffffff17; }
-.hall-panel--about .about-poster { position: relative; isolation: isolate; min-height: clamp(440px, 48cqw, 590px); display: flex; align-items: center; background: #101216; overflow: hidden; }
-.about-poster__image { position: absolute; inset: 0 0 0 auto; width: 59%; z-index: -1; mask-image: linear-gradient(90deg, transparent, #000 22%); }
+.hall-panel--about .about-poster { position: relative; isolation: isolate; min-height: clamp(440px, 48cqw, 590px); display: flex; align-items: center; background: radial-gradient(ellipse at 74% 45%, #b498e90a, transparent 57%), #101216; overflow: hidden; max-width: 1440px; margin-inline: auto; }
+.about-poster__image { position: absolute; inset: 24px 16px 0 auto; width: min(48%, 520px); z-index: -1; mask-image: linear-gradient(90deg, transparent, #000 22%); }
 .about-poster__image::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg,#101216 0%,transparent 22%); }
-.about-poster__image img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 55% 30%; }
+.about-poster__image img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
 .about-poster__copy { padding: clamp(24px, 4cqw, 52px); width: 62%; position: relative; }
 .about-poster__eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 32px; font-size: 12px; line-height: 1.5; color: var(--about-muted); }
 .about-panel__open { display: inline-flex; gap: 7px; align-items: center; color: #91d8b7; }
@@ -21,11 +21,11 @@
 .hall-panel--about .about-poster__button:hover { border-color: #c8daf4; background: #282c36; }
 .hall-panel--about .about-poster__button--primary:hover { background: #fff; }
 .about-index { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 0 clamp(16px,4cqw,52px); background: #121419; border-bottom: 1px solid var(--about-line); }
-.about-index::before { content: ''; position: absolute; inset: 0 0 auto; height: 1px; background: linear-gradient(100deg,#717a94,#b6a6d6 35%,#c1d9dd 67%,#8d8ca1); }
+.about-index::before { content: ''; position: absolute; inset: 0 0 auto; height: 1px; background: var(--ui-iridescence); }
 .hall-panel--about .about-index a { display: flex; align-items: center; gap: 10px; min-height: 62px; padding: 12px 8px; font-size: 14px; text-decoration: none; color: #c9cbd5; border-bottom: 2px solid transparent; }
 .hall-panel--about .about-index a:hover, .hall-panel--about .about-index a:focus-visible { color: #fff; background: #ffffff05; border-bottom-color: #bfc9e0; }
 .about-index__number, .about-section__number { font-family: var(--font-mono); font-size: 12px; color: #9299ad; }
-.about-editorial { padding: 0 clamp(24px,4cqw,52px); }
+.about-editorial { max-width: 1440px; margin-inline: auto; padding: 0 clamp(24px,4cqw,52px); }
 .about-section { padding: 38px 0; border-bottom: 1px solid var(--about-line); scroll-margin-top: 8px; }
 .about-section__heading { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
 .hall-panel--about .about-section__heading h2 { margin: 0; font-size: clamp(25px,3cqw,36px); font-weight: 500; letter-spacing: -.035em; line-height: 1.15; color: var(--about-ink); }
@@ -81,7 +81,7 @@
 /* Compact poster for the mobile sheet: portrait and identity share the first view. */
 @container hall-panel (max-width: 599px) {
  .about-poster__image { position: absolute; inset: 0 0 auto auto; width: 57%; height: 285px; mask-image: linear-gradient(90deg,transparent,#000 18%); }
- .about-poster__image img { object-position: 54% 24%; }
+ .about-poster__image img { object-fit: cover; object-position: 54% 24%; }
  .about-poster__copy { margin: 0; padding: 24px 24px 26px; }
  .about-poster__eyebrow { display: block; width: 46%; min-height: 42px; margin-bottom: 34px; }
  .about-poster__eyebrow > .about-panel__open { margin-top: 5px; font-size: 11px; }
@@ -89,4 +89,57 @@
  .hall-panel--about .about-poster__surname { max-width: 56%; font-size: clamp(21px,5.6cqw,29px); margin-top: 8px; }
  .hall-panel--about .about-poster__role { max-width: 53%; font-size: 13px; margin-top: 10px; }
  .hall-panel--about .about-poster__statement { font-size: 18px; margin: 23px 0 18px; }
+}
+
+/* The mockup's illuminated specialty band, kept separate from the full CV. */
+.about-highlights { position: relative; background: radial-gradient(ellipse at 18% 0%,#aa80e411,transparent 60%),linear-gradient(115deg,#16151e,#101318 60%,#18151e); border-bottom: 1px solid #c5b1ed19; }
+.about-highlights::before { content: ''; position: absolute; inset: 0 0 auto; height: 2px; background: var(--ui-iridescence); box-shadow: 0 0 14px #b69ce630; }
+.about-highlights__inner { max-width: 1440px; margin-inline: auto; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)) minmax(230px,1.5fr); padding: 34px clamp(24px,4cqw,52px); }
+.hall-panel--about .about-specialty { display: flex; flex-direction: column; align-items: flex-start; gap: 17px; padding: 0 24px; border-right: 1px solid #c5b1ed26; text-decoration: none; }
+.hall-panel--about .about-specialty:first-child { padding-left: 0; }
+.about-specialty__top { display: flex; gap: 22px; align-items: flex-start; color: #bda5ed; }
+.about-specialty__top > span { font: 12px var(--font-mono); color: #9f9db2; }
+.about-specialty__top svg { filter: drop-shadow(0 0 7px #a681db28); }
+.about-specialty__top svg [data-color] { stroke: #d5ccf4; }
+.about-specialty:nth-child(2) .about-specialty__top { color: #a7bef1; }
+.about-specialty:nth-child(3) .about-specialty__top { color: #c1a7ef; }
+.about-specialty__title { font-size: clamp(18px,2.1cqw,25px); font-weight: 500; line-height: 1.2; letter-spacing: -.03em; color: #edebf4; }
+.about-specialty__line { width: 40px; height: 2px; background: var(--ui-iridescence); opacity: .85; transition: width 160ms ease; }
+.about-specialty:hover .about-specialty__line, .about-specialty:focus-visible .about-specialty__line { width: 64px; }
+.about-highlights__facts { display: grid; align-content: center; gap: 15px; list-style: none; margin: 0; padding: 0 0 0 30px; }
+.about-highlights__facts li { display: flex; align-items: center; gap: 13px; color: #bcbccf; font-size: 14px; line-height: 1.45; }
+.about-highlights__facts svg { color: #beb5d6; }
+.hall-panel--about .about-poster__button--primary { background: linear-gradient(120deg,#e6def4,#d8ddf1 60%,#e9ddec); border-color: #d1c3e8; box-shadow: inset 0 1px #ffffff9c,0 2px 16px #af8de20d; }
+.hall-panel--about .hall-panel__corridor::before { content: ''; position: absolute; inset: 0 0 auto; height: 1px; background: var(--ui-iridescence); opacity: .85; box-shadow: 0 0 10px #b49cde2b; }
+.hall-panel--about .about-section__number { color: #b59ed8; }
+.about-section__heading > svg { color: #bda5ed; }
+.about-career__entry--current { background: linear-gradient(110deg,#b89ae812,#a3b9ec05 65%,transparent); border-top-color: #c3a6ea36; }
+.about-career__entry--current::before { background: var(--ui-iridescence); }
+.about-education__entry { border-top-color: #b49bd12b; }
+.about-expertise__group { padding-top: 20px; border-top: 1px solid #b49bd121; }
+@container hall-panel (min-width: 1100px) {
+ .about-poster__image { right: 36px; width: 520px; }
+ .about-poster__copy { width: 63%; }
+}
+@container hall-panel (max-width: 799px) {
+ .about-highlights__inner { grid-template-columns: repeat(3,minmax(0,1fr)); padding-block: 25px; }
+ .hall-panel--about .about-specialty { padding-inline: 16px; }
+ .hall-panel--about .about-specialty:nth-child(3) { border-right: 0; padding-right: 0; }
+ .about-highlights__facts { grid-column: 1/-1; grid-template-columns: repeat(3,minmax(0,1fr)); padding: 22px 0 0; margin-top: 24px; border-top: 1px solid #c5b1ed1e; gap: 14px; }
+ .about-highlights__facts li { align-items: flex-start; font-size: 12px; gap: 9px; }
+}
+@container hall-panel (max-width: 599px) {
+ .about-highlights__inner { padding-inline: 24px; }
+ .hall-panel--about .about-specialty { padding-inline: 12px; gap: 14px; }
+ .about-specialty__top { gap: 12px; }
+ .about-specialty__top svg { width: 27px; height: 27px; }
+ .about-specialty__title { font-size: 17px; }
+ .about-highlights__facts { grid-template-columns: 1fr; gap: 13px; }
+ .about-highlights__facts li { align-items: center; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .about-specialty__line { transition: none; } }
+/* Keep the cabinet and profile a composed group on ultrawide displays.
+   Hall.measureFrame uses the same prediction so the panel never resizes on entry. */
+@media (min-width: 2200px) {
+ :root:not(.is-reading) .hall-panel--about { --panel-left: calc((100vw - 2100px) / 2 + 660px); --panel-right: calc((100vw - 2100px) / 2); left: var(--panel-left); right: var(--panel-right); width: auto; }
 }

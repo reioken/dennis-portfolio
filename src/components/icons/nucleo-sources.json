@@ -82,6 +82,31 @@
       "set": 163,
       "id": 54853,
       "name": "circle-info"
+    },
+    "pen-nib": {
+      "set": 133,
+      "id": 56385,
+      "name": "pen-nib-2"
+    },
+    "cursor": {
+      "set": 150,
+      "id": 58802,
+      "name": "pointer"
+    },
+    "cube": {
+      "set": 134,
+      "id": 55649,
+      "name": "cube"
+    },
+    "education": {
+      "set": 153,
+      "id": 57239,
+      "name": "graduation-cap"
+    },
+    "location": {
+      "set": 150,
+      "id": 57036,
+      "name": "pin-3"
     }
   }
 }

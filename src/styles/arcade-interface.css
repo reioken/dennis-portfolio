@@ -1,3 +1,4 @@
+:root { --ui-iridescence: linear-gradient(105deg,#8b83c3 0%,#c1a1ec 24%,#9fc4ef 45%,#e7e0f5 59%,#b798e7 76%,#d9b9dc 100%); }
 /* Afterimage: one dark interface around the existing, interactive arcade. */
 :root {
  --bg: #08090c; --bg2: #0d0f14; --elev: #171a21; --text: #f0f1f5; --dim: #b2b6c2; --faint: #989eae;
@@ -156,7 +157,7 @@ html.hall-routing, html.hall-routing * { view-transition-name: none !important; 
 /* A continuous spectrum maps the complete hall; the white cursor marks the station. */
 .hall-dock__rail { position: absolute; inset: -22px clamp(24px,3.2vw,52px) auto; height: 44px; display: grid; isolation: isolate; }
 .hall-dock__spectrum { position: absolute; inset: 21px 0 auto; height: 2px; border-radius: 2px; overflow: hidden; pointer-events: none; background: #454a55; box-shadow: 0 0 8px #b8c5dc1a; }
-.hall-dock__spectrum::before { content: ''; position: absolute; inset: 0 -100% 0 0; background: linear-gradient(90deg,#798694,#a8a1bc,#d0d6df,#95afb8,#798694,#a8a1bc,#d0d6df,#95afb8,#798694); animation: hall-spectrum-flow 18s linear infinite; }
+.hall-dock__spectrum::before { content: ''; position: absolute; inset: 0 -100% 0 0; background: linear-gradient(90deg,#a192d4,#bd9dec,#a2c2f3,#e1d9f2,#d6b2dc,#a192d4,#bd9dec,#a2c2f3,#e1d9f2,#d6b2dc,#a192d4); animation: hall-spectrum-flow 18s linear infinite; }
 .hall-dock .hall-dock__stop { position: relative; width: 100%; min-width: 0; height: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 0; background: transparent; overflow: visible; }
 .hall-dock .hall-dock__stop:hover { background: transparent; }
 .hall-dock__tick { position: relative; width: 3px; height: 7px; border-radius: 3px; background: #c7c8d9; box-shadow: 0 0 0 3px #090c12; transition: width 100ms, height 100ms, background 100ms, box-shadow 100ms; }

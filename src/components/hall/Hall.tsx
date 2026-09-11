@@ -209,7 +209,7 @@ export function measureFrame(kind: 'hall' | 'case' | 'arcade' | 'center' | 'scre
     // Vorhersage der Panel-Linken (hall-panel.css), damit der erste Frame nicht springt:
     // Über mich folgt --panel-left, Projekte der A1-Geometrie (Karte links der Mitte, Breite wächst mit dem Schirm)
     if (about) {
-      left = W >= 1180 ? Math.min(760, Math.max(440, W * 0.36)) : W - 24 - 452;
+      left = W >= 2200 ? (W - 2100) / 2 + 660 : W >= 1180 ? Math.min(760, Math.max(440, W * 0.36)) : W - 24 - 452;
     } else if (W >= 1440) {
       const pw = Math.min(780, Math.max(520, W * 0.38));
       left = W / 2 - 60 - (pw - 520) / 2;
@@ -224,6 +224,12 @@ export function measureFrame(kind: 'hall' | 'case' | 'arcade' | 'center' | 'scre
     const ax = Math.max(0.3, (left - panelGap(W)) / W);
     // Über mich: der Automat steht links am Rand (gleicher Abstand wie rechts vom Panel), das Panel folgt seiner Kante
     if (about) {
+      // Match the bounded About group on ultrawide screens before and after navigation.
+      if (W >= 2200 && !document.documentElement.classList.contains('is-reading')) {
+        const margin = (W - 2100) / 2;
+        const available = Math.max(240, left - panelGap(W) - margin);
+        return { cx: (margin + available / 2) / W, cy: (nh + (H - nh) / 2) / H, fw: available / W, fh: (H - nh) / H, al: margin / W };
+      }
       const margin = W >= 1440 ? 40 : 32;
       return { cx: ax / 2, cy: (nh + (H - nh) / 2) / H, fw: ax, fh: (H - nh) / H, al: margin / W };
     }
