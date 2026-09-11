@@ -32,22 +32,19 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
 .hall-startup__prism {
   position: absolute; left: 4px; top: 1px;
   width: 64px; height: 64px;
-  perspective: 240px;
+  /* Orthographic depth avoids inflated perspective bounds in Firefox. */
 }
 .hall-startup__cube {
   position: absolute; left: 20px; top: 20px; width: 24px; height: 24px;
   transform-style: preserve-3d;
-  transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,0turn);
-  animation: hall-cube-turn 4800ms linear infinite;
-  will-change: transform;
 }
 .hall-startup__cube > i {
   position: absolute; inset: 0; box-sizing: border-box;
   border: 1px solid #d5d4e1;
   background: linear-gradient(135deg,#c9bfbb,#777d94 35%,#272b39 70%,#8fa5ad);
   backface-visibility: visible;
-  transform: rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12px);
-  animation: hall-cube-assemble 2400ms ease-in-out infinite;
+  transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,0deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12px);
+  animation: hall-cube-panel 4800ms linear infinite;
   will-change: transform;
 }
 .hall-startup__cube > i::after {
@@ -60,15 +57,44 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
 .hall-startup__cube > i:nth-child(4) { --y: 270deg; }
 .hall-startup__cube > i:nth-child(5) { --x: 90deg; }
 .hall-startup__cube > i:nth-child(6) { --x: -90deg; }
-/* One unchanged animation runs from first paint through ignition. Matching transform
-   functions preserve the full turn; no keyframe eases or edge-on pose can hold it. */
-@keyframes hall-cube-turn {
-  from { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,0turn); }
-  to { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,1turn); }
-}
-@keyframes hall-cube-assemble {
-  0%,100% { transform: rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12px); }
-  50% { transform: rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(17px); }
+/* Keep the preserve-3d parent static. Firefox cannot composite its rotation when
+   descendants also animate transforms: room startup then stalls only the spin.
+   Each painted face owns the complete transform instead. Linear angular motion
+   never pauses; sampled cosine depth gives two gentle expansion cycles per turn. */
+@keyframes hall-cube-panel {
+  0% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,0deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12px); }
+  3.125% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,11.25deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12.1903px); }
+  6.25% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,22.5deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12.7322px); }
+  9.375% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,33.75deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(13.5433px); }
+  12.5% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,45deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(14.5px); }
+  15.625% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,56.25deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(15.4567px); }
+  18.75% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,67.5deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(16.2678px); }
+  21.875% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,78.75deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(16.8097px); }
+  25% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,90deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(17px); }
+  28.125% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,101.25deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(16.8097px); }
+  31.25% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,112.5deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(16.2678px); }
+  34.375% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,123.75deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(15.4567px); }
+  37.5% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,135deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(14.5px); }
+  40.625% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,146.25deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(13.5433px); }
+  43.75% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,157.5deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12.7322px); }
+  46.875% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,168.75deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12.1903px); }
+  50% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,180deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12px); }
+  53.125% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,191.25deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12.1903px); }
+  56.25% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,202.5deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12.7322px); }
+  59.375% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,213.75deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(13.5433px); }
+  62.5% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,225deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(14.5px); }
+  65.625% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,236.25deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(15.4567px); }
+  68.75% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,247.5deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(16.2678px); }
+  71.875% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,258.75deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(16.8097px); }
+  75% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,270deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(17px); }
+  78.125% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,281.25deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(16.8097px); }
+  81.25% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,292.5deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(16.2678px); }
+  84.375% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,303.75deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(15.4567px); }
+  87.5% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,315deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(14.5px); }
+  90.625% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,326.25deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(13.5433px); }
+  93.75% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,337.5deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12.7322px); }
+  96.875% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,348.75deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12.1903px); }
+  100% { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,360deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12px); }
 }
 .hall-startup__orbit { position: absolute; left: 3px; top: 0; width: 66px; height: 66px; }
 .hall-startup__orbit > i {
