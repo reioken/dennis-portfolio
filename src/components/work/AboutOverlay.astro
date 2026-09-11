@@ -90,7 +90,7 @@ const nextLabel = labelOf(next);
     <label for="hall-panel-tall" class="hall-panel__handle" aria-hidden="true"></label>
 
     <div class="hall-panel__body about-poster-body">
-      <header class="about-poster" id="about-intro">
+      <header class="about-poster" id="about-intro" style={`--portrait-image: url("${portrait}")`}>
         <div class="about-poster__image">
           <img src={portrait} srcset={`${p('media/me/portrait-poster-640.webp')} 640w, ${portrait} 1122w`} sizes="(max-width: 599px) 90vw, 48vw" alt={site.name} width="1122" height="1402" loading="eager" decoding="async" />
         </div>

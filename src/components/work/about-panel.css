@@ -3,9 +3,9 @@
 :root .hall-panel--about .about-poster-body { display: block; padding: 0; background: #101216; scroll-padding-top: 76px; }
 .hall-panel--about { --about-ink: #f0f0f3; --about-muted: #b3b6c1; --about-line: #ffffff17; }
 .hall-panel--about .about-poster { position: relative; isolation: isolate; min-height: clamp(440px, 48cqw, 590px); display: flex; align-items: center; background: radial-gradient(ellipse at 74% 45%, #b498e90a, transparent 57%), #101216; overflow: hidden; max-width: 1440px; margin-inline: auto; }
-.about-poster__image { position: absolute; inset: 24px 16px 0 auto; width: min(48%, 520px); z-index: -1; mask-image: linear-gradient(90deg, transparent, #000 22%); }
-.about-poster__image::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg,#101216 0%,transparent 22%); }
-.about-poster__image img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+.about-poster__image { position: absolute; inset: 24px 16px 0 auto; width: min(48%, 520px); z-index: -1; display: flex; justify-content: center; align-items: flex-end; }
+
+.about-poster__image img { display: block; width: auto; max-width: 100%; height: 100%; object-fit: contain; object-position: center bottom; mask-image: linear-gradient(90deg,transparent 0%,#000 12%,#000 86%,transparent 100%),linear-gradient(180deg,transparent 0%,#000 9%,#000 78%,transparent 100%); mask-composite: intersect; }
 .about-poster__copy { padding: clamp(24px, 4cqw, 52px); width: 62%; position: relative; }
 .about-poster__eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 32px; font-size: 12px; line-height: 1.5; color: var(--about-muted); }
 .about-panel__open { display: inline-flex; gap: 7px; align-items: center; color: #91d8b7; }
@@ -142,4 +142,13 @@
    Hall.measureFrame uses the same prediction so the panel never resizes on entry. */
 @media (min-width: 2200px) {
  :root:not(.is-reading) .hall-panel--about { --panel-left: calc((100vw - 2100px) / 2 + 660px); --panel-right: calc((100vw - 2100px) / 2); left: var(--panel-left); right: var(--panel-right); width: auto; }
+}
+
+/* The portrait supplies its own softly diffused color atmosphere. Mask the actual
+   image, not its letterboxed container, so every photographic edge disappears. */
+.about-poster::before { content: ''; position: absolute; z-index: -2; right: 0; top: 0; width: 64%; height: 100%; background-image: var(--portrait-image); background-position: center; background-size: cover; filter: blur(48px) saturate(1.35); opacity: .32; mask-image: radial-gradient(ellipse at 60% 48%,#000 12%,transparent 72%); pointer-events: none; }
+.about-poster::after { content: ''; position: absolute; z-index: -2; inset: 0; background: radial-gradient(ellipse at 76% 28%,#bb94731c,transparent 38%),radial-gradient(ellipse at 91% 60%,#a18ad525,transparent 42%),radial-gradient(ellipse at 58% 82%,#799ac817,transparent 38%); pointer-events: none; }
+@container hall-panel (max-width: 599px) {
+ .about-poster__image img { width: 100%; mask-image: linear-gradient(90deg,transparent,#000 13%,#000 85%,transparent),linear-gradient(180deg,transparent,#000 9%,#000 73%,transparent); }
+ .about-poster::before { width: 74%; height: 320px; filter: blur(30px) saturate(1.25); opacity: .25; }
 }
