@@ -60,7 +60,7 @@ export default function Stage3D({ items, focus, attract, reduce, lite, pose, fra
       cbs.current.onFail();
       return;
     }
-    const vis = () => (document.hidden ? scene.current?.stop() : scene.current?.start());
+    const vis = () => (document.hidden || el.closest('[data-hall-parked]') ? scene.current?.stop() : scene.current?.start());
     document.addEventListener('visibilitychange', vis);
     // Kontext verloren (zu viele Kontexte, GPU-Reset): zurück zur CSS-Kulisse statt schwarzer Fläche
     const canvas = el.querySelector('canvas');

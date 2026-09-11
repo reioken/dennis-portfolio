@@ -28,3 +28,12 @@
 - A game without a published playable build cannot be tested as playable.
 
 Detailed machine-readable logs and screenshots are kept locally in ignored .source-assets directories.
+## Follow-up: one hall per visit and uninterrupted startup
+- Preserve the live Astro hall island through legal pages, indexes and the Nexus/Lowlight landing pages. Park it hidden and inert; pause rendering and ignore hall keyboard/gamepad input until returning.
+- Internal navigation reuses the same canvas and scene. Remove the startup indicator from returning documents. A real reload still starts a fresh scene.
+- Conceal About/project panels during first-time scene preparation, including navigation from an initially opened legal page. Avoid native view-transition snapshots around the live scene.
+- Replace startup-time PMREM environment generation with the identical prefiltered half-float environment, generated offline. Runtime decompression is asynchronous; reflections retain HDR values.
+- Render the metallic cube as a 288-frame, 60-fps atlas, using compositor translations instead of live 3D face assembly. Preserve the 320 ms dismissal at room ignition and reduced-motion behavior.
+- Pixel-only cold-start recordings previously showed a roughly 300 ms gap. The updated normal and 6× CPU-throttled recordings show no such gap after the visible cube begins moving.
+- Desktop and mobile navigation tests cover 16 route hops each, browser Back/Forward, unchanged canvas identity and no repeated model/environment requests. Edge checks cover direct About entry, legal-first entry, resizing while parked, keyboard isolation and a genuine reload.
+- Reproduction tools: scripts/build-loading-prism.mjs, scripts/build-hall-environment.mjs and scripts/qa/hall-session.mjs. Generator scripts accept PLAYWRIGHT_MODULE for the local browser runtime.

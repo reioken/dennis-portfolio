@@ -1,9 +1,11 @@
 ---
-// Standalone product page; intentionally independent of the portfolio scene.
+import { ClientRouter } from 'astro:transitions';
+import HallSession from '../components/hall/HallSession.astro';
 ---
 <!doctype html>
 <html lang="en">
 <head>
+  <ClientRouter fallback="swap" /><HallSession />
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101114">
@@ -18,7 +20,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/lowlight/assets/lowlight.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/lowlight/styles.css">
-  <script is:inline src="/lowlight/main.js" defer></script>
+  <script is:inline data-astro-rerun src="/lowlight/main.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>

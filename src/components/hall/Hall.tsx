@@ -456,7 +456,12 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
         }
       }));
       if (rootRef.current && navigationStarted) rootRef.current.dataset.navigationMs = String(Math.round(performance.now() - navigationStarted));
-      if (r.exit) return;
+      if (r.exit) {
+        stopAttract();
+        setCloseup(false);
+        sceneRef.current?.stop();
+        return;
+      }
       // Route arrivals use one brief panel animation alongside the live camera.
       document.documentElement.classList.add('hall-nav');
       document.documentElement.classList.remove('is-screen', 'is-screen-info', 'hall-leaving');
@@ -515,6 +520,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
     // Seite ist da: Panel exakt vermessen (vorher war die Breite nur vorhergesagt)
     const loaded = () => {
       document.documentElement.classList.remove('hall-routing');
+      if (routeState(location.pathname, items).exit) return;
       const sc = sceneRef.current;
       if (!sc || closeupRef.current) return;
       frameRef.current = measureFrame(modeRef.current, items[focusRef.current]?.kind === 'kasse');
@@ -644,6 +650,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
   /* ---------- Tastatur ---------- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (rootRef.current?.closest('[data-hall-parked]')) return;
       if (directoryRef.current?.open) return;
       if (document.documentElement.classList.contains('is-reading')) return;
       if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
@@ -820,6 +827,11 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
     let lastMove = 0;
     let prev: boolean[] = [];
     const poll = (t: number) => {
+      if (rootRef.current?.closest('[data-hall-parked]')) {
+        prev = [];
+        raf = requestAnimationFrame(poll);
+        return;
+      }
       const gp = Array.from(navigator.getGamepads?.() ?? []).find((g) => g && g.connected);
       if (!gp) {
         raf = requestAnimationFrame(poll);
@@ -997,7 +1009,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
               else if (modeRef.current === 'case') go(homeHref);
             }}
             onReady={() => setGl('on')}
-            onFail={() => setGl('css')}
+            onFail={() => { rootRef.current?.setAttribute('data-startup-fallback', 'true'); setGl('css'); }}
           />
         </Suspense>
       ) : null}

@@ -26,7 +26,6 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import type { HallItem, HallMachine, MachineKind } from './Hall';
 
@@ -641,10 +640,9 @@ export class HallScene {
 
     this.scene.background = new THREE.Color(0x05060a);
     // Umgebungslicht für Metall, Lack und Glas — ohne Environment-Map rendert alles Glänzende schwarz
-    const pmrem = new THREE.PMREMGenerator(r);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const environmentDone = this.track(initial);
+    void this.loadEnvironment().catch(error => this.failStartup(error)).finally(environmentDone);
     this.scene.environmentIntensity = .38;
-    pmrem.dispose();
     this.scene.fog = new THREE.Fog(0x05060a, 10.5, 24);
     this.camera = new THREE.PerspectiveCamera(opts.lite ? 52 : 42, container.clientWidth / container.clientHeight, 0.1, 80);
 
@@ -1227,6 +1225,29 @@ export class HallScene {
     return out;
   }
 
+  /** Identical prefiltered RoomEnvironment, baked offline instead of blocking startup's GPU. */
+  private async loadEnvironment() {
+    const response = await fetch('/textures/hall-environment.bin.gz');
+    if (!response.ok) throw new Error('Hall environment unavailable');
+    let buffer = await response.arrayBuffer();
+    const magic = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
+    if (magic[0] === 0x1f && magic[1] === 0x8b) {
+      buffer = await new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    }
+    if (this.disposed || this.startupFailed) return;
+    const header = new DataView(buffer);
+    const width = header.getUint32(0, true), height = header.getUint32(4, true);
+    if (width !== 768 || height !== 1024 || buffer.byteLength !== 8 + width * height * 8) throw new Error('Invalid hall environment');
+    const texture = new THREE.DataTexture(new Uint16Array(buffer, 8), width, height, THREE.RGBAFormat, THREE.HalfFloatType);
+    texture.mapping = THREE.CubeUVReflectionMapping;
+    texture.colorSpace = THREE.LinearSRGBColorSpace;
+    texture.minFilter = texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    texture.needsUpdate = true;
+    this.scene.environment = texture;
+    this.artworkTextures.add(texture);
+  }
+
   /** Explicit work complements LoadingManager (fonts, HTML logos and bitmap decoding). */
   private track(_index: number) {
     if (this.readyDone || this.disposed || this.startupFailed) return () => {};
@@ -1306,6 +1327,7 @@ export class HallScene {
     performance.mark('hall:upload-start');
     const uploadAt = performance.now();
     const textures = new Set<THREE.Texture>();
+    if (this.scene.environment) textures.add(this.scene.environment);
     this.scene.traverse(object => {
       const material = (object as THREE.Mesh).material;
       for (const mat of material ? (Array.isArray(material) ? material : [material]) : []) {
@@ -2763,7 +2785,10 @@ export class HallScene {
 
   /* ---------- Loop ---------- */
   start() {
+    if (this.container.closest('[data-hall-parked]')) return;
     if (this.running || !this.readyDone || this.disposed || this.startupFailed) return;
+    const ratio = this.renderer.getPixelRatio();
+    if (this.renderer.domElement.width !== Math.floor(this.container.clientWidth * ratio) || this.renderer.domElement.height !== Math.floor(this.container.clientHeight * ratio)) this.onResize();
     this.running = true;
     this.last = performance.now();
     this.raf = requestAnimationFrame(this.tick);

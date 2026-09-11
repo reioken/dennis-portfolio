@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import '../styles/arcade-interface.css';
 import { ClientRouter } from 'astro:transitions';
+import HallSession from '../components/hall/HallSession.astro';
 import gateEditorCss from '../styles/gate-editor.css?url';
 import GlassNav from '../components/nav/GlassNav';
 import BrandLockup from '../components/brand/BrandLockup';
@@ -105,6 +106,7 @@ const personLd = {
     {/* Client-Router: die Spielhalle bleibt beim Seitenwechsel stehen (transition:persist).
         Emittiert nur Meta-Tags und ein externes Modul — keine CSP-Änderung. */}
     <ClientRouter fallback="swap" />
+    <HallSession />
     <!-- Keep the standards-based backdrop filter intact in production.
          The CSS optimizer otherwise emits only the obsolete WebKit-prefixed
          declaration, which current Chromium ignores. -->

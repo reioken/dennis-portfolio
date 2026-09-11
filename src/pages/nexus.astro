@@ -1,16 +1,18 @@
 ---
-// Standalone NEXUS product page; independent of the portfolio scene.
+import { ClientRouter } from 'astro:transitions';
+import HallSession from '../components/hall/HallSession.astro';
 ---
 <!doctype html>
 <html lang="en">
 <head>
+<ClientRouter fallback="swap" /><HallSession />
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NEXUS Library — All your games. Your own universe.</title>
 <meta name="description" content="A personal Windows game library. Bring your launchers together, switch between six views, and make your collection feel like yours. Download NEXUS Library.">
 <meta name="theme-color" content="#090b12"><link rel="canonical" href="https://www.dennisbf.design/nexus/">
 <link rel="icon" href="/nexus/assets/nexus.svg" type="image/svg+xml">
 <link rel="preload" href="/nexus/assets/outfit.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/nexus/styles.css"><script is:inline src="/nexus/main.js" defer></script>
+<link rel="stylesheet" href="/nexus/styles.css"><script is:inline data-astro-rerun src="/nexus/main.js" defer></script>
 </head>
 <body>
 <a href="#main" class="skip">Skip to content</a>

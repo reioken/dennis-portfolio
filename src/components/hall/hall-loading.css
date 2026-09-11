@@ -2,9 +2,14 @@
 .hall .hall__stage[data-power='loading'] { opacity: 0; transition: none; }
 .hall .hall__stage[data-power='on'] { opacity: 1; transition: none; }
 html.gl-pending .hall:not(.is-3d) .hall-dock { visibility: hidden; }
+html.gl-pending .hall-panel,
+html:has(.hall__stage[data-power='loading']) .hall-panel {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 /* A centered console-era emblem, rendered before the 3D bundle executes.
-   All motion uses transforms/opacity; no additional assets or render loop. */
+   A pre-rendered cube uses only compositor transforms during scene preparation. */
 .hall-startup {
   position: fixed;
   z-index: 45;
@@ -23,32 +28,21 @@ html.gl-pending .hall:not(.is-3d) .hall-dock { visibility: hidden; }
 }
 .hall-startup__emblem {
   position: absolute; inset: 0;
-  perspective: 240px;
 }
 .hall-startup__prism {
-  position: absolute; left: 24px; top: 21px;
-  width: 24px; height: 24px;
-  transform-style: preserve-3d;
-  transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg);
+  position: absolute; left: 4px; top: 1px;
+  width: 64px; height: 64px;
+  overflow: hidden;
+  contain: paint;
 }
-.hall-startup__prism > i {
-  position: absolute; inset: 0;
-  box-sizing: border-box;
-  border: 1px solid #d5d4e1b0;
-  background: linear-gradient(135deg, #e2d4c3de, #8f94aec9 35%, #282c3ae8 70%, #b9cfd2ba);
-  backface-visibility: hidden;
-  transform: rotateY(var(--face-y, 0deg)) rotateX(var(--face-x, 0deg)) translateZ(12px);
+.hall-startup__prism-rows {
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 400%;
 }
-.hall-startup__prism > i::after {
-  content: ''; position: absolute; inset: 4px;
-  border: 1px solid #f1e6ff36;
-  background: linear-gradient(135deg, #f2e8e01f, transparent 65%);
+.hall-startup__prism-frames {
+  display: block;
+  width: 7200%; max-width: none; height: 100%;
 }
-.hall-startup__prism > i:nth-child(2) { --face-y: 90deg; }
-.hall-startup__prism > i:nth-child(3) { --face-y: 180deg; }
-.hall-startup__prism > i:nth-child(4) { --face-y: 270deg; }
-.hall-startup__prism > i:nth-child(5) { --face-x: 90deg; }
-.hall-startup__prism > i:nth-child(6) { --face-x: -90deg; }
 .hall-startup__orbit { position: absolute; left: 3px; top: 0; width: 66px; height: 66px; }
 .hall-startup__orbit > i {
   position: absolute; inset: 7px;
@@ -83,15 +77,15 @@ html.gl-pending .hall:not(.is-3d) .hall-dock { visibility: hidden; }
 html.gl-pending .hall-startup,
 html:has(.hall__stage[data-power]) .hall-startup { opacity: 1; visibility: visible; }
 /* Continuous rotation across preparation; ignition immediately starts the exit fade. */
-html.gl-pending .hall-startup__prism,
-html:has(.hall__stage[data-power]) .hall-startup__prism {
+html.gl-pending .hall-startup__prism-rows,
+html:has(.hall__stage[data-power]) .hall-startup__prism-rows {
   will-change: transform;
-  animation: hall-prism-turn 4800ms linear infinite;
+  animation: hall-prism-rows 4800ms steps(4) infinite;
 }
-html.gl-pending .hall-startup__prism > i,
-html:has(.hall__stage[data-power]) .hall-startup__prism > i {
+html.gl-pending .hall-startup__prism-frames,
+html:has(.hall__stage[data-power]) .hall-startup__prism-frames {
   will-change: transform;
-  animation: hall-prism-assemble 3200ms ease-in-out infinite;
+  animation: hall-prism-frames 1200ms steps(72) infinite;
 }
 html.gl-pending .hall-startup__orbit,
 html:has(.hall__stage[data-power]) .hall-startup__orbit { animation: hall-orbit-turn 9600ms linear infinite; }
@@ -102,15 +96,15 @@ html:has(.hall__stage[data-power]) .hall-startup__glint { animation: hall-prism-
 html.gl-pending .hall-startup__signal > i,
 html:has(.hall__stage[data-power]) .hall-startup__signal > i { animation: hall-signal 1600ms var(--signal-delay, 0ms) ease-in-out infinite; }
 html:has(.hall__stage[data-power='on']) .hall-startup { animation: hall-emblem-dismiss 320ms ease-out both; }
-@keyframes hall-prism-turn {
-  /* One fixed rotation axis keeps the tumble uniform through every orientation.
-     The matching transform list preserves a full revolution at the loop seam. */
-  from { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55, 1, .25, 0turn); }
-  to { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55, 1, .25, 1turn); }
+/* 72 columns × 4 rows = 288 frames at 60 fps. Both clocks start together.
+   Translate the decoded atlas; background-position would require main-thread paint. */
+@keyframes hall-prism-rows {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
 }
-@keyframes hall-prism-assemble {
-  0%, 100% { transform: rotateY(var(--face-y, 0deg)) rotateX(var(--face-x, 0deg)) translateZ(12px); }
-  50% { transform: rotateY(var(--face-y, 0deg)) rotateX(var(--face-x, 0deg)) translateZ(17px); }
+@keyframes hall-prism-frames {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
 }
 @keyframes hall-orbit-turn {
   from { transform: rotate(0deg); }
