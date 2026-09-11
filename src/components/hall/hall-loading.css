@@ -84,9 +84,15 @@ html.gl-pending .hall-startup,
 html:has(.hall__stage[data-power]) .hall-startup { opacity: 1; visibility: visible; }
 /* Continuous rotation across preparation; ignition immediately starts the exit fade. */
 html.gl-pending .hall-startup__prism,
-html:has(.hall__stage[data-power]) .hall-startup__prism { animation: hall-prism-turn 6400ms linear infinite; }
+html:has(.hall__stage[data-power]) .hall-startup__prism {
+  will-change: transform;
+  animation: hall-prism-turn 4800ms linear infinite;
+}
 html.gl-pending .hall-startup__prism > i,
-html:has(.hall__stage[data-power]) .hall-startup__prism > i { animation: hall-prism-assemble 3200ms ease-in-out infinite; }
+html:has(.hall__stage[data-power]) .hall-startup__prism > i {
+  will-change: transform;
+  animation: hall-prism-assemble 3200ms ease-in-out infinite;
+}
 html.gl-pending .hall-startup__orbit,
 html:has(.hall__stage[data-power]) .hall-startup__orbit { animation: hall-orbit-turn 9600ms linear infinite; }
 html.gl-pending .hall-startup__orbit > i,
@@ -97,8 +103,10 @@ html.gl-pending .hall-startup__signal > i,
 html:has(.hall__stage[data-power]) .hall-startup__signal > i { animation: hall-signal 1600ms var(--signal-delay, 0ms) ease-in-out infinite; }
 html:has(.hall__stage[data-power='on']) .hall-startup { animation: hall-emblem-dismiss 320ms ease-out both; }
 @keyframes hall-prism-turn {
-  from { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg); }
-  to { transform: rotateX(336deg) rotateY(398deg) rotateZ(-8deg); }
+  /* One fixed rotation axis keeps the tumble uniform through every orientation.
+     The matching transform list preserves a full revolution at the loop seam. */
+  from { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55, 1, .25, 0turn); }
+  to { transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55, 1, .25, 1turn); }
 }
 @keyframes hall-prism-assemble {
   0%, 100% { transform: rotateY(var(--face-y, 0deg)) rotateX(var(--face-x, 0deg)) translateZ(12px); }

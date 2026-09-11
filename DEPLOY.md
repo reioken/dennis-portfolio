@@ -7,6 +7,8 @@
 
 ## Redeploy
 
+Standing user preference (2026-09-11): automatically commit, push and publish completed, verified website changes to `www.dennisbf.design`. Do not stop for another deployment confirmation. Verify the live result; never commit secrets or local generated scratch files.
+
 ```bash
 npm run build
 npm run deploy:contact
