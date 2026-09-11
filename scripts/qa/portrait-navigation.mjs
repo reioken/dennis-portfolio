@@ -7,7 +7,7 @@ try{for(const [width,height] of [[1440,900],[3789,1896],[390,844]]){
  assert.equal(await page.locator('.hall-panel__reading,.site-nav__back').count(),0);
  await page.locator('.hall-panel__back').waitFor({state:'visible'});
  const data=await page.evaluate(()=>{const b=document.querySelector('.hall-panel__back'),p=document.querySelector('.hall-panel__card'),im=document.querySelector('.about-poster__image img'),r=b.getBoundingClientRect();window.__qaHall=window.__hall;return {button:r.toJSON(),panel:p.getBoundingClientRect().toJSON(),portrait:im.getBoundingClientRect().toJSON(),image:im.currentSrc,overflow:document.documentElement.scrollWidth>innerWidth,buttonAtPoint:b.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};});
- assert.ok(data.image.includes('portrait-cutout-v3'));assert.equal(data.overflow,false);assert.equal(data.buttonAtPoint,true);assert.ok(data.button.width>=44&&data.button.height>=44);if(width>=900)assert.ok(data.button.right<data.panel.left);
+ assert.ok(data.image.includes('portrait-wide-v1'));assert.equal(data.overflow,false);assert.equal(data.buttonAtPoint,true);assert.ok(data.button.width>=44&&data.button.height>=44);if(width>=900)assert.ok(data.button.right<data.panel.left);
  for(const id of ['about-story','about-experience','about-training','about-expertise'])assert.equal(await page.locator('#'+id).count(),1);
  await page.screenshot({path:'.source-assets/portrait-navigation-qa/'+width+'.png'});
  await page.locator('.hall-panel__back').click();await page.waitForURL('http://localhost:4321/');await page.waitForTimeout(500);assert.ok(await page.evaluate(()=>window.__hall===window.__qaHall));
