@@ -9,7 +9,7 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
 }
 
 /* A centered console-era emblem, rendered before the 3D bundle executes.
-   A pre-rendered cube uses only compositor transforms during scene preparation. */
+   A compact animated image owns its frame clock independently of scene preparation. */
 .hall-startup {
   position: fixed;
   z-index: 45;
@@ -35,14 +35,7 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
   overflow: hidden;
   contain: paint;
 }
-.hall-startup__prism-rows {
-  position: absolute; left: 0; top: 0;
-  width: 100%; height: 400%;
-}
-.hall-startup__prism-frames {
-  display: block;
-  width: 7200%; max-width: none; height: 100%;
-}
+.hall-startup__prism img { display: block; width: 100%; height: 100%; }
 .hall-startup__orbit { position: absolute; left: 3px; top: 0; width: 66px; height: 66px; }
 .hall-startup__orbit > i {
   position: absolute; inset: 7px;
@@ -77,16 +70,6 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
 html.gl-pending .hall-startup,
 html:has(.hall__stage[data-power]) .hall-startup { opacity: 1; visibility: visible; }
 /* Continuous rotation across preparation; ignition immediately starts the exit fade. */
-html.gl-pending .hall-startup__prism-rows,
-html:has(.hall__stage[data-power]) .hall-startup__prism-rows {
-  will-change: transform;
-  animation: hall-prism-rows 4800ms steps(4) infinite;
-}
-html.gl-pending .hall-startup__prism-frames,
-html:has(.hall__stage[data-power]) .hall-startup__prism-frames {
-  will-change: transform;
-  animation: hall-prism-frames 1200ms steps(72) infinite;
-}
 html.gl-pending .hall-startup__orbit,
 html:has(.hall__stage[data-power]) .hall-startup__orbit { animation: hall-orbit-turn 9600ms linear infinite; }
 html.gl-pending .hall-startup__orbit > i,
@@ -96,16 +79,6 @@ html:has(.hall__stage[data-power]) .hall-startup__glint { animation: hall-prism-
 html.gl-pending .hall-startup__signal > i,
 html:has(.hall__stage[data-power]) .hall-startup__signal > i { animation: hall-signal 1600ms var(--signal-delay, 0ms) ease-in-out infinite; }
 html:has(.hall__stage[data-power='on']) .hall-startup { animation: hall-emblem-dismiss 320ms ease-out both; }
-/* 72 columns × 4 rows = 288 frames at 60 fps. Both clocks start together.
-   Translate the decoded atlas; background-position would require main-thread paint. */
-@keyframes hall-prism-rows {
-  from { transform: translateY(0); }
-  to { transform: translateY(-100%); }
-}
-@keyframes hall-prism-frames {
-  from { transform: translateX(0); }
-  to { transform: translateX(-100%); }
-}
 @keyframes hall-orbit-turn {
   from { transform: rotate(0deg); }
   to { transform: rotate(-360deg); }

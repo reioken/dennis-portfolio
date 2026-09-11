@@ -16,9 +16,10 @@ import './hall-loading.css';
       <i></i><i></i><i></i><i></i>
     </span>
     <span class="hall-startup__prism">
-      <span class="hall-startup__prism-rows">
-        <img class="hall-startup__prism-frames" src="/media/ui/loading-prism.webp" width="9216" height="512" alt="" fetchpriority="high" decoding="async" draggable="false" />
-      </span>
+      <picture>
+        <source media="(prefers-reduced-motion: reduce)" srcset="/media/ui/loading-prism-still.webp" />
+        <img src="/media/ui/loading-prism-loop.webp" width="128" height="128" alt="" fetchpriority="high" decoding="async" draggable="false" />
+      </picture>
     </span>
     <span class="hall-startup__glint"></span>
     <span class="hall-startup__signal"><i></i><i></i><i></i><i></i><i></i></span>

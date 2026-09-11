@@ -34,7 +34,8 @@ mesh.uv_layers.new(name='StableAtlas')
 mesh.uv_layers.active_index = len(mesh.uv_layers)-1
 bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.select_all(action='SELECT')
-bpy.ops.uv.smart_project(angle_limit=math.radians(80), island_margin=0.001,
+# Wider guard bands keep skin/shoe texels out of hair mip footprints.
+bpy.ops.uv.smart_project(angle_limit=math.radians(80), island_margin=0.003,
                          margin_method='FRACTION', area_weight=0.0, scale_to_bounds=True)
 bpy.ops.object.mode_set(mode='OBJECT')
 mesh.uv_layers.active.active_render = True
@@ -110,5 +111,5 @@ bpy.data.objects['Dennis_new_clean'].select_set(True)
 bpy.ops.export_scene.gltf(filepath=str(output/'dennis-stable.glb'),export_format='GLB',
                          use_selection=True,export_apply=False,export_attributes=False)
 (output/'bake-report.json').write_text(json.dumps({'source':str(source/'dennis-tattoos-production.blend'),
-    'geometry':before,'size':4096,'margin':24,'island_margin':0.001,'uv_coverage':uv_area,'artwork':'reprojected approved textures'},indent=2))
+    'geometry':before,'size':4096,'margin':24,'island_margin':0.003,'uv_coverage':uv_area,'artwork':'reprojected approved textures'},indent=2))
 print('STABLE_ATLAS_COMPLETE',flush=True)

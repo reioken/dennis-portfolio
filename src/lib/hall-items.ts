@@ -140,7 +140,7 @@ async function build(): Promise<HallData> {
       href: p('about'),
       portrait: p('media/me/portrait-v12.webp'),
       // Freigegebene Figur mit Foto-Tattoos; Version verhindert veraltete GLB-Caches.
-      figure: fs.existsSync(path.join(process.cwd(), 'public', 'models', 'dennis.glb')) ? p('models/dennis.glb?v=0cf14a7cfc47') : undefined,
+      figure: fs.existsSync(path.join(process.cwd(), 'public', 'models', 'dennis.glb')) ? p('models/dennis.glb?v=9326936a358e') : undefined,
     },
     ...machines,
     { kind: 'phone', slug: 'telefon', href: p('contact') },
@@ -148,5 +148,3 @@ async function build(): Promise<HallData> {
   const initial = Math.max(0, items.findIndex((m) => m.slug === HOME_SLUG));
   return { items, machines, initial, homeSlug: HOME_SLUG };
 }
-
-
