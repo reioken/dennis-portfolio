@@ -225,7 +225,7 @@ export function measureFrame(kind: 'hall' | 'case' | 'arcade' | 'center' | 'scre
     // Über mich: der Automat steht links am Rand (gleicher Abstand wie rechts vom Panel), das Panel folgt seiner Kante
     if (about) {
       // Match the bounded About group on ultrawide screens before and after navigation.
-      if (W >= 2200 && !document.documentElement.classList.contains('is-reading')) {
+      if (W >= 2200) {
         const margin = (W - 2100) / 2;
         const available = Math.max(240, left - panelGap(W) - margin);
         return { cx: (margin + available / 2) / W, cy: (nh + (H - nh) / 2) / H, fw: available / W, fh: (H - nh) / H, al: margin / W };
@@ -658,7 +658,6 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
     const onKey = (e: KeyboardEvent) => {
       if (rootRef.current?.closest('[data-hall-parked]')) return;
       if (directoryRef.current?.open) return;
-      if (document.documentElement.classList.contains('is-reading')) return;
       if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
       const t = e.target as HTMLElement | null;
       if (t?.closest('.site-nav')) return;
@@ -746,7 +745,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
     let scroller: HTMLElement | null = null;
     let scrollerAt = 0;
     const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || directoryRef.current?.open || document.documentElement.classList.contains('is-reading')) return;
+      if (e.ctrlKey || directoryRef.current?.open) return;
       if (modeRef.current !== 'hall') {
         // Im Close-up blättert das Rad die Captures (CaseCaptures hört auf document)
         if (closeupRef.current) return;
@@ -852,7 +851,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       const down = gp.buttons[13]?.pressed || ay > 0.5;
       const pressed = gp.buttons.map((b) => b.pressed);
       const rising = (i: number) => pressed[i] && !prev[i];
-      if (directoryRef.current?.open || document.documentElement.classList.contains('is-reading')) {
+      if (directoryRef.current?.open) {
         prev = pressed;
         raf = requestAnimationFrame(poll);
         return;

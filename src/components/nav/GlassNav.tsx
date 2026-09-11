@@ -35,7 +35,7 @@ const routeIcons: Record<string, IconName> = { home: 'home', work: 'work', about
 
 /**
  * Das Schild über der Halle: eine ruhige 40-px-Leiste ohne Fläche. Links die Marke, in den
- * Automaten-Ansichten „← Halle" und die Esc-Taste, in der Mitte die Station (Zähler · Name · Version),
+ * Automaten-Ansichten den separaten Zurück-Button am Panel, in der Mitte die Station,
  * rechts DE/EN und die Menü-Taste mit allen Routen. Im Close-up und beim Spielen wird sie leise und
  * verschwindet nach ein paar Sekunden Ruhe, bis sich der Zeiger rührt.
  */
@@ -158,8 +158,6 @@ export default function GlassNav({ items, currentPath, brand, homeHref = '/', mo
     </>
   );
 
-  const P = copy.de.panel;
-  const PE = copy.en.panel;
   const pageItem = items.find((it) => normalizePath(it.href) !== home && isActive(it.href));
   // In der Halle steht die Station auf der Plakette unten — die Leiste zeigt sie erst im Zoom, Close-up und Spiel
   const showStation = Boolean(st) && (st?.mode ?? mode) !== 'hall';
@@ -174,14 +172,6 @@ export default function GlassNav({ items, currentPath, brand, homeHref = '/', mo
               {brand.split(' ')[0]}
             </span>
           </a>
-          {caseLike ? (
-            <a href={homeHref} className="site-nav__back">
-              <Icon name="arrow-left" size={16} />
-              <span data-lang="de">{P.back}</span>
-              <span data-lang="en">{PE.back}</span>
-              <kbd className="site-nav__key">{P.esc}</kbd>
-            </a>
-          ) : null}
         </div>
 
         {/* Mitte: die Station der Halle, sonst die Seite */}

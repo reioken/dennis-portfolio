@@ -16,8 +16,8 @@ import CaseDocument from './CaseDocument';
 import MinaStudyEn from './MinaStudyEn.astro';
 import MinaStudyDe from './MinaStudyDe.astro';
 import './hall-panel.css';
-import ReadingMode from './ReadingMode.astro';
 import Icon from '../icons/Icon';
+import PanelBack from './PanelBack.astro';
 
 interface Props {
   entry: CollectionEntry<'work'>;
@@ -148,12 +148,7 @@ const nextLabel = labelOf(next);
 >
   <!-- Chrome: Zurück, Zähler, Taste — außerhalb der Karte, damit Automat und Schild eine Gruppe bleiben -->
   <div class="hall-panel__chrome">
-      <ReadingMode />
-      <a class="hall-panel__back" href={homeHref}>
-        <span class="hall-panel__back-arrow" aria-hidden="true"><Icon name="arrow-left" size={16} /></span>
-        <span data-lang="de">{P.back}</span>
-        <span data-lang="en">{PE.back}</span>
-      </a>
+      <PanelBack homeHref={homeHref} />
       <span class="hall-panel__station mono">{counter}</span>
       <span class="hall-panel__key mono" aria-hidden="true">{P.esc}</span>
       <input type="checkbox" id="hall-panel-tall" class="hall-panel__tall" />

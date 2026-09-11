@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AvailabilityStatus from '../components/brand/AvailabilityStatus.astro';
 import ContactForm from '../components/contact/ContactForm';
-import ReadingMode from '../components/work/ReadingMode.astro';
+import PanelBack from '../components/work/PanelBack.astro';
 import Icon from '../components/icons/Icon';
 import { site } from '../lib/site';
 import { copy } from '../lib/i18n';
@@ -47,7 +47,7 @@ const formEn = {
   <HallGuard />
   <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug="telefon" mode="case" homeHref={p()} />
   <aside class="hall-panel hall-panel--contact" aria-labelledby="contact-title">
-    <div class="hall-panel__chrome"><ReadingMode /></div>
+    <div class="hall-panel__chrome"><PanelBack homeHref={p()} /></div>
     <div class="hall-panel__card">
       <div class="hall-panel__body">
         <p class="hall-panel__kind"><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span></p>

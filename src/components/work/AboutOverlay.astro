@@ -5,8 +5,8 @@ import { copy } from '../../lib/i18n';
 import { p } from '../../lib/paths';
 import { site, skills, timeline, education, languages } from '../../lib/site';
 import './hall-panel.css';
-import ReadingMode from './ReadingMode.astro';
 import Icon from '../icons/Icon';
+import PanelBack from './PanelBack.astro';
 import './about-panel.css';
 
 interface Props {
@@ -21,7 +21,7 @@ const { items, index, homeHref } = Astro.props;
 const n = items.length;
 
 const isMachine = (it: HallItem | undefined): it is HallMachine => Boolean(it) && it!.kind !== 'kasse' && it!.kind !== 'phone';
-const portrait = p('media/me/portrait-poster-1122.webp');
+const portrait = p('media/me/portrait-cutout-v3-1122.webp');
 
 const D = copy.de;
 const E = copy.en;
@@ -64,12 +64,7 @@ const nextLabel = labelOf(next);
 >
   <!-- Chrome: Zurück, Zähler, Taste — außerhalb der Karte, damit Automat und Schild eine Gruppe bleiben -->
   <div class="hall-panel__chrome">
-      <ReadingMode />
-      <a class="hall-panel__back" href={homeHref}>
-        <span class="hall-panel__back-arrow" aria-hidden="true"><Icon name="arrow-left" size={16} /></span>
-        <span data-lang="de">{P.back}</span>
-        <span data-lang="en">{PE.back}</span>
-      </a>
+      <PanelBack homeHref={homeHref} />
       <span class="hall-panel__station mono">{counter}</span>
       <span class="hall-panel__key mono" aria-hidden="true">{P.esc}</span>
       <input type="checkbox" id="hall-panel-tall" class="hall-panel__tall" />
@@ -90,9 +85,9 @@ const nextLabel = labelOf(next);
     <label for="hall-panel-tall" class="hall-panel__handle" aria-hidden="true"></label>
 
     <div class="hall-panel__body about-poster-body">
-      <header class="about-poster" id="about-intro" style={`--portrait-image: url("${portrait}")`}>
+      <header class="about-poster" id="about-intro">
         <div class="about-poster__image">
-          <img src={portrait} srcset={`${p('media/me/portrait-poster-640.webp')} 640w, ${portrait} 1122w`} sizes="(max-width: 599px) 90vw, 48vw" alt={site.name} width="1122" height="1402" loading="eager" decoding="async" />
+          <img src={portrait} srcset={`${p('media/me/portrait-cutout-v3-640.webp')} 640w, ${portrait} 1122w`} sizes="(max-width: 599px) 53vw, (min-width: 1100px) 520px, 46vw" alt={site.name} width="1122" height="1402" loading="eager" decoding="async" />
         </div>
         <div class="about-poster__copy">
           <p class="about-poster__eyebrow"><span data-lang="de">{H.kasseSub}</span><span data-lang="en">{HE.kasseSub}</span><span class="about-panel__open"><span data-lang="de">{avail.de.open}</span><span data-lang="en">{avail.en.open}</span></span></p>

@@ -3,9 +3,9 @@
 :root .hall-panel--about .about-poster-body { display: block; padding: 0; background: #101216; scroll-padding-top: 76px; }
 .hall-panel--about { --about-ink: #f0f0f3; --about-muted: #b3b6c1; --about-line: #ffffff17; }
 .hall-panel--about .about-poster { position: relative; isolation: isolate; min-height: clamp(440px, 48cqw, 590px); display: flex; align-items: center; background: radial-gradient(ellipse at 74% 45%, #b498e90a, transparent 57%), #101216; overflow: hidden; max-width: 1440px; margin-inline: auto; }
-.about-poster__image { position: absolute; inset: 24px 16px 0 auto; width: min(48%, 520px); z-index: -1; display: flex; justify-content: center; align-items: flex-end; }
+.about-poster__image { position: absolute; inset: 24px 8% 0 auto; width: min(46%, 520px); z-index: -1; display: flex; justify-content: center; align-items: flex-end; }
 
-.about-poster__image img { display: block; width: auto; max-width: 100%; height: 100%; object-fit: contain; object-position: center bottom; mask-image: linear-gradient(90deg,transparent 0%,#000 12%,#000 86%,transparent 100%),linear-gradient(180deg,transparent 0%,#000 9%,#000 78%,transparent 100%); mask-composite: intersect; }
+.about-poster__image img { display: block; width: auto; max-width: 100%; height: 100%; object-fit: contain; object-position: center bottom; mask-image: linear-gradient(180deg,#000 0%,#000 80%,transparent 100%),linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent); mask-composite: intersect; }
 .about-poster__copy { padding: clamp(24px, 4cqw, 52px); width: 62%; position: relative; }
 .about-poster__eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 32px; font-size: 12px; line-height: 1.5; color: var(--about-muted); }
 .about-panel__open { display: inline-flex; gap: 7px; align-items: center; color: #91d8b7; }
@@ -80,8 +80,8 @@
 }
 /* Compact poster for the mobile sheet: portrait and identity share the first view. */
 @container hall-panel (max-width: 599px) {
- .about-poster__image { position: absolute; inset: 0 0 auto auto; width: 57%; height: 285px; mask-image: linear-gradient(90deg,transparent,#000 18%); }
- .about-poster__image img { object-fit: cover; object-position: 54% 24%; }
+ .about-poster__image { position: absolute; inset: 12px 3% auto auto; width: 53%; height: 265px; mask-image: none; }
+ .about-poster__image img { object-fit: contain; object-position: center bottom; }
  .about-poster__copy { margin: 0; padding: 24px 24px 26px; }
  .about-poster__eyebrow { display: block; width: 46%; min-height: 42px; margin-bottom: 34px; }
  .about-poster__eyebrow > .about-panel__open { margin-top: 5px; font-size: 11px; }
@@ -118,7 +118,7 @@
 .about-education__entry { border-top-color: #b49bd12b; }
 .about-expertise__group { padding-top: 20px; border-top: 1px solid #b49bd121; }
 @container hall-panel (min-width: 1100px) {
- .about-poster__image { right: 36px; width: 520px; }
+ .about-poster__image { right: 10%; width: 520px; }
  .about-poster__copy { width: 63%; }
 }
 @container hall-panel (max-width: 799px) {
@@ -141,14 +141,12 @@
 /* Keep the cabinet and profile a composed group on ultrawide displays.
    Hall.measureFrame uses the same prediction so the panel never resizes on entry. */
 @media (min-width: 2200px) {
- :root:not(.is-reading) .hall-panel--about { --panel-left: calc((100vw - 2100px) / 2 + 660px); --panel-right: calc((100vw - 2100px) / 2); left: var(--panel-left); right: var(--panel-right); width: auto; }
+ :root .hall-panel--about { --panel-left: calc((100vw - 2100px) / 2 + 660px); --panel-right: calc((100vw - 2100px) / 2); left: var(--panel-left); right: var(--panel-right); width: auto; }
 }
 
-/* The portrait supplies its own softly diffused color atmosphere. Mask the actual
-   image, not its letterboxed container, so every photographic edge disappears. */
-.about-poster::before { content: ''; position: absolute; z-index: -2; right: 0; top: 0; width: 64%; height: 100%; background-image: var(--portrait-image); background-position: center; background-size: cover; filter: blur(48px) saturate(1.35); opacity: .32; mask-image: radial-gradient(ellipse at 60% 48%,#000 12%,transparent 72%); pointer-events: none; }
-.about-poster::after { content: ''; position: absolute; z-index: -2; inset: 0; background: radial-gradient(ellipse at 76% 28%,#bb94731c,transparent 38%),radial-gradient(ellipse at 91% 60%,#a18ad525,transparent 42%),radial-gradient(ellipse at 58% 82%,#799ac817,transparent 38%); pointer-events: none; }
+/* Color atmosphere is separate from the transparent portrait silhouette. */
+.about-poster::before { content: ''; position: absolute; z-index: -2; inset: 0; background: radial-gradient(ellipse at 67% 35%,#a780672b,transparent 42%),radial-gradient(ellipse at 82% 62%,#8970bb30,transparent 46%),radial-gradient(ellipse at 55% 78%,#6985b41c,transparent 38%); pointer-events: none; }
 @container hall-panel (max-width: 599px) {
- .about-poster__image img { width: 100%; mask-image: linear-gradient(90deg,transparent,#000 13%,#000 85%,transparent),linear-gradient(180deg,transparent,#000 9%,#000 73%,transparent); }
- .about-poster::before { width: 74%; height: 320px; filter: blur(30px) saturate(1.25); opacity: .25; }
+ .about-poster__image img { width: 100%; mask-image: linear-gradient(180deg,#000 0%,#000 78%,transparent 100%),linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent); }
+ .about-poster::before { bottom: auto; height: 340px; opacity: .7; }
 }

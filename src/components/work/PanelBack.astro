@@ -1,0 +1,10 @@
+---
+import Icon from '../icons/Icon';
+interface Props { homeHref: string }
+const { homeHref } = Astro.props;
+---
+<a class="hall-panel__back" href={homeHref} title="Zurück zur Halle / Back to hall">
+  <span class="hall-panel__back-arrow" aria-hidden="true"><Icon name="arrow-left" size={20} /></span>
+  <span data-lang="de">Zurück zur Halle</span>
+  <span data-lang="en">Back to hall</span>
+</a>

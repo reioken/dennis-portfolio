@@ -58,7 +58,7 @@ html.gl-pending .hall:not(.is-3d) .hall-dock { opacity: 0; pointer-events: none;
 :root .hall__track, :root .hall__arrows, :root .hall__hint { display: none; }
 :root .hall__attract { bottom: calc(100px + clamp(16px,3vh,32px)); }
 :root .hall-panel { --text: #f0f1f5; --dim: #b2b6c2; --faint: #989eae; --stroke: #ffffff1c; --stroke-hi: #ffffff42; --elev: #191c24; }
-:root .hall-panel__card, :root.is-reading .hall-panel__card { background: #101217f5; border: 1px solid #ffffff18; border-radius: 6px; box-shadow: 0 24px 70px #0004; animation-duration: 160ms; }
+:root .hall-panel__card { background: #101217f5; border: 1px solid #ffffff18; border-radius: 6px; box-shadow: 0 24px 70px #0004; animation-duration: 160ms; }
 :root .hall-panel__body { scrollbar-color: #4e5362 transparent; }
 :root .hall-panel__title { font-size: clamp(34px,3.2vw,48px); line-height: 1.08; letter-spacing: -.035em; font-weight: 480; }
 :root .hall-panel__kind { margin-bottom: 16px; font-size: 11px; letter-spacing: .07em; }

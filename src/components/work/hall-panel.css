@@ -1255,8 +1255,7 @@ body[data-mode='case'] .hall-panel--about ~ .hall-panel__hint {
   display: none;
 }
 
-/* Zurück, Zähler und Esc stehen jetzt in der Leiste oben — im Panel-Chrome bleibt nur die Sheet-Raste (Phone) */
-.hall-panel__chrome .hall-panel__back,
+/* The station remains in the header; the return control belongs to the panel. */
 .hall-panel__chrome .hall-panel__station,
 .hall-panel__chrome .hall-panel__key {
   display: none;
@@ -1341,18 +1340,6 @@ html.is-screen .hall-panel__chrome {
 /* Readability and the optional expanded reading view. */
 .hall-panel .hall-panel__btn--coin { color: #0b0c10; }
 .hall-panel__summary, .about-panel__text { font-size: 16px; line-height: 1.65; }
-.hall-panel__reading { min-height: 44px; padding: 0 14px; border: 1px solid var(--stroke); border-radius: 8px; background: #141a26; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
-.hall-panel__reading .reading-close { display: none; }
-html.is-reading .hall-panel__reading .reading-open { display: none; }
-html.is-reading .hall-panel__reading .reading-close { display: inline; }
-html.is-reading .hall { filter: brightness(.25); pointer-events: none; }
-html.is-reading .hall-panel { left: max(16px, calc((100vw - 880px) / 2)) !important; right: auto !important; width: min(880px, calc(100vw - 32px)) !important; top: calc(var(--nav-h) + 64px) !important; bottom: 16px !important; height: auto !important; z-index: 12; }
-html.is-reading .hall-panel__chrome { top: calc(var(--nav-h) + 8px); left: max(16px, calc((100vw - 880px) / 2)); right: max(16px, calc((100vw - 880px) / 2)); height: 44px; }
-html.is-reading .hall-panel__card { background: #10151e; transform: none !important; opacity: 1 !important; }
-html.is-reading .hall-panel__body { padding: clamp(24px, 5vw, 56px); }
-html.is-reading .hall-panel__detent, html.is-reading .hall-panel__handle, html.is-reading .hall-panel__hint { display: none; }
-html.is-reading .hall-panel__body p { line-height: 1.7; }
-@media (max-width: 899px) { .hall-panel__reading { min-height: 40px; } }
 
 .mina-original { margin-top: 24px; }
 .mina-original summary, .about-panel__earlier summary { padding: 14px 0; cursor: pointer; font-size: 14px; }
@@ -1364,11 +1351,6 @@ html.is-reading .hall-panel__body p { line-height: 1.7; }
  .hall-panel__captures { grid-area: captures; }
  .hall-panel__document { grid-area: doc; }
 }
-html.is-reading .hall-panel__body { display: block; }
-html.is-reading .hall-panel__meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 28px 0; padding: 20px 0; background: transparent; box-shadow: none; border-top: 1px solid var(--stroke); border-radius: 0; }
-html.is-reading .hall-panel__copy { max-width: 70ch; }
-html.is-reading .hall-panel__document { margin-top: 32px; }
-@media (max-width: 599px) { html.is-reading .hall-panel__meta { grid-template-columns: 1fr; } }
 
 /* Compact panel chrome stays readable at narrow widths and clear of device insets. */
 .hall-panel__body { overflow-wrap: break-word; }
@@ -1393,10 +1375,20 @@ html.is-screen-info .hall-panel__body { padding-top: 64px; }
   .hall-panel__dots { gap: 4px; }
   .hall-panel__cta .hall-panel__btn { flex-basis: 140px; white-space: normal; text-align: center; padding-block: 10px; }
   .hall-panel__chrome { height: 44px; }
-  .hall-panel__reading { min-height: 44px; }
   .hall-panel__tall { display: none; }
 }
 @media (max-height: 500px) and (max-width: 899px) {
   .hall-panel { top: calc(var(--nav-h) + 60px); }
   .hall-panel__body { padding-top: 20px; }
+}
+
+/* One return button immediately beside the content panel. */
+.hall-panel .hall-panel__chrome { position: absolute; top: 0; left: -60px; right: auto; height: 44px; justify-content: flex-start; }
+.hall-panel__chrome .hall-panel__back { display: inline-flex; justify-content: center; width: 44px; height: 44px; padding: 0; margin: 0; border: 1px solid #c4b7e02e; border-radius: 8px; background: linear-gradient(140deg,#22202b,#11141b); box-shadow: inset 0 1px #ffffff09,0 5px 18px #0003; color: #e2dfee; transition: background 160ms ease,border-color 160ms ease; }
+.hall-panel__back > [data-lang] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.hall-panel__back-arrow { display: flex; color: inherit; }
+.hall-panel__chrome .hall-panel__back:hover { background: #2b2638; border-color: #c5b0ee80; }
+@media (max-width: 899px) {
+ .hall-panel .hall-panel__chrome { position: fixed; top: calc(var(--nav-h) + 12px); left: 12px; right: 12px; }
+ .hall-panel__chrome .hall-panel__detent { margin-left: auto; }
 }
