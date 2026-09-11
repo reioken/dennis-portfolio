@@ -54,6 +54,7 @@ export const copy = {
     about: {
       label: 'Über mich',
       role: 'Art Director · UX/UI · Product Builder',
+      posterLead: 'Ich gestalte Marken, digitale Erlebnisse und eigene Produkte.',
       lead: '6+ Jahre Agentur und Inhouse — Richtung, Branding und eigene Builds.',
       body: 'Fest bei Floordirekt. Freelance willkommen.',
       linkedin: 'LinkedIn',
@@ -273,6 +274,7 @@ export const copy = {
     about: {
       label: 'About',
       role: 'Art Director · UX/UI · Product Builder',
+      posterLead: 'I design brands, digital experiences and products of my own.',
       lead: '6+ years agency and in-house — direction, branding, and self-built products.',
       body: 'Full-time at Floordirekt. Freelance welcome.',
       linkedin: 'LinkedIn',

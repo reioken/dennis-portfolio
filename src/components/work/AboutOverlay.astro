@@ -1,11 +1,5 @@
 ---
-/**
- * Das Über-mich-Panel der Spielhalle — der Ausweis an der Kasse.
- * Dieselbe Hülle wie CaseOverlay (Chrome, Karte, Korridor), damit hall-panel.css und die
- * Vermessung der Halle unverändert greifen; nur der Körper ist eigen: Porträt, Name, Rolle,
- * Lead, Kontaktwege, dann Skills, Berufserfahrung und Ausbildung als kompakte Listen.
- * Alle Texte kommen aus src/lib/site.ts und src/lib/i18n.ts — hier steht keine eigene Copy.
- */
+/** Poster portrait and complete profile inside the persistent hall panel. */
 import type { HallItem, HallMachine } from '../hall/Hall';
 import { copy } from '../../lib/i18n';
 import { p } from '../../lib/paths';
@@ -27,8 +21,7 @@ const { items, index, homeHref } = Astro.props;
 const n = items.length;
 
 const isMachine = (it: HallItem | undefined): it is HallMachine => Boolean(it) && it!.kind !== 'kasse' && it!.kind !== 'phone';
-const station = items[index];
-const portrait = (!isMachine(station) && station?.portrait) || p('media/me/portrait-v12.webp');
+const portrait = p('media/me/portrait-poster-1122.webp');
 
 const D = copy.de;
 const E = copy.en;
@@ -96,213 +89,70 @@ const nextLabel = labelOf(next);
   <div class="hall-panel__card">
     <label for="hall-panel-tall" class="hall-panel__handle" aria-hidden="true"></label>
 
-    <!-- Körper -->
-    <div class="hall-panel__body">
-      <p class="hall-panel__kind mono">
-        <span>
-          <span data-lang="de">{H.kasseSub}</span>
-          <span data-lang="en">{HE.kasseSub}</span>
-        </span>
-        <span class="hall-panel__dot" aria-hidden="true"></span>
-        <span class="about-panel__open">
-          <span data-lang="de">{avail.de.open}</span>
-          <span data-lang="en">{avail.en.open}</span>
-        </span>
-      </p>
-
-      <!-- Ausweis-Kopf -->
-      <div class="about-panel__head">
-        <span class="about-panel__portrait">
-          <img src={portrait} alt="" width="112" height="112" decoding="async" />
-        </span>
-        <div class="about-panel__id">
-          <h1 id="case-title" class="hall-panel__title" tabindex="-1">
-            {firstName} <span class="about-panel__surname">{surname}</span>
-          </h1>
-          <p class="about-panel__role mono">
-            <span data-lang="de">{A.role}</span>
-            <span data-lang="en">{AE.role}</span>
-          </p>
+    <div class="hall-panel__body about-poster-body">
+      <header class="about-poster" id="about-intro">
+        <div class="about-poster__image">
+          <img src={portrait} srcset={`${p('media/me/portrait-poster-640.webp')} 640w, ${portrait} 1122w`} sizes="(max-width: 599px) 90vw, 48vw" alt={site.name} width="1122" height="1402" loading="eager" decoding="async" />
         </div>
-      </div>
-
-      <p class="hall-panel__summary">
-        <span data-lang="de" data-edit="about.lead.de">{A.lead}</span>
-        <span data-lang="en" data-edit="about.lead.en">{AE.lead}</span>
-      </p>
-      <p class="about-panel__text">
-        <span data-lang="de" data-edit="about.body.de">{A.body}</span>
-        <span data-lang="en" data-edit="about.body.en">{AE.body}</span>
-      </p>
-
-      <!-- CTA -->
-      <div class="hall-panel__blk" style="--i:0">
-        <div class="hall-panel__cta">
-          <a class="hall-panel__btn" href={site.links.linkedin} target="_blank" rel="noreferrer">
-            <span data-lang="de">{A.linkedin}</span>
-            <span data-lang="en">{AE.linkedin}</span>
-            <Icon name="external" size={17} />
-          </a>
-          <a class="hall-panel__btn hall-panel__btn--coin" href={p('contact')}>
-            <span data-lang="de">{A.contact}</span>
-            <span data-lang="en">{AE.contact}</span>
-            <Icon name="chevron-right" size={17} />
-          </a>
+        <div class="about-poster__copy">
+          <p class="about-poster__eyebrow"><span data-lang="de">{H.kasseSub}</span><span data-lang="en">{HE.kasseSub}</span><span class="about-panel__open"><span data-lang="de">{avail.de.open}</span><span data-lang="en">{avail.en.open}</span></span></p>
+          <h1 id="case-title" tabindex="-1" class="about-poster__name"><span>{firstName}</span><span class="about-poster__surname">{surname.split('-').map((part, i) => <>{i > 0 && <><span>-</span><wbr /></>}{part}</>)}</span></h1>
+          <p class="about-poster__role"><span data-lang="de">{A.role}</span><span data-lang="en">{AE.role}</span></p>
+          <p class="about-poster__statement"><span data-lang="de">{A.posterLead}</span><span data-lang="en">{AE.posterLead}</span></p>
+          <div class="about-poster__actions">
+            <a class="about-poster__button about-poster__button--primary" href={p('contact')}><Icon name="contact" size={19} /><span data-lang="de">{A.contact}</span><span data-lang="en">{AE.contact}</span></a>
+            <a class="about-poster__button" href={site.links.linkedin} target="_blank" rel="noreferrer">LinkedIn<Icon name="external" size={18} /></a>
+          </div>
         </div>
-      </div>
-
-      <hr class="hall-panel__rule hall-panel__blk" style="--i:1" />
-
-      <div class="about-panel__cols">
-      <div class="about-panel__side">
-      <!-- Ausweis-Felder: Rolle, Standort, E-Mail, Sprachen -->
-      <dl class="hall-panel__meta hall-panel__blk" style="--i:2">
-        <div class="hall-panel__cell">
-          <dt class="hall-panel__lbl mono">
-            <span data-lang="de">{P.role}</span>
-            <span data-lang="en">{PE.role}</span>
-          </dt>
-          <dd class="hall-panel__val">
-            <span data-lang="de">
-              {avail.de.role} <span class="about-panel__muted">bei</span> {avail.de.employer}
-            </span>
-            <span data-lang="en">
-              {avail.en.role} <span class="about-panel__muted">at</span> {avail.en.employer}
-            </span>
-          </dd>
-        </div>
-        <div class="hall-panel__cell">
-          <dt class="hall-panel__lbl mono">
-            <span data-lang="de">{D.contact.location}</span>
-            <span data-lang="en">{E.contact.location}</span>
-          </dt>
-          <dd class="hall-panel__val">
-            <span data-lang="de">{site.location}</span>
-            <span data-lang="en">Mannheim/Heidelberg area</span>
-          </dd>
-        </div>
-        <div class="hall-panel__cell">
-          <dt class="hall-panel__lbl mono">
-            <span data-lang="de">{D.contact.email}</span>
-            <span data-lang="en">{E.contact.email}</span>
-          </dt>
-          <dd class="hall-panel__val">
-            <a class="about-panel__mail" href={`mailto:${site.email}`}>{site.email}</a>
-          </dd>
-        </div>
-        <div class="hall-panel__cell">
-          <dt class="hall-panel__lbl mono">
-            <span data-lang="de">{A.languagesLabel}</span>
-            <span data-lang="en">{AE.languagesLabel}</span>
-          </dt>
-          <dd class="hall-panel__val">
-            <ul class="hall-panel__chips">
-              {languages.map((l) => (
-                <li>
-                  <span data-lang="de">{l.name.de}</span>
-                  <span data-lang="en">{l.name.en}</span>
-                  <span class="about-panel__muted"> · </span>
-                  <span data-lang="de">{l.level.de}</span>
-                  <span data-lang="en">{l.level.en}</span>
-                </li>
-              ))}
-            </ul>
-          </dd>
-        </div>
-      </dl>
-
-      <!-- Skills: drei Gruppen, Chips -->
-      <section class="about-panel__section hall-panel__blk" style="--i:3" aria-labelledby="about-skills">
-        <h2 id="about-skills" class="hall-panel__lbl mono">
-          <span data-lang="de">{A.skillsLabel}</span>
-          <span data-lang="en">{AE.skillsLabel}</span>
-        </h2>
-        <div class="about-panel__groups">
-          {skills.map((s) => (
-            <div class="about-panel__group">
-              <h3 class="about-panel__group-name">
-                <span data-lang="de">{s.group.de}</span>
-                <span data-lang="en">{s.group.en}</span>
-              </h3>
-              <ul class="hall-panel__chips">
-                {s.items.de.map((item, j) => (
-                  <li>
-                    <span data-lang="de">{item}</span>
-                    <span data-lang="en">{s.items.en[j]}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      </div>
-
-      <div class="about-panel__main">
-      <!-- Berufserfahrung: Jahr, Titel, eine Zeile -->
-      <section class="about-panel__section hall-panel__blk" style="--i:4" aria-labelledby="about-timeline">
-        <h2 id="about-timeline" class="hall-panel__lbl mono">
-          <span data-lang="de">{A.timelineLabel}</span>
-          <span data-lang="en">{AE.timelineLabel}</span>
-        </h2>
-        <ol class="about-panel__rows">
-          {timeline.slice(0, 3).map((t, i) => (
-            <li class="about-panel__row">
-              <span class="about-panel__year mono">
-                <span data-lang="de" data-edit={`timeline.${i}.year`}>{t.year}</span>
-                <span data-lang="en" data-edit={`timeline.${i}.yearEn`}>{t.yearEn}</span>
-              </span>
-              <div class="about-panel__row-main">
-                <h3 class="about-panel__row-title">
-                  <span data-lang="de" data-edit={`timeline.${i}.title.de`}>{t.title.de}</span>
-                  <span data-lang="en" data-edit={`timeline.${i}.title.en`}>{t.title.en}</span>
-                </h3>
-                <p class="about-panel__row-body">
-                  <span data-lang="de" data-edit={`timeline.${i}.body.de`}>{t.body.de}</span>
-                  <span data-lang="en" data-edit={`timeline.${i}.body.en`}>{t.body.en}</span>
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        {timeline.length > 3 && <details class="about-panel__earlier"><summary><span data-lang="de">Frühere Stationen</span><span data-lang="en">Earlier experience</span></summary><ol class="about-panel__rows">{timeline.slice(3).map((t) => <li class="about-panel__row"><span class="about-panel__year mono"><span data-lang="de">{t.year}</span><span data-lang="en">{t.yearEn}</span></span><div class="about-panel__row-main"><h3 class="about-panel__row-title"><span data-lang="de">{t.title.de}</span><span data-lang="en">{t.title.en}</span></h3><p class="about-panel__row-body"><span data-lang="de">{t.body.de}</span><span data-lang="en">{t.body.en}</span></p></div></li>)}</ol></details>}
-      </section>
-
-      <!-- Ausbildung: Zellen wie das Meta-Raster, mit Zertifikat-Link -->
-      <section class="about-panel__section hall-panel__blk" style="--i:5" aria-labelledby="about-education">
-        <h2 id="about-education" class="hall-panel__lbl mono">
-          <span data-lang="de">{A.educationLabel}</span>
-          <span data-lang="en">{AE.educationLabel}</span>
-        </h2>
-        <dl class="hall-panel__meta">
-          {education.map((e, i) => (
-            <div class="hall-panel__cell">
-              <dt class="hall-panel__lbl mono" data-edit={`education.${i}.year`}>{e.year}</dt>
-              <dd class="hall-panel__val">
-                <span class="about-panel__edu-title">
-                  <span data-lang="de" data-edit={`education.${i}.title.de`}>{e.title.de}</span>
-                  <span data-lang="en" data-edit={`education.${i}.title.en`}>{e.title.en}</span>
-                </span>
-                <span class="about-panel__edu-body">
-                  <span data-lang="de" data-edit={`education.${i}.body.de`}>{e.body.de}</span>
-                  <span data-lang="en" data-edit={`education.${i}.body.en`}>{e.body.en}</span>
-                </span>
-                {'url' in e && e.url ? (
-                  <a class="about-panel__cert mono" href={e.url} target="_blank" rel="noopener noreferrer">
-                    <span data-lang="de">{e.urlLabel?.de ?? 'Zertifikat ansehen'}</span>
-                    <span data-lang="en">{e.urlLabel?.en ?? 'View certificate'}</span>
-                    <Icon name="external" size={15} />
-                  </a>
-                ) : null}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-      </div>
+      </header>
+      <nav class="about-index" aria-label="Über mich / About sections">
+        <a href="#about-story"><span class="about-index__number">01</span><span data-lang="de">Über mich</span><span data-lang="en">About</span></a>
+        <a href="#about-experience"><span class="about-index__number">02</span><span data-lang="de">Erfahrung</span><span data-lang="en">Experience</span></a>
+        <a href="#about-training"><span class="about-index__number">03</span><span data-lang="de">Ausbildung</span><span data-lang="en">Education</span></a>
+        <a href="#about-expertise"><span class="about-index__number">04</span>Skills</a>
+      </nav>
+      <div class="about-editorial">
+        <section class="about-story about-section" id="about-story" aria-labelledby="about-story-title">
+          <div class="about-section__heading"><span class="about-section__number">01</span><h2 id="about-story-title"><span data-lang="de">Über mich</span><span data-lang="en">About me</span></h2></div>
+          <div class="about-story__copy">
+            <p class="about-story__lead"><span data-lang="de" data-edit="about.lead.de">{A.lead}</span><span data-lang="en" data-edit="about.lead.en">{AE.lead}</span></p>
+            <p><span data-lang="de" data-edit="about.body.de">{A.body}</span><span data-lang="en" data-edit="about.body.en">{AE.body}</span></p>
+          </div>
+          <dl class="about-facts">
+            <div><dt><Icon name="work" size={18} /><span data-lang="de">{P.role}</span><span data-lang="en">{PE.role}</span></dt><dd><span data-lang="de">{avail.de.role} bei {avail.de.employer}</span><span data-lang="en">{avail.en.role} at {avail.en.employer}</span></dd></div>
+            <div><dt><span data-lang="de">{D.contact.location}</span><span data-lang="en">{E.contact.location}</span></dt><dd><span data-lang="de">{site.location}</span><span data-lang="en">Mannheim/Heidelberg area</span></dd></div>
+            <div><dt><span data-lang="de">{A.languagesLabel}</span><span data-lang="en">{AE.languagesLabel}</span></dt><dd>{languages.map(l => <span class="about-facts__language"><span data-lang="de">{l.name.de} · {l.level.de}</span><span data-lang="en">{l.name.en} · {l.level.en}</span></span>)}</dd></div>
+            <div><dt><Icon name="contact" size={18} />E-Mail</dt><dd><a href={`mailto:${site.email}`}>{site.email}</a></dd></div>
+          </dl>
+        </section>
+        <section class="about-section" id="about-experience" aria-labelledby="about-timeline">
+          <div class="about-section__heading"><span class="about-section__number">02</span><h2 id="about-timeline"><span data-lang="de">{A.timelineLabel}</span><span data-lang="en">{AE.timelineLabel}</span></h2><Icon name="work" size={24} /></div>
+          <ol class="about-career">
+            {timeline.map((t,i) => <li class={`about-career__entry${i === 0 ? ' about-career__entry--current' : ''}`}>
+              <span class="about-career__year"><span data-lang="de" data-edit={`timeline.${i}.year`}>{t.year}</span><span data-lang="en" data-edit={`timeline.${i}.yearEn`}>{t.yearEn}</span></span>
+              <div><h3><span data-lang="de" data-edit={`timeline.${i}.title.de`}>{t.title.de}</span><span data-lang="en" data-edit={`timeline.${i}.title.en`}>{t.title.en}</span></h3><p><span data-lang="de" data-edit={`timeline.${i}.body.de`}>{t.body.de}</span><span data-lang="en" data-edit={`timeline.${i}.body.en`}>{t.body.en}</span></p></div>
+            </li>)}
+          </ol>
+        </section>
+        <section class="about-section" id="about-training" aria-labelledby="about-education">
+          <div class="about-section__heading"><span class="about-section__number">03</span><h2 id="about-education"><span data-lang="de">{A.educationLabel}</span><span data-lang="en">{AE.educationLabel}</span></h2></div>
+          <div class="about-education">
+            {education.map((e,i) => <article class="about-education__entry">
+              <span class="about-career__year" data-edit={`education.${i}.year`}>{e.year}</span>
+              <h3><span data-lang="de" data-edit={`education.${i}.title.de`}>{e.title.de}</span><span data-lang="en" data-edit={`education.${i}.title.en`}>{e.title.en}</span></h3>
+              <p><span data-lang="de" data-edit={`education.${i}.body.de`}>{e.body.de}</span><span data-lang="en" data-edit={`education.${i}.body.en`}>{e.body.en}</span></p>
+              {'url' in e && e.url ? <a class="about-certificate" href={e.url} target="_blank" rel="noopener noreferrer"><span data-lang="de">{e.urlLabel?.de ?? 'Zertifikat ansehen'}</span><span data-lang="en">{e.urlLabel?.en ?? 'View certificate'}</span><Icon name="external" size={17} /></a> : null}
+            </article>)}
+          </div>
+        </section>
+        <section class="about-section" id="about-expertise" aria-labelledby="about-skills">
+          <div class="about-section__heading"><span class="about-section__number">04</span><h2 id="about-skills"><span data-lang="de">{A.skillsLabel}</span><span data-lang="en">{AE.skillsLabel}</span></h2></div>
+          <div class="about-expertise">{skills.map(s => <div class="about-expertise__group"><h3><span data-lang="de">{s.group.de}</span><span data-lang="en">{s.group.en}</span></h3><ul>{s.items.de.map((item,j) => <li><span data-lang="de">{item}</span><span data-lang="en">{s.items.en[j]}</span></li>)}</ul></div>)}</div>
+        </section>
+        <div class="about-signoff"><a href={p('contact')}><span data-lang="de">{A.contact}</span><span data-lang="en">{AE.contact}</span><Icon name="external" size={25} /></a><a href="#about-intro" class="about-signoff__top"><span data-lang="de">Nach oben</span><span data-lang="en">Back to top</span><Icon name="arrow-up" size={18} /></a></div>
       </div>
     </div>
+
 
     <!-- Fuß: der Korridor -->
     <nav class="hall-panel__corridor" aria-label="Stationen">
