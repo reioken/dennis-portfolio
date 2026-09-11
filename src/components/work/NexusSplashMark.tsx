@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import logoSvg from '../../assets/logos/nexus-live.svg?raw';
 
+/** Stabile Referenz: React setzt innerHTML sonst bei jedem Render neu und startet die SMIL-Animation neu */
+const MARK_HTML = { __html: logoSvg };
+
 /**
  * NEXUS diamond — ambient prismatic float by default, full crystal flex on hover.
  * SVG SMIL runs continuously (no pause/reset) so loops stay seamless.
@@ -54,7 +57,7 @@ export default function NexusSplashMark({
         <span className="nx-sp__glint g6" />
         <div
           className="nx-sp__mark"
-          dangerouslySetInnerHTML={{ __html: logoSvg }}
+          dangerouslySetInnerHTML={MARK_HTML}
         />
       </div>
     </div>

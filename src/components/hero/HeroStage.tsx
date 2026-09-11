@@ -1,5 +1,3 @@
-import { useRef } from 'react';
-import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { copy } from '../../lib/i18n';
 import AvailabilityStatus from '../brand/AvailabilityStatus';
 import BrandLockup from '../brand/BrandLockup';
@@ -28,22 +26,14 @@ export default function HeroStage({
   workHref = '/work',
   contactHref = '/contact',
 }: Props) {
-  const reduce = useReducedMotion();
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start start', 'end start'],
-  });
-  const collageY = useTransform(scrollYProgress, [0, 1], ['0%', '10%']);
-
   return (
-    <section ref={sectionRef} className="relative min-h-[100dvh] overflow-hidden">
-      <motion.div className="absolute inset-0" style={{ y: reduce ? 0 : collageY }} aria-hidden>
+    <section className="hero-stage relative min-h-[100svh] overflow-hidden">
+      <div className="absolute inset-0" aria-hidden>
         <WorkCollage shots={collageShots} />
-      </motion.div>
+      </div>
 
       {/* Text always visible — no opacity:0 entrance (was hiding hero copy) */}
-      <div className="hero-copy wrap relative z-20 flex min-h-[100dvh] flex-col justify-end pb-16 pt-[calc(var(--nav-h)+3.5rem)] md:justify-center md:pb-24">
+      <div className="hero-copy wrap relative z-20 flex min-h-[100svh] flex-col justify-center pb-12 pt-[calc(var(--nav-h)+3rem)] md:min-h-[100dvh] md:pb-24 md:pt-[calc(var(--nav-h)+3.5rem)]">
         <div className="max-w-4xl">
           <div className="hero-copy__item mb-7 max-w-xl">
             <BrandLockup name={brand} weight="hero" />

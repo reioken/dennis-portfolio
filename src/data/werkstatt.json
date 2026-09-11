@@ -1,0 +1,280 @@
+{
+  "generatedAt": "2026-09-11T00:32:37.387Z",
+  "machine": true,
+  "products": [
+    {
+      "slug": "lowlight",
+      "public": false,
+      "git": false,
+      "version": "0.3.2",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-11",
+      "lastActivity": "2026-09-11",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "saute-survivors",
+      "public": false,
+      "git": false,
+      "version": "1.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-11",
+      "lastActivity": "2026-09-11",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "ceiling",
+      "public": false,
+      "git": false,
+      "version": null,
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-10",
+      "lastActivity": "2026-09-10",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "nexus",
+      "public": true,
+      "git": false,
+      "version": "1.1.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-10",
+      "lastActivity": "2026-09-10",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "echo-frequency",
+      "public": false,
+      "git": false,
+      "version": "0.17.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-09",
+      "lastActivity": "2026-09-09",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "riftcast",
+      "public": true,
+      "git": false,
+      "version": "1.0.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-09",
+      "lastActivity": "2026-09-09",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "berry",
+      "public": true,
+      "git": false,
+      "version": "3.4.1",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-08",
+      "lastActivity": "2026-09-08",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "cab-no-9",
+      "public": false,
+      "git": false,
+      "version": null,
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-08",
+      "lastActivity": "2026-09-08",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "riftback",
+      "public": true,
+      "git": false,
+      "version": "0.1.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-07",
+      "lastActivity": "2026-09-07",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "safeplate",
+      "public": true,
+      "git": false,
+      "version": "0.79.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-09-03",
+      "lastActivity": "2026-09-03",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "carillon",
+      "public": true,
+      "git": false,
+      "version": "0.9.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-08-30",
+      "lastActivity": "2026-08-30",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "briefly",
+      "public": false,
+      "git": false,
+      "version": "0.1.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-08-27",
+      "lastActivity": "2026-08-27",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "angry",
+      "public": false,
+      "git": false,
+      "version": "0.1.4",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-08-22",
+      "lastActivity": "2026-08-22",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "design-library",
+      "public": false,
+      "git": false,
+      "version": "0.1.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-07-31",
+      "lastActivity": "2026-07-31",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "project-manager",
+      "public": false,
+      "git": false,
+      "version": "0.1.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-07-30",
+      "lastActivity": "2026-07-30",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "image-gen",
+      "public": false,
+      "git": false,
+      "version": "0.1.0",
+      "lastCommit": null,
+      "recent": [],
+      "lastTouched": "2026-07-24",
+      "lastActivity": "2026-07-24",
+      "commits": null,
+      "commitsLast90Days": 0,
+      "source": "scan"
+    },
+    {
+      "slug": "portfolio",
+      "public": true,
+      "git": true,
+      "version": "1.0.0",
+      "lastCommit": {
+        "date": "2026-07-21",
+        "subject": "Harden contact emails so long messages are not truncated in transit."
+      },
+      "recent": [
+        {
+          "date": "2026-07-21",
+          "subject": "Harden contact emails so long messages are not truncated in transit."
+        },
+        {
+          "date": "2026-07-20",
+          "subject": "studio: QA-Grenze im Tooltip, keine Entwarnung bei bestandener Pruefung"
+        },
+        {
+          "date": "2026-07-20",
+          "subject": "studio: Produkttreue-Pruefung uebernommen, API-Endpunkte in den Sync"
+        },
+        {
+          "date": "2026-07-20",
+          "subject": "studio: Marken-Korrekturen aus fd-pipeline uebernommen"
+        },
+        {
+          "date": "2026-07-20",
+          "subject": "studio: aus fd-pipeline uebernommen, Passwort fail closed, sechs Marken"
+        },
+        {
+          "date": "2026-07-20",
+          "subject": "Remake process icons to clearly depict each step's meaning."
+        },
+        {
+          "date": "2026-07-20",
+          "subject": "Make process icons match Research, Concept, and Validate meaning."
+        },
+        {
+          "date": "2026-07-20",
+          "subject": "Replace process rail icons with flat NEXUS-style facet SVGs."
+        }
+      ],
+      "lastTouched": null,
+      "lastActivity": "2026-07-21",
+      "commits": {
+        "2026-07-18": 34,
+        "2026-07-19": 22,
+        "2026-07-20": 80,
+        "2026-07-21": 1
+      },
+      "commitsLast90Days": 137,
+      "source": "scan"
+    }
+  ],
+  "heatmap": {
+    "2026-07-18": 34,
+    "2026-07-19": 22,
+    "2026-07-20": 80,
+    "2026-07-21": 1
+  },
+  "totals": {
+    "products": 17,
+    "commitsLast90Days": 137,
+    "activeProjectsLast30Days": 13
+  }
+}
+

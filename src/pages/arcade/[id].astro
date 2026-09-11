@@ -1,0 +1,83 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import HallGuard from '../../components/hall/HallGuard.astro';
+import Hall from '../../components/hall/Hall';
+import ArcadeStage from '../../components/arcade/ArcadeStage';
+import { getCollection } from 'astro:content';
+import { site } from '../../lib/site';
+import { p } from '../../lib/paths';
+import { buildHallItems } from '../../lib/hall-items';
+import { arcadeBuild } from '../../lib/arcade-build';
+
+export async function getStaticPaths() {
+  const works = await getCollection('work');
+  return works
+    .filter((w) => w.data.arcade)
+    .map((entry) => ({ params: { id: entry.data.arcade!.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const d = entry.data;
+const arcade = d.arcade!;
+const asset = (path: string) => p(path.replace(/^\//, ''));
+const brand = d.brand?.primary ?? '#ac8bfd';
+/** Produktion: Builds liegen wegen des 25-MiB-Limits von Pages auf R2 (PUBLIC_ARCADE_BASE),
+    lokal im generierten public/game-builds/<id>/ */
+const gameSrc = arcadeBuild(arcade.id);
+
+/* Der Automat steht in der Halle; die Kamera fährt vor seinen Bildschirm, der Build läuft darauf */
+const { items } = await buildHallItems();
+const machine = items.find((it) => it.slug === entry.id);
+const version = machine && 'version' in machine ? machine.version : d.version;
+const machineIdx = items.findIndex((it) => it.slug === entry.id);
+const station = machineIdx >= 0 ? { index: machineIdx, total: items.length, title: d.title, titleEn: d.titleEn, version } : undefined;
+---
+
+<BaseLayout
+  title={`${d.title} — Spielhalle — ${site.name}`}
+  description={`${d.title} — Browser-Version und Projektinformationen von ${site.name}.`}
+  ogImage={d.cover.replace(/^\//, '')}
+  mode="arcade"
+  station={station}
+>
+  {gameSrc && <HallGuard />}
+  {gameSrc && <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug={entry.id} mode="arcade" homeHref={p()} />}
+  <h1 class="sr-only">
+    <span data-lang="de">{d.title} — Browser-Version</span>
+    <span data-lang="en">{d.titleEn ?? d.title} — browser version</span>
+  </h1>
+  {gameSrc ? <ArcadeStage
+    client:load
+    id={arcade.id}
+    slug={entry.id}
+    title={d.title}
+    titleEn={d.titleEn}
+    src={gameSrc}
+    aspect={arcade.aspect}
+    size={arcade.size}
+    brand={brand}
+    wip={d.status === 'wip' || d.status === 'private'}
+    poster={asset(d.cover)}
+    posterAlt={d.coverAlt}
+    posterAltEn={d.coverAltEn}
+    controlsDe={arcade.controlsDe}
+    controlsEn={arcade.controlsEn}
+    caseHref={p(`work/${entry.id}`)}
+    homeHref={p()}
+    engine={d.engine}
+    version={version}
+  /> : <section class="arcade-unavailable">
+    <p class="section-label"><span data-lang="de">Web-Version nicht verfügbar</span><span data-lang="en">Web version unavailable</span></p>
+    <h2>{d.title}</h2>
+    <p><span data-lang="de">Für dieses Spiel ist noch keine Browser-Version veröffentlicht. Screenshots, Konzept und Entwicklungsstand findest du im Projekt.</span><span data-lang="en">A browser version of this game has not been released yet. Explore the screenshots, concept and development status in the project.</span></p>
+    <a class="btn-primary" href={p(`work/${entry.id}`)}><span data-lang="de">Projekt ansehen →</span><span data-lang="en">View project →</span></a>
+    <a href={p('arcade')}><span data-lang="de">Alle Spiele</span><span data-lang="en">All games</span></a>
+  </section>}
+</BaseLayout>
+
+<style>
+  .arcade-unavailable { position: fixed; z-index: 8; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 32px)); padding: clamp(24px, 5vw, 44px); background: #111620f5; border: 1px solid var(--stroke); border-radius: 20px; box-shadow: 0 24px 100px #0009; }
+  .arcade-unavailable h2 { font-size: clamp(28px, 5vw, 40px); margin: 8px 0 16px; }
+  .arcade-unavailable p { line-height: 1.65; }
+  .arcade-unavailable a { display: inline-flex; align-items: center; min-height: 44px; margin: 20px 20px 0 0; }
+</style>

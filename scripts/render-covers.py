@@ -79,21 +79,3 @@ try:
         print("WEB", out.name, out.stat().st_size)
 except Exception as e:
     print("PIL", e)
-
-# Floordirekt branded cover from logo if needed
-try:
-    from PIL import Image, ImageDraw
-
-    logo = dest / "floordirekt" / "studio-lockup.png"
-    if logo.exists():
-        canvas = Image.new("RGB", (1600, 1000), (18, 22, 28))
-        mark = Image.open(logo).convert("RGBA")
-        mark.thumbnail((900, 320))
-        x = (1600 - mark.width) // 2
-        y = (1000 - mark.height) // 2
-        canvas.paste(mark, (x, y), mark)
-        out = dest / "floordirekt" / "cover.jpg"
-        canvas.save(out, "JPEG", quality=88)
-        print("FD", out)
-except Exception as e:
-    print("FD", e)

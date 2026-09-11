@@ -1,0 +1,304 @@
+/* ==========================================================================
+   Das Über-mich-Panel — der Ausweis an der Kasse.
+   Nur die eigenen Teile: Porträt, Rolle, Abschnittslabels, Zeilen für Skills und Werdegang.
+   Hülle, Chrome, Karte, Korridor, Meta-Raster und Chips kommen aus hall-panel.css.
+   Namensraum: .about-panel__*
+   ========================================================================== */
+
+/* Eyebrow: „Offen für Freelance" leuchtet wie ein Live-Status */
+.about-panel__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ok);
+}
+.about-panel__open::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 70%, transparent);
+}
+
+/* ---------- Kopf: rundes Porträt neben Name und Rolle ---------- */
+.about-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 4px 0 18px;
+}
+/* Porträt: Freisteller — Kopf und Schultern füllen den Kreis, Licht in der Markenfarbe dahinter */
+.about-panel__portrait {
+  flex: 0 0 112px;
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--brand) 38%, transparent), transparent 70%),
+    linear-gradient(180deg, #1c2030 0%, #0b0c13 100%);
+  box-shadow:
+    0 0 0 2px #0b0c12,
+    0 0 0 3px var(--brand),
+    0 18px 40px -18px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+.about-panel__portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 24%;
+  transform: scale(1.72) translateY(6%);
+  transform-origin: 50% 24%;
+}
+.about-panel__id {
+  min-width: 0;
+}
+.about-panel__head .hall-panel__title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 32px;
+}
+.about-panel__surname {
+  white-space: nowrap;
+}
+.about-panel__role {
+  margin: 4px 0 0;
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* Lead kräftiger als die Summary eines Projekts, der Zusatz darunter ruhig */
+.hall-panel--about .hall-panel__summary {
+  margin: 0 0 6px;
+  font-size: 17px;
+  line-height: 25px;
+  font-weight: 500;
+  color: var(--text);
+}
+.about-panel__text {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 23px;
+  color: var(--dim);
+}
+.about-panel__muted {
+  color: var(--faint);
+  font-weight: 400;
+}
+.about-panel__mail {
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.about-panel__mail:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--brand);
+  text-underline-offset: 0.15em;
+}
+
+/* ---------- Abschnitte: Mono-Label, darunter Zeilen ---------- */
+.about-panel__section {
+  margin: 0 0 26px;
+}
+.about-panel__section:last-child {
+  margin-bottom: 0;
+}
+.about-panel__section > .hall-panel__lbl {
+  margin: 0 0 4px;
+}
+.about-panel__section .hall-panel__meta {
+  margin: 8px 0 0;
+}
+.about-panel__groups,
+.about-panel__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.about-panel__group,
+.about-panel__row {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 4px 14px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--stroke);
+}
+.about-panel__group:first-child,
+.about-panel__row:first-child {
+  border-top: 0;
+}
+.about-panel__group-name {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+.about-panel__year {
+  padding-top: 3px;
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 500;
+  color: var(--faint);
+}
+.about-panel__row-main {
+  min-width: 0;
+}
+.about-panel__row-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.about-panel__row-body {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--dim);
+}
+
+/* Ausbildung: Zellen wie das Meta-Raster, Titel und Ort untereinander */
+.about-panel__edu-title,
+.about-panel__edu-body {
+  display: block;
+}
+.about-panel__edu-body {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 400;
+  color: var(--dim);
+}
+.about-panel__cert {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.about-panel__cert:hover {
+  color: var(--text);
+}
+
+/* Tablet quer: Panel 452 — Jahresspalte etwas schmaler */
+@media (max-width: 1179px) {
+  .about-panel__group,
+  .about-panel__row {
+    grid-template-columns: 108px minmax(0, 1fr);
+  }
+}
+
+/* Sheet: alles einspaltig, Jahr über dem Titel */
+@media (max-width: 899px) {
+  .about-panel__group,
+  .about-panel__row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .about-panel__head {
+    gap: 14px;
+  }
+  .about-panel__portrait {
+    flex-basis: 84px;
+    width: 84px;
+    height: 84px;
+  }
+  .about-panel__head .hall-panel__title {
+    font-size: 22px;
+    line-height: 24px;
+  }
+  .about-panel__year {
+    padding-top: 0;
+  }
+}
+
+/* ---------- Breite Panels: Kopf über die volle Breite, dann Werdegang links, Ausweis + Skills rechts ---------- */
+.about-panel__cols {
+  display: contents;
+}
+@container hall-panel (min-width: 720px) {
+  .hall-panel--about .hall-panel__body {
+    display: block;
+  }
+  .about-panel__cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 38%);
+    column-gap: clamp(32px, 4cqw, 56px);
+    align-items: start;
+  }
+  .about-panel__main {
+    grid-column: 1;
+  }
+  .about-panel__side {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 20px 22px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--elev) 70%, transparent);
+    box-shadow: inset 0 0 0 1px var(--stroke);
+  }
+  .hall-panel--about .about-panel__side .hall-panel__meta {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .hall-panel--about .about-panel__side .hall-panel__val {
+    overflow-wrap: anywhere;
+  }
+  .about-panel__side .about-panel__section {
+    margin-top: 24px;
+  }
+  .about-panel__side .about-panel__group {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .about-panel__main .about-panel__section:first-child {
+    margin-top: 0;
+  }
+  .about-panel__main .about-panel__row {
+    grid-template-columns: 132px minmax(0, 1fr);
+  }
+  .about-panel__main .hall-panel__meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .about-panel__head .hall-panel__title {
+    font-size: 36px;
+    line-height: 38px;
+  }
+  .hall-panel--about .hall-panel__summary {
+    max-width: 60ch;
+  }
+}
+
+@container hall-panel (min-width: 720px) {
+  .hall-panel--about .about-panel__main .hall-panel__meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* The compound surname must wrap in a narrow card and in mobile reading view. */
+@container hall-panel (max-width: 420px) {
+  .about-panel__surname { white-space: normal; overflow-wrap: anywhere; }
+}

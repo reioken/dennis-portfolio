@@ -2,13 +2,22 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AvailabilityStatus from '../components/brand/AvailabilityStatus.astro';
 import ContactForm from '../components/contact/ContactForm';
+import ReadingMode from '../components/work/ReadingMode.astro';
+import Icon from '../components/icons/Icon';
 import { site } from '../lib/site';
 import { copy } from '../lib/i18n';
+import HallGuard from '../components/hall/HallGuard.astro';
+import Hall from '../components/hall/Hall';
+import { buildHallItems } from '../lib/hall-items';
+import { p } from '../lib/paths';
+import '../components/work/hall-panel.css';
+const { items } = await buildHallItems();
+const station = { index: items.length - 1, total: items.length, title: 'Kontakt', titleEn: 'Contact' };
 
 const formDe = {
   name: 'Name',
   email: 'E-Mail',
-  subject: 'Betreff',
+  subject: 'Betreff (optional)',
   message: 'Nachricht',
   send: 'Nachricht senden',
   sending: 'Senden…',
@@ -16,12 +25,13 @@ const formDe = {
   error: 'Senden fehlgeschlagen. Versuch’s nochmal oder schreib direkt per Mail.',
   required: 'Bitte Name, E-Mail und Nachricht ausfüllen.',
   invalidEmail: 'Bitte prüf die E-Mail-Adresse — sie sieht nicht gültig aus.',
+  rateLimit: 'Zu viele Versuche in kurzer Zeit. Bitte warte eine Minute und versuch es erneut.',
 };
 
 const formEn = {
   name: 'Name',
   email: 'Email',
-  subject: 'Subject',
+  subject: 'Subject (optional)',
   message: 'Message',
   send: 'Send message',
   sending: 'Sending…',
@@ -29,71 +39,36 @@ const formEn = {
   error: 'Couldn’t send. Try again or email me directly.',
   required: 'Please fill in name, email, and message.',
   invalidEmail: 'Please check the email address — it doesn’t look valid.',
+  rateLimit: 'Too many attempts in a short time. Please wait a minute and try again.',
 };
 ---
 
-<BaseLayout
-  title={`Kontakt — ${site.name}`}
-  description={`Kontakt zu ${site.name} — Freelance für Art Direction, UX/UI, Branding, Video oder Product. Keine Festanstellung. Formular oder direkt per Mail.`}
->
-  <section class="section pt-[calc(var(--nav-h)+2.5rem)]" data-block-id="contact" data-block-type="contact" data-block-source="native" data-block-label="Contact">
-    <div class="wrap grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-      <div>
-        <p class="section-label">
-          <span data-lang="de">{copy.de.contact.label}</span>
-          <span data-lang="en">{copy.en.contact.label}</span>
-        </p>
-        <h1 class="display mb-4 text-[clamp(2rem,5.5vw,3.4rem)] leading-[1.05]">
-          <span data-lang="de">
-            Lass uns <span class="gradient-text">{copy.de.contact.titleAccent}</span>
-          </span>
-          <span data-lang="en">
-            Let's <span class="gradient-text">{copy.en.contact.titleAccent}</span>
-          </span>
-        </h1>
-        <p class="mb-8 max-w-[42ch] text-[1.05rem] normal-case tracking-normal text-[var(--dim)]">
-          <span data-lang="de" data-edit="contact.body.de">{copy.de.contact.body}</span>
-          <span data-lang="en" data-edit="contact.body.en">{copy.en.contact.body}</span>
-        </p>
-
-        <div class="contact-form-shell">
-          {/* client:load on purpose — before hydration a bare <form> would submit
-              natively via GET and leak field values into the URL */}
-          <ContactForm client:load de={formDe} en={formEn} />
-        </div>
+<BaseLayout title={`Kontakt — ${site.name}`} description={`Kontakt zu ${site.name} — Art Direction, UX/UI und digitale Produkte.`} mode="case" station={station}>
+  <HallGuard />
+  <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug="telefon" mode="case" homeHref={p()} />
+  <aside class="hall-panel hall-panel--contact" aria-labelledby="contact-title">
+    <div class="hall-panel__chrome"><ReadingMode /></div>
+    <div class="hall-panel__card">
+      <div class="hall-panel__body">
+        <p class="hall-panel__kind"><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span></p>
+        <h1 id="contact-title" class="hall-panel__title"><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span></h1>
+        <p class="hall-panel__summary"><span data-lang="de">{copy.de.contact.body}</span><span data-lang="en">{copy.en.contact.body}</span></p>
+        <p class="contact-direct"><a href={`mailto:${site.email}`}>{site.email}</a></p>
+        <ContactForm client:load de={formDe} en={formEn} privacyHref={p('privacy')} privacyHrefEn={p('en/privacy')} />
+        <div class="contact-profile"><AvailabilityStatus /><p><span data-lang="de">{site.location}</span><span data-lang="en">Mannheim/Heidelberg area</span></p></div>
       </div>
-
-      <aside class="relative space-y-6 overflow-hidden rounded-[28px] border border-[var(--stroke)] bg-[var(--panel)] p-7 lg:sticky lg:top-[calc(var(--nav-h)+1.25rem)]">
-        <div
-          aria-hidden
-          class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-50"
-          style="background: radial-gradient(circle, color-mix(in srgb, var(--violet) 45%, transparent), transparent 70%)"
-        />
-        <div class="relative">
-          <AvailabilityStatus />
-        </div>
-        <div class="relative">
-          <div class="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-[var(--meta)]">
-            <span data-lang="de">{copy.de.contact.email}</span>
-            <span data-lang="en">{copy.en.contact.email}</span>
-          </div>
-          <!--email_off--><a class="break-all text-[1.15rem] gradient-text" href={`mailto:${site.email}`} data-edit="site.email">{site.email}</a><!--/email_off-->
-        </div>
-        <div class="relative">
-          <div class="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.14em] text-[var(--meta)]">
-            <span data-lang="de">{copy.de.contact.location}</span>
-            <span data-lang="en">{copy.en.contact.location}</span>
-          </div>
-          <div class="normal-case tracking-normal text-[var(--text)]" data-edit="site.location">
-            <span data-lang="de">{site.location}</span>
-            <span data-lang="en">Mannheim/Heidelberg area</span>
-          </div>
-        </div>
-        <div class="relative flex flex-wrap gap-3 pt-1">
-          <a class="btn" href={site.links.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
-          <a class="btn" href={site.links.github} target="_blank" rel="noreferrer">GitHub</a>
-        </div>
-      </aside>
+      <div class="hall-panel__foot contact-links">
+        <a href={site.links.linkedin} target="_blank" rel="noreferrer">LinkedIn <Icon name="arrow-up-right" size={14} /></a>
+        <a href={site.links.github} target="_blank" rel="noreferrer">GitHub <Icon name="arrow-up-right" size={14} /></a>
+        <a href={p('impressum')}><span data-lang="de">Impressum</span><span data-lang="en">Legal notice</span></a>
+      </div>
     </div>
-  </section>
+  </aside>
 </BaseLayout>
+<style>
+.contact-direct { margin: 18px 0 24px; overflow-wrap: anywhere; font-size: clamp(16px, 1.3vw, 18px); color: var(--ice); }
+.contact-profile { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--stroke); color: var(--dim); font-size: 14px; }
+.contact-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; padding: 12px 24px; font-size: 13px; }
+.contact-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+@media (max-width: 599px) { .contact-links { padding-inline: 20px; gap: 4px 20px; } }
+</style>

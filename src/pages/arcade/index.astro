@@ -1,0 +1,216 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import { site } from '../../lib/site';
+import { copy } from '../../lib/i18n';
+import { p } from '../../lib/paths';
+import { toAvif } from '../../lib/img';
+import { arcadeBuild } from '../../lib/arcade-build';
+
+const asset = (path: string) => p(path.replace(/^\//, ''));
+const games = (await getCollection('work'))
+  .filter((w) => w.data.platform.includes('game'))
+  .sort((a, b) => {
+    const pa = a.data.arcade ? 0 : 1;
+    const pb = b.data.arcade ? 0 : 1;
+    return pa - pb || a.data.order - b.data.order;
+  });
+const A = copy.de.arcade;
+const AE = copy.en.arcade;
+---
+
+<BaseLayout
+  title={`Spielhalle — ${site.name}`}
+  description={`Spielhalle von ${site.name} — eigene Spiele, Konzepte, Screenshots und Entwicklungsstände.`}
+>
+  <section class="section pt-[calc(var(--nav-h)+2.5rem)]">
+    <div class="wrap">
+      <p class="section-label">
+        <span data-lang="de">{A.label}</span>
+        <span data-lang="en">{AE.label}</span>
+      </p>
+      <h1 class="display mb-3 text-[clamp(2rem,5.5vw,3.2rem)] leading-[1.05]">
+        <span data-lang="de">{A.title}</span>
+        <span data-lang="en">{AE.title}</span>
+      </h1>
+      <p class="mb-10 max-w-2xl normal-case tracking-normal text-[var(--dim)]">
+        <span data-lang="de">{A.body}</span>
+        <span data-lang="en">{AE.body}</span>
+      </p>
+
+      <div class="arcade-grid">
+        {
+          games.map((g) => {
+            const brand = g.data.brand?.primary ?? '#ac8bfd';
+            const playable = Boolean(arcadeBuild(g.data.arcade?.id));
+            const href = playable ? p(`arcade/${g.data.arcade!.id}`) : p(`work/${g.id}`);
+            const avif = toAvif(asset(g.data.cover));
+            return (
+              <a class={`arcade-card${playable ? ' is-playable' : ''}`} href={href} style={`--brand:${brand}`}>
+                <span class="arcade-card__screen">
+                  <picture>
+                    {avif ? <source type="image/avif" srcset={avif} /> : null}
+                    <img
+                      src={asset(g.data.cover)}
+                      alt={g.data.coverAlt ?? g.data.title}
+                      data-alt-en={g.data.coverAltEn}
+                      width={640}
+                      height={400}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                  <span class="arcade-card__badge mono">
+                    {playable ? (
+                      <>
+                        <span class="arcade-card__coin" aria-hidden />
+                        <span data-lang="de">{A.insert}</span>
+                        <span data-lang="en">{AE.insert}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span data-lang="de">Projekt ansehen</span>
+                        <span data-lang="en">View project</span>
+                      </>
+                    )}
+                  </span>
+                </span>
+                <span class="arcade-card__body">
+                  <span class="arcade-card__title">
+                    <span data-lang="de">{g.data.title}</span>
+                    <span data-lang="en">{g.data.titleEn ?? g.data.title}</span>
+                  </span>
+                  <span class="arcade-card__meta mono">
+                    {g.data.engine ? <span>{g.data.engine}</span> : null}
+                    {g.data.version ? <span>{g.data.version}</span> : null}
+                  </span>
+                  <span class="arcade-card__summary">
+                    <span data-lang="de">{g.data.summary}</span>
+                    <span data-lang="en">{g.data.summaryEn ?? g.data.summary}</span>
+                  </span>
+                </span>
+              </a>
+            );
+          })
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .arcade-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    gap: 1.25rem;
+  }
+  .arcade-card {
+    --brand: #ac8bfd;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 0.85rem;
+    color: var(--text);
+    text-decoration: none;
+    border-radius: 16px;
+    padding: 0.6rem;
+    background: linear-gradient(180deg, #13161e, #0b0d13);
+    box-shadow: 0 0 0 1px var(--stroke), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+  }
+  .arcade-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--brand) 60%, var(--stroke)),
+      0 30px 60px -30px color-mix(in srgb, var(--brand) 70%, #000);
+  }
+  .arcade-card:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+  }
+  .arcade-card__screen {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #000;
+  }
+  .arcade-card__screen picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .arcade-card__screen img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.85);
+    transition: filter 0.3s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .arcade-card:hover .arcade-card__screen img {
+    filter: none;
+    transform: scale(1.03);
+  }
+  .arcade-card:not(.is-playable) .arcade-card__screen img {
+    filter: saturate(0.9) brightness(0.94);
+  }
+  .arcade-card__badge {
+    position: absolute;
+    left: 0.6rem;
+    bottom: 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #0b0c10;
+    background: var(--brand);
+  }
+  .arcade-card:not(.is-playable) .arcade-card__badge {
+    color: var(--dim);
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    box-shadow: 0 0 0 1px var(--stroke);
+  }
+  .arcade-card__coin {
+    width: 0.7em;
+    height: 0.7em;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+  }
+  .arcade-card__body {
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+    padding: 0 0.4rem 0.5rem;
+  }
+  .arcade-card__title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .arcade-card__meta {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.68rem;
+    color: var(--brand);
+  }
+  .arcade-card__summary {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--dim);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .arcade-card, .arcade-card__screen img { transition: none; }
+    .arcade-card:hover, .arcade-card:hover .arcade-card__screen img { transform: none; }
+  }
+</style>

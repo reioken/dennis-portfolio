@@ -166,7 +166,7 @@ function buildHtml({ name, email, subject, message, when, charCount }) {
           </tr>
         </table>
         <div style="max-width:560px;margin-top:14px;font-size:11px;line-height:1.45;color:#7a8699;text-align:center;">
-          Art Director · UX/UI · Hobby Dev · dennisbf.design
+          Art Director · UX/UI · Product Builder · dennisbf.design
         </div>
       </td>
     </tr>
@@ -215,11 +215,17 @@ function clean(value, max) {
   return [...s].slice(0, max).join('');
 }
 
+async function anonymousKey(value) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 /** Branded result page for no-JS form posts (progressive enhancement fallback). */
-function resultPage(ok, errorKey) {
+function resultPage(ok, errorKey, status) {
   const messages = {
     missing_fields: 'Bitte Name, E-Mail und Nachricht ausfüllen. / Please fill in name, email and message.',
     invalid_email: 'Bitte prüf die E-Mail-Adresse. / Please check the email address.',
+    rate_limited: 'Zu viele Versuche. Bitte warte eine Minute. / Too many attempts. Please wait a minute.',
     send_failed: 'Senden fehlgeschlagen — bitte später nochmal versuchen oder direkt mailen. / Sending failed — please retry later or email directly.',
   };
   const title = ok ? 'Nachricht gesendet' : 'Senden fehlgeschlagen';
@@ -250,7 +256,7 @@ function resultPage(ok, errorKey) {
 </body>
 </html>`;
   return new Response(html, {
-    status: ok ? 200 : 400,
+    status: status ?? (ok ? 200 : 400),
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
   });
 }
@@ -262,7 +268,7 @@ async function handleContact(request, env) {
     contentType.includes('application/x-www-form-urlencoded') ||
     contentType.includes('multipart/form-data');
   const respond = (data, status) =>
-    isFormPost ? resultPage(!!data.ok, data.error) : json(data, status);
+    isFormPost ? resultPage(!!data.ok, data.error, status) : json(data, status);
 
   if (!env.CONTACT) {
     return respond({ ok: false, error: 'mail_binding_missing' }, 503);
@@ -283,6 +289,10 @@ async function handleContact(request, env) {
     }
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return respond({ ok: false, error: 'invalid_payload' }, 400);
+  }
+
   // Honeypot
   if (body.company || body.website) {
     return respond({ ok: true }, 200);
@@ -299,6 +309,14 @@ async function handleContact(request, env) {
   }
   if (!EMAIL_RE.test(email)) {
     return respond({ ok: false, error: 'invalid_email' }, 400);
+  }
+
+  if (env.CONTACT_SENDER_LIMITER) {
+    const senderKey = await anonymousKey(email);
+    const { success } = await env.CONTACT_SENDER_LIMITER.limit({ key: senderKey });
+    if (!success) {
+      return respond({ ok: false, error: 'rate_limited' }, 429);
+    }
   }
 
   const to = typeof env.CONTACT_TO === 'string' ? env.CONTACT_TO.trim() : '';
@@ -323,10 +341,15 @@ async function handleContact(request, env) {
 
   try {
     await env.CONTACT.send(new EmailMessage(fromAddr, to, raw));
-    console.log('contact mail sent', { charCount, subject: mailSubject.slice(0, 80) });
+    console.log(JSON.stringify({
+      message: 'contact mail sent',
+    }));
     return respond({ ok: true }, 200);
   } catch (err) {
-    console.error('contact mail failed', err?.message || err);
+    console.error(JSON.stringify({
+      message: 'contact mail failed',
+      error: err instanceof Error ? err.message : String(err),
+    }));
     return respond({ ok: false, error: 'send_failed' }, 502);
   }
 }
@@ -346,6 +369,19 @@ export default {
 
     if (request.method !== 'POST') {
       return json({ ok: false, error: 'method_not_allowed' }, 405);
+    }
+
+    if (env.CONTACT_GLOBAL_LIMITER) {
+      const { success } = await env.CONTACT_GLOBAL_LIMITER.limit({ key: 'contact-form' });
+      if (!success) {
+        const contentType = (request.headers.get('content-type') || '').toLowerCase();
+        const isFormPost =
+          contentType.includes('application/x-www-form-urlencoded') ||
+          contentType.includes('multipart/form-data');
+        return isFormPost
+          ? resultPage(false, 'rate_limited', 429)
+          : json({ ok: false, error: 'rate_limited' }, 429);
+      }
     }
 
     return handleContact(request, env);

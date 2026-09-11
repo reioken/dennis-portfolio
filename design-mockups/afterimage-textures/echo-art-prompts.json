@@ -1,0 +1,14 @@
+{
+  "generator": "built-in image_gen",
+  "created": "2026-09-10",
+  "assets": [
+    {
+      "slug": "echo-frequency",
+      "prompt": "Create a production game-asset TEXTURE, NOT a mockup, NOT a photograph of an arcade cabinet. One single continuous portrait 2:3 flat illustrated artwork sheet, edge-to-edge. For ECHO FREQUENCY, a serious coastal radio mystery on Blackwater Island. Premium vintage screenprinted sci-fi noir cabinet side art: rugged black coastal cliffs, a solitary lighthouse on a promontory in the upper middle, sweeping very subtle concentric radio-signal arcs integrated into cloudy night sky, ocean currents and craggy rock patterns flowing toward the lower front. Sophisticated densely drawn engraving/screenprint detail, layered charcoal, midnight indigo, muted violet and icy cyan highlights. Rich dark palette with clearly separated readable silhouettes and controlled brighter accents; preserve subtle detail in shadow. Vertical flowing composition suitable for cropping to a tall cabinet side AND lower front panel; central 60 percent contains coherent image, no key object at edges. Lower third is beautifully detailed rocky shoreline and surf, not blank. Flat unlit printed illustration/albedo. No cabinet, no controls, no product scene, no frame, no panel dividers, no UI, no screenshots, no words, letters, numbers, logos, or labels, no surface reflections, no perspective or baked external lighting. High quality artwork intended to be printed under clear laminate on a dark premium arcade.",
+      "generatedSource": "C:/Users/denni/.codex/generated_images/01a08b47-11d4-7660-a2b1-277ae3934517/exec-544d6852-e134-4c2b-b82f-28b85516736a.png",
+      "source": "design-mockups/afterimage-textures/echo-frequency.png",
+      "webp": "public/textures/cabinet-art/echo-frequency.webp",
+      "provenance": "Exact prompt and original generated source supplied by coordinating agent."
+    }
+  ]
+}

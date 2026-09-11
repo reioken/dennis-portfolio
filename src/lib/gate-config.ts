@@ -15,7 +15,7 @@ export const GATE = {
 } as const;
 
 export function isGateEnabled() {
-  return GATE.lockSite === true;
+  return GATE.lockSite;
 }
 
 export function isEditorEnabled() {

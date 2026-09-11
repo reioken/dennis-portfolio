@@ -7,35 +7,46 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "werkstatt": "node scripts/werkstatt-scan.mjs",
+    "prebuild": "node scripts/werkstatt-scan.mjs",
     "build": "astro build",
+    "audit": "node scripts/audit-build.mjs",
+    "check": "npm run typecheck && npm run test:review && npm run build && npm run audit",
     "preview": "astro preview",
     "astro": "astro",
     "optimize:media": "node scripts/optimize-media.mjs",
     "upscale:gallery": "node scripts/upscale-gallery.mjs",
-    "sync:studio": "node scripts/sync-studio.mjs",
-    "sync:studio:check": "node scripts/sync-studio.mjs --check",
     "deploy:contact": "wrangler deploy -c workers/contact/wrangler.toml",
-    "deploy": "npm run deploy:contact && astro build && wrangler pages deploy dist --project-name=dennis-portfolio --commit-dirty=true",
+    "predeploy": "node scripts/werkstatt-scan.mjs",
+    "deploy": "npm run deploy:contact && astro build && wrangler pages deploy dist --project-name=dennis-portfolio --branch=main --commit-dirty=true",
     "thumbs": "node scripts/build-thumbs.mjs",
-    "avif": "node scripts/build-avif.mjs"
+    "avif": "node scripts/build-avif.mjs",
+    "arcade:echo": "node scripts/export-arcade.mjs echo-frequency",
+    "arcade:publish": "node scripts/arcade/publish-r2.mjs",
+    "typecheck": "tsc --noEmit -p .",
+    "test:review": "node --test scripts/qa/*.test.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.3",
-    "@astrojs/react": "^6.0.1",
+    "@astrojs/react": "^6.0.5",
     "@astrojs/sitemap": "^3.7.3",
     "@fontsource-variable/outfit": "^5.2.8",
     "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "astro": "^7.1.1",
+    "astro": "^7.3.2",
     "motion": "^12.42.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "three": "^0.181.0"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.5.0",
+    "@types/three": "^0.181.0",
     "sharp": "^0.34.2",
+    "typescript": "^5.9.3",
     "wrangler": "^4.112.0"
   }
 }

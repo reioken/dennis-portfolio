@@ -15,28 +15,73 @@ import path from 'node:path';
 
 const SITE = 'https://www.dennisbf.design';
 /** Seitenrouten, die auf /en/ umgeschrieben werden (Assets/API bleiben unberührt) */
-const ROUTES = ['work', 'about', 'contact', 'lab', 'impressum', 'privacy'];
+const ROUTES = ['work', 'about', 'contact', 'lab', 'arcade', 'impressum', 'privacy'];
 
 /** Englische Titles/Descriptions je Route ('' = Startseite) */
 const META_EN = {
   '': {
-    desc: 'Hobby software developer · art director & UI/UX designer — Floordirekt, NEXUS, Berry, Riftcast.',
+    title: 'Dennis Bierreth-Fernandez — Art Director & Product Builder',
+    desc: 'Art director, UX/UI designer and independent product builder — Floordirekt, NEXUS, Berry and Riftcast.',
   },
   'work/': {
     title: 'Projects — Dennis Bierreth-Fernandez',
-    desc: 'Projects by Dennis Bierreth-Fernandez: NEXUS, Berry, Riftcast, Floordirekt Studio — product design, UX/UI, branding and craft.',
+    desc: 'Projects by Dennis Bierreth-Fernandez: NEXUS, Berry, Riftcast and Mina — product design, UX/UI, branding and craft.',
   },
   'about/': {
     title: 'About — Dennis Bierreth-Fernandez',
-    desc: 'Dennis Bierreth-Fernandez — hobby software developer, art director & UI/UX designer. Full-time at Floordirekt, not open for hire — freelance welcome.',
+    desc: 'Dennis Bierreth-Fernandez — art director, UX/UI designer and independent product builder. Available for selected freelance projects.',
   },
   'contact/': {
     title: 'Contact — Dennis Bierreth-Fernandez',
-    desc: 'Contact Dennis Bierreth-Fernandez for freelance — art direction, UX/UI, branding, video or product. Not open for full-time hire.',
+    desc: 'Contact Dennis Bierreth-Fernandez for selected freelance projects in art direction, UX/UI, branding, video and digital products.',
   },
   'lab/': {
     title: 'Lab — Dennis Bierreth-Fernandez',
-    desc: 'Lab — experiments, WIP and side builds like Ashwake (Godot).',
+    desc: 'Lab — experiments, WIP and side builds like Carillon (Godot).',
+  },
+  'arcade/': {
+    title: 'Arcade — Dennis Bierreth-Fernandez',
+    desc: 'Original games, concepts, screenshots and development progress.',
+  },
+  'arcade/echo-frequency/': {
+    title: 'Echo Frequency — Arcade — Dennis Bierreth-Fernandez',
+    desc: 'Echo Frequency — radio mystery game in development. Browser release status and project details.',
+  },
+  'work/safeplate/': {
+    title: 'Essfreude — Dennis Bierreth-Fernandez',
+    desc: 'A kitchen field guide for people with dietary restrictions — atlas, dishes, journal, offline and without diagnostic claims.',
+  },
+  'work/carillon/': {
+    title: 'Carillon — Dennis Bierreth-Fernandez',
+    desc: 'Survivor-roguelite in Godot 4.7 — forge a build around the Last Ember, then hold the night vigil.',
+  },
+  'work/echo-frequency/': {
+    title: 'Echo Frequency — Dennis Bierreth-Fernandez',
+    desc: 'A radio mystery game in Godot — signals, evidence and a pinboard.',
+  },
+  'work/cab-no-9/': {
+    title: 'Cab No. 9 — Dennis Bierreth-Fernandez',
+    desc: 'PSX-style supernatural taxi narrative game in Godot 4.7 — drive souls through the afterlife.',
+  },
+  'work/saute-survivors/': {
+    title: 'Sauté Survivors — Dennis Bierreth-Fernandez',
+    desc: 'Unity bullet-heaven in a kitchen — Nori versus the dinner rush.',
+  },
+  'work/lowlight/': {
+    title: 'Lowlight — Dennis Bierreth-Fernandez',
+    desc: 'Resizable Windows companion for Spotify — Obsidian and Frosted Glass themes.',
+  },
+  'work/angry/': {
+    title: 'Angry — Dennis Bierreth-Fernandez',
+    desc: 'ADHD-friendly anger-regulation companion app with the mascot Mo.',
+  },
+  'work/briefly/': {
+    title: 'Briefly — Dennis Bierreth-Fernandez',
+    desc: 'A personal 7:00 news briefing app — eleven rubrics, generated daily.',
+  },
+  'work/hookline/': {
+    title: 'Hookline — Dennis Bierreth-Fernandez',
+    desc: 'A studio in the browser: instrumental, lyrics with section tags, a voice, render. Its first song is CEILING.',
   },
   'privacy/': {
     title: 'Privacy — Dennis Bierreth-Fernandez',
@@ -53,10 +98,6 @@ const META_EN = {
   'work/riftcast/': {
     title: 'Riftcast — Dennis Bierreth-Fernandez',
     desc: 'Remote desktop for your own network — mirror, control and play your PC on phone and browser. No cloud account.',
-  },
-  'work/floordirekt/': {
-    title: 'Floordirekt Studio — Dennis Bierreth-Fernandez',
-    desc: 'Studio workflow and imagery system for shop product images — variants, translations, batch export.',
   },
   'work/mina/': {
     title: 'Mina – UX/UI Case Study — Dennis Bierreth-Fernandez',
@@ -87,7 +128,7 @@ const META_EN = {
 async function collectPages(dir, base = '') {
   const out = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
-    if (entry.name === 'en' && base === '') continue; // eigene Ausgabe nicht erneut kopieren
+    if (['en', 'game-builds'].includes(entry.name) && base === '') continue; // eigene Ausgabe nicht erneut kopieren
     const abs = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       out.push(...(await collectPages(abs, `${base}${entry.name}/`)));
@@ -170,6 +211,14 @@ function toEnglish(html, rel) {
       if (body.includes('"CreativeWork"') && meta?.desc) {
         next = next.replace(/"description":"[^"]*"/, `"description":${JSON.stringify(meta.desc)}`);
       }
+      if (body.includes('"Person"')) {
+        next = next
+          .replace(
+            /"jobTitle":"[^"]*"/,
+            '"jobTitle":"Art Director · UX/UI · Independent Product Builder"',
+          )
+          .replace(/"Hobby Software Development"/g, '"Independent Product Development"');
+      }
       if (body.includes('"BreadcrumbList"')) {
         next = next.replace(/"name":"Start"/, '"name":"Home"');
       }
@@ -177,6 +226,11 @@ function toEnglish(html, rel) {
     },
   );
 
+  out = out.replace(/aria-label="Menü öffnen"/g, 'aria-label="Open menu"');
+  out = out.replace(/aria-label="Portfolio-Halle"/g, 'aria-label="Portfolio hall"');
+  out = out.replace(/aria-label="Stationen"/g, 'aria-label="Stations"');
+  out = out.replace(/aria-label="Station wählen"/g, 'aria-label="Choose station"');
+  out = out.replace(/aria-label="Capture (\d+) von (\d+): /g, 'aria-label="Capture $1 of $2: ');
   // Häufige SSR-Aria-Labels in Galerie-Buttons
   out = out.replace(/aria-label="Galerie öffnen — /g, 'aria-label="Open gallery — ');
   out = out.replace(
@@ -193,11 +247,18 @@ function toEnglish(html, rel) {
 }
 
 export async function buildEnRoutes(distDir) {
-  const pages = await collectPages(distDir);
+  const pages = (await collectPages(distDir)).filter(
+    (page) =>
+      page.rel === '' ||
+      ROUTES.some((route) => page.rel === `${route}/` || page.rel.startsWith(`${route}/`)),
+  );
   let count = 0;
+  const generatedEnglish = new Set();
 
   for (const page of pages) {
     const html = await readFile(page.abs, 'utf8');
+    // Legacy redirects already have their own localized destination.
+    if (/<meta\b[^>]*http-equiv="refresh"/i.test(html)) continue;
     const block = hreflangBlock(page.rel);
 
     // hreflang in die DE-Originalseite
@@ -210,6 +271,7 @@ export async function buildEnRoutes(distDir) {
     const enPath = path.join(distDir, 'en', page.rel, 'index.html');
     await mkdir(path.dirname(enPath), { recursive: true });
     await writeFile(enPath, enHtml);
+    generatedEnglish.add(`${SITE}/en/${page.rel}`);
     count++;
   }
 
@@ -220,6 +282,7 @@ export async function buildEnRoutes(distDir) {
     if (!xml.includes(`${SITE}/en/`)) {
       const entries = xml.match(/<url>.*?<\/url>/gs) ?? [];
       const enEntries = entries
+        .filter((entry) => generatedEnglish.has(entry.match(/<loc>(.*?)<\/loc>/)?.[1]?.replace(`${SITE}/`, `${SITE}/en/`)))
         .map((e) => e.replace(`<loc>${SITE}/`, `<loc>${SITE}/en/`))
         .join('');
       await writeFile(sitemapPath, xml.replace('</urlset>', `${enEntries}</urlset>`));
@@ -230,3 +293,4 @@ export async function buildEnRoutes(distDir) {
 
   console.log(`[en-routes] ${count} EN-Seiten unter /en/ erzeugt, hreflang verlinkt`);
 }
+

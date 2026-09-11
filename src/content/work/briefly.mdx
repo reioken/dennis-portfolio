@@ -1,0 +1,81 @@
+---
+title: "Briefly"
+summary: "Persönliches Morgen-Briefing als PWA — jeden Tag um 7:00 recherchiert ein Agent elf Rubriken und verdichtet sie zu Stichpunkten mit Quell-Links."
+summaryEn: "Personal morning briefing as a PWA — every day at 7:00 an agent researches eleven topics and condenses them into bullet points with source links."
+role: "Solo Product Build"
+roleEn: "Solo Product Build"
+year: "2026"
+timeline: "2026 · läuft täglich · Ein-Personen-Deployment"
+timelineEn: "2026 · runs daily · single-user deployment"
+stack: ["Next.js", "Vercel Cron", "Postgres", "Claude API", "Web Push", "Tailwind 4", "Android TWA"]
+outcome: "Elf Rubriken · 7:00 Uhr Push · Archiv aller Ausgaben"
+outcomeEn: "Eleven topics · 7:00 push · archive of every edition"
+tags: ["product", "design"]
+featured: false
+cover: "/media/briefly/cover.webp"
+coverAlt: "Briefly — die Ausgabe von heute auf Papierton"
+coverAltEn: "Briefly — today's edition on the paper tone"
+logo: "/media/briefly/logo.webp"
+gallery:
+  - "/media/briefly/shots/01-heute.webp"
+  - "/media/briefly/shots/02-heute-dark.webp"
+  - "/media/briefly/shots/03-rubrik.webp"
+  - "/media/briefly/shots/04-archiv.webp"
+  - "/media/briefly/shots/05-splash-android.webp"
+surfaces:
+  - id: pwa
+    labelDe: PWA & Android
+    labelEn: PWA & Android
+    blurbDe: "Heute, Dunkelmodus, Rubrik mit Quelle, Archiv und der Android-Start."
+    blurbEn: "Today, dark mode, a rubric with its source, the archive and the Android launch."
+    variant: phone
+    gallery:
+      - "/media/briefly/shots/01-heute.webp"
+      - "/media/briefly/shots/02-heute-dark.webp"
+      - "/media/briefly/shots/03-rubrik.webp"
+      - "/media/briefly/shots/04-archiv.webp"
+      - "/media/briefly/shots/05-splash-android.webp"
+    alts:
+      - "Heute: Kopf mit Hell/Dunkel-Wechsel, Hinweisbox und die Rubrik Deutschland mit Stichpunkten und Quelle"
+      - "Dieselbe Ausgabe im Dunkelmodus"
+      - "Meldung mit Quell-Link, Knopf für die 7-Uhr-Push-Benachrichtigung und Link ins Archiv"
+      - "Archiv: frühere Ausgaben mit Datum und Anzahl der Meldungen"
+      - "Android-Start als TWA: Splash mit dem Briefly-Icon"
+    altsEn:
+      - "Today: header with light/dark toggle, notice box and the Deutschland rubric with bullet points and source"
+      - "The same edition in dark mode"
+      - "Story with source link, the 7 a.m. push button and the archive link"
+      - "Archive: earlier editions with date and story count"
+      - "Android launch as a TWA: splash with the Briefly icon"
+order: 14
+status: "private"
+platform: ["web", "mobile"]
+engine: "Next.js"
+brand:
+  primary: "#8c2f1d"
+  secondary: "#faf8f3"
+---
+
+<div data-lang="de">
+
+**Eine Zeitung für genau einen Leser.**
+
+Briefly ist mein Morgen-Briefing: Um 7:00 Uhr recherchiert ein Agent elf Rubriken, die ich selbst festgelegt habe, verdichtet sie zu Stichpunkten und hängt an jede Meldung die Quelle. Dann kommt ein Push. Alles Ältere landet im Archiv.
+
+**Build** — Next.js auf Vercel mit Cron, Postgres für die Ausgaben, Claude für die Recherche, Web Push mit eigenem VAPID-Schlüssel. Der Android-Wrapper ist eine TWA. Gestaltung auf Papierton mit einer System-Serifen, ohne Webfont.
+
+**Stand** — Läuft täglich für eine Person. Nicht öffentlich verlinkt, weil die Rubriken meine sind.
+
+</div>
+
+<div data-lang="en">
+
+**A newspaper for exactly one reader.**
+
+Briefly is my morning briefing: at 7:00 an agent researches eleven topics I chose myself, condenses them into bullet points and attaches the source to every story. Then a push. Everything older goes into the archive.
+
+**Build** — Next.js on Vercel with Cron, Postgres for the editions, Claude for the research, Web Push with my own VAPID key. The Android wrapper is a TWA. Set on a paper tone with a system serif, no webfont.
+
+**Status** — Runs daily for one person. Not linked publicly, because the topics are mine.
+
+</div>

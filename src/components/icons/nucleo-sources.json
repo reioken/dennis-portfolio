@@ -1,0 +1,87 @@
+{
+  "collection": "Nucleo Sharp",
+  "style": "24px outline",
+  "source": "User local Nucleo library, icons/sets/<set>/<id>.svg",
+  "icons": {
+    "home": {
+      "set": 147,
+      "id": 56967,
+      "name": "house"
+    },
+    "work": {
+      "set": 131,
+      "id": 56061,
+      "name": "suitcase"
+    },
+    "about": {
+      "set": 164,
+      "id": 57662,
+      "name": "user"
+    },
+    "lab": {
+      "set": 153,
+      "id": 57235,
+      "name": "flask"
+    },
+    "contact": {
+      "set": 133,
+      "id": 58659,
+      "name": "envelope"
+    },
+    "menu": {
+      "set": 163,
+      "id": 55051,
+      "name": "menu"
+    },
+    "close": {
+      "set": 163,
+      "id": 55560,
+      "name": "xmark"
+    },
+    "external": {
+      "set": 129,
+      "id": 57778,
+      "name": "arrow-up-right"
+    },
+    "expand": {
+      "set": 129,
+      "id": 58293,
+      "name": "expand"
+    },
+    "chevron-left": {
+      "set": 129,
+      "id": 57896,
+      "name": "chevron-left"
+    },
+    "chevron-right": {
+      "set": 129,
+      "id": 57897,
+      "name": "chevron-right"
+    },
+    "arrow-up-right": {
+      "set": 129,
+      "id": 57778,
+      "name": "arrow-up-right"
+    },
+    "arrow-left": {
+      "set": 129,
+      "id": 57757,
+      "name": "arrow-left"
+    },
+    "arrow-up": {
+      "set": 129,
+      "id": 57787,
+      "name": "arrow-up"
+    },
+    "grid": {
+      "set": 163,
+      "id": 54983,
+      "name": "grid"
+    },
+    "info": {
+      "set": 163,
+      "id": 54853,
+      "name": "circle-info"
+    }
+  }
+}

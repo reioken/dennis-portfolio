@@ -1,124 +1,146 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import BrandMark from '../brand/BrandMark';
-import Icon from '../icons/Icon';
+
+import Icon, { type IconName } from '../icons/Icon';
 import LangSwitch from '../i18n/LangSwitch';
 import { copy, type Lang } from '../../lib/i18n';
+import './site-nav.css';
 
 type NavItem = { href: string; labelKey: keyof typeof copy.de.nav };
-type WorkLink = { href: string; title: string; titleEn?: string; tags?: string[] };
+
+/** Was die Leiste in der Mitte anzeigt: die Station der Halle (Zähler · Name · Version) */
+export type NavStation = { index: number; total: number; title: string; titleEn?: string; version?: string };
 
 type Props = {
   items: NavItem[];
-  workLinks?: WorkLink[];
   currentPath: string;
   brand: string;
   homeHref?: string;
+  /** Seitenmodus wie am <body>: hall / case / arcade / page */
+  mode?: 'page' | 'hall' | 'case' | 'arcade';
+  /** Station beim Laden (die Halle meldet Änderungen per hall:focus) */
+  station?: NavStation;
 };
+
+type FocusDetail = NavStation & { mode?: string };
+
+
 
 function normalizePath(path: string) {
   if (!path || path === '/') return '/';
   return path.endsWith('/') ? path.slice(0, -1) : path;
 }
 
-function readScrollY() {
-  return window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-}
+const nn = (i: number) => String(i + 1).padStart(2, '0');
+const routeIcons: Record<string, IconName> = { home: 'home', work: 'work', about: 'about', lab: 'lab', contact: 'contact', arcade: 'grid' };
 
-export default function GlassNav({
-  items,
-  workLinks = [],
-  currentPath,
-  brand,
-  homeHref = '/',
-}: Props) {
-  const reduce = useReducedMotion();
-  const [scrolled, setScrolled] = useState(false);
+/**
+ * Das Schild über der Halle: eine ruhige 40-px-Leiste ohne Fläche. Links die Marke, in den
+ * Automaten-Ansichten „← Halle" und die Esc-Taste, in der Mitte die Station (Zähler · Name · Version),
+ * rechts DE/EN und die Menü-Taste mit allen Routen. Im Close-up und beim Spielen wird sie leise und
+ * verschwindet nach ein paar Sekunden Ruhe, bis sich der Zeiger rührt.
+ */
+export default function GlassNav({ items, currentPath, brand, homeHref = '/', mode = 'page', station }: Props) {
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState<Lang>('de');
-  const listRef = useRef<HTMLDivElement>(null);
+  const [quiet, setQuiet] = useState(false);
+
+  const [st, setSt] = useState<FocusDetail | undefined>(station);
+  // EN pages clone DE markup; the first client render must match it before the DOM-language effect runs.
+  const initialLang: Lang = 'de';
+  const [lang, setLang] = useState<Lang>(initialLang);
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const [pill, setPill] = useState({ left: 0, width: 0, opacity: 0 });
+
   const home = normalizePath(homeHref);
   const [path, setPath] = useState(() => normalizePath(currentPath));
+  const inHallWorld = mode !== 'page';
+  const caseLike = mode === 'case' || mode === 'arcade';
 
   useEffect(() => {
     setPath(normalizePath(currentPath || window.location.pathname));
   }, [currentPath]);
 
+  /* Sprache aus dem DOM (serverseitig pro Route gesetzt) */
   useEffect(() => {
-    const read = () => {
-      const l = document.documentElement.dataset.lang === 'en' ? 'en' : 'de';
-      setLang(l);
-    };
+    const read = () => setLang(document.documentElement.dataset.lang === 'en' ? 'en' : 'de');
     read();
     const obs = new MutationObserver(read);
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-lang'] });
     return () => obs.disconnect();
   }, []);
 
+  /* Die Halle meldet Fokus und Modus — die Anzeige folgt live */
   useEffect(() => {
-    const sync = () => {
-      const on = readScrollY() > 8;
-      setScrolled(on);
-      document.documentElement.dataset.navScrolled = on ? '1' : '0';
+    const onFocus = (e: Event) => {
+      const d = (e as CustomEvent<FocusDetail>).detail;
+      if (d && Number.isFinite(d.index)) setSt(d);
     };
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        ticking = false;
-        sync();
-      });
-    };
-    sync();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      delete document.documentElement.dataset.navScrolled;
-    };
+    document.addEventListener('hall:focus', onFocus);
+    return () => document.removeEventListener('hall:focus', onFocus);
   }, []);
 
+  /* Leise im Close-up und beim Spielen: html.is-screen bzw. body[data-mode=arcade] mit laufendem Spiel */
   useEffect(() => {
-    const root = listRef.current;
-    if (!root) return;
-    const active = root.querySelector<HTMLElement>('[data-active="true"]');
-    if (!active) {
-      setPill((p) => ({ ...p, opacity: 0 }));
-      return;
-    }
-    const update = () => {
-      const r = active.getBoundingClientRect();
-      const pr = root.getBoundingClientRect();
-      setPill({ left: r.left - pr.left, width: r.width, opacity: 1 });
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(root);
-    window.addEventListener('resize', update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [path, open, lang]);
+    const check = () => {
+      const q = document.documentElement.classList.contains('is-screen') || document.body.dataset.playing === '1';
+      setQuiet(q);
 
+    };
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    obs.observe(document.body, { attributes: true, attributeFilter: ['data-playing', 'data-mode'] });
+    return () => obs.disconnect();
+  }, []);
+
+
+  /* Menü: Fokusfalle, Esc, Klick daneben */
   useEffect(() => {
     if (!open) return;
+    const main = document.querySelector<HTMLElement>('main');
+    const wasInert = main?.hasAttribute('inert');
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    main?.setAttribute('inert', '');
+    body.style.overflow = 'hidden';
+    const focusFrame = requestAnimationFrame(() => (panelRef.current?.querySelector<HTMLElement>('[aria-current="page"]') ?? panelRef.current?.querySelector<HTMLElement>('a[href]'))?.focus());
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen(false);
+        requestAnimationFrame(() => btnRef.current?.focus());
+        return;
+      }
+      if (e.key !== 'Tab' || !panelRef.current) return;
+      const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!panelRef.current.contains(document.activeElement)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    const onPointer = (e: MouseEvent) => {
+    const onPointer = (e: PointerEvent) => {
       const t = e.target as Node;
       if (panelRef.current?.contains(t) || btnRef.current?.contains(t)) return;
       setOpen(false);
+      btnRef.current?.focus();
     };
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('mousedown', onPointer);
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('pointerdown', onPointer);
     return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('mousedown', onPointer);
+      cancelAnimationFrame(focusFrame);
+      if (!wasInert) main?.removeAttribute('inert');
+      body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('pointerdown', onPointer);
     };
   }, [open]);
 
@@ -128,224 +150,110 @@ export default function GlassNav({
     return path === h || path.startsWith(`${h}/`);
   };
 
-  /** Beide Sprachen ins Markup — die Nav steht damit schon vor der Hydration richtig da */
-  const label = (key: NavItem['labelKey']) =>
-    copy.de.nav[key] === copy.en.nav[key] ? (
-      copy.de.nav[key]
-    ) : (
-      <>
-        <span data-lang="de">{copy.de.nav[key]}</span>
-        <span data-lang="en">{copy.en.nav[key]}</span>
-      </>
-    );
+  /** Beide Sprachen ins Markup — die Leiste steht damit schon vor der Hydration richtig da */
+  const label = (key: NavItem['labelKey']) => (
+    <>
+      <span data-lang="de">{copy.de.nav[key]}</span>
+      <span data-lang="en">{copy.en.nav[key]}</span>
+    </>
+  );
 
-  const panelTransition = reduce
-    ? { duration: 0.12 }
-    : { type: 'spring' as const, stiffness: 420, damping: 32, mass: 0.7 };
+  const P = copy.de.panel;
+  const PE = copy.en.panel;
+  const pageItem = items.find((it) => normalizePath(it.href) !== home && isActive(it.href));
+  // In der Halle steht die Station auf der Plakette unten — die Leiste zeigt sie erst im Zoom, Close-up und Spiel
+  const showStation = Boolean(st) && (st?.mode ?? mode) !== 'hall';
 
   return (
-    <header
-      className={`glass-nav fixed inset-x-0 top-0 z-50 ${scrolled ? 'is-scrolled' : ''}`}
-      data-scrolled={scrolled ? '1' : '0'}
-    >
-      <div className="glass-nav__bar relative mx-auto flex h-11 items-center justify-between gap-2">
-        <a
-          href={homeHref}
-          className="group flex h-9 items-center gap-3 px-1 text-[var(--text)]"
-          aria-label={`${brand} — Home`}
-        >
-          <BrandMark size={30} weight="nav" title={brand} className="shrink-0" />
-          <span className="hidden min-w-0 max-w-[11.5rem] flex-col justify-center gap-1 md:flex lg:max-w-[16rem]">
-            <span
-              className="truncate font-[family-name:var(--font-display)] text-[0.78rem] font-medium leading-none tracking-[-0.01em] text-[var(--text)]"
-              data-edit="site.name"
-            >
-              {brand}
-            </span>
-            <span className="truncate text-[0.52rem] font-medium leading-none uppercase tracking-[0.16em] text-[var(--faint)]">
-              <span data-lang="de">{copy.de.brand.short}</span>
-              <span data-lang="en">{copy.en.brand.short}</span>
-            </span>
-          </span>
-        </a>
+    <header className={`site-nav${caseLike ? ' is-case' : ''}${inHallWorld ? ' is-world' : ' is-page'}${quiet ? ' is-quiet' : ''}`}>
+      <div className="site-nav__bar">
+        <div className="site-nav__left">
+          <a href={homeHref} className="site-nav__brand" aria-label={`${brand} — Home`}>
 
-        <nav className="hidden md:block" aria-label="Main">
-          <div ref={listRef} className="relative flex items-center gap-0.5">
-            <motion.span
-              aria-hidden
-              className="absolute inset-y-0 rounded-md bg-[color-mix(in_srgb,var(--violet)_32%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--ice)_40%,transparent)]"
-              animate={
-                reduce
-                  ? { left: pill.left, width: pill.width, opacity: pill.opacity }
-                  : {
-                      left: pill.left,
-                      width: pill.width,
-                      opacity: pill.opacity,
-                      transition: { type: 'spring', stiffness: 480, damping: 36 },
-                    }
-              }
-              initial={false}
-            />
-            {items.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  data-active={active ? 'true' : 'false'}
-                  aria-current={active ? 'page' : undefined}
-                  className={`relative z-10 rounded-md px-2.5 py-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em] transition-colors ${
-                    active ? 'text-[var(--ice)]' : 'text-[var(--faint)] hover:text-[var(--dim)]'
-                  }`}
-                >
-                  {label(item.labelKey)}
-                </a>
-              );
-            })}
-          </div>
-        </nav>
+            <span className="site-nav__name" data-edit="site.name">
+              {brand.split(' ')[0]}
+            </span>
+          </a>
+          {caseLike ? (
+            <a href={homeHref} className="site-nav__back">
+              <Icon name="arrow-left" size={16} />
+              <span data-lang="de">{P.back}</span>
+              <span data-lang="en">{PE.back}</span>
+              <kbd className="site-nav__key">{P.esc}</kbd>
+            </a>
+          ) : null}
+        </div>
 
-        <div className="flex items-center gap-1.5">
-          <LangSwitch />
+        {/* Mitte: die Station der Halle, sonst die Seite */}
+        <p className="site-nav__readout mono" aria-live="polite">
+          {showStation && st ? (
+            <>
+              <span className="site-nav__count">
+                {nn(st.index)} / {nn(st.total - 1)}
+              </span>
+              <span className="site-nav__sep" aria-hidden>
+                ·
+              </span>
+              <span className="site-nav__title"><span data-lang="de">{st.title}</span><span data-lang="en">{st.titleEn ?? st.title}</span></span>
+            </>
+          ) : !st && pageItem ? (
+            <span className="site-nav__title">{label(pageItem.labelKey)}</span>
+          ) : null}
+        </p>
+
+        <div className="site-nav__right">
+          {items.filter((it) => it.labelKey === 'work' || it.labelKey === 'about' || it.labelKey === 'contact').map((item) => (
+            <a key={item.href} href={item.href} className={`site-nav__direct site-nav__direct--${item.labelKey}`} aria-current={isActive(item.href) ? 'page' : undefined}>{label(item.labelKey)}</a>
+          ))}
+          <LangSwitch initialLang={initialLang} />
+
           <button
             ref={btnRef}
             type="button"
-            className={`nav-icon-btn md:hidden ${open ? 'is-open' : ''}`}
+            className={`site-nav__menu${open ? ' is-open' : ''}`}
+            aria-label={lang === 'en' ? (open ? 'Close menu' : 'Open menu') : (open ? 'Menü schließen' : 'Menü öffnen')}
             aria-expanded={open}
             aria-controls="site-menu"
+            aria-haspopup="dialog"
             onClick={() => setOpen((v) => !v)}
           >
-            <span className="sr-only"><span data-lang="de">{copy.de.nav.menu}</span><span data-lang="en">{copy.en.nav.menu}</span></span>
-            <Icon name={open ? 'close' : 'menu'} size={18} weight="bold" className="text-[var(--text)]" />
+            <Icon name={open ? 'close' : 'menu'} size={18} />
+            <span className="site-nav__menu-label">
+              <span data-lang="de">{copy.de.nav.menu}</span>
+              <span data-lang="en">{copy.en.nav.menu}</span>
+            </span>
           </button>
         </div>
 
-        <AnimatePresence>
-          {open ? (
-            <motion.div
-              ref={panelRef}
-              id="site-menu"
-              className="nav-dropdown"
-              role="navigation"
-              aria-label={lang === 'en' ? 'Menu' : 'Menü'}
-              initial={reduce ? { opacity: 1 } : { opacity: 0, y: -10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
-              transition={panelTransition}
-            >
-              <div className="nav-dropdown__glow" aria-hidden />
-              <ul className="nav-dropdown__list">
-                {items.map((item, i) => {
-                  const active = isActive(item.href);
-                  return (
-                    <motion.li
-                      key={item.href}
-                      initial={reduce ? false : { opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={
-                        reduce
-                          ? { duration: 0 }
-                          : { delay: 0.03 + i * 0.035, type: 'spring', stiffness: 500, damping: 34 }
-                      }
-                    >
-                      <a
-                        href={item.href}
-                        aria-current={active ? 'page' : undefined}
-                        className={`nav-dropdown__link ${active ? 'is-active' : ''}`}
-                        onClick={() => setOpen(false)}
-                      >
-                        <span>{label(item.labelKey)}</span>
-                        {active ? <span className="nav-dropdown__dot" aria-hidden /> : null}
-                      </a>
-                    </motion.li>
-                  );
-                })}
-              </ul>
-
-              {workLinks.length > 0
-                ? (() => {
-                    // Lange Liste visuell gruppieren: Product / Design / Archiv / Lab
-                    const groups = [
-                      {
-                        key: 'product',
-                        labelDe: 'Product', labelEn: 'Product',
-                        links: workLinks.filter((w) => w.tags?.includes('product')),
-                      },
-                      {
-                        key: 'design',
-                        labelDe: 'Design', labelEn: 'Design',
-                        links: workLinks.filter(
-                          (w) =>
-                            w.tags?.includes('design') &&
-                            !w.tags?.includes('product') &&
-                            !w.tags?.includes('archive') &&
-                            !w.tags?.includes('lab'),
-                        ),
-                      },
-                      {
-                        key: 'archive',
-                        labelDe: 'Archiv', labelEn: 'Archive',
-                        links: workLinks.filter((w) => w.tags?.includes('archive')),
-                      },
-                      {
-                        key: 'lab',
-                        labelDe: 'Labor', labelEn: 'Lab',
-                        links: workLinks.filter((w) => w.tags?.includes('lab')),
-                      },
-                    ].filter((g) => g.links.length > 0);
-                    let idx = 0;
-                    return groups.map((group) => (
-                      <div className="nav-dropdown__section" key={group.key}>
-                        <p className="nav-dropdown__section-label">
-                          <span data-lang="de">{group.labelDe}</span>
-                          <span data-lang="en">{group.labelEn}</span>
-                        </p>
-                        <ul className="nav-dropdown__list nav-dropdown__list--compact">
-                          {group.links.map((w) => {
-                            const active = isActive(w.href);
-                            const i = idx++;
-                            return (
-                              <motion.li
-                                key={w.href}
-                                initial={reduce ? false : { opacity: 0, y: -4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={
-                                  reduce
-                                    ? { duration: 0 }
-                                    : {
-                                        delay: 0.08 + i * 0.025,
-                                        type: 'spring',
-                                        stiffness: 500,
-                                        damping: 36,
-                                      }
-                                }
-                              >
-                                <a
-                                  href={w.href}
-                                  aria-current={active ? 'page' : undefined}
-                                  className={`nav-dropdown__link nav-dropdown__link--sub ${active ? 'is-active' : ''}`}
-                                  onClick={() => setOpen(false)}
-                                >
-                                  {w.titleEn && w.titleEn !== w.title ? (
-                                    <>
-                                      <span data-lang="de">{w.title}</span>
-                                      <span data-lang="en">{w.titleEn}</span>
-                                    </>
-                                  ) : (
-                                    w.title
-                                  )}
-                                </a>
-                              </motion.li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    ));
-                  })()
-                : null}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        {open ? (
+          <div ref={panelRef} id="site-menu" className="nav-dropdown site-nav__sheet" role="dialog" aria-modal="true" aria-label={lang === 'en' ? 'Menu' : 'Menü'}>
+            <div className="site-nav__sheet-heading">
+              <p className="site-nav__directory">Navigation</p>
+              <button type="button" className="site-nav__dismiss" aria-label={lang === 'en' ? 'Close menu' : 'Menü schließen'} onClick={() => { setOpen(false); btnRef.current?.focus(); }}>
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+            <ul className="nav-dropdown__list">
+              {items.map((item) => {
+                const active = isActive(item.href);
+                // Stationen der Halle bekommen ihren Zähler: Über mich steht ganz links, Kontakt ganz rechts
+                const suffix = st && item.labelKey === 'about' ? `01 / ${nn(st.total - 1)}` : st && item.labelKey === 'contact' ? `${nn(st.total - 1)} / ${nn(st.total - 1)}` : null;
+                return (
+                  <li key={item.href}>
+                    <a href={item.href} aria-current={active ? 'page' : undefined} className={`nav-dropdown__link${active ? ' is-active' : ''}`} onClick={() => setOpen(false)}>
+                      <span className="site-nav__entry"><Icon name={routeIcons[item.labelKey] ?? 'grid'} size={20} />{label(item.labelKey)}</span>
+                      {suffix ? <span className="site-nav__suffix mono">{suffix}</span> : active ? <span className="nav-dropdown__dot" aria-hidden /> : null}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="site-nav__utilities">
+              <a href={`${homeHref.replace(/\/$/, '')}/impressum/`}>{lang === 'en' ? 'Legal notice' : 'Impressum'}</a>
+              <a href={`${homeHref.replace(/\/$/, '')}/privacy/`}>{lang === 'en' ? 'Privacy' : 'Datenschutz'}</a>
+            </div>
+          </div>
+        ) : null}
       </div>
     </header>
   );

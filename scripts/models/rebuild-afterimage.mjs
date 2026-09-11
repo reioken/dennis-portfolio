@@ -1,0 +1,33 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+const root=process.cwd(), blender='C:/Program Files/Blender Foundation/Blender 5.2/blender.exe';
+const rawRoot=path.join(root,'.source-assets/models-afterimage');
+fs.mkdirSync(rawRoot,{recursive:true});
+const names=fs.readdirSync('.source-assets/models-in').filter(n=>/^(cab-|mach-)/.test(n)&&fs.existsSync('.source-assets/models-in/'+n+'/spec.json')).concat('claw');
+const hash=p=>createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+const puppetBefore=hash('public/models/dennis.glb');
+const report=[];
+for(const name of names){
+ const folder=path.join(rawRoot,name);fs.mkdirSync(folder,{recursive:true});
+ const spec=JSON.parse(fs.readFileSync('.source-assets/models-in/'+name+'/spec.json','utf8').replace(/^\uFEFF/,''));
+ spec.wear=.14;
+ spec.paint='#151922';
+ spec.panel='#10141B';
+ const specPath=path.join(folder,'spec.json');fs.writeFileSync(specPath,JSON.stringify(spec,null,2));
+ const script=name==='claw'?'claw_gen.py':name.startsWith('cab-')?'cabinet_gen.py':'machine_gen.py';
+ const log=path.join(folder,'build.log');
+ const result=spawnSync(blender,['--background','--python','scripts/models/blender/'+script,'--','--spec',specPath,'--out',path.join(folder,name+'.glb'),'--blend',path.join(folder,name+'.blend')],{encoding:'utf8',windowsHide:true,maxBuffer:16*1024*1024});
+ fs.writeFileSync(log,(result.stdout||'')+(result.stderr||''));
+ if(result.status!==0||!fs.existsSync(path.join(folder,name+'.glb')))throw Error(name+' build failed, see '+log);
+ report.push({name,rawBytes:fs.statSync(path.join(folder,name+'.glb')).size});
+ console.log('Built '+name);
+}
+const phone=spawnSync(blender,['--background','--python','scripts/models/blender/payphone_gen.py'],{encoding:'utf8',windowsHide:true,maxBuffer:16*1024*1024});
+fs.writeFileSync(path.join(rawRoot,'payphone','build.log'),(phone.stdout||'')+(phone.stderr||''));
+if(phone.status!==0)throw Error('Payphone build failed');
+report.push({name:'payphone',rawBytes:fs.statSync(path.join(rawRoot,'payphone/payphone.glb')).size});
+if(puppetBefore!==hash('public/models/dennis.glb'))throw Error('Puppet changed');
+fs.writeFileSync(path.join(rawRoot,'build-report.json'),JSON.stringify({puppetSha256:puppetBefore,models:report},null,2));
+console.log('All '+report.length+' generated machines built; puppet unchanged.');

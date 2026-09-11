@@ -1,0 +1,89 @@
+---
+import { p } from '../../lib/paths';
+const challenges = ['Vertrauen und Sicherheit beim Kontakt mit Fremden', 'Klare Absprachen zu Zeit, Ort und Gegenleistung', 'Spontane Hilfe trotz wenig planbarer Zeit', 'Unsicherheit über Bezahlung, Tausch oder Ehrenamt', 'Soziale Isolation und der Wunsch nach mehr Kontakt'];
+const people = [
+ { name: 'Hilde, 72 · Rentnerin', need: 'Unterstützung beim Einkaufen, bei kleinen Reparaturen und im Alltag.', decision: 'Große Schrift, einfache Sprache, wenige Schritte und überprüfbare Helferprofile.' },
+ { name: 'Guido, 23 · Student', need: 'Spontan etwas verdienen und neue Menschen kennenlernen.', decision: 'Schnelle Vermittlung, klare Gegenleistungen und flexible Zusagen.' },
+ { name: 'Angela, 54 · Angestellte', need: 'Die Nachbarschaft stärken und verlässlich helfen.', decision: 'Ein sicherer, verständlicher Rahmen für ihr Engagement.' },
+];
+const flow = ['App öffnen', 'Hilfegesuch erstellen', 'Formular ausfüllen', 'Gesuch veröffentlichen', 'Benachrichtigung ansehen', 'Profil ansehen', 'Profil prüfen', 'Anfrage bestätigen', 'Direktnachricht schreiben', 'Anfrage abschließen', 'Bewertung schreiben', 'Bewertung veröffentlichen'];
+---
+<article class="mina-reading">
+  <header>
+    <p class="mina-reading__eyebrow">Mina · UX/UI Case Study</p>
+    <h2>Hilfe in der Nachbarschaft beginnt mit Vertrauen.</h2>
+    <p>Wie finden Menschen Unterstützung im Alltag, wenn sie ihre Nachbarn noch nicht kennen? Mina verbindet Hilfesuchende und Helfende – mit verständlichen Absprachen, persönlichen Profilen und flexiblen Formen der Unterstützung.</p>
+  </header>
+  <section>
+    <h3>Rahmen und Verantwortung</h3>
+    <p>Unser Abschlussprojekt im UX/UI-Bootcamp bei neuefische: <strong>vier Wochen, drei Personen, ein nativer App-Prototyp</strong>. Aurel Cornea, Dennis Bierreth und Laura Kolde entwickelten das Konzept von Research und Wireframes bis zum High-Fidelity-Prototyp und Design-System.</p>
+    <p>Die Studie beschreibt unser gemeinsames Ergebnis. Research, Personas und Gestaltung werden deshalb als Teamarbeit dargestellt.</p>
+  </section>
+  <section>
+    <h3>Die Ausgangsfrage</h3>
+    <p>Unsere Hypothese: Wenn eine Nachbarschafts-App Vertrauen schafft, Absprachen erleichtert und faire, flexible Hilfe ermöglicht, sind Menschen eher bereit, einander zu unterstützen.</p>
+    <ul>{challenges.map((challenge) => <li>{challenge}</li>)}</ul>
+  </section>
+  <section>
+    <h3>Was wir im Research gelernt haben</h3>
+    <p>Die Grundlage waren <strong>acht Interviews</strong> und eine <strong>Online-Umfrage mit 55 Teilnehmenden</strong>. Im Research standen Vertrauen, Gemeinschaft und zeitliche Flexibilität im Vordergrund.</p>
+    <dl class="mina-reading__stats">
+      <div><dt>Vertrauen</dt><dd>80 %</dd></div>
+      <div><dt>Gemeinschaft & Nachbarschaft</dt><dd>70 %</dd></div>
+      <div><dt>Zeit als Faktor</dt><dd>65 %</dd></div>
+      <div><dt>Verdienst, Tausch & Ehrenamt</dt><dd>50 %</dd></div>
+    </dl>
+    <p class="mina-reading__note">Ergebnisse aus der Projektstudie, keine repräsentative Bevölkerungsumfrage und keine Kennzahlen zur Nutzung einer veröffentlichten App.</p>
+    <p>Die Konsequenz für das Konzept: Profile und Bewertungen müssen Vertrauen vermitteln. Hilfe soll auch spontan möglich sein; Geld ist dabei nur eine mögliche Form der Gegenleistung.</p>
+  </section>
+  <section>
+    <h3>Drei Perspektiven auf dieselbe Aufgabe</h3>
+    {people.map((person) => <div class="mina-reading__person"><h4>{person.name}</h4><p>{person.need}</p><p><strong>Anforderung:</strong> {person.decision}</p></div>)}
+    <p>Hilde steht im Mittelpunkt des Clickflows. Gerade ihre Skepsis gegenüber Technik macht deutlich, wo Sprache, Reihenfolge und Rückmeldungen Sicherheit geben müssen.</p>
+  </section>
+  <section>
+    <h3>Vom Hilfegesuch zum verlässlichen Kontakt</h3>
+    <p>Hilde braucht Unterstützung. Angela kann nicht immer einspringen und empfiehlt Guido. Hilde erstellt ein Gesuch, prüft das Profil und vereinbart die Hilfe. Nach dem Abschluss gibt sie eine Bewertung ab.</p>
+    <p>Der Ablauf adressiert konkrete Unsicherheiten: Was muss ich eingeben? Hat jemand geantwortet? Wem kann ich vertrauen? Was passiert nach der Hilfe?</p>
+    <ol class="mina-reading__flow">{flow.map((step) => <li>{step}</li>)}</ol>
+    <figure><img src={p('media/mina/en-wireframes.webp')} alt="Mina-Wireframes: Startseite, Formular für ein Hilfegesuch und Nachbarschaftskarte" width="860" height="980" loading="lazy" /><figcaption>Wireframes für den Einstieg, das Hilfegesuch und die Nachbarschaftskarte.</figcaption></figure>
+  </section>
+  <section>
+    <h3>Ein freundliches, konsistentes Design-System</h3>
+    <p>Grün steht für Vertrauen, Mint, Gelb und warme Lachstöne ergänzen die Palette. Statusfarben unterscheiden Erfolg, Fehler und Zwischenschritte. Wiederverwendbare Komponenten und konsistente Bestätigungen sollen den Ablauf vorhersehbar machen.</p>
+    <p><strong>Inter</strong> trägt die Lesetexte, <strong>Baloo</strong> gibt der App ihren freundlichen Charakter. Großzügige Abstände, Lucide-Icons und weiche Ecken strukturieren die Oberfläche. Lesbarkeit, Kontrast und einfache Sprache waren Gestaltungsanforderungen.</p>
+    <figure><img src={p('media/mina/en-ui-kit.webp')} alt="Mina-Farbpalette mit Grün, Mint, Dunkelgrau, Gelb und Lachs" width="460" height="530" loading="lazy" /><figcaption>Farbpalette und visuelle Grundlagen.</figcaption></figure>
+  </section>
+  <section>
+    <h3>Mina: Miteinander Nachbarschaft</h3>
+    <p>Der Name ist kurz und einprägsam. Die Katze Mina begleitet erfolgreiche Schritte, etwa ein veröffentlichtes Gesuch oder eine abgeschlossene Bewertung. Sie gibt positives Feedback und macht die App zugänglich, während klare Rückmeldungen den Ablauf verständlich machen.</p>
+    <p>Nachbarschaftstitel ergänzen die Gestaltung spielerisch. Hilde wird zur „Herzensnachbarin“ – passend zu ihrer Rolle und ihrer warmen Persönlichkeit.</p>
+  </section>
+  <section>
+    <h3>Ergebnis und Einordnung</h3>
+    <p>Das Ergebnis ist ein <strong>UX/UI-Konzept mit interaktivem Prototyp, Wireframes und Design-System</strong>. Es zeigt, wie ein Hilfegesuch mit Profilprüfung, persönlichem Kontakt und Bewertung verbunden werden kann.</p>
+    <p>Die Studie dokumentiert einen Bootcamp-Prototyp. Die Research-Ergebnisse begründen die Gestaltungsrichtung; sie belegen noch keine Wirkung im Alltag einer veröffentlichten App.</p>
+  </section>
+  <footer>Aurel Cornea · Dennis Bierreth · Laura Kolde · neuefische, 2025</footer>
+</article>
+<style>
+ .mina-reading { padding: clamp(20px, 4vw, 40px); background: #faf8ee; color: #26332e; border-radius: 12px; font: 16px/1.75 var(--font-display); }
+ .mina-reading header { border-bottom: 3px solid #eac94d; padding-bottom: 20px; }
+ .mina-reading h2 { font-size: clamp(25px, 4vw, 36px); line-height: 1.2; margin: 8px 0 18px; letter-spacing: -.025em; }
+ .mina-reading h3 { font-size: 23px; line-height: 1.3; margin: 0 0 14px; }
+ .mina-reading h4 { font-size: 18px; margin: 0 0 8px; }
+ .mina-reading p { margin: 0 0 16px; }
+ .mina-reading section { margin-top: 36px; }
+ .mina-reading__eyebrow { font-size: 13px; font-weight: 700; color: #46624e; }
+ .mina-reading ul, .mina-reading ol { padding-left: 22px; list-style: revert; }
+ .mina-reading li { margin: 8px 0; }
+ .mina-reading__stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+ .mina-reading__stats div { padding: 16px; background: #e3ecdc; border-radius: 8px; }
+ .mina-reading__stats dd { font-size: 30px; font-weight: 700; }
+ .mina-reading__stats dt, .mina-reading__note { font-size: 14px; }
+ .mina-reading__person { border-left: 3px solid #749171; padding-left: 18px; margin: 24px 0; }
+ .mina-reading figure { margin: 24px auto; max-width: 460px; }
+ .mina-reading img { max-width: 100%; height: auto; border-radius: 8px; }
+ .mina-reading figcaption { font-size: 13px; line-height: 1.5; margin-top: 10px; }
+ .mina-reading footer { font-size: 13px; border-top: 1px solid #ccd2c8; margin-top: 32px; padding-top: 16px; }
+</style>

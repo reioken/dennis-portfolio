@@ -29,6 +29,8 @@ const work = defineCollection({
     /** Animated logo — only played on card hover */
     logoLive: z.string().optional(),
     gallery: z.array(z.string()).default([]),
+    /** Clean app captures for physical displays; marketing compositions stay in the gallery. */
+    hallScreens: z.array(z.string()).optional(),
     /** Beschreibende Alt-Texte, index-parallel zu gallery */
     galleryAlts: z.array(z.string()).optional(),
     galleryAltsEn: z.array(z.string()).optional(),
@@ -59,7 +61,43 @@ const work = defineCollection({
       )
       .optional(),
     externalUrl: z.string().url().optional(),
+    /** Standalone local product page, separate from the case study. */
+    landingUrl: z.string().regex(/^\/[a-z0-9/-]+$/).optional(),
     order: z.number().default(99),
+    /* ---- Werkstatt / Launcher (2026-09) ---- */
+    /** Lebenszyklus — nie erfinden, lieber 'wip' als 'live' */
+    status: z.enum(['live', 'released', 'private', 'wip', 'archived', 'case']).default('wip'),
+    /** Plattformen, auf denen das Produkt läuft */
+    platform: z.array(z.enum(['desktop', 'mobile', 'web', 'game', 'audio', 'tool', 'print'])).default([]),
+    /** Engine/Runtime in einem Wort — Electron, Godot 4.7, Unity, Expo, Tauri, Next.js */
+    engine: z.string().optional(),
+    /** Aktuelle Version; scripts/werkstatt-scan.mjs liefert beim Deploy ggf. eine frischere */
+    version: z.string().optional(),
+    /** Produktmarke — der Launcher färbt sich danach (Chamäleon) */
+    brand: z
+      .object({
+        primary: z.string(),
+        secondary: z.string().optional(),
+        bg: z.string().optional(),
+        ink: z.string().optional(),
+      })
+      .optional(),
+    /** Figur/Maskottchen für den Cast-Streifen (transparentes WebP/PNG/SVG) */
+    character: z.string().optional(),
+    characterName: z.string().optional(),
+    /** Spielbar im Browser — Ordner unter public/arcade/<id>/ (generiert, nicht im Git) */
+    arcade: z
+      .object({
+        id: z.string(),
+        controlsDe: z.string(),
+        controlsEn: z.string(),
+        /** Godot mit Threads braucht COOP/COEP */
+        threads: z.boolean().default(false),
+        aspect: z.string().default('16 / 9'),
+        /** Ungefähre Downloadgröße beim Start, z. B. "48 MB" */
+        size: z.string().optional(),
+      })
+      .optional(),
   }),
 });
 

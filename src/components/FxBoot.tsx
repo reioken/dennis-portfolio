@@ -18,15 +18,6 @@ export default function FxBoot() {
       else root.setAttribute('data-accent', saved);
     }
 
-    const lang = localStorage.getItem('portfolio-lang');
-    if (lang === 'en' || lang === 'de') {
-      root.dataset.lang = lang;
-      root.lang = lang;
-    } else {
-      root.dataset.lang = 'de';
-      root.lang = 'de';
-    }
-
     return () => mq.removeEventListener('change', apply);
   }, []);
 

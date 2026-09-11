@@ -9,7 +9,8 @@
 
 ```bash
 npm run build
-npx wrangler pages deploy dist --project-name=dennis-portfolio --commit-dirty=true
+npm run deploy:contact
+npx wrangler pages deploy dist --project-name=dennis-portfolio --branch=main
 ```
 
 ## Custom domain
@@ -24,3 +25,5 @@ Secrets needed:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID` (`bd0f3043cb8b0eb6dfab9c1131fe8e87`)
+
+Production uses the Cloudflare `main` branch even when the local Git branch has another name. Run the type check, regression tests and build audit, then commit the intended source before deploying. Keep `.env*`, `.source-assets/` and generated build output out of Git.

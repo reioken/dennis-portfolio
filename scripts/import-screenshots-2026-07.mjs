@@ -52,7 +52,6 @@ async function toWebpKeyed(src, dest, { maxW = 512, thr = 18 } = {}) {
 const SRC_DIR = {
   berry: 'berry-2026-07-18',
   nexus: 'nexus-2026-07-18',
-  floordirekt: 'floordirekt-studio_2026-07-18_2026',
   riftcast: 'riftcast',
 };
 
@@ -84,14 +83,6 @@ const MAP = {
     'dice.png': 'screen-dice',
     'onboard.png': 'screen-onboard',
   },
-  floordirekt: {
-    '02_start.png': 'screen-start',
-    '06_bilder.png': 'screen-bilder',
-    '10_layout-export.png': 'screen-layout-export',
-    '11_sprachen.png': 'screen-sprachen',
-    '12_pruefen.png': 'screen-pruefen',
-    '16_fertig.png': 'screen-fertig',
-  },
   riftcast: {
     '01-launcher-home.png': 'screen-launcher',
     '02-launcher-remote.png': 'screen-launcher-remote',
@@ -106,7 +97,6 @@ const MAP = {
 const MAX_W = {
   berry: { std: 900, hi: 1200 },
   nexus: { std: 1600, hi: 2400 },
-  floordirekt: { std: 1600, hi: 2200 },
   riftcast: { std: 1400, hi: 2000 },
 };
 
@@ -134,8 +124,6 @@ const aliases = [
   ['nexus/shots/screen-home.webp', 'nexus/shots/hero.webp'],
   ['berry/shots/screen-home.webp', 'berry/shots/hero.webp'],
   ['riftcast/shots/screen-desktop.webp', 'riftcast/shots/cover.webp'],
-  ['floordirekt/shots/screen-pruefen.webp', 'floordirekt/shots/cover.webp'],
-  ['floordirekt/shots/screen-pruefen@2x.webp', 'floordirekt/shots/cover@2x.webp'],
 ];
 for (const [from, to] of aliases) {
   const a = media(...from.split('/'));
@@ -181,14 +169,6 @@ if (await exists(riftMarkPng)) {
   await copyFile(riftMarkPng, media('riftcast', 'logo.png'));
   await toWebpKeyed(riftMarkPng, media('riftcast', 'logo.webp'), { maxW: 512, thr: 12 });
   console.log('logo riftcast.webp');
-}
-
-const fdStudio = 'C:/Users/denni/Documents/Floordirekt/fd-pipeline/assets/floordirekt-studio-icon.png';
-if (await exists(fdStudio)) {
-  await copyFile(fdStudio, media('floordirekt', 'logo.png'));
-  // Keep rounded icon as-is (no keying — red plate is brand)
-  await toWebp(fdStudio, media('floordirekt', 'logo.webp'), { maxW: 512, quality: 90 });
-  console.log('logo floordirekt studio');
 }
 
 console.log(`done: ${imported} screens imported`);

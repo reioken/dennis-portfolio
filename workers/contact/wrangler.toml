@@ -1,7 +1,12 @@
 name = "dennis-portfolio-contact"
 main = "src/index.js"
-compatibility_date = "2026-07-01"
+compatibility_date = "2026-07-21"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = false
+
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 # Inbox target lives in secret CONTACT_TO (not committed).
 [vars]
@@ -9,3 +14,19 @@ CONTACT_FROM = "contact@dennisbf.design"
 
 [[send_email]]
 name = "CONTACT"
+
+[[ratelimits]]
+name = "CONTACT_GLOBAL_LIMITER"
+namespace_id = "729104"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+[[ratelimits]]
+name = "CONTACT_SENDER_LIMITER"
+namespace_id = "729105"
+
+  [ratelimits.simple]
+  limit = 3
+  period = 60

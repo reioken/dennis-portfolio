@@ -1,0 +1,27 @@
+{
+  "generator": "Built-in image_gen",
+  "revisions": [
+    {
+      "name": "02-project-detail-v2",
+      "prompt": "Use case: precise-object-edit. EDIT reference image 1, preserving the website mockup layout, all navigation and main content text, cabinet structure, materials, light, screenshot, framing and typography. Make ONLY these corrections: REMOVE the tiny decorative slogans/words from the lower fronts of background cabinets; preserve their illustrated imagery and their actual project titles on marquees. Replace the overhead TV's space/face art with the radio receiver screenshot from reference image 2. No new copy. Keep main Echo cabinet, panel, controls, thumbnails, title and actions identical. Maintain dark premium approved aesthetic. Output full corrected image.",
+      "referenced_image_paths": [
+        "C:/Users/denni/.codex/generated_images/01a08b47-11d4-7660-a2b1-277ae3934517/exec-09303612-89ee-4655-9907-75681eaf74f3.png",
+        "C:/Users/denni/Projects/dennis-portfolio/public/media/echo-frequency/shots/01-radio-front.webp"
+      ]
+    },
+    {
+      "name": "03-cabinet-closeup-v2",
+      "prompt": "Use case: precise-object-edit. EDIT only SIX BUTTON ICONS in this image. Preserve entire website mockup, radio screenshot, cabinet geometry, joystick, button positions and materials, lighting, tooltip, pointer and bottom UI strip. The physical 2x3 button grid must show EXACTLY these actions: TOP row left is a single left chevron ‹, middle is fullscreen four-corner expand icon, right is single right chevron ›. BOTTOM row repeats left chevron ‹, fullscreen four-corner expand icon, right chevron ›. There must be NO pause, play, camera, photo or info symbols on physical buttons. Bottom right stays illuminated and depressed under the mouse pointer with the exact nearby tooltip \"Next screenshot\". The UI bar's separate Info icon stays unchanged. No extra labels, text or decorations. Everything except six engraved button-cap icons stays identical. Output full corrected image.",
+      "referenced_image_paths": [
+        "C:/Users/denni/.codex/generated_images/01a08b47-11d4-7660-a2b1-277ae3934517/exec-9d8b5b2b-4a68-40ef-bf2e-e42028cc8150.png"
+      ]
+    },
+    {
+      "name": "14-mobile-secondary-v2",
+      "prompt": "Use case: text-localization / precise-object-edit. Edit the supplied five-screen mobile mockup board. Preserve ALL composition, screen positions, cabinet/telephone models, portrait likeness, colours, artwork, controls, titles and navigation. Make ONLY THREE small copy corrections: 1. In Contact screen REMOVE the slogan \"Let's build something together.\" entirely, leaving comfortable whitespace below \"Contact\". 2. In About screen replace the invented paragraph beginning \"I design digital experiences\" with the factual sentence \"6+ years of agency and in-house experience.\" 3. In Reading screen REMOVE the final paragraph beginning \"Berry is a mobile collector app for trading card collections.\" Keep existing title \"Berry\", exact subheading \"Mobile collector app for card collections.\", heading \"Product Design\" and exact line \"App UI and design system v3.\" unchanged. No new copy or any new slogans anywhere. Do not change the five screen layouts. Output full corrected board.",
+      "referenced_image_paths": [
+        "C:/Users/denni/.codex/generated_images/01a08b47-11d4-7660-a2b1-277ae3934517/exec-571efc57-0b00-4be4-b368-06a4664dcc7b.png"
+      ]
+    }
+  ]
+}

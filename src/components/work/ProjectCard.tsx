@@ -5,9 +5,9 @@ import BerryLiveLogo from './BerryLiveLogo';
 import NexusSplashMark from './NexusSplashMark';
 import RiftcastLiveLogo from './RiftcastLiveLogo';
 import MinaLiveLogo from './MinaLiveLogo';
-import FdStudioLiveLogo from './FdStudioLiveLogo';
 import WebsitesStackLogo from './WebsitesStackLogo';
 import { toAvif } from '../../lib/img';
+import Icon from '../icons/Icon';
 
 /** Tag slugs are data values — show localized labels on the cards. */
 const TAG_LABELS: Record<string, { de: string; en: string }> = {
@@ -51,9 +51,17 @@ type Props = {
   logoLive?: string;
   tags: string[];
   featured?: boolean;
+  preview?: boolean;
+  /** First visible card: start fetching its cover without a lazy-loading delay. */
+  priority?: boolean;
+  previews?: string[];
+  status?: string;
   /** Smaller card — homepage archive strip */
   compact?: boolean;
   coverAlt?: string;
+  /** Mina is intentionally presented as a case study; product apps are builds. */
+  caseStudy?: boolean;
+  headingLevel?: 'h2' | 'h3';
 };
 
 export default function ProjectCard({
@@ -71,8 +79,14 @@ export default function ProjectCard({
   logoLive,
   tags,
   featured = false,
+  preview = false,
+  priority = false,
+  previews = [],
+  status,
   compact = false,
   coverAlt,
+  caseStudy = false,
+  headingLevel = 'h3',
 }: Props) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLAnchorElement>(null);
@@ -80,13 +94,14 @@ export default function ProjectCard({
   const [hovering, setHovering] = useState(false);
 
   const mark = logo || cover;
-  const isLogo = Boolean(logo);
+  const isLogo = Boolean(logo) && !preview;
   /** Idle-Schweben nur auf großen Karten — Craft/Compact bleibt ruhig */
   const ambient = !reduce && !compact;
   const liveActive = hovering && !reduce;
+  const Heading = headingLevel;
 
   const onMove = (e: React.MouseEvent) => {
-    if (reduce || window.matchMedia('(pointer: coarse)').matches) return;
+    if (preview || reduce || window.matchMedia('(pointer: coarse)').matches) return;
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -104,7 +119,7 @@ export default function ProjectCard({
     <motion.a
       ref={ref}
       href={href}
-      className={`group relative block overflow-hidden border border-[var(--stroke)] bg-[var(--panel-soft)] shadow-[var(--lg-edge),var(--lg-spec)] ${
+      className={`project-card group relative block overflow-hidden border border-[var(--stroke)] bg-[var(--panel-soft)] shadow-[var(--lg-edge),var(--lg-spec)] ${
         featured
           ? 'rounded-[28px] md:col-span-2 md:grid md:grid-cols-2 md:gap-0'
           : compact
@@ -113,8 +128,8 @@ export default function ProjectCard({
       }`}
       style={{
         transformStyle: 'preserve-3d',
-        backdropFilter: 'var(--frost)',
-        WebkitBackdropFilter: 'var(--frost)',
+        backdropFilter: preview ? 'none' : 'var(--frost)',
+        WebkitBackdropFilter: preview ? 'none' : 'var(--frost)',
       }}
       onMouseMove={onMove}
       onMouseEnter={() => setHovering(true)}
@@ -134,7 +149,7 @@ export default function ProjectCard({
               : ''
         }`}
       >
-        {isLogo ? (
+        {preview && previews.length > 1 ? <div className="project-card__phone-previews" aria-hidden>{previews.map((src) => <picture key={src}>{toAvif(src) && <source type="image/avif" srcSet={toAvif(src)} />}<img src={src} alt="" loading={priority ? 'eager' : 'lazy'} decoding="async" width={360} height={780} /></picture>)}</div> : isLogo ? (
           <>
             <div className="project-logo-panel__glow" aria-hidden />
             <div
@@ -167,12 +182,6 @@ export default function ProjectCard({
                   title={coverAlt ?? `${title} logo`}
                   className={`project-logo-panel__mark project-logo-panel__mark--live${ambient ? ' is-ambient' : ''}`}
                 />
-              ) : logoLive === 'fd-flash' ? (
-                <FdStudioLiveLogo
-                  active={liveActive}
-                  title={coverAlt ?? `${title} logo`}
-                  className={`project-logo-panel__mark project-logo-panel__mark--live${ambient ? ' is-ambient' : ''}`}
-                />
               ) : logoLive === 'websites-stack' ? (
                 <WebsitesStackLogo
                   active={liveActive}
@@ -191,7 +200,7 @@ export default function ProjectCard({
                   alt={coverAlt ?? `${title} logo`}
                   width={640}
                   height={320}
-                  loading="lazy"
+                  loading={priority ? 'eager' : 'lazy'}
                   decoding="async"
                   className={`project-logo-panel__mark max-h-full max-w-full object-contain ${
                     logoLive || reduce || compact ? '' : 'project-logo-panel__mark--idle'
@@ -205,10 +214,11 @@ export default function ProjectCard({
             {toAvif(cover) && <source type="image/avif" srcSet={toAvif(cover)} />}
             <img
               src={cover}
+              fetchPriority={priority ? 'high' : undefined}
               alt={coverAlt ?? `${title} cover`}
               width={1200}
               height={750}
-              loading="lazy"
+              loading={priority ? 'eager' : 'lazy'}
               decoding="async"
               className={`w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.045] ${
                 featured
@@ -222,7 +232,7 @@ export default function ProjectCard({
         )}
         <div
           className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${
-            isLogo ? 'opacity-40 group-hover:opacity-55' : 'opacity-70 group-hover:opacity-85'
+            isLogo ? 'opacity-40 group-hover:opacity-55' : 'opacity-10 group-hover:opacity-0'
           }`}
           style={{
             background: isLogo
@@ -239,6 +249,7 @@ export default function ProjectCard({
           }`}
         >
           <Bi de={year} en={yearEn} />
+          {status ? <> · <Bi de={({ live: 'Live', wip: 'In Entwicklung', private: 'Privat', archived: 'Archiv', released: 'Veröffentlicht', case: 'Case Study' } as Record<string,string>)[status] ?? status} en={({ live: 'Live', wip: 'In development', private: 'Private', archived: 'Archive', released: 'Released', case: 'Case study' } as Record<string,string>)[status] ?? status} /></> : null}
         </span>
       </div>
       <div
@@ -253,7 +264,7 @@ export default function ProjectCard({
         >
           <Bi de={role} en={roleEn} />
         </div>
-        <h3
+        <Heading
           className={`display text-[var(--text)] transition-colors duration-300 group-hover:text-[color-mix(in_srgb,var(--meta)_55%,var(--text))] ${
             featured
               ? 'mb-2 text-[clamp(1.6rem,3vw,2.2rem)]'
@@ -263,7 +274,7 @@ export default function ProjectCard({
           }`}
         >
           <Bi de={title} en={titleEn} />
-        </h3>
+        </Heading>
         <p
           className={`text-[var(--dim)] ${
             featured
@@ -303,9 +314,9 @@ export default function ProjectCard({
           }`}
           aria-hidden
         >
-          <span data-lang="de">Case öffnen</span>
-          <span data-lang="en">Open case</span>
-          <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
+          <span data-lang="de">{caseStudy ? 'Case Study ansehen' : 'Projekt ansehen'}</span>
+          <span data-lang="en">{caseStudy ? 'View case study' : 'View project'}</span>
+          <Icon name="arrow-up-right" size={16} className="transition-transform duration-200 group-hover:translate-x-0.5" />
         </span>
       </div>
     </motion.a>

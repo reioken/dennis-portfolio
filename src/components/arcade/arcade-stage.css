@@ -1,0 +1,1010 @@
+/* Spielhalle — der Bildschirm des Automaten als Bühne für den Web-Build.
+   Namespace .arcade-stage / .arcade-stage__*. Nur Dark Theme.
+   z-Ordnung: Scrim 2 · Shell 2 · HUD 2 · Info-Panel 3 · Nav 8 (BaseLayout). */
+
+.arcade-stage {
+  --brand: #ac8bfd;
+  --aspect: 16 / 9;
+  --stage-panel: rgba(11, 12, 18, 0.94);
+  --stage-solid: #0b0c12;
+  --stage-ok: #7be0a8;
+  --stage-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --stage-scan: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 4px);
+  --stage-scan-strong: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.25) 0 2px, transparent 2px 4px);
+  color: var(--text);
+}
+.arcade-stage .mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.arcade-stage [hidden] {
+  display: none !important;
+}
+.arcade-stage__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Layouts                                                             */
+/* ------------------------------------------------------------------ */
+
+/* rect + pending: alles fixed auf/um das projizierte Bildschirm-Rechteck */
+.arcade-stage[data-layout="rect"] .arcade-stage__shell,
+.arcade-stage[data-layout="pending"] .arcade-stage__shell {
+  position: fixed;
+  z-index: 2;
+  border-radius: 6px;
+}
+.arcade-stage[data-layout="rect"] .arcade-stage__hud,
+.arcade-stage[data-layout="pending"] .arcade-stage__hud {
+  position: fixed;
+  z-index: 2;
+}
+.arcade-stage[data-layout="rect"] .arcade-stage__head,
+.arcade-stage[data-layout="rect"] .arcade-stage__below,
+.arcade-stage[data-layout="pending"] .arcade-stage__head,
+.arcade-stage[data-layout="pending"] .arcade-stage__below {
+  display: none;
+}
+/* pending: noch kein Rechteck — Shell bleibt gemountet, aber unsichtbar */
+.arcade-stage[data-layout="pending"] .arcade-stage__shell,
+.arcade-stage[data-layout="pending"] .arcade-stage__hud {
+  visibility: hidden;
+}
+
+/* classic: zentrierte Spalte unter der Nav — nur ohne Rechteck (kein WebGL) */
+.arcade-stage[data-layout="classic"] {
+  display: grid;
+  gap: 10px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: calc(var(--nav-h) + 2rem) 1.25rem 4rem;
+}
+.arcade-stage[data-layout="classic"] .arcade-stage__shell {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--aspect);
+  border-radius: 10px;
+}
+.arcade-stage[data-layout="classic"] .arcade-stage__hud {
+  position: relative;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.arcade-stage[data-layout="classic"] .arcade-stage__tab,
+.arcade-stage[data-layout="classic"] .arcade-stage__info,
+.arcade-stage[data-layout="classic"] .arcade-stage__scrim,
+.arcade-stage[data-layout="classic"] .arcade-stage__hint {
+  display: none;
+}
+
+/* Kopf (nur classic) */
+.arcade-stage__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 6px;
+}
+.arcade-stage__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+}
+.arcade-stage__back i {
+  font-style: normal;
+  color: var(--faint);
+  transition: color 0.25s ease;
+}
+.arcade-stage__back:hover i {
+  color: var(--brand);
+}
+.arcade-stage__eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.arcade-stage__eyebrow b {
+  font-weight: 500;
+  color: var(--brand);
+}
+.arcade-stage__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.06;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------------ */
+/* Shell = der Bildschirm                                              */
+/* ------------------------------------------------------------------ */
+
+.arcade-stage__shell {
+  overflow: hidden;
+  background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: box-shadow 0.3s ease;
+}
+.arcade-stage[data-phase="loading"] .arcade-stage__shell,
+.arcade-stage[data-phase="running"] .arcade-stage__shell {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 40px -6px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+.arcade-stage__shell:fullscreen {
+  border-radius: 0;
+  background: #000;
+}
+
+/* Spielfläche: auf das Seitenverhältnis des Builds eingepasst (JS setzt left/top/width/height) */
+.arcade-stage__game {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: #000;
+}
+.arcade-stage__frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+
+/* ---- idle / coin ---- */
+.arcade-stage__idle {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: #05060a;
+}
+.arcade-stage__poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.5;
+  filter: saturate(0.7);
+}
+.arcade-stage__scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--stage-scan-strong);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55);
+}
+.arcade-stage__idle-inner {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 1rem;
+  text-align: center;
+}
+.arcade-stage__play {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 1.05rem;
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #0b0c10;
+  background: var(--brand);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--brand) 25%, transparent),
+    0 10px 30px -14px color-mix(in srgb, var(--brand) 80%, transparent);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.arcade-stage__play:hover {
+  transform: translateY(-1px);
+}
+.arcade-stage__play:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+.arcade-stage__play:disabled {
+  cursor: default;
+  transform: none;
+}
+.arcade-stage__coin {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+.arcade-stage__size,
+.arcade-stage__phone-note {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+/* Kompakt: der Phone-Hinweis steht unter dem Bildschirm (JS setzt top; Zeile der HUD-Leiste, die erst beim Spielen erscheint) */
+.arcade-stage__phone-note.is-below {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  z-index: 2;
+  margin: 0;
+  text-align: center;
+  font-size: 10px;
+  line-height: 14px;
+}
+.arcade-stage__badge {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #0b0c10;
+  background: var(--brand);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--brand) 70%, transparent);
+  animation: arcade-stage-blink 1.4s steps(2, jump-none) infinite;
+}
+.arcade-stage__badge.is-ok {
+  animation: none;
+}
+@keyframes arcade-stage-blink {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ---- loading ---- */
+.arcade-stage__load {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  transform-origin: 50% 50%;
+  animation: arcade-stage-poweron 240ms var(--stage-ease) both;
+  transition: opacity 0.2s ease;
+}
+.arcade-stage__load.is-out {
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+}
+@keyframes arcade-stage-poweron {
+  0% {
+    transform: scaleY(0.004);
+    filter: brightness(4);
+    box-shadow: 0 0 24px 4px rgba(255, 255, 255, 0.7);
+  }
+  60% {
+    transform: scaleY(1);
+    filter: brightness(1.6);
+    box-shadow: 0 0 12px 1px rgba(255, 255, 255, 0.25);
+  }
+  100% {
+    transform: scaleY(1);
+    filter: brightness(1);
+    box-shadow: none;
+  }
+}
+.arcade-stage__load-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.arcade-stage__shell[data-small] .arcade-stage__load-stack {
+  transform: scale(0.6);
+}
+.arcade-stage__mark {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  border: 3px solid var(--brand);
+  box-shadow:
+    0 0 0 6px #000,
+    0 0 0 8px color-mix(in srgb, var(--brand) 40%, transparent),
+    0 0 40px color-mix(in srgb, var(--brand) 50%, transparent);
+}
+.arcade-stage__ok {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.arcade-stage__loading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+.arcade-stage__dots {
+  font-style: normal;
+  animation: arcade-stage-blink 1.2s steps(2, jump-none) infinite;
+}
+.arcade-stage__bar {
+  display: flex;
+  gap: 6px;
+}
+.arcade-stage__seg {
+  width: 44px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  animation: arcade-stage-sweep 1.1s linear infinite;
+  animation-delay: calc(var(--i) * 0.1375s);
+}
+@keyframes arcade-stage-sweep {
+  0%,
+  12.5% {
+    background: var(--brand);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--brand) 60%, transparent);
+  }
+  12.6%,
+  100% {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+  }
+}
+.arcade-stage__sub {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.arcade-stage__teaser {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 22px;
+  margin: 0;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  opacity: 0.8;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.arcade-stage__shell[data-small] .arcade-stage__teaser {
+  bottom: 8px;
+  font-size: 7px;
+}
+
+/* ---- fail ---- */
+.arcade-stage__fail {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #000;
+}
+.arcade-stage__fail p {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.arcade-stage__retry {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--stroke-hi);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--brand);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.arcade-stage__retry:hover {
+  border-color: var(--brand);
+}
+.arcade-stage__retry:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* ---- CRT-Overlay über dem iframe (pointer-events: none) ---- */
+.arcade-stage__crt {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.arcade-stage__crt.is-scan {
+  background: var(--stage-scan);
+}
+.arcade-stage[data-phase="loading"] .arcade-stage__crt.is-scan {
+  background: var(--stage-scan-strong);
+}
+.arcade-stage__shell:fullscreen .arcade-stage__crt {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* HUD-Leiste unter dem Bildschirm                                     */
+/* ------------------------------------------------------------------ */
+
+.arcade-stage__hud {
+  display: flex;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.arcade-stage__hud.is-on,
+.arcade-stage__hud:focus-within {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.arcade-stage__hud-in {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  height: 32px;
+  padding: 0 0.3rem;
+  border-radius: 8px;
+  background: rgba(11, 12, 18, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.arcade-stage__hud-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 26px;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.arcade-stage__hud-btn:hover {
+  background: var(--elev);
+  color: var(--text);
+}
+.arcade-stage__hud-btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.arcade-stage__hud-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+  color: var(--dim);
+}
+.arcade-stage__hud-btn.is-quit {
+  color: #0b0c10;
+  background: var(--brand);
+}
+.arcade-stage__hud-btn.is-quit:hover {
+  background: var(--brand);
+  color: #0b0c10;
+  filter: brightness(1.08);
+}
+.arcade-stage__hud-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--stroke);
+}
+.arcade-stage__led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--stroke-hi);
+}
+.arcade-stage__led.is-on {
+  background: var(--stage-ok);
+  box-shadow: 0 0 6px var(--stage-ok);
+}
+.arcade-stage__confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-left: 0.5rem;
+}
+.arcade-stage__confirm-q {
+  padding-right: 0.3rem;
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Info-Tab rechts + Info-Panel                                        */
+/* ------------------------------------------------------------------ */
+
+.arcade-stage__tab {
+  position: fixed;
+  right: 16px;
+  top: calc(var(--nav-h) + 16px);
+  bottom: 16px;
+  width: 48px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 12px;
+  border-radius: 14px;
+  background: var(--stage-panel);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 30px 60px -30px #000;
+}
+.arcade-stage__tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 32px;
+  padding: 6px 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--elev);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--stroke);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.arcade-stage__tab-btn:hover {
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+.arcade-stage__tab-btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.arcade-stage__vert {
+  writing-mode: vertical-rl;
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.arcade-stage__tab-label {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 14px 0 0;
+  writing-mode: vertical-rl;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.arcade-stage__tab-label b {
+  font-weight: 500;
+  color: var(--brand);
+}
+.arcade-stage__tab-dot {
+  flex: 0 0 auto;
+  margin-top: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 12px var(--brand);
+}
+
+.arcade-stage__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: rgba(5, 6, 10, 0.6);
+}
+
+.arcade-stage__info {
+  position: fixed;
+  right: 16px;
+  top: calc(var(--nav-h) + 16px);
+  bottom: 16px;
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius, 18px);
+  background: var(--stage-panel);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 30px 60px -30px #000;
+  animation: arcade-stage-in 260ms var(--stage-ease) both;
+}
+@keyframes arcade-stage-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+.arcade-stage__info-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 10px 0 20px;
+  background: var(--stage-solid);
+}
+.arcade-stage__x {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.arcade-stage__x:hover {
+  background: var(--elev);
+  color: var(--text);
+}
+.arcade-stage__x:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.arcade-stage__info-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--stroke-hi) transparent;
+  padding: 10px 24px 24px;
+}
+.arcade-stage__info-body .arcade-stage__title {
+  margin-bottom: 20px;
+}
+.arcade-stage__info-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 0 24px;
+  background: var(--stage-solid);
+}
+
+/* Blöcke im Info-Panel / unter dem Automaten (classic) */
+.arcade-stage__block {
+  margin-bottom: 24px;
+}
+.arcade-stage__label {
+  margin: 0 0 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.arcade-stage__keys {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  font-size: 11px;
+  line-height: 16px;
+}
+.arcade-stage__keys li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.arcade-stage__keys b {
+  flex: 0 0 auto;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+.arcade-stage__keys span {
+  color: var(--dim);
+}
+.arcade-stage__wip {
+  margin: 0;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--gold);
+}
+.arcade-stage__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.arcade-stage__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 1.05rem;
+  border: 1px solid var(--stroke-hi);
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
+}
+.arcade-stage__btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand);
+}
+.arcade-stage__btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.arcade-stage__btn--primary {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #0b0c10;
+  box-shadow: 0 10px 30px -14px color-mix(in srgb, var(--brand) 80%, transparent);
+}
+
+/* classic: Steuerung + Links unter der HUD-Leiste */
+.arcade-stage__below {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem 3rem;
+  align-items: start;
+  margin-top: 1.25rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--stroke);
+}
+.arcade-stage__below .arcade-stage__block:last-child {
+  margin-bottom: 0;
+}
+@media (max-width: 720px) {
+  .arcade-stage__below {
+    grid-template-columns: 1fr;
+  }
+  .arcade-stage__keys {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Zoom-Hinweis unten links (wie .hall__hint) */
+.arcade-stage__hint {
+  position: fixed;
+  left: 1.2rem;
+  bottom: 0.55rem;
+  z-index: 2;
+  margin: 0;
+  font-size: 0.62rem;
+  color: var(--faint);
+}
+
+/* ------------------------------------------------------------------ */
+/* Kompakt: Rechteck schmaler als 420 px (Phone-Pose der Halle)        */
+/* ------------------------------------------------------------------ */
+
+.arcade-stage[data-compact] .arcade-stage__idle-inner {
+  gap: 0.4rem;
+  padding: 0.5rem;
+}
+.arcade-stage[data-compact] .arcade-stage__play {
+  min-height: 36px;
+  padding: 0 0.85rem;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--brand) 25%, transparent),
+    0 8px 24px -12px color-mix(in srgb, var(--brand) 80%, transparent);
+}
+.arcade-stage[data-compact] .arcade-stage__badge {
+  bottom: 6px;
+  padding: 0.22rem 0.5rem;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+/* HUD: über die Viewport-Breite gespannt, Inhalt zentriert, bricht in zwei Zeilen um */
+.arcade-stage[data-compact] .arcade-stage__hud {
+  left: 12px;
+  right: 12px;
+  width: auto;
+  max-width: calc(100vw - 24px);
+}
+.arcade-stage[data-compact] .arcade-stage__hud-in {
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 0.15rem;
+  height: auto;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 3px 0.3rem;
+}
+.arcade-stage[data-compact] .arcade-stage__hud-sep {
+  display: none;
+}
+.arcade-stage[data-compact] .arcade-stage__confirm {
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 0.15rem;
+  padding-left: 0.3rem;
+}
+.arcade-stage[data-compact] .arcade-stage__confirm-q {
+  flex: 1 1 100%;
+  padding: 2px 0.3rem;
+  text-align: center;
+  white-space: normal;
+}
+
+/* Info-Tab → runder ⓘ-Knopf unten rechts; der Name „Info“ bleibt für Screenreader */
+.arcade-stage[data-compact] .arcade-stage__tab {
+  top: auto;
+  right: 16px;
+  bottom: 16px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  justify-content: center;
+}
+.arcade-stage[data-compact] .arcade-stage__tab-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  font-size: 1.25rem;
+}
+.arcade-stage[data-compact] .arcade-stage__tab-btn:hover {
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+.arcade-stage[data-compact] .arcade-stage__vert {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+}
+.arcade-stage[data-compact] .arcade-stage__tab-label,
+.arcade-stage[data-compact] .arcade-stage__tab-dot {
+  display: none;
+}
+/* Zoom-Hinweis nicht unter den ⓘ-Knopf laufen lassen */
+.arcade-stage[data-compact] .arcade-stage__hint {
+  right: 72px;
+}
+
+/* Schmale Viewports: das Info-Panel ist ein Bottom-Sheet in voller Breite */
+@media (max-width: 900px) {
+  .arcade-stage__info {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    max-height: 80svh;
+    border-radius: 18px 18px 0 0;
+    animation-name: arcade-stage-up;
+  }
+}
+@keyframes arcade-stage-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduzierte Bewegung: kein Blinken, kein Power-on, statischer Balken */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .arcade-stage__badge,
+  .arcade-stage__dots,
+  .arcade-stage__seg,
+  .arcade-stage__load,
+  .arcade-stage__info {
+    animation: none;
+  }
+  .arcade-stage__seg:nth-child(-n + 3) {
+    background: var(--brand);
+  }
+  .arcade-stage__hud,
+  .arcade-stage__load,
+  .arcade-stage__shell,
+  .arcade-stage__play,
+  .arcade-stage__btn {
+    transition: none;
+  }
+}
+html.fx-off .arcade-stage__badge,
+html.fx-off .arcade-stage__dots,
+html.fx-off .arcade-stage__seg,
+html.fx-off .arcade-stage__load,
+html.fx-off .arcade-stage__info {
+  animation: none;
+}
+html.fx-off .arcade-stage__seg:nth-child(-n + 3) {
+  background: var(--brand);
+}
+html.fx-off .arcade-stage__hud,
+html.fx-off .arcade-stage__load,
+html.fx-off .arcade-stage__shell,
+html.fx-off .arcade-stage__play,
+html.fx-off .arcade-stage__btn {
+  transition: none;
+}

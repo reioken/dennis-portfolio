@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1f33"/>
+      <stop offset="1" stop-color="#0f1117"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.55">
+      <stop offset="0" stop-color="#7d76e6" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7d76e6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e5ecfb"/>
+      <stop offset="1" stop-color="#b9c8ea"/>
+    </linearGradient>
+    <radialGradient id="cheek" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f0a5a5" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#f0a5a5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <g transform="translate(112 132) scale(4)">
+    <ellipse cx="100" cy="181" rx="58" ry="6.5" fill="#000" opacity="0.28"/>
+    <ellipse cx="58" cy="52" rx="11.5" ry="17" fill="#98abd6"/>
+    <ellipse cx="58" cy="54" rx="6" ry="10" fill="#f0a5a5" opacity="0.75"/>
+    <ellipse cx="142" cy="52" rx="11.5" ry="17" fill="#98abd6"/>
+    <ellipse cx="142" cy="54" rx="6" ry="10" fill="#f0a5a5" opacity="0.75"/>
+    <path d="M 22 122 C 22 78 55 52 100 52 C 145 52 178 78 178 122 C 178 156 148 176 100 176 C 52 176 22 156 22 122 Z" fill="url(#body)"/>
+    <ellipse cx="100" cy="160" rx="52" ry="12" fill="#98abd6" opacity="0.25"/>
+    <ellipse cx="55" cy="121" rx="11" ry="6.5" fill="url(#cheek)"/>
+    <ellipse cx="145" cy="121" rx="11" ry="6.5" fill="url(#cheek)"/>
+    <ellipse cx="74" cy="104" rx="14.5" ry="18" fill="#fbfbfe"/>
+    <circle cx="74" cy="105" r="8.5" fill="#3f4a6b"/>
+    <circle cx="74" cy="105" r="4.6" fill="#1a1e2e"/>
+    <circle cx="70.8" cy="100.6" r="2.9" fill="#fff"/>
+    <ellipse cx="126" cy="104" rx="14.5" ry="18" fill="#fbfbfe"/>
+    <circle cx="126" cy="105" r="8.5" fill="#3f4a6b"/>
+    <circle cx="126" cy="105" r="4.6" fill="#1a1e2e"/>
+    <circle cx="122.8" cy="100.6" r="2.9" fill="#fff"/>
+    <path d="M 92 132 C 96 136 104 136 108 132" fill="none" stroke="#3f4a6b" stroke-width="2.6" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -21,7 +21,6 @@ const LOGO_LIVE_TOKENS = new Set([
   'berry-laugh',
   'riftcast-cast',
   'mina-heart',
-  'fd-flash',
   'websites-stack',
 ]);
 

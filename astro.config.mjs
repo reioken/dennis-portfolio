@@ -9,6 +9,7 @@ import { buildEnRoutes } from './scripts/en-routes.mjs';
 import { hardenCsp } from './scripts/csp-hashes.mjs';
 
 /** Erzeugt nach dem Build crawlbare /en/-Routen + hreflang (siehe scripts/en-routes.mjs) */
+/** @type {() => import('astro').AstroIntegration} */
 const enRoutes = () => ({
   name: 'en-routes',
   hooks: {
@@ -19,6 +20,7 @@ const enRoutes = () => ({
 });
 
 /** Ersetzt 'unsafe-inline' in script-src durch Hashes der gebauten Inline-Scripts */
+/** @type {() => import('astro').AstroIntegration} */
 const cspHashes = () => ({
   name: 'csp-hashes',
   hooks: {
@@ -32,17 +34,23 @@ const cspHashes = () => ({
 export default defineConfig({
   site: 'https://www.dennisbf.design',
   base: '/',
+  redirects: {
+    '/work/nocturne/': { status: 301, destination: '/work/lowlight/' },
+    '/en/work/nocturne/': { status: 301, destination: '/en/work/lowlight/' },
+  },
   integrations: [
     react(),
     mdx(),
-    sitemap({
-      serialize: (item) => ({ ...item, lastmod: new Date().toISOString() }),
-    }),
+    sitemap({ filter: (page) => !page.includes('/work/nocturne') }),
     enRoutes(),
     cspHashes(),
   ],
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      // External modules avoid ClientRouter's data: script sentinel under our CSP.
+      assetsInlineLimit: (filePath) => /\.[cm]?js$/.test(filePath) ? false : undefined,
+    },
   },
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
 });

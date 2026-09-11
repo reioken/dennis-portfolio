@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NEXUS Logo Animation</title>
+    <link rel="stylesheet" href="./nexus-logo.css" />
+    <script type="module" src="./nexus-logo.js"></script>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        color: #eef4ff;
+        background:
+          radial-gradient(circle at 50% 42%, rgba(74, 130, 254, 0.15), transparent 34rem),
+          #07080c;
+      }
+      main { display: grid; justify-items: center; gap: 1.25rem; padding: 3rem; text-align: center; }
+      p { margin: 0; color: #8993a8; font-size: 0.9rem; letter-spacing: 0.08em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nexus-logo src="./nexus-logo.svg" label="NEXUS" size="360"></nexus-logo>
+      <p>Hover oder Fokus aktiviert die intensive Animation.</p>
+    </main>
+  </body>
+</html>
+

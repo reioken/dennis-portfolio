@@ -2,66 +2,96 @@
 title: "Berry"
 summary: "Mobile Collector-App für Karten-Sammlungen — Product Design, App-UI und Design-System v3."
 summaryEn: "Mobile collector app for card collections — product design, app UI and design system v3."
-role: "Product Design + App UI"
-roleEn: "Product Design + App UI"
-year: "2025"
-yearEn: "2025"
-timeline: "2025 – heute · v3.0.1"
-timelineEn: "2025 – present · v3.0.1"
+role: "Solo Product Build"
+roleEn: "Solo Product Build"
+year: "2026"
+yearEn: "2026"
+timeline: "2025 – heute · v3.4.1"
+timelineEn: "2025 – present · v3.4.1"
 stack: ["React 19", "Capacitor", "Tailwind v4", "Zustand", "Dexie"]
-outcome: "Android APK-Pipeline, Design-System v3, Offline-Sammlung"
-outcomeEn: "Android APK pipeline, design system v3, offline collection"
+outcome: "Android APK-Pipeline, Design-System v3, Offline-Sammlung, Turnier-Kalender mit Bandai TCG+"
+outcomeEn: "Android APK pipeline, design system v3, offline collection, tournament calendar with Bandai TCG+"
 tags: ["product", "design"]
 featured: true
 cover: "/media/berry/shots/screen-home.webp"
-coverAlt: "Berry Home — Sammlungsübersicht mit zuletzt hinzugefügten Karten"
+coverAlt: "Berry Home — Sammlungswert, Set-Fortschritt und die nächste Turnier-Anmeldung auf einen Blick"
 logo: "/media/berry/logo.webp"
 logoLive: "berry-laugh"
 gallery:
   - "/media/berry/shots/screen-home.webp"
+  - "/media/berry/shots/screen-hub.webp"
   - "/media/berry/shots/screen-search.webp"
+  - "/media/berry/shots/screen-card-detail.webp"
   - "/media/berry/shots/screen-collection.webp"
+  - "/media/berry/shots/screen-album.webp"
   - "/media/berry/shots/screen-decks-meta.webp"
   - "/media/berry/shots/screen-deck-editor.webp"
-  - "/media/berry/shots/screen-insights.webp"
+  - "/media/berry/shots/screen-sealed.webp"
   - "/media/berry/shots/screen-tournaments.webp"
+  - "/media/berry/shots/screen-calendar.webp"
+  - "/media/berry/shots/screen-insights.webp"
+  - "/media/berry/shots/screen-settings.webp"
+  - "/media/berry/shots/screen-scanner.webp"
 galleryAlts:
-  - "Berry Home — Sammlungsübersicht mit zuletzt hinzugefügten Karten"
-  - "Kartensuche — Filterleiste mit Live-Ergebnissen im Karten-Grid"
-  - "Sammlungsansicht — Karten-Raster mit Zustand und Wertangaben"
-  - "Deck-Übersicht — angelegte Decks mit Meta-Informationen"
-  - "Deck-Editor — Karten zusammenstellen, sortieren und bewerten"
-  - "Insights — Statistiken und Wertentwicklung der Sammlung"
-  - "Turnier-Ansicht — Events, Teilnehmer und Ergebnisse"
+  - "Berry Home — Sammlungswert, Set-Fortschritt und die nächste Turnier-Anmeldung auf einen Blick"
+  - "Hub — Album, Sealed, Gruppen, Turniere, Kalender, Insights und Einstellungen als Kacheln"
+  - "Kartensuche — Filter-Chips, Stöbern-Vorschläge und Live-Ergebnisse im Karten-Grid (Demo-Karten mit SAMPLE-Wasserzeichen)"
+  - "Kartendetail — Marktpreis-Näherung, Set und Varianten als Sheet über dem Dock"
+  - "Sammlungsansicht — Karten-Raster mit Anzahl, Preis und Seltenheit, nach Preis sortiert"
+  - "Album — Erfolge und Set-Vollständigkeit pro Set"
+  - "Deck-Übersicht — Meta-Decks mit Turnierplatzierungen und Farbfilter"
+  - "Deck-Editor — Kostenkurve, Kartenliste und Legalitätsprüfung"
+  - "Sealed-Übung — sechs virtuelle Booster öffnen und ein 40er-Deck bauen"
+  - "Turniere — Gesamt-Winrate, Ergebnisse nach Format, Leader und Gegner-Leader"
+  - "Kalender — Set-Releases, Anmeldefenster und Organized-Play-Termine mit Erinnerung"
+  - "Insights — Portfolio-Wert über 90 Tage, Kartenzahlen und Wert nach Farbe"
+  - "Einstellungen — Sprache, Leitfarbe und Design-Themes (Glass / Edge)"
+  - "Scanner — Ordnerseite oder Einzelkarte per Kamera erfassen"
 galleryAltsEn:
-  - "Berry home — collection overview with recently added cards"
-  - "Card search — filter bar with live results in the card grid"
-  - "Collection view — card grid with condition and value details"
-  - "Deck overview — saved decks with meta information"
-  - "Deck editor — assembling, sorting and rating cards"
-  - "Insights — statistics and value development of the collection"
-  - "Tournament view — events, participants and results"
+  - "Berry home — collection value, set progress and the next tournament registration at a glance"
+  - "Hub — album, sealed, groups, tournaments, calendar, insights and settings as tiles"
+  - "Card search — filter chips, browse suggestions and live results in the card grid (demo cards carry a SAMPLE watermark)"
+  - "Card detail — market price estimate, set and variants as a sheet above the dock"
+  - "Collection view — card grid with count, price and rarity, sorted by price"
+  - "Album — achievements and set completion per set"
+  - "Deck overview — meta decks with tournament placements and colour filter"
+  - "Deck editor — cost curve, card list and legality check"
+  - "Sealed practice — open six virtual boosters and build a 40-card deck"
+  - "Tournaments — overall win rate, results by format, leader and opposing leader"
+  - "Calendar — set releases, registration windows and organized-play dates with reminders"
+  - "Insights — portfolio value over 90 days, card counts and value by colour"
+  - "Settings — language, accent colour and design themes (Glass / Edge)"
+  - "Scanner — capture a binder page or a single card with the camera"
 order: 2
+status: "private"
+platform: ["mobile"]
+engine: "Capacitor"
+version: "v3.4.1"
+brand:
+  primary: "#5ce6a0"
+  secondary: "#9dffc8"
 ---
 
 <div data-lang="de">
 
-**Problem** — Karten-Sammlungen pflegen heißt oft: Tabellen, Insellösungen und Online-Zwang — nichts davon macht unterwegs Spaß.
+**Aufgabe** — Eine Kartensammlung unterwegs verwalten, ohne Tabellen, verstreute Werkzeuge oder eine dauerhafte Internetverbindung.
 
-**Prozess** — Design-System v3 (kühl, präzise, ohne Markenverlust), Offline-First-Sammlung via Dexie, Tap-Ziele ≥ 44×44. Pipeline: Vite → Capacitor → versionierte Android-APKs.
+**Mein Beitrag** — Produktkonzept, UX/UI, Design-System und Entwicklung. Der Einstieg zeigt Sammlungswert und Set-Fortschritt. Von dort führen eigene Ansichten in Sammlung, Decks und Insights; ein Turnier-Kalender ergänzt den Sammlungsalltag.
 
-**Ergebnis** — Mobile Collector-App mit Sammlungs-, Deck- und Insights-Screens, komplett offline nutzbar.
-{/* TODO: echte Kennzahlen von Dennis ergänzen — z. B. Kartenanzahl in der Sammlung, Suchgeschwindigkeit, Anzahl APK-Releases */}
+**Gestaltung** — Die Sammlung funktioniert offline. Große Tap-Flächen und wiederkehrende Komponenten halten die mobile Bedienung konsistent. Die Screenshots zeigen diese Wege im Design-System v3.
+
+**Ergebnis** — Ein privater Android-Build mit Offline-Sammlung, Deck- und Insights-Screens. Der aktuelle Stand ist v3.4.1.
 
 </div>
 
 <div data-lang="en">
 
-**Problem** — Managing a card collection usually means spreadsheets, scattered tools and online-only apps — none of it fun on the go.
+**Brief** — Manage a card collection on the go without spreadsheets, scattered tools or a permanent internet connection.
 
-**Process** — Design system v3 (cool, precise, brand intact), offline-first collection via Dexie, tap targets ≥ 44×44. Pipeline: Vite → Capacitor → versioned Android APKs.
+**My contribution** — Product concept, UX/UI, design system and development. The home screen shows collection value and set progress. Dedicated views lead into the collection, decks and insights, with a tournament calendar alongside them.
 
-**Outcome** — Mobile collector app with collection, deck and insights screens, fully usable offline.
-{/* TODO: add real metrics — e.g. cards in collection, search speed, number of APK releases */}
+**Design** — The collection works offline. Generous tap areas and recurring components keep mobile interaction consistent. The screenshots show these journeys in design system v3.
+
+**Result** — A private Android build with offline collection, deck and insights screens, currently v3.4.1.
 
 </div>

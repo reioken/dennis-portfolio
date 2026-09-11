@@ -2,10 +2,10 @@
 title: "Riftcast"
 summary: "Remote Desktop fürs eigene Netzwerk — PC live auf Phone und Browser spiegeln, steuern und zocken. Ohne Cloud-Account."
 summaryEn: "Remote desktop for your own network — mirror, control and play your PC on phone and browser. No cloud account."
-role: "Product Design + Full Product"
-roleEn: "Product Design + Full Product"
-year: "2025"
-yearEn: "2025"
+role: "Solo Product Build"
+roleEn: "Solo Product Build"
+year: "2026"
+yearEn: "2026"
 timeline: "2025 – heute"
 timelineEn: "2025 – present"
 stack: ["Remote Desktop", "PWA", "Windows Host", "Cloudflare Tunnel", "Gamepad UI"]
@@ -13,17 +13,21 @@ outcome: "Läuft auf Phone, Browser und Desktop-Host"
 outcomeEn: "Runs on phone, browser and desktop host"
 tags: ["product", "design"]
 featured: true
-cover: "/media/riftcast/shots/screen-desktop.webp"
+cover: "/media/riftcast/shots/screen-launcher.webp"
 logo: "/media/riftcast/logo-lockup.svg?v=2"
 logoLive: "riftcast-cast"
 gallery:
-  - "/media/riftcast/shots/screen-desktop.webp"
-  - "/media/riftcast/shots/screen-desktop-controls.webp"
   - "/media/riftcast/shots/screen-launcher.webp"
   - "/media/riftcast/shots/screen-launcher-remote.webp"
-  - "/media/riftcast/shots/screen-app.webp"
-  - "/media/riftcast/shots/screen-quality.webp"
-  - "/media/riftcast/shots/screen-pad.webp"
+  - "/media/riftcast/shots/screen-login.webp"
+galleryAlts:
+  - "Riftcast Host-Launcher unter Windows — Home-Network-Modus mit QR-Code, LAN-Adresse, PIN und gekoppelten Geräten"
+  - "Host-Launcher — Remote-Access-Tab, Fernzugriff noch nicht aktiviert"
+  - "Phone-App — Verbinden zu Hause oder unterwegs per PIN oder QR-Scan"
+galleryAltsEn:
+  - "Riftcast host launcher on Windows — home network mode with QR code, LAN address, PIN and paired devices"
+  - "Host launcher — remote access tab, remote access not enabled yet"
+  - "Phone app — connect at home or away via PIN or QR scan"
 surfaces:
   - id: host
     labelDe: Host
@@ -35,65 +39,53 @@ surfaces:
       - "/media/riftcast/shots/screen-launcher.webp"
       - "/media/riftcast/shots/screen-launcher-remote.webp"
     alts:
-      - "Riftcast Host-Launcher unter Windows — Home-Network-Modus mit Verbindungsstatus"
-      - "Host-Launcher — Remote Access mit Session-Code und Geräte-Pairing"
+      - "Riftcast Host-Launcher unter Windows — Home-Network-Modus mit QR-Code, LAN-Adresse, PIN und gekoppelten Geräten"
+      - "Host-Launcher — Remote-Access-Tab, Fernzugriff noch nicht aktiviert"
     altsEn:
-      - "Riftcast host launcher on Windows — home network mode with connection status"
-      - "Host launcher — remote access with session code and device pairing"
+      - "Riftcast host launcher on Windows — home network mode with QR code, LAN address, PIN and paired devices"
+      - "Host launcher — remote access tab, remote access not enabled yet"
   - id: phone
     labelDe: Phone
     labelEn: Phone
-    blurbDe: "Phone-UI — Steuerung, Qualitätspresets und On-Screen-Gamepad."
-    blurbEn: "Phone UI — controls, quality presets and on-screen gamepad."
+    blurbDe: "Phone-UI — Verbinden per PIN oder QR. Stream-, Gamepad- und Qualitäts-Screens folgen mit einer neutralen Aufnahme."
+    blurbEn: "Phone UI — connect via PIN or QR. Stream, gamepad and quality screens follow with a neutral capture."
     variant: phone
     gallery:
-      - "/media/riftcast/shots/screen-app.webp"
-      - "/media/riftcast/shots/screen-quality.webp"
-      - "/media/riftcast/shots/screen-pad.webp"
+      - "/media/riftcast/shots/screen-login.webp"
     alts:
-      - "Riftcast Phone-App — gespiegelter Desktop mit Touch-Steuerung"
-      - "Phone-App — Qualitäts-Presets für Stream-Auflösung und Latenz"
-      - "On-Screen-Gamepad — virtuelles Controller-Layout im Querformat"
+      - "Phone-App — Verbinden zu Hause oder unterwegs per PIN oder QR-Scan"
     altsEn:
-      - "Riftcast phone app — mirrored desktop with touch controls"
-      - "Phone app — quality presets for stream resolution and latency"
-      - "On-screen gamepad — virtual controller layout in landscape"
-  - id: browser
-    labelDe: Browser
-    labelEn: Browser
-    blurbDe: "Live-Desktop im Browser — Stream und System-Controls."
-    blurbEn: "Live desktop in the browser — stream and system controls."
-    variant: desktop
-    gallery:
-      - "/media/riftcast/shots/screen-desktop.webp"
-      - "/media/riftcast/shots/screen-desktop-controls.webp"
-    alts:
-      - "Riftcast im Browser — Live-Stream des PC-Desktops"
-      - "Browser-Ansicht — Stream mit System-Controls und Statusleiste"
-    altsEn:
-      - "Riftcast in the browser — live stream of the PC desktop"
-      - "Browser view — stream with system controls and status bar"
+      - "Phone app — connect at home or away via PIN or QR scan"
 order: 3
+status: "private"
+platform: ["desktop", "mobile", "web"]
+engine: "PWA + Windows Host"
+version: "1.0.0"
+brand:
+  primary: "#b69cff"
+  secondary: "#7fa6ff"
 ---
 
 <div data-lang="de">
 
-**Problem** — Den eigenen PC von überall im Haus (oder unterwegs) nutzen heißt normalerweise: Cloud-Account, Abo oder fremde Server.
+**Aufgabe** — Den eigenen PC auf Phone und Browser nutzen, ohne dafür einen Cloud-Account anzulegen.
 
-**Prozess** — Drei Surfaces parallel entworfen: Host-Launcher, Phone-App und Browser-Desktop. Touch, Gamepad-Layouts, physische Controller und Qualitätspresets; optionaler Remote-Zugriff über privaten Tunnel mit Session-Code.
+**Mein Beitrag** — Konzept, UX/UI und Entwicklung über drei Oberflächen: Desktop-Host, Phone-App und Browser. Der Host startet die Verbindung; die empfangende Oberfläche bietet Steuerung und Qualitätseinstellungen.
 
-**Ergebnis** — Läuft auf Phone, Browser und Desktop-Host — ganz ohne Cloud-Account.
-{/* TODO: echte Kennzahlen von Dennis ergänzen — z. B. Stream-Latenz, Auflösungen/FPS, Session-Anzahl */}
+**Gestaltung** — Touch-Bedienung, Gamepad-Layouts und physische Controller erhalten jeweils passende Eingaben. Qualitätspresets machen die Stream-Einstellungen greifbar. Für den optionalen Zugriff über einen privaten Tunnel gibt es einen Session-Code.
+
+**Ergebnis** — Ein privater Build für Phone, Browser und Desktop-Host. Die Galerie lässt zwischen den Oberflächen wechseln und zeigt, wie dieselbe Verbindung je nach Gerät bedient wird.
 
 </div>
 
 <div data-lang="en">
 
-**Problem** — Using your own PC from anywhere in the house (or on the go) usually means cloud accounts, subscriptions or third-party servers.
+**Brief** — Use your own PC on a phone or in a browser without creating a cloud account.
 
-**Process** — Three surfaces designed in parallel: host launcher, phone app and browser desktop. Touch controls, gamepad layouts, physical controllers and quality presets; optional remote access via a private tunnel with session code.
+**My contribution** — Concept, UX/UI and development across three surfaces: desktop host, phone app and browser. The host starts the connection; the receiving interface provides controls and quality settings.
 
-**Outcome** — Runs on phone, browser and desktop host — no cloud account required.
-{/* TODO: add real metrics — e.g. stream latency, supported resolutions/fps, session counts */}
+**Design** — Touch controls, gamepad layouts and physical controllers each have appropriate input options. Quality presets make stream settings tangible. Optional access through a private tunnel uses a session code.
+
+**Result** — A private build for phone, browser and desktop host. Switch between the gallery surfaces to see how the same connection is controlled on different devices.
 
 </div>

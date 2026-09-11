@@ -1,0 +1,1451 @@
+/* ==========================================================================
+   Die Spielhalle — die Startseite ist ein Raum. Eine Reihe Automaten in
+   CSS-3D-Perspektive, jeder ein Produkt. Kein Scrollen, keine Sektionen.
+   ========================================================================== */
+
+@property --brand {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ac8bfd;
+}
+@property --brand-2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #4a82fe;
+}
+
+main.is-bare {
+  height: 100svh;
+  overflow: hidden;
+}
+
+.hall {
+  --brand: #ac8bfd;
+  --brand-2: #4a82fe;
+  --floor-y: 66%;
+  position: relative;
+  isolation: isolate;
+  height: 100svh;
+  overflow: hidden;
+  background: #05060a;
+  color: var(--text);
+  perspective: 1400px;
+  perspective-origin: 50% 42%;
+  transition:
+    --brand 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    --brand-2 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  user-select: none;
+  touch-action: pan-y;
+}
+.hall .mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Kein Flackern: mit WebGL bleibt die CSS-Kulisse unsichtbar, bis die Bühne steht ---------- */
+html.gl-pending .hall__row,
+html.gl-pending .hall__wall,
+html.gl-pending .hall__floor,
+html.gl-pending .hall__lamps {
+  visibility: hidden;
+}
+/* Schild, Leiste, Pfeile und Hinweis kommen erst mit der Bühne — nichts baut sich sichtbar auf */
+.hall__plaque,
+.hall__track,
+.hall__arrows,
+.hall__hint {
+  transition: opacity 0.5s ease 0.15s;
+}
+html.gl-pending .hall:not(.is-3d) .hall__plaque,
+html.gl-pending .hall:not(.is-3d) .hall__track,
+html.gl-pending .hall:not(.is-3d) .hall__arrows,
+html.gl-pending .hall:not(.is-3d) .hall__hint {
+  opacity: 0;
+  pointer-events: none;
+}
+/* ---------- WebGL-Bühne ---------- */
+.hall__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.hall__canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+.hall.is-3d .hall__stage {
+  opacity: 1;
+}
+.hall.is-3d .hall__wall,
+.hall.is-3d .hall__floor,
+.hall.is-3d .hall__lamps {
+  visibility: hidden;
+}
+/* Die CSS-Reihe ganz aus dem Render-Baum: sonst laufen ihre Animationen und Layouts unsichtbar weiter */
+.hall.is-3d .hall__row {
+  display: none;
+}
+/* Über der Bühne kein Weichzeichner — der müsste jeden Frame neu gerechnet werden */
+.hall.is-3d .hall__plaque {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: color-mix(in srgb, #07080c 92%, transparent);
+}
+.hall.is-3d .hall__neon {
+  z-index: 2;
+}
+
+/* ---------- Raum ---------- */
+.hall__wall {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--floor-y);
+  background:
+    radial-gradient(60% 70% at 50% 100%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 70%),
+    linear-gradient(180deg, #030408 0%, #090a12 55%, #0e1019 100%);
+  transition: background 0.7s ease;
+}
+.hall__wall::after {
+  /* feine Wandstruktur */
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 46px, rgba(255, 255, 255, 0.025) 46px 47px),
+    repeating-linear-gradient(90deg, transparent 0 118px, rgba(255, 255, 255, 0.018) 118px 119px);
+  mask-image: linear-gradient(180deg, transparent, #000 30%, #000 85%, transparent);
+}
+.hall__floor {
+  position: absolute;
+  inset: var(--floor-y) 0 0;
+  background: linear-gradient(180deg, #0f1119 0%, #08090e 35%, #04050a 100%);
+}
+.hall__floor::before {
+  /* Fliesenraster, in die Tiefe gekippt */
+  content: '';
+  position: absolute;
+  left: -50%;
+  right: -50%;
+  top: 0;
+  height: 100%;
+  transform-origin: 50% 0;
+  transform: perspective(600px) rotateX(58deg);
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 78px, rgba(255, 255, 255, 0.045) 78px 79px),
+    repeating-linear-gradient(0deg, transparent 0 78px, rgba(255, 255, 255, 0.045) 78px 79px);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 85%);
+}
+.hall__floor::after {
+  /* Glanz + Farbwaschung vom fokussierten Automaten */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(45% 55% at 50% 0%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 40%);
+  transition: background 0.7s ease;
+}
+.hall__lamps {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 40%;
+  pointer-events: none;
+}
+.hall__lamps span {
+  --i: 0;
+  position: absolute;
+  top: 0;
+  left: calc(8% + var(--i) * 17%);
+  width: 240px;
+  height: 100%;
+  transform: translateX(-50%);
+  background: radial-gradient(50% 100% at 50% 0%, rgba(255, 244, 214, 0.08), transparent 70%);
+  mix-blend-mode: screen;
+}
+
+/* ---------- Neon-Schild an der Rückwand ---------- */
+.hall__neon {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--nav-h) + 0.8rem);
+  transform: translateX(-50%);
+  margin: 0;
+  z-index: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  pointer-events: none;
+}
+.hall__neon-text {
+  display: block;
+  font-size: clamp(1.1rem, 2vw, 1.6rem);
+  color: #fff8f2;
+  text-shadow:
+    0 0 6px rgba(255, 255, 255, 0.9),
+    0 0 18px color-mix(in srgb, var(--brand) 85%, #fff),
+    0 0 42px color-mix(in srgb, var(--brand) 70%, transparent),
+    0 0 90px color-mix(in srgb, var(--brand) 50%, transparent);
+  transition: text-shadow 0.7s ease;
+  animation: neon-hum 6s ease-in-out infinite;
+}
+.hall__neon-sub {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  color: color-mix(in srgb, var(--brand) 75%, #fff);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--brand) 60%, transparent);
+  transition: color 0.7s ease;
+}
+@keyframes neon-hum {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 0.94;
+  }
+  50% {
+    opacity: 0.86;
+  }
+  52% {
+    opacity: 0.97;
+  }
+}
+.hall.is-attract .hall__neon-text {
+  animation: neon-flicker 2.6s steps(2, jump-none) infinite;
+}
+@keyframes neon-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  12% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.85;
+  }
+  63% {
+    opacity: 1;
+  }
+}
+
+/* ---------- Die Reihe ---------- */
+.hall__row {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.machine {
+  --item-brand: var(--brand);
+  --d: 0;
+  --h: clamp(24rem, 60svh, 34rem);
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  display: block;
+  width: 17.5rem;
+  height: var(--h);
+  transform-style: preserve-3d;
+  transition:
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.5s ease,
+    filter 0.6s ease;
+  filter: brightness(calc(1 - var(--d) * 0.19)) saturate(calc(1 - var(--d) * 0.12));
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  backface-visibility: hidden;
+}
+.machine.is-far {
+  opacity: 0;
+  pointer-events: none;
+}
+.machine:focus-visible {
+  outline: 2px solid var(--item-brand);
+  outline-offset: 6px;
+}
+.machine--kiosk {
+  width: 12rem;
+}
+.machine--terminal {
+  width: 20rem;
+}
+.machine--jukebox {
+  width: 15rem;
+}
+.machine--kasse {
+  width: 24rem;
+}
+.machine--phone {
+  width: 9rem;
+}
+
+/* Gehäuse: schlichte dunkle Box mit Kantenlicht */
+.machine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(180deg, #1a1d27 0%, #12141c 45%, #0c0d13 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.08),
+    inset -1px 0 0 rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 30px 60px -30px rgba(0, 0, 0, 0.9);
+}
+.machine--jukebox::before {
+  border-radius: 45% 45% 6px 6px / 28% 28% 6px 6px;
+  background: linear-gradient(180deg, #2a1f3a 0%, #17131f 50%, #0c0d13 100%);
+}
+.machine--kasse::before,
+.machine--phone::before {
+  background: none;
+  box-shadow: none;
+}
+
+/* Marquee — das Neonschild oben */
+.m-marquee {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 4%;
+  height: 12%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--item-brand) 14%, #0b0c12);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--item-brand) 35%, transparent),
+    0 0 24px -4px color-mix(in srgb, var(--item-brand) 55%, transparent);
+  transition: box-shadow 0.5s ease;
+}
+.machine.is-focus .m-marquee {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--item-brand) 70%, transparent),
+    0 0 34px -2px color-mix(in srgb, var(--item-brand) 85%, transparent);
+}
+.m-marquee__mark {
+  height: 70%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.m-marquee__mark > * {
+  width: 100%;
+  height: 100%;
+}
+.m-marquee__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(0.72rem, 1.05vw, 0.95rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--item-brand) 80%, #fff);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--item-brand) 70%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.machine--kiosk .m-marquee__name {
+  font-size: 0.66rem;
+}
+
+/* Bildschirm */
+.m-screen {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 19%;
+  height: 42%;
+  border-radius: 8px;
+  background: #000;
+  box-shadow:
+    inset 0 0 0 3px #1c1f2a,
+    inset 0 0 0 4px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+.machine--terminal .m-screen {
+  top: 17%;
+  height: 46%;
+}
+.machine--kiosk .m-screen {
+  top: 18%;
+  height: 56%;
+  border-radius: 14px;
+}
+.machine--jukebox .m-screen {
+  top: 22%;
+  height: 30%;
+}
+.m-screen__glass {
+  position: absolute;
+  inset: 4px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #04050a;
+}
+.m-shot {
+  --k: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  /* vier Plätze à 3,8 s; index.astro füllt kürzere Galerien auf vier auf */
+  animation: shot-cycle 15.2s linear infinite;
+  animation-delay: calc(var(--k) * 3.8s);
+  animation-play-state: paused;
+}
+.m-shot:first-child {
+  opacity: 1;
+}
+.machine.is-near .m-shot {
+  animation-play-state: running;
+}
+.machine.is-near .m-shot:first-child {
+  opacity: 0;
+}
+@keyframes shot-cycle {
+  0% {
+    opacity: 0;
+  }
+  3% {
+    opacity: 1;
+  }
+  23% {
+    opacity: 1;
+  }
+  27% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.m-screen__scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 30%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 2px, transparent 2px 4px);
+  mix-blend-mode: overlay;
+}
+.machine.is-focus .m-screen {
+  box-shadow:
+    inset 0 0 0 3px #1c1f2a,
+    inset 0 0 0 4px rgba(0, 0, 0, 0.8),
+    0 0 0 1px color-mix(in srgb, var(--item-brand) 40%, transparent),
+    0 0 40px -6px color-mix(in srgb, var(--item-brand) 55%, transparent);
+}
+.m-coin {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0b0c10;
+  background: var(--item-brand);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--item-brand) 70%, transparent);
+  animation: coin-blink 1.4s steps(2, jump-none) infinite;
+  white-space: nowrap;
+}
+@keyframes coin-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Bedienfeld */
+.m-panel {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 63%;
+  height: 11%;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #232735, #161924);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 6px 14px -8px #000;
+  transform: rotateX(28deg);
+  transform-origin: 50% 0;
+}
+.machine--terminal .m-panel {
+  top: 66%;
+  height: 8%;
+  transform: rotateX(45deg);
+}
+.machine--kiosk .m-panel {
+  top: 77%;
+  height: 6%;
+}
+.machine--jukebox .m-panel {
+  top: 55%;
+  height: 22%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-evenly;
+  padding: 0 10% 8%;
+  background: linear-gradient(180deg, #1c1526, #120e1a);
+  transform: none;
+}
+.m-stick {
+  position: absolute;
+  left: 22%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e8e8f0;
+  box-shadow: 0 -18px 0 -3px #d1352b, 0 0 0 6px #0f1118;
+  transform: translate(-50%, -50%);
+}
+.m-btn {
+  position: absolute;
+  right: 26%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--item-brand);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.45), 0 0 12px color-mix(in srgb, var(--item-brand) 60%, transparent);
+  transform: translateY(-50%);
+}
+.m-btn--2 {
+  right: 12%;
+  background: #f0f0f4;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+}
+.machine--kiosk .m-btn {
+  right: 14%;
+  width: 14px;
+  height: 14px;
+}
+.m-slot {
+  position: absolute;
+  left: 14%;
+  top: 50%;
+  width: 22px;
+  height: 5px;
+  border-radius: 2px;
+  background: #05060a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-50%);
+}
+.m-keys {
+  position: absolute;
+  inset: 22% 8%;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 3px;
+}
+.m-keys i {
+  border-radius: 2px;
+  background: #2b3040;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.m-panel--jukebox i {
+  --k: 0;
+  width: 8%;
+  height: 60%;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--item-brand) 80%, #fff), color-mix(in srgb, var(--item-brand) 40%, #000));
+  transform-origin: 50% 100%;
+  animation: juke-bar 1.6s ease-in-out infinite;
+  animation-delay: calc(var(--k) * -0.23s);
+  animation-play-state: paused;
+  opacity: 0.85;
+}
+.machine.is-focus .m-panel--jukebox i {
+  animation-play-state: running;
+}
+@keyframes juke-bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Münztür und Lüftungsschlitze — der untere Korpus */
+.m-door {
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  top: 77%;
+  height: 9%;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #171a24, #0e1017);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.m-door::before {
+  /* Münzschlitz */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  width: 22%;
+  height: 4px;
+  border-radius: 2px;
+  background: #04050a;
+  transform: translateX(-50%);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--item-brand) 60%, transparent);
+}
+.m-door::after {
+  /* zwei Kontrolllichter */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 22%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--item-brand);
+  transform: translateX(-160%);
+  box-shadow: 14px 0 0 #3a3e4a, 0 0 8px color-mix(in srgb, var(--item-brand) 70%, transparent);
+}
+.m-vents {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 77%;
+  height: 9%;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 6px);
+  mask-image: linear-gradient(90deg, #000 22%, transparent 30%, transparent 70%, #000 78%);
+  border-radius: 3px;
+}
+.machine--terminal .m-door {
+  top: 79%;
+  height: 8%;
+}
+.machine--terminal .m-vents {
+  top: 79%;
+  height: 8%;
+}
+.machine--kiosk .m-door {
+  left: 22%;
+  right: 22%;
+  top: 86%;
+  height: 6%;
+}
+.machine--kiosk .m-vents {
+  display: none;
+}
+.machine--jukebox .m-door {
+  left: 36%;
+  right: 36%;
+  top: 80%;
+  height: 7%;
+}
+.machine--jukebox .m-vents {
+  top: 80%;
+  height: 7%;
+}
+
+/* Namensschild */
+.m-plate {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 3.5%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 4px;
+  background: #0a0b10;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.m-plate__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.m-plate__meta {
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  color: var(--item-brand);
+}
+
+/* Figur neben dem Automaten */
+.m-cast {
+  position: absolute;
+  left: -3.6rem;
+  bottom: 2%;
+  width: 3.4rem;
+  height: 3.4rem;
+  display: grid;
+  place-items: center;
+  animation: cast-bob 4.2s ease-in-out infinite;
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.6));
+}
+.m-cast img,
+.m-cast .live-mark {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+@keyframes cast-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -4px;
+  }
+}
+.hall.is-attract .m-cast {
+  animation: cast-wander 9s ease-in-out infinite;
+}
+@keyframes cast-wander {
+  0%,
+  100% {
+    translate: 0 0;
+    scale: 1 1;
+  }
+  45% {
+    translate: -26px -3px;
+    scale: -1 1;
+  }
+  50% {
+    translate: -28px 0;
+    scale: -1 1;
+  }
+  95% {
+    translate: 2px -3px;
+    scale: 1 1;
+  }
+}
+
+/* Spiegelung auf dem Boden + Lichtpfütze */
+.m-reflect {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 100%;
+  height: 34%;
+  overflow: hidden;
+  opacity: 0.22;
+  transform: scaleY(-1);
+  mask-image: linear-gradient(180deg, transparent, #000 100%);
+  pointer-events: none;
+}
+.m-reflect img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(1px);
+}
+.m-glow {
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  top: 92%;
+  height: 40%;
+  background: radial-gradient(50% 55% at 50% 30%, color-mix(in srgb, var(--item-brand) 42%, transparent), transparent 70%);
+  filter: blur(6px);
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.machine.is-focus .m-glow {
+  opacity: 1;
+}
+
+/* ---------- Kasse ---------- */
+.m-sign {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  transform: translateX(-50%);
+  padding: 0.35rem 0.9rem;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #fff4e6;
+  background: #0b0c12;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--item-brand) 55%, transparent),
+    0 0 26px -4px color-mix(in srgb, var(--item-brand) 70%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--item-brand) 80%, #fff);
+  white-space: nowrap;
+}
+.m-kasse {
+  position: absolute;
+  inset: 12% 0 6%;
+  display: block;
+}
+.m-kasse__me {
+  position: absolute;
+  left: 50%;
+  bottom: 30%;
+  width: 62%;
+  height: auto;
+  transform: translateX(-50%);
+  object-fit: contain;
+  mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
+}
+.m-kasse__desk {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34%;
+  border-radius: 8px 8px 4px 4px;
+  background: linear-gradient(180deg, #2a2230 0%, #1a1620 30%, #0f0d14 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), 0 30px 60px -30px #000;
+}
+.m-kasse__desk::after {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 14px;
+  height: 2px;
+  background: color-mix(in srgb, var(--item-brand) 60%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--item-brand) 70%, transparent);
+}
+.m-kasse__bell {
+  position: absolute;
+  right: 12%;
+  bottom: 30%;
+  width: 18px;
+  height: 12px;
+  border-radius: 9px 9px 2px 2px;
+  background: linear-gradient(180deg, #ffe6a8, #b8862b);
+  box-shadow: 0 2px 0 #6b4a12;
+}
+.machine--kasse .m-plate {
+  left: 30%;
+  right: 30%;
+  justify-content: center;
+}
+
+/* ---------- Telefon ---------- */
+.m-phone {
+  position: absolute;
+  inset: 14% 8% 16%;
+  display: block;
+}
+.m-phone__box {
+  position: absolute;
+  inset: 0 0 30%;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #d8dbe6, #a9aebd);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
+    0 20px 40px -20px #000;
+}
+.m-phone__hook {
+  position: absolute;
+  left: 12%;
+  top: 8%;
+  width: 22%;
+  height: 8%;
+  border-radius: 3px;
+  background: #3a3e4a;
+}
+.m-phone__handset {
+  position: absolute;
+  left: 8%;
+  top: 14%;
+  width: 30%;
+  height: 62%;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #2b2e39, #14161d);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.m-phone__keys {
+  position: absolute;
+  right: 12%;
+  top: 22%;
+  width: 40%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+.m-phone__keys i {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: #2a2d38;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.m-phone__cord {
+  position: absolute;
+  left: 20%;
+  bottom: 0;
+  width: 6px;
+  height: 32%;
+  background: repeating-linear-gradient(180deg, #2b2e39 0 4px, transparent 4px 7px);
+  border-radius: 3px;
+}
+.machine--phone .m-plate {
+  left: 4%;
+  right: 4%;
+  justify-content: center;
+}
+
+/* ---------- Hallenleiste ---------- */
+.hall__track {
+  position: absolute;
+  left: 50%;
+  /* oben unter der Leiste — unten saß sie dem Schild im Nacken */
+  top: calc(var(--nav-h) + 0.9rem);
+  z-index: 3;
+  width: min(60rem, calc(100% - 2rem));
+  height: 2.2rem;
+  transform: translateX(-50%);
+}
+.hall__range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: grab;
+  z-index: 2;
+}
+.hall__range:active {
+  cursor: grabbing;
+}
+.hall__ticks {
+  z-index: 3;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.3rem;
+}
+.hall__ticks::before {
+  content: '';
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  top: 50%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.hall__tick {
+  --tick: #c8daf4;
+  position: relative;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tick) 55%, #0b0c12);
+  box-shadow: 0 0 0 2px #07080c;
+  cursor: pointer;
+  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+.hall__tick.is-playable::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 1.5px solid #07080c;
+}
+.hall__tick.is-on {
+  background: var(--tick);
+  transform: scale(1.5);
+  box-shadow: 0 0 0 2px #07080c, 0 0 16px color-mix(in srgb, var(--tick) 80%, transparent);
+}
+.hall__tick-label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.5rem);
+  transform: translateX(-50%);
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text);
+  background: rgba(7, 8, 12, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+/* Nur beim Zeigen — der Name der Station steht schon auf dem Schild darunter */
+.hall__tick:hover .hall__tick-label {
+  opacity: 1;
+}
+
+/* ---------- Schild unten ---------- */
+.hall__plaque {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(0.9rem, 3vh, 2rem);
+  z-index: 3;
+  width: min(60rem, calc(100% - 2rem));
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem 2rem;
+  align-items: center;
+  padding: 0.9rem 1.2rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, #07080c 82%, transparent);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 30px 60px -30px #000;
+  backdrop-filter: blur(calc(14px * var(--fx, 1)));
+}
+.plaque__kind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.3rem;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.plaque__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--stroke-hi);
+}
+.plaque__brand {
+  color: var(--brand);
+  transition: color 0.7s ease;
+}
+.plaque__status.is-live,
+.plaque__status.is-released {
+  color: #7be0a8;
+}
+.plaque__status.is-wip {
+  color: var(--gold);
+}
+.plaque__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+.plaque__summary {
+  margin: 0.3rem 0 0;
+  max-width: 62ch;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: var(--dim);
+  display: -webkit-box;
+  /* drei Zeilen — die Zusammenfassungen sind 150–200 Zeichen lang, zwei brechen mitten im Wort */
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.plaque__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.plaque__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 1.05rem;
+  border-radius: 10px;
+  border: 1px solid var(--stroke-hi);
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.25s ease, color 0.25s ease, transform 0.25s ease, background 0.7s ease;
+}
+.plaque__btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand);
+}
+.plaque__btn--coin {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #0b0c10;
+  box-shadow: 0 10px 30px -14px color-mix(in srgb, var(--brand) 80%, transparent);
+}
+.plaque__coin {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+/* Hinweise, Attract, Pfeile */
+.hall__hint {
+  position: absolute;
+  left: 1.2rem;
+  bottom: 0.55rem;
+  z-index: 3;
+  margin: 0;
+  font-size: 0.66rem;
+  color: var(--dim);
+}
+.hall__hint-touch {
+  display: none;
+}
+.hall__pad {
+  color: #7be0a8;
+  animation: neon-hum 1.6s ease-in-out infinite;
+}
+.hall__attract {
+  position: absolute;
+  right: 1.2rem;
+  bottom: 0.55rem;
+  z-index: 3;
+  margin: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.hall.is-attract .hall__attract {
+  opacity: 1;
+}
+.hall__arrows {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.hall__arrow {
+  position: absolute;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(7, 8, 12, 0.78);
+  color: var(--text);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateY(-50%);
+  opacity: 0.8;
+  transition: opacity 0.25s ease, border-color 0.25s ease;
+}
+.hall__arrow:first-child {
+  left: 1rem;
+}
+.hall__arrow:last-child {
+  right: 1rem;
+}
+.hall__arrow:hover {
+  opacity: 1;
+  border-color: var(--brand);
+}
+.hall__arrow:disabled {
+  opacity: 0.12;
+  cursor: default;
+}
+
+/* ---------- Attract: Bildschirme unruhiger, Licht atmet ---------- */
+.hall.is-attract .hall__wall::after,
+.hall.is-attract .hall__floor::after {
+  animation: hall-breathe 4.5s ease-in-out infinite;
+}
+@keyframes hall-breathe {
+  50% {
+    opacity: 0.75;
+  }
+}
+
+/* ---------- Ruhe ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .machine {
+    transition: none;
+  }
+  .m-shot,
+  .m-coin,
+  .m-cast,
+  .m-panel--jukebox i,
+  .hall__neon-text,
+  .hall__pad {
+    animation: none !important;
+  }
+  .machine.is-near .m-shot:first-child {
+    opacity: 1;
+  }
+}
+
+/* ---------- Kompakt: die Reihe wird zum Wischen ---------- */
+@media (max-width: 760px) {
+  .hall {
+    perspective: none;
+    --floor-y: 72%;
+  }
+  .hall__neon {
+    top: calc(var(--nav-h) + 1.2vh);
+  }
+  .hall__neon-text {
+    font-size: 1rem;
+  }
+  .hall__neon-sub {
+    display: none;
+  }
+  .hall__row {
+    position: absolute;
+    inset: calc(var(--nav-h) + 3.8rem) 0 11.5rem;
+    display: flex;
+    align-items: flex-end;
+    gap: 1.25rem;
+    padding: 0 12vw 2.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    transform-style: flat;
+  }
+  .hall__row::-webkit-scrollbar {
+    display: none;
+  }
+  .machine {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+    --h: min(50svh, 26rem);
+    filter: brightness(calc(1 - var(--d) * 0.28));
+  }
+  .machine.is-far {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .machine--cabinet,
+  .machine--terminal {
+    width: 15rem;
+  }
+  .machine--kiosk {
+    width: 10.5rem;
+  }
+  .machine--jukebox {
+    width: 12.5rem;
+  }
+  .machine--kasse {
+    width: 17rem;
+  }
+  .machine--phone {
+    width: 7.5rem;
+  }
+  .m-reflect {
+    display: none;
+  }
+  .m-cast {
+    left: -2.4rem;
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+  .hall__plaque {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    padding: 0.8rem 0.9rem;
+    bottom: 1.6rem;
+  }
+  .hall__track {
+    top: calc(var(--nav-h) + 0.5rem);
+    height: 1.6rem;
+  }
+  .hall__tick {
+    width: 10px;
+    height: 10px;
+  }
+  .hall__tick-label {
+    display: none;
+  }
+  .plaque__actions {
+    justify-content: flex-start;
+  }
+  .plaque__summary {
+    -webkit-line-clamp: 2;
+    font-size: 0.8rem;
+  }
+  .hall__hint-desk {
+    display: none;
+  }
+  .hall__hint-touch {
+    display: inline;
+  }
+  .hall__arrows {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   Seitenmodi: die Halle bleibt als Bühne hinter Projekt (case) und Arcade stehen.
+   body[data-mode] kommt serverseitig aus dem Layout — kein Sprung im ersten Frame.
+   ========================================================================== */
+
+/* Eigener View-Transition-Name (nicht transition:name — der Seiten-Scope bricht bei
+   persistenten Inseln nach dem ersten Wechsel). Die Bühne nimmt am Überblenden nicht teil. */
+.hall {
+  view-transition-name: hall;
+}
+::view-transition-group(hall),
+::view-transition-old(hall),
+::view-transition-new(hall) {
+  animation: none;
+}
+::view-transition-old(hall) {
+  opacity: 0;
+}
+/* Das Schild wächst in der Übergangs-Snapshot zum Panel — dieselben Namen trägt .hall-panel */
+body[data-mode='hall'] .hall__plaque {
+  view-transition-name: case-card;
+}
+body[data-mode='hall'] .plaque__kind {
+  view-transition-name: case-eyebrow;
+}
+body[data-mode='hall'] .plaque__title {
+  view-transition-name: case-title;
+}
+body[data-mode='hall'] .plaque__summary {
+  view-transition-name: case-summary;
+}
+body[data-mode='hall'] .plaque__btn--coin {
+  view-transition-name: case-cta;
+}
+::view-transition-old(case-card),
+::view-transition-new(case-card),
+::view-transition-old(case-title),
+::view-transition-new(case-title),
+::view-transition-old(case-eyebrow),
+::view-transition-new(case-eyebrow),
+::view-transition-old(case-summary),
+::view-transition-new(case-summary),
+::view-transition-old(case-cta),
+::view-transition-new(case-cta) {
+  height: 100%;
+  object-fit: none;
+  overflow: clip;
+}
+::view-transition-group(case-card),
+::view-transition-group(case-title),
+::view-transition-group(case-eyebrow),
+::view-transition-group(case-summary),
+::view-transition-group(case-cta) {
+  animation-duration: 0.26s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body[data-mode='case'] .hall,
+body[data-mode='arcade'] .hall {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  height: 100svh;
+}
+body[data-mode='case'] .hall__plaque,
+body[data-mode='arcade'] .hall__plaque,
+body[data-mode='case'] .hall__track,
+body[data-mode='arcade'] .hall__track,
+body[data-mode='case'] .hall__hint,
+body[data-mode='arcade'] .hall__hint,
+body[data-mode='case'] .hall__arrows,
+body[data-mode='arcade'] .hall__arrows,
+body[data-mode='case'] .hall__attract,
+body[data-mode='arcade'] .hall__attract,
+body[data-mode='case'] .hall__neon,
+body[data-mode='arcade'] .hall__neon {
+  display: none;
+}
+/* Ohne WebGL bleibt die CSS-Reihe als Kulisse sichtbar, aber nicht bedienbar (inert im Markup) */
+body[data-mode='case'] .hall__row,
+body[data-mode='arcade'] .hall__row {
+  pointer-events: none;
+}
+body[data-mode='case'] .hall.is-3d .hall__stage,
+body[data-mode='arcade'] .hall.is-3d .hall__stage {
+  transition: opacity 0.5s ease;
+}
+
+/* Das Panel der Projektseite (src/components/work/hall-panel.css) trägt die Gegenstücke:
+   das Schild wird beim Seitenwechsel zur Karte, Zeile/Titel/Zusammenfassung/Knopf reisen mit. */
+body[data-mode='case'] .hall-panel__card {
+  view-transition-name: case-card;
+}
+body[data-mode='case'] .hall-panel__kind {
+  view-transition-name: case-eyebrow;
+}
+body[data-mode='case'] .hall-panel__title {
+  view-transition-name: case-title;
+}
+body[data-mode='case'] .hall-panel__summary {
+  view-transition-name: case-summary;
+}
+body[data-mode='case'] .hall-panel__btn--coin {
+  view-transition-name: case-cta;
+}
+/* Nach einem Client-Seitenwechsel (html.hall-nav, gesetzt von der Halle) übernimmt der Übergang die
+   Ankunft der Karte; beim Direktaufruf und ohne View Transitions bleibt ihr eigenes Einschieben */
+@supports (view-transition-name: none) {
+  html.hall-nav .hall-panel__card {
+    animation: none !important;
+  }
+}
+
+/* Punkte auf der Leiste sind selbst anklickbar und zeigen ihren Namen beim Zeigen */
+.hall__tick {
+  pointer-events: auto;
+}
+/* Versionsnummern nicht in Großbuchstaben */
+.plaque__brand,
+.hall-panel__brand {
+  text-transform: none;
+}
+/* Die Endpunkte der Leiste (Über mich, Kontakt) tragen ihren Namen immer */
+.hall__tick:first-child .hall__tick-label,
+.hall__tick:last-child .hall__tick-label {
+  opacity: 1;
+}

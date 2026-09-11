@@ -1,5 +1,8 @@
 ---
 import '../styles/global.css';
+import '../styles/arcade-interface.css';
+import { ClientRouter } from 'astro:transitions';
+import gateEditorCss from '../styles/gate-editor.css?url';
 import GlassNav from '../components/nav/GlassNav';
 import BrandLockup from '../components/brand/BrandLockup';
 import FxBoot from '../components/FxBoot';
@@ -16,19 +19,29 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  /** Vollbild-Seiten (Spielhalle): kein Footer, kein Seitenrand */
+  bare?: boolean;
+  /**
+   * Seitenmodus für die persistente Spielhalle: `hall` = Startseite, `case` = Projektseite über der
+   * Halle, `arcade` = Web-Build auf dem Automaten, `page` = normale Seite. Steht serverseitig am
+   * <body>, damit das Layout nach einem Client-Seitenwechsel im ersten Frame stimmt.
+   */
+  mode?: 'page' | 'hall' | 'case' | 'arcade';
+  /** Station der Halle für die Leiste: Zähler, Name, Version (Seiten ohne Halle: weglassen) */
+  station?: { index: number; total: number; title: string; titleEn?: string; version?: string };
 }
 
 const {
   title = `${site.name} — ${site.role}`,
   description = site.description,
   ogImage = 'og/default.png',
+  mode = 'page',
+  bare = mode !== 'page',
+  station,
 } = Astro.props;
 
 const path = Astro.url.pathname;
 const nav = navItems.map((n) => ({ href: p(n.href), labelKey: n.labelKey }));
-const workLinks = (await getCollection('work'))
-  .sort((a, b) => a.data.order - b.data.order)
-  .map((w) => ({ href: p(`work/${w.id}`), title: w.data.title, titleEn: w.data.titleEn, tags: [...w.data.tags] }));
 const canonical = new URL(path, Astro.site ?? site.url).toString();
 const favicon = p('favicon.svg');
 const appleIcon = p('apple-touch-icon.png');
@@ -52,7 +65,7 @@ const personLd = {
   knowsAbout: [
     'Art Direction',
     'UI/UX Design',
-    'Hobby Software Development',
+    'Independent Product Development',
     'Product Design',
     'Branding',
   ],
@@ -69,6 +82,7 @@ const personLd = {
     <meta name="theme-color" content="#07080c" />
     <link rel="canonical" href={canonical} />
     <link rel="preload" as="font" type="font/woff2" href={outfitWoff2} crossorigin />
+    {gateOn && <link rel="stylesheet" href={gateEditorCss} />}
     <link rel="icon" type="image/svg+xml" href={`${favicon}?v=3`} />
     <link rel="icon" type="image/png" sizes="32x32" href={`${p('favicon-32.png')}?v=3`} />
     <link rel="apple-touch-icon" href={`${appleIcon}?v=3`} />
@@ -88,25 +102,35 @@ const personLd = {
     <meta name="twitter:image" content={og} />
     <script type="application/ld+json" set:html={JSON.stringify(personLd)} />
     <title>{title}</title>
+    {/* Client-Router: die Spielhalle bleibt beim Seitenwechsel stehen (transition:persist).
+        Emittiert nur Meta-Tags und ein externes Modul — keine CSP-Änderung. */}
+    <ClientRouter fallback="swap" />
+    <!-- Keep the standards-based backdrop filter intact in production.
+         The CSS optimizer otherwise emits only the obsolete WebKit-prefixed
+         declaration, which current Chromium ignores. -->
   </head>
-  <body>
+  <body data-mode={mode}>
     <a class="skip-link" href="#main">
       <span data-lang="de">{copy.de.nav.skip}</span>
       <span data-lang="en">{copy.en.nav.skip}</span>
     </a>
     {gateOn && <SiteGate client:load />}
     <FxBoot client:idle />
-    <GlassNav
-      client:load
-      items={nav}
-      workLinks={workLinks}
-      currentPath={path}
-      brand={site.name}
-      homeHref={p()}
-    />
-    <main id="main">
+    <GlassNav client:load items={nav} currentPath={path} brand={site.name} homeHref={p()} mode={mode} station={station} />
+    <!-- Keep native fallback outside React: fetched documents parse noscript differently. -->
+    <noscript>
+      <style is:inline>.site-nav .site-nav__menu, .site-nav .lang-switch, .site-nav .site-nav__direct { display: none !important; }</style>
+      <details class="site-nav__fallback">
+        <summary class="site-nav__fallback-toggle"><span data-lang="de">{copy.de.nav.menu}</span><span data-lang="en">{copy.en.nav.menu}</span></summary>
+        <nav class="site-nav__fallback-links" aria-label="Navigation">
+          {nav.map((item) => <a href={item.href}><span data-lang="de">{copy.de.nav[item.labelKey]}</span><span data-lang="en">{copy.en.nav[item.labelKey]}</span></a>)}
+        </nav>
+      </details>
+    </noscript>
+    <main id="main" tabindex="-1" class={bare ? 'is-bare' : undefined}>
       <slot />
     </main>
+    {bare ? null : (
     <footer class="site-footer">
       <div class="wrap flex flex-col gap-5 py-8 md:flex-row md:items-end md:justify-between md:gap-6 md:py-7">
         <a href={p()} class="min-w-0 text-[var(--text)] transition-opacity hover:opacity-90" aria-label="Home">
@@ -117,23 +141,23 @@ const personLd = {
             class="flex flex-wrap gap-x-4 gap-y-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]"
             aria-label="Footer"
           >
-            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('work')}>
+            <a class="inline-flex min-h-11 items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('work')}>
               <span data-lang="de">{copy.de.nav.work}</span>
               <span data-lang="en">{copy.en.nav.work}</span>
             </a>
-            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('about')}>
+            <a class="inline-flex min-h-11 items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('about')}>
               <span data-lang="de">{copy.de.nav.about}</span>
               <span data-lang="en">{copy.en.nav.about}</span>
             </a>
-            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('contact')}>
+            <a class="inline-flex min-h-11 items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('contact')}>
               <span data-lang="de">{copy.de.nav.contact}</span>
               <span data-lang="en">{copy.en.nav.contact}</span>
             </a>
-            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('impressum')}>
+            <a class="inline-flex min-h-11 items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('impressum')}>
               <span data-lang="de">Impressum</span>
               <span data-lang="en">Legal notice</span>
             </a>
-            <a class="inline-flex items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('privacy')}>
+            <a class="inline-flex min-h-11 items-center py-1.5 transition-colors hover:text-[var(--text)]" href={p('privacy')}>
               <span data-lang="de">Datenschutz</span>
               <span data-lang="en">Privacy</span>
             </a>
@@ -147,36 +171,16 @@ const personLd = {
         </div>
       </div>
     </footer>
+    )}
     <script>
-      // Scroll-reveal for [data-reveal] — arms hiding only when it can also reveal.
-      const els = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (els.length && !reduce && 'IntersectionObserver' in window) {
-        document.documentElement.classList.add('js-reveal');
-        const io = new IntersectionObserver(
-          (entries) => {
-            for (const entry of entries) {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('is-in');
-                io.unobserve(entry.target);
-              }
-            }
-          },
-          // Großzügiger Vorlauf: Inhalte werden deutlich vor dem Viewport enthüllt,
-          // damit schnelles Scrollen/Crawler nie leere Sektionen sehen
-          { rootMargin: '0px 0px 35% 0px' },
-        );
-        const vh = window.innerHeight;
-        for (const el of els) {
-          const r = el.getBoundingClientRect();
-          if (r.top < vh * 0.92 && r.bottom > 0) {
-            // Already on screen: play the entrance right away, no observer round-trip
-            window.setTimeout(() => el.classList.add('is-in'), 20);
-          } else {
-            io.observe(el);
-          }
-        }
-      }
+      // Gehoistetes Modul: läuft einmal pro Sitzung. Alles Seitenbezogene hängt an astro:page-load,
+      // das der ClientRouter beim ersten Laden und nach jedem Wechsel feuert.
+      import { revealBoot } from '../lib/reveal-boot';
+      import { focusAfterNav } from '../lib/focus-after-nav';
+      document.addEventListener('astro:page-load', () => {
+        revealBoot();
+        focusAfterNav();
+      });
     </script>
   </body>
 </html>

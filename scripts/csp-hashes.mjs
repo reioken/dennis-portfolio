@@ -13,6 +13,7 @@ import path from 'node:path';
 async function walkHtml(dir) {
   const out = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.name === 'game-builds') continue;
     const abs = path.join(dir, entry.name);
     if (entry.isDirectory()) out.push(...(await walkHtml(abs)));
     else if (entry.name.endsWith('.html')) out.push(abs);

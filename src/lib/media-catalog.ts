@@ -31,20 +31,20 @@ export type CollageSlotKey = (typeof COLLAGE_SLOT_KEYS)[number];
 export const COLLAGE_DEFAULTS: Record<CollageSlotKey, string> = {
   'img.collage.0': '/media/nexus/shots/screen-home-featured.webp',
   'img.collage.1': '/media/berry/shots/screen-home.webp',
-  'img.collage.2': '/media/riftcast/shots/screen-quality.webp',
-  'img.collage.3': '/media/nexus/shots/screen-showcase.webp',
+  'img.collage.2': '/media/safeplate/mobile-picturebook.webp',
+  'img.collage.3': '/media/riftback/champion-ahri.webp',
   'img.collage.4': '/media/berry/shots/screen-collection.webp',
   'img.collage.5': '/media/riftcast/shots/screen-app.webp',
-  'img.collage.6': '/media/floordirekt/shots/screen-pruefen.webp',
-  'img.collage.7': '/media/nexus/shots/screen-coverflow.webp',
-  'img.collage.8': '/media/berry/shots/screen-search.webp',
+  'img.collage.6': '/media/nexus/shots/screen-bulk.webp',
+  'img.collage.7': '/media/riftback/jungle-routes.webp',
+  'img.collage.8': '/media/safeplate/mobile-home.webp',
   'img.collage.9': '/media/riftcast/shots/screen-desktop.webp',
   'img.collage.10': '/media/nexus/shots/screen-couch-featured.webp',
   'img.collage.11': '/media/berry/shots/screen-decks-meta.webp',
   'img.collage.12': '/media/riftcast/shots/screen-desktop-controls.webp',
-  'img.collage.13': '/media/floordirekt/shots/screen-start.webp',
+  'img.collage.13': '/media/berry/shots/screen-tournaments.webp',
   'img.collage.14': '/media/berry/shots/screen-insights.webp',
-  'img.collage.15': '/media/nexus/shots/screen-grid.webp',
+  'img.collage.15': '/media/riftback/tier-list.webp',
 };
 
 export const COLLAGE_MEDIA: MediaItem[] = [
@@ -62,7 +62,6 @@ export const COLLAGE_MEDIA: MediaItem[] = [
   { src: '/media/nexus/shots/screen-cmdk.webp', label: 'Command Palette', group: 'NEXUS' },
   { src: '/media/nexus/shots/screen-blizzard.webp', label: 'Blizzard Hub', group: 'NEXUS' },
   { src: '/media/nexus/shots/screen-bulk.webp', label: 'Bulk', group: 'NEXUS' },
-  { src: '/media/nexus/shots/screen-heatmap.webp', label: 'Heatmap', group: 'NEXUS' },
   { src: '/media/nexus/shots/screen-dice.webp', label: 'Dice', group: 'NEXUS' },
   { src: '/media/nexus/shots/screen-onboard.webp', label: 'Onboarding', group: 'NEXUS' },
 
@@ -84,13 +83,20 @@ export const COLLAGE_MEDIA: MediaItem[] = [
   { src: '/media/riftcast/shots/screen-quality.webp', label: 'Quality', group: 'Riftcast' },
   { src: '/media/riftcast/shots/screen-pad.webp', label: 'Pad Shooter', group: 'Riftcast' },
 
-  // Floordirekt
-  { src: '/media/floordirekt/shots/screen-pruefen.webp', label: 'Prüfen', group: 'Floordirekt' },
-  { src: '/media/floordirekt/shots/screen-start.webp', label: 'Start', group: 'Floordirekt' },
-  { src: '/media/floordirekt/shots/screen-bilder.webp', label: 'Bilder', group: 'Floordirekt' },
-  { src: '/media/floordirekt/shots/screen-layout-export.webp', label: 'Layout & Export', group: 'Floordirekt' },
-  { src: '/media/floordirekt/shots/screen-sprachen.webp', label: 'Sprachen', group: 'Floordirekt' },
-  { src: '/media/floordirekt/shots/screen-fertig.webp', label: 'Fertig', group: 'Floordirekt' },
+  // Riftback — League Classic reference
+  { src: '/media/riftback/champion-ahri.webp', label: 'Champion / Ahri', group: 'Riftback' },
+  { src: '/media/riftback/build-sion.webp', label: 'Build / Sion', group: 'Riftback' },
+  { src: '/media/riftback/jungle-routes.webp', label: 'Jungle Routes', group: 'Riftback' },
+  { src: '/media/riftback/tier-list.webp', label: 'Tier List', group: 'Riftback' },
+  { src: '/media/riftback/mobile-champion-ezreal.webp', label: 'Mobile / Ezreal', group: 'Riftback' },
+  { src: '/media/riftback/mobile-tier-list.webp', label: 'Mobile Tier List', group: 'Riftback' },
+
+  // Safeplate — offline-first Android app
+  { src: '/media/safeplate/mobile-home.webp', label: 'Home', group: 'Safeplate' },
+  { src: '/media/safeplate/mobile-onboarding-constraints.webp', label: 'Constraints', group: 'Safeplate' },
+  { src: '/media/safeplate/mobile-restaurant.webp', label: 'Restaurant', group: 'Safeplate' },
+  { src: '/media/safeplate/mobile-welcome.webp', label: 'Welcome', group: 'Safeplate' },
+  { src: '/media/safeplate/mobile-picturebook.webp', label: 'Picturebook', group: 'Safeplate' },
 
   // Forever
   { src: '/media/forever/flyer-web.jpg', label: 'Flyer', group: 'Forever' },
@@ -109,15 +115,7 @@ export const COLLAGE_MEDIA: MediaItem[] = [
 
   // Mina
   { src: '/media/mina/cover.webp', label: 'Cover', group: 'Mina' },
-  { src: '/media/mina/slide-1.webp', label: 'Slide 1', group: 'Mina' },
-  { src: '/media/mina/slide-2.webp', label: 'Slide 2', group: 'Mina' },
-  { src: '/media/mina/slide-3.webp', label: 'Slide 3', group: 'Mina' },
-  { src: '/media/mina/slide-4.webp', label: 'Slide 4', group: 'Mina' },
 
-  // Process
-  { src: '/media/process/research-v3.webp', label: 'Research', group: 'Process' },
-  { src: '/media/process/system-v3.webp', label: 'Concept', group: 'Process' },
-  { src: '/media/process/validate-v3.webp', label: 'Validate', group: 'Process' },
   // Craft
   { src: '/media/craft/category.webp', label: 'Category', group: 'Craft' },
   { src: '/media/craft/skate-logo.webp', label: 'Skate Logo', group: 'Craft' },

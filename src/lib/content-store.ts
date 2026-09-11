@@ -39,7 +39,7 @@ function scrubLegacyMedia(fields: ContentMap): ContentMap {
     if (typeof v !== 'string') continue;
     // Drop legacy product screenshot paths (pre-/shots/ layout + renamed assets).
     if (
-      /\/media\/(?:nexus|berry|riftcast|floordirekt)\/(?!shots\/)(?:screen-|hero\.|cover|nexus_|brand|studio-lockup|logo-mark)/.test(
+      /\/media\/(?:nexus|berry|riftcast)\/(?!shots\/)(?:screen-|hero\.|cover|nexus_|brand|studio-lockup|logo-mark)/.test(
         v,
       )
     ) {

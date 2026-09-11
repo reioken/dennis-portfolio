@@ -2,8 +2,8 @@ export const site = {
   name: 'Dennis Bierreth-Fernandez',
   shortName: 'Dennis',
   monogram: 'DBF',
-  tagline: 'Art Director · UX/UI · Hobby-Softwareentwickler',
-  role: 'Art Director · UX/UI · Hobby-Softwareentwickler',
+  tagline: 'Art Director · UX/UI · Independent Product Builder',
+  role: 'Art Director · UX/UI · Independent Product Builder',
   email: 'dennis@dennisbf.design',
   location: 'Raum Mannheim/Heidelberg',
   address: 'Deutschland',
@@ -21,13 +21,13 @@ export const site = {
     },
   },
   /** Only for Impressum / Datenschutz (§ 5 TMG) — not shown on marketing pages */
-  legalAddress: '68542 Heddesheim',
+  legalAddress: 'In den Gänsgräben 31, 68542 Heddesheim',
   profile: {
-    de: 'Hobby-Softwareentwickler mit 6+ Jahren Agentur und Inhouse. Art Direction, UX/UI, Branding, Video und eigene Product-Builds.',
-    en: 'Hobby software developer with 6+ years agency and in-house. Art direction, UX/UI, branding, video and self-built products.',
+    de: 'Art Director, UX/UI Designer und Independent Product Builder mit 6+ Jahren Agentur- und Inhouse-Erfahrung.',
+    en: 'Art director, UX/UI designer and independent product builder with 6+ years of agency and in-house experience.',
   },
   description:
-    'Art Director · UX/UI · Hobby-Softwareentwickler — Floordirekt, NEXUS, Berry, Riftcast.',
+    'Art Director · UX/UI · Independent Product Builder — eigene Apps, Spiele und Tools: NEXUS, Berry, Riftcast, Riftback, Safeplate, Carillon, Echo Frequency.',
   url: 'https://www.dennisbf.design/',
   links: {
     github: 'https://github.com/reioken',
@@ -40,28 +40,29 @@ export const navItems = [
   { href: '/work', labelKey: 'work' as const },
   { href: '/about', labelKey: 'about' as const },
   { href: '/lab', labelKey: 'lab' as const },
+  { href: '/arcade', labelKey: 'arcade' as const },
   { href: '/contact', labelKey: 'contact' as const },
 ] as const;
 
 export const skills = [
   {
-    group: { de: 'Design Tools', en: 'Design Tools' },
+    group: { de: 'Design & KI', en: 'Design & AI' },
     items: {
       de: [
         'Photoshop & Illustrator',
         'InDesign',
         'Premiere & After Effects',
         'Figma',
-        'ComfyUI & Gen-AI-Pipelines',
-        'Cursor & Claude Code',
+        'KI-Agenten & multimodale Workflows',
+        'Generative Bild-Pipelines & Serienproduktion',
       ],
       en: [
         'Photoshop & Illustrator',
         'InDesign',
         'Premiere & After Effects',
         'Figma',
-        'ComfyUI & gen-AI pipelines',
-        'Cursor & Claude Code',
+        'AI agents & multimodal workflows',
+        'Generative image pipelines & series production',
       ],
     },
   },
@@ -127,24 +128,24 @@ export const timeline = [
     year: '2025 – heute',
     yearEn: '2025 – present',
     title: {
-      de: 'Product Design — NEXUS, Berry & Riftcast',
-      en: 'Product Design — NEXUS, Berry & Riftcast',
+      de: 'Independent Product Builds — Apps, Spiele, Tools',
+      en: 'Independent Product Builds — apps, games, tools',
     },
     body: {
-      de: 'NEXUS: Premium Desktop Game Library (UI, Landing, Installer). Berry: Mobile Collector App (Product Design, App-UI, Design-System). Riftcast: Remote Desktop. Von Konzept bis funktionierender App.',
-      en: 'NEXUS: premium desktop game library (UI, landing, installer). Berry: mobile collector app (product design, app UI, design system). Riftcast: remote desktop. Concept to working app.',
+      de: 'Neben der Festanstellung: NEXUS, Berry, Riftcast, Riftback, Safeplate, Lowlight und vier Spiele in Godot und Unity — von Konzept und Design-System bis zum laufenden Build.',
+      en: 'Alongside my full-time role: NEXUS, Berry, Riftcast, Riftback, Safeplate, Lowlight and four games in Godot and Unity — from concept and design system to running build.',
     },
   },
   {
     year: '06/2024 – heute',
     yearEn: '06/2024 – present',
     title: {
-      de: 'UX/UI & Freelance Design — neuefische / Freelance',
-      en: 'UX/UI & Freelance Design — neuefische / Freelance',
+      de: 'UX/UI-Weiterbildung & ausgewählte Freelance-Projekte',
+      en: 'UX/UI training & selected freelance projects',
     },
     body: {
-      de: 'UX/UI Bootcamp mit Case Studies (Research, Wireframing, Usability-Tests, Figma). Freiberufliche Branding- und Web-Projekte. Moderne Websites mit Motion.',
-      en: 'UX/UI bootcamp with case studies (research, wireframing, usability tests, Figma). Freelance branding and web projects. Modern websites with motion.',
+      de: 'UX/UI Bootcamp mit Case Studies (Research, Wireframing, Usability-Tests, Figma), ergänzt durch ausgewählte Branding- und Web-Projekte.',
+      en: 'UX/UI bootcamp with case studies (research, wireframing, usability tests, Figma), complemented by selected branding and web projects.',
     },
   },
   {
@@ -257,3 +258,4 @@ export const education = [
     },
   },
 ] as const;
+

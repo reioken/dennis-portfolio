@@ -1,11 +1,12 @@
 ---
 title: "NEXUS"
+landingUrl: "/nexus/"
 summary: "Premium Desktop-Spielebibliothek – Steam, Riot, Blizzard und lokale Libraries in einer Oberfläche."
 summaryEn: "Premium desktop game library – Steam, Riot, Blizzard and local libraries in one interface."
-role: "Product Design + UI"
-roleEn: "Product Design + UI"
-year: "2025"
-yearEn: "2025"
+role: "Solo Product Build"
+roleEn: "Solo Product Build"
+year: "2026"
+yearEn: "2026"
 timeline: "2025 – heute"
 timelineEn: "2025 – present"
 stack: ["Electron", "TypeScript", "Frosted Glass UI", "PowerShell Pipeline"]
@@ -14,7 +15,7 @@ outcomeEn: "Installer, 22 themes, selftest scenes, multi-store library"
 tags: ["product", "design"]
 featured: true
 cover: "/media/nexus/shots/screen-home-featured.webp"
-coverAlt: "NEXUS Home — Featured-Ansicht mit großem Spiel-Artwork und Play-Aktion"
+coverAlt: "NEXUS Home — modulare Startseite mit großem Spiel-Artwork, Play-Aktion und Bibliotheksreihe"
 logo: "/media/nexus/logo.svg"
 logoLive: "nexus-splash"
 gallery:
@@ -22,73 +23,106 @@ gallery:
   - "/media/nexus/shots/screen-home.webp"
   - "/media/nexus/shots/screen-splash.webp"
   - "/media/nexus/shots/screen-grid.webp"
+  - "/media/nexus/shots/screen-list.webp"
+  - "/media/nexus/shots/screen-detail.webp"
   - "/media/nexus/shots/screen-showcase.webp"
   - "/media/nexus/shots/screen-coverflow.webp"
   - "/media/nexus/shots/screen-couch.webp"
   - "/media/nexus/shots/screen-couch-featured.webp"
   - "/media/nexus/shots/screen-toplists.webp"
   - "/media/nexus/shots/screen-wrapped.webp"
+  - "/media/nexus/shots/screen-stats.webp"
   - "/media/nexus/shots/screen-cmdk.webp"
-  - "/media/nexus/shots/screen-blizzard.webp"
-  - "/media/nexus/shots/screen-bulk.webp"
-  - "/media/nexus/shots/screen-heatmap.webp"
   - "/media/nexus/shots/screen-dice.webp"
+  - "/media/nexus/shots/screen-bulk.webp"
+  - "/media/nexus/shots/screen-riot.webp"
+  - "/media/nexus/shots/screen-blizzard.webp"
+  - "/media/nexus/shots/screen-themes.webp"
+  - "/media/nexus/shots/screen-light.webp"
+  - "/media/nexus/shots/screen-aurora.webp"
+  - "/media/nexus/shots/screen-effects.webp"
+  - "/media/nexus/shots/screen-settings.webp"
   - "/media/nexus/shots/screen-onboard.webp"
 galleryAlts:
-  - "NEXUS Home — Featured-Ansicht mit großem Spiel-Artwork und Play-Aktion"
-  - "NEXUS Home — Bibliothek mit Empfehlungsreihen über alle verbundenen Stores"
-  - "Splash-Screen mit NEXUS-Kristall-Logo beim App-Start"
+  - "NEXUS Home — modulare Startseite mit großem Spiel-Artwork, Play-Aktion und Bibliotheksreihe"
+  - "Home — Hero-Banner „Dein letztes Spiel“ mit Weiterspielen-Reihe (neutrale Testbibliothek)"
+  - "Splash-Screen mit NEXUS-Kristall-Logo und Bibliotheks-Scan beim App-Start"
   - "Grid-Ansicht — Spielcover als Raster mit Filter- und Sortierleiste"
-  - "Showcase-Modus — einzelnes Spiel als Vollbild-Präsentation"
+  - "Listenansicht — informationsreiche Zeilen mit Cover, Beschreibung, Spielzeit und Wertung"
+  - "Spiel-Details — Drawer mit Status, News, HowLongToBeat, Medien und Metadaten"
+  - "Showcase-Modus — einzelnes Spiel als Vollbild-Präsentation mit Info-Panel"
   - "Cover-Flow — Spiele als durchblätterbare 3D-Coverreihe"
-  - "Couch-Modus — TV-taugliche Oberfläche für Controller-Navigation"
-  - "Couch-Modus — Featured-Spiel in der Wohnzimmer-Ansicht"
-  - "Toplisten — Rankings und kuratierte Sammlungen der Bibliothek"
+  - "Couch-Modus — TV-taugliche 10-Foot-Oberfläche für Controller-Navigation"
+  - "Couch-Modus — fokussiertes Spiel mit Favoriten-Aktion in der Wohnzimmer-Ansicht"
+  - "Toplisten — Rankings der Bibliothek nach Datenbank, Store und Genre filterbar"
   - "NEXUS Wrapped — Jahresrückblick mit persönlichen Spielstatistiken"
+  - "Statistik-Dashboard — Spielzeit, Aktivität, Genres und seltene Erfolge"
   - "Command-Palette (Strg+K) für Schnellzugriff auf Spiele und Aktionen"
-  - "Battle.net-Integration — Blizzard-Spiele in der NEXUS-Bibliothek"
-  - "Bulk-Verwaltung — mehrere Spiele gleichzeitig taggen und bearbeiten"
-  - "Spielzeit-Heatmap — Aktivität über das Jahr als Kalenderraster"
-  - "Würfel-Feature — NEXUS schlägt per Zufall das nächste Spiel vor"
-  - "Onboarding — Steam-, Riot- und Blizzard-Bibliotheken verbinden"
+  - "Zufallsspiel — NEXUS würfelt das nächste Spiel nach Filtern aus"
+  - "Bulk-Verwaltung — mehrere Spiele gleichzeitig markieren und bearbeiten"
+  - "Riot-Hub — League of Legends mit Rang, Matches und Champion-Statistiken (Demo-Profil)"
+  - "Battle.net-Hub — Blizzard-Spiele als eigenes Ökosystem in der NEXUS-Bibliothek"
+  - "Design-Galerie — 22 Navigations-Skins plus eigenes Design"
+  - "Helles Theme — dieselbe Startseite in der Light-Variante"
+  - "Aurora-Theme — Bibliothek in der farbstärksten Variante"
+  - "Visuelle Effekte — Retro-TV-, Ambient- und Cinema-Presets im Einstellungs-Panel"
+  - "Einstellungen — Aussehen, Sound, Bibliothek, Konten und System"
+  - "Onboarding — Design-Auswahl im sechsstufigen Einrichtungsassistenten"
 galleryAltsEn:
-  - "NEXUS home — featured view with large game artwork and play action"
-  - "NEXUS home — library with recommendation rows across all connected stores"
-  - "Splash screen with the NEXUS crystal logo on app start"
+  - "NEXUS home — modular start page with large game artwork, play action and library row"
+  - "Home — “your last game” hero banner with a continue-playing row (neutral test library)"
+  - "Splash screen with the NEXUS crystal logo and library scan on app start"
   - "Grid view — game covers as a grid with filter and sort bar"
-  - "Showcase mode — a single game as a full-screen presentation"
+  - "Rich list view — dense rows with cover, description, playtime and rating"
+  - "Game details — drawer with status, news, HowLongToBeat, media and metadata"
+  - "Showcase mode — a single game as a full-screen presentation with info panel"
   - "Cover flow — games as a browsable 3D cover row"
-  - "Couch mode — TV-friendly interface for controller navigation"
-  - "Couch mode — featured game in the living-room view"
-  - "Top lists — rankings and curated collections from the library"
+  - "Couch mode — TV-friendly 10-foot interface for controller navigation"
+  - "Couch mode — focused game with favourite action in the living-room view"
+  - "Top lists — library rankings filterable by database, store and genre"
   - "NEXUS Wrapped — year in review with personal play statistics"
+  - "Stats dashboard — playtime, activity, genres and rare achievements"
   - "Command palette (Ctrl+K) for quick access to games and actions"
-  - "Battle.net integration — Blizzard games inside the NEXUS library"
-  - "Bulk management — tag and edit several games at once"
-  - "Playtime heatmap — activity across the year as a calendar grid"
-  - "Dice feature — NEXUS randomly suggests the next game to play"
-  - "Onboarding — connecting Steam, Riot and Blizzard libraries"
+  - "Random game — NEXUS rolls the next game to play by filter"
+  - "Bulk management — select and edit several games at once"
+  - "Riot hub — League of Legends with rank, matches and champion stats (demo profile)"
+  - "Battle.net hub — Blizzard games as their own ecosystem inside the NEXUS library"
+  - "Design gallery — 22 navigation skins plus a custom theme"
+  - "Light theme — the same home page in the light variant"
+  - "Aurora theme — the library in its most colourful variant"
+  - "Visual effects — retro TV, ambient and cinema presets in the settings panel"
+  - "Settings — appearance, sound, library, accounts and system"
+  - "Onboarding — design choice inside the six-step setup wizard"
 order: 1
+status: "released"
+platform: ["desktop"]
+engine: "Electron"
+version: "1.1.1"
+brand:
+  primary: "#ac8bfd"
+  secondary: "#4a82fe"
 ---
 
 <div data-lang="de">
 
-**Problem** — Spiele liegen verstreut über Steam, Riot, Blizzard und lokale Installs. Keine Standard-Bibliothek fühlt sich nach Premium an oder taugt für Couch und Controller.
+**Aufgabe** — Eine gemeinsame Spielebibliothek für Steam, Riot, Blizzard und lokale Installationen – auf dem Desktop und vom Sofa mit Controller bedienbar.
 
-**Prozess** — Material-System als Fundament (Glas, Specular Edges, Motion als Tokens), darauf sechs Bibliotheks-Ansichten, Filter, Sammlungen und ein modulares Home. Design und Engineering aus einer Hand — lokal, ohne Cloud-Zwang.
+**Mein Beitrag** — Produktkonzept, UX/UI, Design-System und Entwicklung. Sechs Bibliotheksansichten, Filter und Sammlungen geben unterschiedlichen Beständen eine gemeinsame Struktur. Das modulare Home verbindet großes Spiel-Artwork mit einer direkten Play-Aktion.
 
-**Ergebnis** — Multi-Store-Bibliothek mit eigenem Installer, 22 Themes und Selftest-Szenen.
-{/* TODO: echte Kennzahlen von Dennis ergänzen — z. B. Anzahl Installationen/Geräte, unterstützte Stores/Spiele, App-Startzeit, Zeitersparnis beim Spielstart */}
+**Gestaltung** — Ein gemeinsames Material-System hält die Ansichten zusammen, während 22 Themes die Oberfläche anpassbar machen. Die Bibliothek bleibt lokal und benötigt keinen Cloud-Account.
+
+**Ergebnis** — Ein Desktop-Build mit eigenem Installer und Selftest-Szenen. Die Screenshots zeigen Home, Bibliothek und Varianten der Oberfläche; der öffentliche Windows-Beta-Download und Hinweise zur Einrichtung stehen auf der Produktseite.
 
 </div>
 
 <div data-lang="en">
 
-**Problem** — Games are scattered across Steam, Riot, Blizzard and local installs. No stock library feels premium or works from the couch with a controller.
+**Brief** — One game library for Steam, Riot, Blizzard and local installs, usable at a desk or from the couch with a controller.
 
-**Process** — A material system as the foundation (glass, specular edges, motion as tokens), then six library views, filters, collections and a modular home on top. Design and engineering from one hand — local, no cloud lock-in.
+**My contribution** — Product concept, UX/UI, design system and development. Six library views, filters and collections bring different libraries into a shared structure. The modular home pairs large game artwork with a direct Play action.
 
-**Outcome** — Multi-store library with its own installer, 22 themes and selftest scenes.
-{/* TODO: add real metrics — e.g. installs/devices, supported stores/games, app start time, time saved per launch */}
+**Design** — A shared material system connects the views, while 22 themes make the interface adaptable. The library stays local and does not require a cloud account.
+
+**Result** — A desktop build with its own installer and selftest scenes. The screenshots show home, library and interface variants; the public Windows beta download and setup guidance are available on the product page.
 
 </div>

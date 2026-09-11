@@ -6,7 +6,7 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' blob:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'self' https://arcade.dennisbf.design; frame-ancestors 'none'; upgrade-insecure-requests
 
 # HTML must not stick on edge/browser after year/badge copy updates
 /
@@ -21,30 +21,29 @@
   Cache-Control: public, max-age=0, must-revalidate
 /lab/*
   Cache-Control: public, max-age=0, must-revalidate
+/contact/*
+  Cache-Control: public, max-age=0, must-revalidate
+/privacy/*
+  Cache-Control: public, max-age=0, must-revalidate
+/impressum/*
+  Cache-Control: public, max-age=0, must-revalidate
 
 /media/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=3600
+
+# Exported games are isolated from the portfolio's /arcade/ pages.
+/game-builds/*
+  ! X-Frame-Options
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: public, max-age=0, must-revalidate
+/arcade/*
+  Cache-Control: public, max-age=0, must-revalidate
 
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
-
-# Floordirekt Studio — globale CSP/XFO erst entfernen (sonst sendet Pages DOPPELTE
-# Header; Firefox blockiert dann den Overlay-iframe mit frame-ancestors 'none')
-/studio/*
-  ! Content-Security-Policy
-  ! X-Frame-Options
-  ! Cross-Origin-Opener-Policy
-  X-Frame-Options: SAMEORIGIN
-  Cache-Control: public, max-age=0, must-revalidate
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
-/studio/overlay.html
-  ! Content-Security-Policy
-  ! X-Frame-Options
-  ! Cross-Origin-Opener-Policy
-  X-Frame-Options: SAMEORIGIN
-  Cache-Control: public, max-age=0, must-revalidate
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
-

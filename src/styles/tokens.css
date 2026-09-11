@@ -5,8 +5,8 @@
   --ink: #f7f8fc;
   /* Type scale — keep these visually distinct */
   --text: #f7f8fc; /* titles / primary */
-  --dim: #8188a1; /* body copy */
-  --faint: #7d84a0; /* quiet chrome — ≥4.5:1 auf allen drei Hintergründen (WCAG AA) */
+  --dim: #a4acc0; /* body copy */
+  --faint: #969fb7; /* quiet chrome — ≥4.5:1 auf allen drei Hintergründen (WCAG AA) */
   --meta: #b79cff; /* dates, labels, meta */
 
   /* NEXUS brand trio — smooth violet → blue → ice */
@@ -94,4 +94,10 @@ html.fx-off {
   --fx: 0;
   --frost: none;
   --frost-nav: none;
+}
+
+/* Das Schild über der Halle wird im Close-up und beim Spielen niedriger */
+body[data-mode='arcade'],
+body[data-screen='1'] {
+  --nav-h: 56px;
 }

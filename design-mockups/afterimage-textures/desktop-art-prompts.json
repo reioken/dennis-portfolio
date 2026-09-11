@@ -1,0 +1,73 @@
+{
+  "generator": "built-in image_gen",
+  "created": "2026-09-10",
+  "assets": [
+    {
+      "slug": "nexus",
+      "prompt": "Use case: stylized-concept. Production asset: original printed cabinet panel albedo illustration for NEXUS, a premium local desktop library unifying games from different stores; not itself a fantasy game. Create ONE portrait 2:3 full-bleed continuous flat illustration, ideally 1024x1536. Sophisticated charcoal-black engraved screenprint, an abstract monolithic archive: layered rectangular game-library spines and slender converging paths arranged around one precisely faceted central crystal, suggesting many collections connected into a single hub. Restrained lavender #ac8bfd and cobalt #4a82fe ink edges, silver-grey etched lines, predominantly deep charcoal. Elegant geometric architecture with rich detailed crosshatching and subtly printed grain, strong graphic silhouette, dense interesting lower half and upper half with consistent visual language. Suitable for crops into cabinet side, front, and control-deck panels. Absolutely flat unlit artwork only: no 3D product rendering, perspective photographed material, highlights, cast shadows, glows, cabinet, controls, screen, software UI, game screenshots, readable text, letters, numbers, logos, border, labels, watermark. No stars, planets, moon, spaceships or fantasy scenery. The picture itself is premium original graphic art, not an image of printed art.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-d283c3e9-e725-4082-882a-d2cd2726f4c7.png",
+      "source": "design-mockups/afterimage-textures/nexus.png",
+      "webp": "public/textures/cabinet-art/nexus.webp",
+      "concept": "Connected archive and crystal hub",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 3375891,
+      "webpBytes": 497244
+    },
+    {
+      "slug": "riftback",
+      "prompt": "Use case: stylized-concept. Asset: original flat printed cabinet panel artwork for Riftback, a League Classic reference website about champion builds, runes, items and jungle routes. ONE portrait 2:3 full-bleed unlit albedo illustration, ideally 1024x1536. Create an exquisite dark fantasy cartographic engraving: an intricate overgrown three-lane valley, small stone towers, wooded jungle paths, a central river and a restrained circular rune compass, all woven together as a sophisticated vertically flowing tactical atlas. Original environmental print art only, no recognizable copyrighted characters. Charcoal black and graphite dominate, restrained antique gold #c9a45c and darker brass #8a6d2f etched ink accents. Fine botanical linework, tactile copperplate hatching, elegant strong large-scale shapes readable on a cabinet. Imagery continues through all regions with no blank title area so upper and lower crops both work. Completely flat ink illustration without directional lighting, shadows or emissive glow. No photo, no rendered cabinet, no controls, no UI, no software screenshot, no interface frames, no readable words, no letters, numbers, logos, labels, decorative border, watermark. This is printable original art, not a picture of artwork.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-af17b0be-0408-4e3b-8418-1a1383c12df5.png",
+      "source": "design-mockups/afterimage-textures/riftback.png",
+      "webp": "public/textures/cabinet-art/riftback.webp",
+      "concept": "League Classic tactical valley engraving",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 4144620,
+      "webpBytes": 761478
+    },
+    {
+      "slug": "riftcast",
+      "prompt": "Use case: stylized-concept. Asset: original cabinet panel albedo for Riftcast, software that mirrors a person's own desktop across a private home network to phone and browser, with gaming controls. ONE portrait 2:3 full-bleed original unlit graphic illustration, ideally 1024x1536. A sophisticated abstract engraving of two offset open geometric portals connected by a flowing braided ribbon of fine parallel signal lines. Nested optical arcs and precise wave interference expand diagonally through the whole image; small branching connection traces weave with them. Conveys fast private connection and continuity across different shapes, not outer space or fantasy. Rich graphite-black screenprint with nuanced fine engraved linework, restrained lavender #b69cff and cool periwinkle #7fa6ff ink accents, delicate silver etched detail. Dark premium composition with substantial intentional quiet areas but interesting art in both upper and lower crops; continuous pattern suitable for side, front and deck. Flat printable ink colors; no baked light, shadows, luminous bloom, 3D product rendering, photo, cabinet, computer, phone, physical controls, screens, UI, software screenshot, letters, readable text, logos, numbers, border, watermark. Artwork only.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-a7529322-9f2d-49e1-a4c5-eab313685c53.png",
+      "source": "design-mockups/afterimage-textures/riftcast.png",
+      "webp": "public/textures/cabinet-art/riftcast.webp",
+      "concept": "Signals linking geometric portals",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 2478974,
+      "webpBytes": 257168
+    },
+    {
+      "slug": "nocturne",
+      "prompt": "Use case: stylized-concept. Asset: original premium cabinet panel albedo illustration for Nocturne, a quiet adaptable Windows music player with album artwork and synchronized lyrics. ONE portrait 2:3 full-bleed flat original illustration, ideally 1024x1536. An elegant nocturnal music engraving: offset sweeping vinyl-groove circles interweave with soft ribbon-like sound waves and long delicate rhythm strokes, suggesting music unfolding over time. Deep obsidian charcoal-black field with silver ivory #eae5dd and restrained warm champagne-peach #e0b58c printed linework. A disciplined contemporary album-sleeve composition, graceful rich engraving and fine tactile screenprint grain, large confident flowing shapes, subtle complex detail seen up close. No starfield, no moon, no literal instruments or faces. The motif flows throughout the portrait so side/front/control-deck crops work; no empty title block. Pure flat unlit print/albedo artwork, no material photography, no cabinet, no screen or UI, no perspective product mockup, no software screenshot, no directional illumination, shadows, glow or glossy baked highlights. No words, lyric letters, numbers, logos, border, labels or watermark. A printable piece of original graphic art.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-a8e7ac8a-0d54-461c-b7e5-e09f47ca879a.png",
+      "source": "design-mockups/afterimage-textures/nocturne.png",
+      "webp": "public/textures/cabinet-art/nocturne.webp",
+      "concept": "Vinyl grooves and synchronized music ribbons",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 3735857,
+      "webpBytes": 627630
+    },
+    {
+      "slug": "hookline",
+      "prompt": "Use case: stylized-concept. Asset: original premium cabinet panel albedo illustration for Hookline, a private browser music studio combining instrumental tracks with vocals, lyrics, and local song rendering; its first work is dark hyperpop with breakcore. ONE portrait 2:3 full-bleed original graphic print, ideally 1024x1536. Create a striking abstract sound sculpture IN FLAT ENGRAVED SCREENPRINT: thick twisted ribbon of finely hatched audio waveforms climbing vertically, chopped rhythmic shard clusters, interleaved vocal contour lines and jagged beat pulses moving through ordered horizontal strata. Confident asymmetry, precise and creative music-label artwork, controlled kinetic tension. Predominantly charcoal-black and graphite, acid-lime #d4ff3a used sparingly as selective bright ink strokes, soft lavender #c9b6ff secondary fine lines. Dense tactile engraving detail alongside clean dark breathing room; compelling silhouette readable when shrunk, continuous art throughout for cabinet front/side/deck crops. Flat printable colors, NO actual 3D sculpture, no photo, no baked highlights, shadows, bloom or glow. No fishing theme, sea, boat, hook, microphone product shot, characters, cabinet, physical controls, device, UI, software screenshot, chart labels, letters, words, numbers, logos, frames, decorative border or watermark. Just the finished artwork.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-1b3ce681-598e-443b-876d-213a2ccc9583.png",
+      "source": "design-mockups/afterimage-textures/hookline.png",
+      "webp": "public/textures/cabinet-art/hookline.webp",
+      "concept": "Hyperpop waveforms and rhythmic fragments",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 3274311,
+      "webpBytes": 462894
+    }
+  ],
+  "encoding": {
+    "format": "webp",
+    "quality": 90,
+    "effort": 6,
+    "resize": "none"
+  },
+  "inspection": "All five visually inspected: portrait 1024x1536, no text/logos/screenshots or photographed cabinet. Consistent dark engraved/screenprint family with distinct project subjects. Physical roughness/normal/reflection supplied separately by renderer; these are albedo only."
+}

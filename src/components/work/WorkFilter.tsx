@@ -17,9 +17,14 @@ export type WorkItem = {
   logoLive?: string;
   tags: string[];
   featured: boolean;
+  status?: string;
+  platform: string[];
+  coverAlt?: string;
+  coverAltEn?: string;
+  previews?: string[];
 };
 
-const filterIds = ['all', 'product', 'design', 'archive', 'lab'] as const;
+const filterIds = ['selected', 'all', 'product', 'games', 'design', 'archive', 'lab'] as const;
 type FilterId = (typeof filterIds)[number];
 
 function isFilterId(v: string | null): v is FilterId {
@@ -30,7 +35,7 @@ type Props = { items: WorkItem[]; basePath?: string };
 
 export default function WorkFilter({ items, basePath = '/' }: Props) {
   const root = basePath.endsWith('/') ? basePath : `${basePath}/`;
-  const [active, setActive] = useState<FilterId>('all');
+  const [active, setActive] = useState<FilterId>('selected');
   const [lang, setLang] = useState<Lang>('de');
 
   useEffect(() => {
@@ -43,20 +48,27 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
 
   // Restore filter from URL (?filter=product) so filtered views are shareable
   useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('filter');
-    if (isFilterId(fromUrl)) setActive(fromUrl);
+    const restore = () => {
+      const fromUrl = new URLSearchParams(window.location.search).get('filter');
+      setActive(isFilterId(fromUrl) ? fromUrl : 'selected');
+    };
+    restore();
+    window.addEventListener('popstate', restore);
+    return () => window.removeEventListener('popstate', restore);
   }, []);
 
   const select = (id: FilterId) => {
     setActive(id);
     const url = new URL(window.location.href);
-    if (id === 'all') url.searchParams.delete('filter');
+    if (id === 'selected') url.searchParams.delete('filter');
     else url.searchParams.set('filter', id);
-    window.history.replaceState(null, '', url);
+    window.history.replaceState(window.history.state, '', url);
   };
 
   /** Beide Sprachen ins Markup — steht schon vor der Hydration korrekt da */
   const labelMap = {
+    selected: ['Ausgewählt', 'Selected'],
+    games: ['Spiele', 'Games'],
     all: [copy.de.work.filterAll, copy.en.work.filterAll],
     product: [copy.de.work.filterProduct, copy.en.work.filterProduct],
     design: [copy.de.work.filterDesign, copy.en.work.filterDesign],
@@ -72,6 +84,8 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
 
   const visible = useMemo(() => {
     if (active === 'all') return items;
+    if (active === 'selected') return items.filter((item) => item.featured);
+    if (active === 'games') return items.filter((item) => item.platform.includes('game'));
     // Design-Filter: aktuelle Design-Cases — Archiv läuft separat
     if (active === 'design') {
       return items.filter((item) => item.tags.includes('design') && !item.tags.includes('archive'));
@@ -117,7 +131,7 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
         </p>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {visible.map((item) => (
+          {visible.map((item, index) => (
             <ProjectCard
               key={item.slug}
               href={`${root}work/${item.slug}/`}
@@ -130,9 +144,16 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
               yearEn={item.yearEn}
               roleEn={item.roleEn}
               cover={item.cover}
+              coverAlt={lang === 'en' ? item.coverAltEn ?? item.coverAlt : item.coverAlt}
+              previews={item.previews}
+              preview
+              priority={index === 0}
+              status={item.status}
               logo={item.logo}
               logoLive={item.logoLive}
               tags={item.tags}
+              caseStudy={item.slug === 'mina'}
+              headingLevel="h2"
             />
           ))}
         </div>

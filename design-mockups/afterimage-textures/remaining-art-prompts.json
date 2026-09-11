@@ -1,0 +1,85 @@
+{
+  "generator": "built-in image_gen",
+  "created": "2026-09-10",
+  "assets": [
+    {
+      "slug": "berry",
+      "prompt": "Use case: stylized-concept. Production asset: original printed cabinet panel albedo for Berry, an offline mobile trading-card collection manager with decks, albums and tournaments. ONE portrait 2:3 full-bleed continuous flat illustration, ideally 1024x1536. Premium dark engraved screenprint: a graceful cascading fan of collectible card backs, overlapping into a winding layered ribbon. Each card carries original delicate geometric ornaments, small abstract stars and leaflike facets, no characters or text. Around the cards, organized fine connection trails and small scattered diamond shapes evoke finding, collecting and completing a collection. Deep charcoal black and graphite dominant, mint-green #5ce6a0 and pale jade #9dffc8 carefully restrained printed ink accents, fine silver grey hatching. Rich precise tactile engraved detail, broad confident shapes readable at cabinet size. Continuous composition with useful detail in upper, middle and lower crops, no title zone. Absolutely flat unlit albedo art: no baked lighting, shadows, glow, photographic material, cabinet, controls, device, software UI, screenshot, readable words, letters, numbers, logos, border or watermark. No berries or food imagery; Berry refers to collecting cards. Finished graphic artwork itself.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-078e4f60-9ce0-4e22-8849-863a6480d759.png",
+      "source": "design-mockups/afterimage-textures/berry.png",
+      "webp": "public/textures/cabinet-art/berry.webp",
+      "concept": "Collectible card ribbon",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 3302962,
+      "webpBytes": 437778
+    },
+    {
+      "slug": "safeplate",
+      "prompt": "Use case: stylized-concept. Asset: original cabinet panel print albedo for Essfreude, a kitchen field-guide app with a botanical food atlas and personal journal for dietary restrictions. ONE portrait 2:3 full-bleed continuous flat illustration, ideally 1024x1536. An exquisitely drawn contemporary botanical field-guide engraving of edible plants: curling pea vines, fine herb sprigs, leafy vegetables, sliced pear and fig, slender roots and seed pods, connected by delicate contour paths suggesting an atlas of discovery. Original refined natural-history print with believable fine veins, crosshatching and stippling, no cute faces. Charcoal-black field, restrained warm tan #c6a57b and soft parchment ivory #f3ebdd etched ink, graphite midtones; the overall image stays dark. Strong branching compositional rhythm and calm dark pockets, botanical forms throughout top middle and lower regions for cabinet panel crops. Flat unlit albedo only: no glossy photographic food, lighting, shadow, bloom, photo of a print, cabinet, devices, controls, software UI, screenshot, health symbols, promises, text, plant labels, letters, numbers, logo, decorative frame, border or watermark. No chef character or mascot. Sophisticated original illustration ready to print directly on black laminate.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-747f482d-e3ca-42fb-b66d-c239705dd2f7.png",
+      "source": "design-mockups/afterimage-textures/safeplate.png",
+      "webp": "public/textures/cabinet-art/safeplate.webp",
+      "concept": "Essfreude botanical food field guide",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 3624093,
+      "webpBytes": 571432
+    },
+    {
+      "slug": "briefly",
+      "prompt": "Use case: stylized-concept. Asset: original cabinet panel albedo artwork for Briefly, a personal morning briefing that researches topics and condenses sourced news into a daily edition and archive. ONE portrait 2:3 full-bleed flat illustration, ideally 1024x1536. A refined contemporary editorial wood engraving: folded blank newspaper-like sheets fan into ascending architectural planes; fine horizontal etched strokes gather into ordered paths beneath a restrained half-disc of the morning sun. Abstract stacks of paper, radiating fine lines and structured columns evoke thoughtful publishing, clarity and a fresh edition. No actual newspaper text or charts. Deep ink charcoal field with warm grey and subdued ivory #faf8f3 fine printed marks; brick-red #8c2f1d accent slivers used sparingly. Elegant disciplined modernism with tactile rich engraving grain and confident calm geometry; entire portrait usable for cabinet side/front/deck crops. Flat unlit print artwork only: no directional lighting, glow, cast shadows, material photograph, 3D product rendering, cabinet, devices, buttons, software UI, screenshots, words, letters, numbers, logos, border or watermark. No obvious generic news icon collage. Original premium graphic art ready for dark laminate.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-c4ef9ac7-2666-452e-861d-3adfe96dfb6f.png",
+      "source": "design-mockups/afterimage-textures/briefly.png",
+      "webp": "public/textures/cabinet-art/briefly.webp",
+      "concept": "Editorial pages and morning edition",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 3729212,
+      "webpBytes": 594178
+    },
+    {
+      "slug": "mina",
+      "prompt": "Use case: stylized-concept. Asset: original premium cabinet panel albedo for Mina, a UX/UI project making neighbourhood help easier and more trustworthy. ONE portrait 2:3 full-bleed flat continuous illustration, ideally 1024x1536. Create a warm sophisticated engraving of an interconnected neighbourhood: elegant small apartment facades, townhouses, stairs, courtyard trees, shared garden planters, open doorways and gently looping paths connecting the homes. An imaginative woven vertical village, with some paths forming subtle supportive interlocking loops. No people necessary. Contemporary architectural woodcut/screenprint with intricate tactile crosshatching, strong clear shapes and generous dark breathing room. Charcoal black dominates, restrained muted sunny yellow #f2d33c and coral #ff6b6b printed accent details on occasional windows, doors and pathways; ivory-grey fine lines. Keep the neighbourhood distributed throughout for front/side/deck crops. Flat ink artwork, not photograph or actual 3D architecture: no cast shadows, lighting, glow or baked reflections. No cabinet, devices, controls, UI, software screenshot, recognizable brands, letters, street signs, words, numbers, logos, border, title area or watermark. Creative and welcoming but adult, premium and dark.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-687eacc0-d64c-4b5c-a5c7-94d33d203c20.png",
+      "source": "design-mockups/afterimage-textures/mina.png",
+      "webp": "public/textures/cabinet-art/mina.webp",
+      "concept": "Interconnected supportive neighbourhood",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 4015029,
+      "webpBytes": 758380
+    },
+    {
+      "slug": "kasse",
+      "prompt": "Use case: stylized-concept. Asset: original printed panel albedo for a premium dark claw machine that presents a designer's existing puppet; the puppet is separate and must NOT appear in this art. ONE portrait 2:3 full-bleed original flat graphic illustration, ideally 1024x1536. Refined midnight-blue design-craft engraving: interlocking ribbon loops and abstract sculptural geometric forms joined by precise construction arcs, bezier paths, small control-point circles, fine compass-like guide marks and clusters of delicate geometric connections. Inspired by the act of shaping, drawing and connecting ideas, an elegant contemporary atelier print. Dominantly deep midnight charcoal #080d17 and graphite, restrained muted ice blue #a7c4df fine strokes and subtle desaturated blue #46648c accents. Strong quiet negative space, orderly yet imaginative geometry, exquisite engraved hatching and print grain. Keep useful motif throughout upper and lower portions for side/front/deck crops. Pure flat ink/albedo artwork: no actual rendered sculpture, photography, cabinet, claw hardware, glass, buttons, puppet, doll, person, hands, face, replacement character, screen, UI or screenshot. No directional light, cast shadows, glowing lines, reflections, words, letters, numbers, logos, title zone, border or watermark. Dark premium artwork only, sufficiently restrained to sit behind existing physical details.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-785437ff-27aa-4726-ba87-96e756e0abfe.png",
+      "source": "design-mockups/afterimage-textures/kasse.png",
+      "webp": "public/textures/cabinet-art/kasse.webp",
+      "concept": "Design-craft loops and geometric constructions, no puppet imagery",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 2836712,
+      "webpBytes": 298964
+    },
+    {
+      "slug": "telefon",
+      "prompt": "Use case: stylized-concept. Asset: original quiet premium panel albedo for a dark contact telephone installation. ONE portrait 2:3 full-bleed continuous flat graphic texture illustration, ideally 1024x1536. Sophisticated finely engraved signal-routing art: thin parallel cable-like paths with gentle rounded bends weave from the edges into broad sparse waves, interlocking rounded routing loops and tiny discrete connection nodes. An elegant communication motif, purposefully quieter than a poster because physical telephone hardware will sit above it. Matte charcoal-black #090d13 dominant, muted steel blue #62798e and subtle blue-grey #9babba etched printed strokes, very restrained contrast and small intricate line hatching. Distributed throughout portrait with ample dark breathing room, no central emblem or title area. Flat unlit ink illustration/albedo only, no glow, baked lighting or shadows, photographed material, rendering, telephone, handset, keypad, wires photographed as real objects, cabinet, controls, electronics photo, screen, software UI, screenshot, letters, words, numbers, logos, symbols resembling labels, border or watermark. Premium contemporary engraved graphic artwork that remains subtle on black painted panels.",
+      "generatedSource": "C:\\Users\\denni\\.codex\\generated_images\\01a08c54-d94a-79a0-9a09-b8ca8b03a8b9\\exec-b2c524c2-c9a8-45ef-86ad-5615780d78d0.png",
+      "source": "design-mockups/afterimage-textures/telefon.png",
+      "webp": "public/textures/cabinet-art/telefon.webp",
+      "concept": "Quiet cable-routing and signal paths",
+      "width": 1024,
+      "height": 1536,
+      "pngBytes": 1767634,
+      "webpBytes": 95634
+    }
+  ],
+  "encoding": {
+    "format": "webp",
+    "quality": 90,
+    "effort": 6,
+    "resize": "none"
+  },
+  "inspection": "All six visually inspected: portrait 1024x1536, no text/logos/screenshots or photographed cabinet. Consistent dark engraved/screenprint family. Briefly and Mina have larger ivory shapes reflecting editorial paper and neighbourhood architecture; adjust physical material response rather than alter artwork. Claw artwork contains no character. These are albedo only."
+}

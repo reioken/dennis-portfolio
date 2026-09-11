@@ -26,7 +26,7 @@ export default function WebsitesStackLogo({
       <div className="web-stack__stage" aria-hidden>
         {SITES.map((site, i) => (
           <div key={site.src} className={`web-stack__card c${i + 1}`}>
-            <img src={site.src} alt="" draggable={false} decoding="async" />
+            <img src={site.src} alt="" draggable={false} loading="lazy" decoding="async" />
           </div>
         ))}
       </div>

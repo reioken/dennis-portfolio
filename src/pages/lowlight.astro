@@ -1,0 +1,97 @@
+---
+// Standalone product page; intentionally independent of the portfolio scene.
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101114">
+  <title>Lowlight — Your music, in a better light.</title>
+  <meta name="description" content="A freely resizable Windows music companion. Album-inspired colors, frosted glass, lyrics and flowing visuals. Download Lowlight for free.">
+  <link rel="canonical" href="https://www.dennisbf.design/lowlight/">
+  <meta property="og:title" content="Lowlight — Your music, in a better light.">
+  <meta property="og:description" content="Give your favorite music a place on your desktop. A free Windows music companion by Dennis Bierreth-Fernandez.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.dennisbf.design/lowlight/">
+  <meta property="og:image" content="https://www.dennisbf.design/lowlight/assets/player-wide.webp">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/lowlight/assets/lowlight.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/lowlight/styles.css">
+  <script is:inline src="/lowlight/main.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header wrap">
+    <a class="wordmark" href="#" aria-label="Lowlight home"><img src="/lowlight/assets/lowlight.svg" width="36" height="36" alt=""><span>lowlight</span></a>
+    <nav aria-label="Main navigation">
+      <a class="nav-feature" href="#features">The player</a>
+      <a class="nav-feature" href="#looks">Make it yours</a>
+      <a class="nav-download" href="#download">Get Lowlight <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>A music companion for Windows</p>
+        <h1 id="hero-title">Your music.<br>In a <em>better light.</em></h1>
+        <p class="lede">Big artwork. A little atmosphere.<br>Your favorite music, beautifully at home on your desktop.</p>
+        <a class="button button-primary" href="/lowlight/downloads/Lowlight-Setup.exe" download="Lowlight-Setup.exe">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg>Download for Windows
+        </a>
+        <p class="download-meta">Free · v0.3.2 · Windows x64 · 9.7 MB</p>
+        <a class="text-link" href="#looks">Find your favorite look <span aria-hidden="true">↓</span></a>
+      </div>
+      <figure class="hero-player">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <img class="window-image" src="/lowlight/assets/player-wide.webp" alt="Lowlight playing Reborn by KIDS SEE GHOSTS, with album-inspired colors and a flowing multicolor visualizer." width="1800" height="1244" fetchpriority="high">
+        <figcaption><span class="caption-line" aria-hidden="true"></span>Reborn · KIDS SEE GHOSTS<span class="caption-end">The wide view</span></figcaption>
+      </figure>
+    </section>
+    <section class="features wrap" id="features" aria-label="What makes Lowlight different">
+      <article><span class="feature-number">01 / COLOR</span><h2>Let the cover set the mood.</h2><p>Artwork colors flow into the background, highlights and visuals. Every album brings its own atmosphere.</p></article>
+      <article><span class="feature-number">02 / SPACE</span><h2>A window that fits you.</h2><p>Keep it small beside your work, stretch it wide, or give it a corner of your second monitor.</p></article>
+      <article><span class="feature-number">03 / FEELING</span><h2>More than a play button.</h2><p>Follow the lyrics. Watch the sound take shape. Keep both in view when you want a little more.</p></article>
+    </section>
+    <section class="looks wrap" id="looks" aria-labelledby="looks-title">
+      <div class="looks-copy">
+        <p class="eyebrow">Same player. Different feeling.</p>
+        <h2 class="section-title" id="looks-title">A change of record.<br>A change of <em>scene.</em></h2>
+        <p class="section-copy">Quiet Obsidian or softly frosted glass. Adjust the blur and opacity, and let the artwork do the rest.</p>
+        <p class="picker-label" id="picker-label">Pick a record</p>
+        <div class="record-picker" role="group" aria-labelledby="picker-label">
+          <button class="record selected" type="button" data-record="reborn" aria-pressed="true" aria-controls="record-stage"><img src="/lowlight/assets/cover-reborn.webp" width="48" height="48" alt="" loading="lazy"><span><strong>Reborn</strong><small>KIDS SEE GHOSTS</small></span><span class="record-check" aria-hidden="true">↗</span></button>
+          <button class="record" type="button" data-record="starboy" aria-pressed="false" aria-controls="record-stage"><img src="/lowlight/assets/cover-starboy.webp" width="48" height="48" alt="" loading="lazy"><span><strong>Starboy</strong><small>The Weeknd</small></span><span class="record-check" aria-hidden="true">↗</span></button>
+          <button class="record" type="button" data-record="bloodhail" aria-pressed="false" aria-controls="record-stage"><img src="/lowlight/assets/cover-bloodhail.webp" width="48" height="48" alt="" loading="lazy"><span><strong>Bloodhail</strong><small>Have A Nice Life</small></span><span class="record-check" aria-hidden="true">↗</span></button>
+        </div>
+        <p class="quiet-note" id="record-note" aria-live="polite">Reborn · Obsidian, with color from the cover.</p>
+        <noscript><p class="quiet-note">Enable JavaScript to switch between the three previews.</p></noscript>
+      </div>
+      <figure class="record-stage" id="record-stage" data-active="reborn">
+        <div class="stage-background" aria-hidden="true"></div>
+        <div class="stage-rings" aria-hidden="true"></div>
+        <div class="stage-window">
+          <img class="record-preview is-visible" data-preview="reborn" src="/lowlight/assets/player-reborn.webp" width="820" height="1640" loading="lazy" alt="Reborn in Lowlight’s portrait Obsidian view, with a large colorful album cover.">
+          <img class="record-preview" data-preview="starboy" src="/lowlight/assets/player-starboy.webp" width="900" height="1600" loading="lazy" alt="Starboy in Lowlight’s Frosted Glass theme, with red and blue album colors." hidden>
+          <img class="record-preview" data-preview="bloodhail" src="/lowlight/assets/player-bloodhail.webp" width="820" height="1640" loading="lazy" alt="Bloodhail in Lowlight’s portrait Obsidian view, with warm muted album colors." hidden>
+        </div>
+        <figcaption><span>Real app captures</span><span id="theme-caption">Obsidian</span></figcaption>
+      </figure>
+    </section>
+    <section class="strip-section wrap" aria-labelledby="strip-title">
+      <div class="strip-heading"><h2 id="strip-title">Less window.<br><em>Still your music.</em></h2><p>There’s a layout for the space you have.<br>Even that little space above everything else.</p></div>
+      <div class="strip-preview"><img src="/lowlight/assets/player-strip.webp" alt="Lowlight’s compact horizontal layout with artwork, playback, timeline and volume controls." width="1800" height="275" loading="lazy"></div>
+    </section>
+    <section class="download-section wrap" id="download" aria-labelledby="download-title">
+      <div class="download-intro"><img class="download-logo" src="/lowlight/assets/lowlight.svg" alt="" width="72" height="72" loading="lazy"><p class="eyebrow">A little space for what you love.</p><h2 class="section-title" id="download-title">Make room for <em>Lowlight.</em></h2><p>Download, install, and choose your music player.</p><a class="button button-primary" href="/lowlight/downloads/Lowlight-Setup.exe" download="Lowlight-Setup.exe"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg>Download for Windows</a><p class="download-meta">Free · v0.3.2 · Windows x64 · 9.7 MB</p><p class="release-note">Early build · The installer is currently unsigned.<br>Windows may show a publisher warning.</p></div>
+      <div class="faq" aria-label="Before you download">
+        <details><summary>How does it play my music?<span aria-hidden="true">+</span></summary><p>Lowlight connects to an open music app or browser through Windows media controls. Keep your player open while you listen. Available controls depend on the player.</p></details>
+        <details><summary>Which music players can I use?<span aria-hidden="true">+</span></summary><p>Use Spotify, Apple Music, YouTube Music, or another app or browser that shares a Windows media session. The setup inside Lowlight helps you select your active player.</p></details>
+        <details><summary>Do I need a Spotify account?<span aria-hidden="true">+</span></summary><p>Basic desktop controls don’t require you to connect a Spotify account to Lowlight. Spotify library, likes and built-in playback currently need your own Spotify developer Client ID and authorization. Built-in streaming and Spotify Connect also require Premium.</p></details>
+        <details><summary>What about lyrics and visuals?<span aria-hidden="true">+</span></summary><p>Synchronized lyrics appear when available. Audio-reactive visuals need music playing on this PC; a remote speaker cannot provide local audio. The optional automatic lyrics-timing model is a separate download.</p></details>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer wrap"><a class="wordmark" href="#"><img src="/lowlight/assets/lowlight.svg" width="26" height="26" alt=""><span>lowlight</span></a><a class="portfolio-link" href="https://www.dennisbf.design/work/lowlight/">A project by Dennis Bierreth-Fernandez <span aria-hidden="true">↗</span></a><div class="legal-links"><a href="https://www.dennisbf.design/impressum/">Legal</a><a href="https://www.dennisbf.design/privacy/">Privacy</a></div><p class="art-credit">Album artwork belongs to its respective owners. Preview images are staged app captures; glass blur is illustrated.</p></footer>
+</body>
+</html>

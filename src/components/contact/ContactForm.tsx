@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 type Copy = {
   name: string;
@@ -11,26 +11,40 @@ type Copy = {
   error: string;
   required: string;
   invalidEmail: string;
+  rateLimit: string;
 };
 
 type Props = {
   de: Copy;
   en: Copy;
   endpoint?: string;
+  privacyHref?: string;
+  privacyHrefEn?: string;
 };
 
 /** Same shape the worker enforces server-side. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type ErrorKey = 'required' | 'invalid_email' | 'send_failed';
+type ErrorKey = 'required' | 'invalid_email' | 'rate_limited' | 'send_failed';
 
 type FieldErrorKey = 'required' | 'invalid_email';
 
-export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props) {
+export default function ContactForm({
+  de,
+  en,
+  endpoint = '/api/contact',
+  privacyHref = '/privacy/',
+  privacyHrefEn = '/en/privacy/',
+}: Props) {
   const [status, setStatus] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
   const [errorKey, setErrorKey] = useState<ErrorKey | ''>('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, FieldErrorKey>>({});
   const formRef = useRef<HTMLFormElement>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    requestRef.current?.abort();
+    requestRef.current = null;
+  }, []);
 
   function fail(key: ErrorKey, fields: string[]) {
     setStatus('err');
@@ -47,12 +61,17 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
   }
 
   /** Any edit after a result clears the stale note. */
-  function onInput() {
+  function onInput(event: FormEvent<HTMLFormElement>) {
+    const field = (event.target as HTMLInputElement).name;
     if (status === 'ok' || status === 'err') {
       setStatus('idle');
       setErrorKey('');
-      setFieldErrors({});
     }
+    if (fieldErrors[field]) setFieldErrors((current) => {
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
   }
 
   /** Per-field inline error, linked via aria-describedby. */
@@ -78,7 +97,7 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (status === 'sending') return;
+    if (status === 'sending' || requestRef.current) return;
     const form = e.currentTarget;
     const data = new FormData(form);
 
@@ -109,8 +128,12 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
     setStatus('sending');
     setErrorKey('');
     setFieldErrors({});
+    const request = new AbortController();
+    requestRef.current = request;
+    const timeout = window.setTimeout(() => request.abort(), 20000);
     try {
       const res = await fetch(endpoint, {
+        signal: request.signal,
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
@@ -119,13 +142,17 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
       if (!res.ok || !json.ok) {
         if (json.error === 'invalid_email') fail('invalid_email', ['email']);
         else if (json.error === 'missing_fields') fail('required', []);
+        else if (json.error === 'rate_limited') fail('rate_limited', []);
         else fail('send_failed', []);
         return;
       }
       setStatus('ok');
       form.reset();
     } catch {
-      fail('send_failed', []);
+      if (requestRef.current === request) fail('send_failed', []);
+    } finally {
+      window.clearTimeout(timeout);
+      if (requestRef.current === request) requestRef.current = null;
     }
   }
 
@@ -133,7 +160,13 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
 
   const errorText = (key: ErrorKey | '') => {
     const pick = (c: Copy) =>
-      key === 'required' ? c.required : key === 'invalid_email' ? c.invalidEmail : c.error;
+      key === 'required'
+        ? c.required
+        : key === 'invalid_email'
+          ? c.invalidEmail
+          : key === 'rate_limited'
+            ? c.rateLimit
+            : c.error;
     return (
       <>
         <span data-lang="de">{pick(de)}</span>
@@ -153,23 +186,26 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
       onSubmit={onSubmit}
       onInput={onInput}
       noValidate
+      aria-busy={status === 'sending'}
     >
       {/* honeypot */}
-      <label className="contact-form__hp" aria-hidden="true">
-        <span>Company</span>
-        <input type="text" name="company" tabIndex={-1} autoComplete="off" />
-      </label>
+      <div className="contact-form__hp" hidden aria-hidden="true">
+        <label htmlFor="company-field">Company</label>
+        <input id="company-field" type="text" name="company" tabIndex={-1} autoComplete="off" />
+      </div>
 
       <div className="contact-form__grid">
         <label className="contact-form__field">
           <span>
             <span data-lang="de">{de.name}</span>
             <span data-lang="en">{en.name}</span>
+            <span className="contact-form__required" aria-hidden="true"> *</span>
           </span>
           <input
             name="name"
             type="text"
             autoComplete="name"
+            disabled={status === 'sending'}
             required
             maxLength={80}
             aria-invalid={isInvalid('name') || undefined}
@@ -181,11 +217,16 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
           <span>
             <span data-lang="de">{de.email}</span>
             <span data-lang="en">{en.email}</span>
+            <span className="contact-form__required" aria-hidden="true"> *</span>
           </span>
           <input
             name="email"
             type="email"
             autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            disabled={status === 'sending'}
             required
             maxLength={160}
             aria-invalid={isInvalid('email') || undefined}
@@ -200,16 +241,18 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
           <span data-lang="de">{de.subject}</span>
           <span data-lang="en">{en.subject}</span>
         </span>
-        <input name="subject" type="text" autoComplete="off" maxLength={120} />
+        <input name="subject" type="text" autoComplete="off" maxLength={120} disabled={status === 'sending'} />
       </label>
 
       <label className="contact-form__field">
-        <span>
-          <span data-lang="de">{de.message}</span>
-          <span data-lang="en">{en.message}</span>
+          <span>
+            <span data-lang="de">{de.message}</span>
+            <span data-lang="en">{en.message}</span>
+            <span className="contact-form__required" aria-hidden="true"> *</span>
         </span>
         <textarea
           name="message"
+          disabled={status === 'sending'}
           required
           rows={6}
           maxLength={8000}
@@ -218,6 +261,17 @@ export default function ContactForm({ de, en, endpoint = '/api/contact' }: Props
         />
         <FieldError field="message" />
       </label>
+
+      <p className="contact-form__privacy">
+        <span data-lang="de">
+          * Pflichtfeld. Deine Angaben werden nur zur Bearbeitung deiner Anfrage verwendet.{' '}
+          <a href={privacyHref}>Datenschutz</a>
+        </span>
+        <span data-lang="en">
+          * Required. Your details are used only to handle your inquiry.{' '}
+          <a href={privacyHrefEn}>Privacy</a>
+        </span>
+      </p>
 
       <div className="contact-form__actions">
         <button className="btn btn--primary" type="submit" disabled={status === 'sending'}>

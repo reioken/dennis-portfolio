@@ -1,0 +1,42 @@
+---
+import './hall-loading.css';
+/**
+ * Vor dem ersten Paint (und nach jedem Client-Seitenwechsel, data-astro-rerun): mit WebGL bleibt
+ * die CSS-Kulisse verborgen, bis die 3D-Bühne steht — kein kurzes Aufblitzen der alten Reihe.
+ * Läuft eine Bühne bereits (persistente Insel), passiert nichts. Der Probe-Kontext wird sofort
+ * wieder freigegeben, Chrome hält nur ~16 WebGL-Kontexte pro Seite.
+ */
+---
+
+<div class="hall-startup" role="status" aria-live="polite">
+  <span class="hall-startup__label" data-lang="de">Die Raumbeleuchtung startet.</span>
+  <span class="hall-startup__label" data-lang="en">The room lights are starting.</span>
+  <span class="hall-startup__emblem" aria-hidden="true">
+    <span class="hall-startup__orbit">
+      <i></i><i></i><i></i><i></i>
+    </span>
+    <span class="hall-startup__prism">
+      <i></i><i></i><i></i><i></i><i></i><i></i>
+    </span>
+    <span class="hall-startup__glint"></span>
+    <span class="hall-startup__signal"><i></i><i></i><i></i><i></i><i></i></span>
+  </span>
+</div>
+
+<script is:inline data-astro-rerun>
+  try {
+    var d = document.documentElement;
+    d.classList.remove('gl-pending');
+    if (!document.querySelector('.hall.is-3d')) {
+      var ok = window.__glOk;
+      if (ok === undefined) {
+        var c = document.createElement('canvas');
+        var g = c.getContext('webgl2') || c.getContext('webgl');
+        ok = window.__glOk = !!g;
+        var l = g && g.getExtension('WEBGL_lose_context');
+        if (l) l.loseContext();
+      }
+      if (ok) d.classList.add('gl-pending');
+    }
+  } catch (e) {}
+</script>

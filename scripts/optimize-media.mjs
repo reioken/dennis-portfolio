@@ -58,12 +58,6 @@ const JOBS = [
     quality: 78,
   },
   {
-    dir: 'floordirekt',
-    files: ['cover.jpg', 'studio-lockup.png', 'logo.png'],
-    maxW: 1400,
-    quality: 80,
-  },
-  {
     dir: 'me',
     files: ['portrait.png', 'portrait-full.jpg'],
     maxW: 1200,

@@ -1,0 +1,47 @@
+/* Shared full-screen fallback: images fit the available stage, even in landscape. */
+.gallery-view .gallery-view__figure {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.gallery-view__figure picture {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.gallery-view .gallery-view__image {
+  max-height: 100%;
+  max-width: 100%;
+  border-radius: 6px;
+}
+.gallery-view .gallery-view__icon-btn,
+.gallery-view .gallery-view__nav {
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+}
+.gallery-view .gallery-view__film-item {
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  align-items: center;
+}
+.gallery-view :focus-visible {
+  outline: 2px solid var(--ice);
+  outline-offset: 3px;
+}
+@media (max-height: 500px) {
+  .gallery-view .gallery-view__stage { inset: 64px 64px 76px; }
+  .gallery-view .gallery-view__film-item { width: 44px; height: 44px; }
+  .gallery-view .gallery-view__film-item img { max-height: 44px; object-fit: contain; }
+}
+
+/* Source is metadata, not a second grid item above the image. */
+.gallery-view__figure source { display: none; }
+.gallery-view .gallery-view__veil { background: #08090cf5; }

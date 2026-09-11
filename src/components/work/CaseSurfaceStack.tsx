@@ -53,32 +53,34 @@ export default function CaseSurfaceStack({ title, surfaces }: Props) {
 
   return (
     <div className="case-stack">
-      <div className="wrap case-stack__nav-wrap">
-        <p className="case-stack__nav-label">
-          <span data-lang="de">Ansichten</span>
-          <span data-lang="en">Surfaces</span>
-        </p>
-        <div className="case-stack__nav" role="navigation" aria-label={`${title} surfaces`}>
-          {surfaces.map((surface, i) => {
-            const selected = surface.id === activeId;
-            return (
-              <button
-                key={surface.id}
-                type="button"
-                className={`case-stack__chip${selected ? ' case-stack__chip--active' : ''}`}
-                aria-current={selected ? 'true' : undefined}
-                onClick={() => jump(surface.id)}
-              >
-                <span className="case-stack__num" aria-hidden>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <span data-lang="de">{surface.labelDe}</span>
-                <span data-lang="en">{surface.labelEn}</span>
-              </button>
-            );
-          })}
+      {surfaces.length > 1 && (
+        <div className="wrap case-stack__nav-wrap">
+          <p className="case-stack__nav-label">
+            <span data-lang="de">Ansichten</span>
+            <span data-lang="en">Surfaces</span>
+          </p>
+          <div className="case-stack__nav" role="navigation" aria-label={`${title} surfaces`}>
+            {surfaces.map((surface, i) => {
+              const selected = surface.id === activeId;
+              return (
+                <button
+                  key={surface.id}
+                  type="button"
+                  className={`case-stack__chip${selected ? ' case-stack__chip--active' : ''}`}
+                  aria-current={selected ? 'true' : undefined}
+                  onClick={() => jump(surface.id)}
+                >
+                  <span className="case-stack__num" aria-hidden>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span data-lang="de">{surface.labelDe}</span>
+                  <span data-lang="en">{surface.labelEn}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {surfaces.map((surface, i) => (
         <section

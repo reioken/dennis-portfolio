@@ -1,16 +1,13 @@
 ---
-import fs from 'node:fs';
-import path from 'node:path';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import CaseMedia from '../../components/work/CaseMedia';
-import CaseSurfaceStack from '../../components/work/CaseSurfaceStack';
-import CaseDocument from '../../components/work/CaseDocument';
-import MinaStudyEn from '../../components/work/MinaStudyEn.astro';
-import CertificateCard from '../../components/work/CertificateCard.astro';
-import CaseAdjacent from '../../components/work/CaseAdjacent.astro';
+import HallGuard from '../../components/hall/HallGuard.astro';
+import Hall from '../../components/hall/Hall';
+import CaseOverlay from '../../components/work/CaseOverlay.astro';
+import CaseArticle from '../../components/work/CaseArticle.astro';
 import { getCollection, render } from 'astro:content';
 import { site } from '../../lib/site';
 import { p } from '../../lib/paths';
+import { buildHallItems } from '../../lib/hall-items';
 
 export async function getStaticPaths() {
   const works = await getCollection('work');
@@ -23,74 +20,22 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const { Content } = await render(entry);
 const data = entry.data;
+
+/* Projekte mit Automat öffnen sich vor der Halle (Kamera fährt ran, Panel rechts);
+   Archiv-Einträge behalten das klassische Artikel-Layout. */
+const { items } = await buildHallItems();
+const hallIdx = items.findIndex((it) => it.slug === entry.id);
+const inHall = hallIdx >= 0;
+const hallItem = inHall ? items[hallIdx] : undefined;
+const station = inHall ? { index: hallIdx, total: items.length, title: data.title, titleEn: data.titleEn, version: hallItem && 'version' in hallItem ? hallItem.version : data.version } : undefined;
+
 const all = (await getCollection('work')).sort((a, b) => a.data.order - b.data.order);
 const idx = all.findIndex((w) => w.id === entry.id);
 const prev = all[(idx - 1 + all.length) % all.length];
 const next = all[(idx + 1) % all.length];
 const asset = (src: string) => p(src.replace(/^\//, ''));
-
-function hiAsset(sitePath: string): string | undefined {
-  const clean = sitePath.replace(/^\//, '');
-  const candidates = [
-    clean.replace(/(\.\w+)$/, '@2x.webp'),
-    clean.replace(/(\.\w+)$/, '@2x$1'),
-  ];
-  for (const rel of candidates) {
-    if (fs.existsSync(path.join(process.cwd(), 'public', rel))) {
-      return p(rel);
-    }
-  }
-  return undefined;
-}
-
 const coverSrc = asset(data.cover);
-const coverHi = hiAsset(data.cover);
-const galleryOnly = data.gallery
-  .map((g, i) => ({ path: g.replace(/^\//, ''), alt: data.galleryAlts?.[i] }))
-  .filter((g) => g.path !== data.cover.replace(/^\//, ''));
-
-const galleryOnlyEn = data.gallery
-  .map((g, i) => ({ path: g.replace(/^\//, ''), alt: data.galleryAltsEn?.[i] }))
-  .filter((g) => g.path !== data.cover.replace(/^\//, ''));
-
-const images = [
-  {
-    src: coverSrc,
-    srcHi: coverHi,
-    alt: data.coverAlt ?? `${data.title} Cover`,
-    altEn: data.coverAltEn ?? data.galleryAltsEn?.[0],
-  },
-  ...galleryOnly.map((g, i) => ({
-    src: asset(g.path),
-    srcHi: hiAsset(g.path),
-    alt: g.alt ?? `${data.title} — ${i + 1}`,
-    altEn: galleryOnlyEn[i]?.alt,
-  })),
-];
-
-const docPages = (data.document?.pages ?? []).map((page, i) => ({
-  src: asset(page),
-  alt: `${data.title} Case Study — Abschnitt ${i + 1}`,
-}));
-
-const surfaces = (data.surfaces ?? []).map((surface) => ({
-  id: surface.id,
-  labelDe: surface.labelDe,
-  labelEn: surface.labelEn,
-  blurbDe: surface.blurbDe,
-  blurbEn: surface.blurbEn,
-  variant: surface.variant,
-  images: surface.gallery.map((g, i) => ({
-    src: asset(g),
-    srcHi: hiAsset(g),
-    alt: surface.alts?.[i] ?? `${data.title} ${surface.labelDe} — ${i + 1}`,
-    altEn: surface.altsEn?.[i],
-  })),
-}));
-
-const when = data.timeline || data.year;
 const hasBody = (entry.body ?? '').replace(/<[^>]+>/g, '').trim().length > 0;
-const logoSrc = data.logo ? asset(data.logo) : undefined;
 
 const siteUrl = (Astro.site ?? site.url).toString();
 const caseLd = {
@@ -112,153 +57,27 @@ const breadcrumbLd = {
     { '@type': 'ListItem', position: 3, name: data.title },
   ],
 };
+const title = `${data.title} — ${site.name}`;
 ---
 
-<BaseLayout
-  title={`${data.title} — ${site.name}`}
-  description={data.summary}
-  ogImage={asset(data.cover)}
->
-  <script type="application/ld+json" set:html={JSON.stringify(caseLd)} />
-  <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
-  <article class="case-page">
-    <header class="case-page__intro wrap">
-      <div class="case-page__main">
-        {
-          logoSrc && (
-            <div class="case-page__brand">
-              <img
-                class="case-page__logo"
-                src={logoSrc}
-                alt={`${data.title} logo`}
-                width={520}
-                height={120}
-                decoding="async"
-              />
-            </div>
-          )
-        }
-        <p class="case-page__eyebrow">
-          {
-            data.tags.includes('archive') && (
-              <>
-                <span>
-                  <span data-lang="de">Archiv</span>
-                  <span data-lang="en">Archive</span>
-                </span>
-                <span class="case-page__dot" aria-hidden="true">·</span>
-              </>
-            )
-          }
-          <span>
-            <span data-lang="de">{data.role}</span>
-            <span data-lang="en">{data.roleEn ?? data.role}</span>
-          </span>
-          {when && (
-            <>
-              <span class="case-page__dot" aria-hidden="true">·</span>
-              <span>
-                <span data-lang="de">{when}</span>
-                <span data-lang="en">{data.timelineEn ?? data.yearEn ?? when}</span>
-              </span>
-            </>
-          )}
-        </p>
-        <h1 class="case-page__title">
-          <span data-lang="de">{data.title}</span>
-          <span data-lang="en">{data.titleEn ?? data.title}</span>
-        </h1>
-        <p class="case-page__summary">
-          <span data-lang="de">{data.summary}</span>
-          <span data-lang="en">{data.summaryEn ?? data.summary}</span>
-        </p>
-        {
-          hasBody && (
-            <div class="case-page__copy prose-case">
-              <Content />
-            </div>
-          )
-        }
-      </div>
-
-      <aside class="case-page__aside" aria-label="Project details">
-        {
-          data.stack.length > 0 && (
-            <div class="case-page__block">
-              <h2 class="case-page__label">Stack</h2>
-              <ul class="case-page__chips">
-                {data.stack.map((item) => (
-                  <li>{item}</li>
-                ))}
-              </ul>
-            </div>
-          )
-        }
-        {
-          data.outcome && (
-            <div class="case-page__block">
-              <h2 class="case-page__label">
-                <span data-lang="de">Ergebnis</span>
-                <span data-lang="en">Outcome</span>
-              </h2>
-              <p class="case-page__outcome">
-                <span data-lang="de">{data.outcome}</span>
-                <span data-lang="en">{data.outcomeEn ?? data.outcome}</span>
-              </p>
-            </div>
-          )
-        }
-      </aside>
-    </header>
-
-    {
-      surfaces.length > 0 ? (
-        <CaseSurfaceStack client:load title={data.title} surfaces={surfaces} />
-      ) : docPages.length > 0 && data.document ? (
-        entry.id === 'mina' ? (
-          <>
-            {/* DE: original deck as sliced image reader · EN: full HTML rebuild */}
-            <div data-lang="de">
-              <CaseDocument
-                client:load
-                labelDe={data.document.labelDe}
-                labelEn={data.document.labelEn}
-                pages={docPages}
-              />
-            </div>
-            <div data-lang="en">
-              <CaseDocument
-                client:load
-                labelDe={data.document.labelDe}
-                labelEn={data.document.labelEn}
-              >
-                <MinaStudyEn />
-              </CaseDocument>
-            </div>
-          </>
-        ) : (
-          <CaseDocument
-            client:load
-            labelDe={data.document.labelDe}
-            labelEn={data.document.labelEn}
-            pages={docPages}
-          />
-        )
-      ) : (
-        <CaseMedia
-          client:load
-          title={data.title}
-          images={images}
-          coverCount={0}
-          variant={entry.id === 'berry' ? 'phone' : 'desktop'}
-        />
-      )
-    }
-
-    {entry.id === 'mina' && <CertificateCard />}
-
-    <div class="wrap">
-      <CaseAdjacent prev={prev} next={next} index={idx} total={all.length} />
-    </div>
-  </article>
-</BaseLayout>
+{
+  inHall ? (
+    <BaseLayout title={title} description={data.summary} ogImage={coverSrc} mode="case" station={station}>
+      <script type="application/ld+json" set:html={JSON.stringify(caseLd)} />
+      <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
+      <HallGuard />
+      <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug={entry.id} mode="case" homeHref={p()} />
+      <CaseOverlay entry={entry} items={items} index={hallIdx} homeHref={p()} hasBody={hasBody}>
+        <Content />
+      </CaseOverlay>
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={title} description={data.summary} ogImage={coverSrc}>
+      <script type="application/ld+json" set:html={JSON.stringify(caseLd)} />
+      <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
+      <CaseArticle entry={entry} prev={prev} next={next} index={idx} total={all.length} hasBody={hasBody}>
+        <Content />
+      </CaseArticle>
+    </BaseLayout>
+  )
+}

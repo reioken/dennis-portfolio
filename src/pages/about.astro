@@ -1,202 +1,46 @@
 ---
+/**
+ * Über mich — öffnet sich wie ein Projekt vor der Halle: die Kamera steht vor der Kasse
+ * (Greifautomat mit der Figur), rechts sitzt das Panel mit dem Ausweis. Die Halle selbst ist
+ * die persistente Insel (transition:persist), Hall.tsx kennt /about/ als Case-Route der Kasse.
+ */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PortraitStage from '../components/about/PortraitStage';
-import AvailabilityStatus from '../components/brand/AvailabilityStatus.astro';
-import BrandLockup from '../components/brand/BrandLockup';
-import { site, skills, timeline, education, languages } from '../lib/site';
+import HallGuard from '../components/hall/HallGuard.astro';
+import Hall from '../components/hall/Hall';
+import AboutOverlay from '../components/work/AboutOverlay.astro';
+import { site } from '../lib/site';
 import { copy } from '../lib/i18n';
 import { p } from '../lib/paths';
+import { buildHallItems } from '../lib/hall-items';
+
+const { items } = await buildHallItems();
+const kasseIndex = Math.max(0, items.findIndex((it) => it.kind === 'kasse'));
+const station = { index: kasseIndex, total: items.length, title: copy.de.hall.kasseSub, titleEn: copy.en.hall.kasseSub };
+
+const portrait = p('media/me/portrait-v12.webp');
+const siteUrl = (Astro.site ?? site.url).toString();
+const profileLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfilePage',
+  url: new URL(p('about'), siteUrl).toString(),
+  mainEntity: {
+    '@type': 'Person',
+    name: site.name,
+    jobTitle: site.role,
+    description: site.profile.de,
+    url: siteUrl,
+    image: new URL(portrait.replace(/^\//, ''), siteUrl).toString(),
+    email: site.email,
+    sameAs: [site.links.linkedin, site.links.github],
+  },
+};
+const title = `${copy.de.about.label} — ${site.name}`;
+const description = `${site.name} — Art Director, UX/UI Designer und Independent Product Builder. Verfügbar für ausgewählte Freelance-Projekte.`;
 ---
 
-<BaseLayout
-  title={`Über mich — ${site.name}`}
-  description={`${site.name} — Art Director · UX/UI · Hobby-Dev. Fest bei Floordirekt, Freelance willkommen.`}
->
-  <section class="section overflow-hidden pt-[calc(var(--nav-h)+2rem)]" data-block-id="about-intro" data-block-type="about-intro" data-block-source="native" data-block-label="About Intro">
-    <div class="wrap">
-      <div class="grid items-center gap-12 lg:grid-cols-[0.95fr_1.15fr] lg:gap-12">
-        <div class="about-intro">
-          <div class="mb-7 max-w-md">
-            <BrandLockup name={site.name} weight="hero" role={copy.de.about.role} />
-          </div>
-          <h1 class="about-intro__title mb-4">
-            <span class="name-lock gradient-text font-[family-name:var(--font-display)] text-[clamp(2rem,5vw,3.25rem)] font-semibold uppercase leading-none tracking-[0.06em]">
-              <span data-lang="de">{copy.de.about.label}</span>
-              <span data-lang="en">{copy.en.about.label}</span>
-            </span>
-          </h1>
-          <p class="about-intro__lead mb-3 max-w-[28ch] text-[1.2rem] leading-snug normal-case tracking-normal text-[var(--text)]">
-            <span data-lang="de" data-edit="about.lead.de">{copy.de.about.lead}</span>
-            <span data-lang="en" data-edit="about.lead.en">{copy.en.about.lead}</span>
-          </p>
-          <p class="about-intro__body mb-7 max-w-[28ch] text-[1rem] leading-snug normal-case tracking-normal text-[var(--dim)]">
-            <span data-lang="de" data-edit="about.body.de">{copy.de.about.body}</span>
-            <span data-lang="en" data-edit="about.body.en">{copy.en.about.body}</span>
-          </p>
-          <div class="mb-8">
-            <AvailabilityStatus showLocation />
-          </div>
-          <div class="flex flex-wrap gap-3">
-            <a class="btn btn--primary" href={site.links.linkedin} target="_blank" rel="noreferrer">
-              <span data-lang="de">{copy.de.about.linkedin}</span>
-              <span data-lang="en">{copy.en.about.linkedin}</span>
-            </a>
-            <a class="btn" href={p('contact')}>
-              <span data-lang="de">{copy.de.about.contact}</span>
-              <span data-lang="en">{copy.en.about.contact}</span>
-            </a>
-          </div>
-        </div>
-
-        <PortraitStage
-          client:visible
-          src={p('media/me/portrait-v12.webp')}
-          name={site.name}
-          roleDe={copy.de.about.role}
-          roleEn={copy.en.about.role}
-        />
-      </div>
-    </div>
-  </section>
-
-  <section class="section" data-block-id="skills" data-block-type="skills" data-block-source="native" data-block-label="Skills">
-    <div class="wrap">
-      <h2 class="display mb-8 text-[clamp(1.5rem,3.5vw,2.2rem)]">
-        <span data-lang="de">{copy.de.about.skillsTitle}</span>
-        <span data-lang="en">{copy.en.about.skillsTitle}</span>
-      </h2>
-      <div class="grid gap-4 md:grid-cols-3">
-        {
-          skills.map((s, i) => (
-            <div data-reveal style={`--reveal-delay:${i * 0.05}s`}>
-              <div class="relative h-full overflow-hidden rounded-[var(--radius)] border border-[var(--stroke)] bg-[var(--panel-soft)] p-6">
-                <div
-                  aria-hidden
-                  class="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full opacity-40"
-                  style={`background: radial-gradient(circle, color-mix(in srgb, ${i === 0 ? 'var(--violet)' : i === 1 ? 'var(--blue)' : 'var(--ice)'} 40%, transparent), transparent 70%)`}
-                />
-                <h3 class="display relative mb-4 text-lg text-[var(--text)]">
-                  <span data-lang="de">{s.group.de}</span>
-                  <span data-lang="en">{s.group.en}</span>
-                </h3>
-                <ul class="relative space-y-2 normal-case tracking-normal text-[var(--dim)]">
-                  {s.items.de.map((item, j) => (
-                    <li class="flex gap-2">
-                      <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--meta)]" aria-hidden />
-                      <span>
-                        <span data-lang="de">{item}</span>
-                        <span data-lang="en">{s.items.en[j]}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))
-        }
-      </div>
-
-      <div class="mt-8 flex flex-wrap gap-4">
-        {
-          languages.map((lang) => (
-            <div class="rounded-2xl border border-[var(--stroke)] bg-[var(--panel-soft)] px-5 py-3">
-              <span class="font-semibold uppercase tracking-[0.08em] text-[var(--text)]">
-                <span data-lang="de">{lang.name.de}</span>
-                <span data-lang="en">{lang.name.en}</span>
-              </span>
-              <span class="normal-case tracking-normal text-[var(--dim)]">
-                {' '}
-                — <span data-lang="de">{lang.level.de}</span>
-                <span data-lang="en">{lang.level.en}</span>
-              </span>
-            </div>
-          ))
-        }
-      </div>
-    </div>
-  </section>
-
-  <section class="section pt-0" data-block-id="timeline" data-block-type="timeline" data-block-source="native" data-block-label="Timeline">
-    <div class="wrap">
-      <h2 class="display mb-8 text-[clamp(1.5rem,3.5vw,2.2rem)]">
-        <span data-lang="de">{copy.de.about.timelineLabel}</span>
-        <span data-lang="en">{copy.en.about.timelineLabel}</span>
-      </h2>
-      <ol class="timeline">
-        {
-          timeline.map((t, i) => (
-              <li
-                class:list={[
-                  'timeline__item',
-                  i === timeline.length - 1 ? 'timeline__row' : 'timeline__row timeline__row--gap',
-                ]}
-                data-reveal
-                style={`--reveal-delay:${i * 0.04}s`}
-              >
-                <div class="timeline__rail" aria-hidden="true">
-                  <span class:list={['timeline__dot', i === 0 && 'timeline__dot--now']} />
-                </div>
-                <div class="timeline__content">
-                  <div class="timeline__year">
-                    <span data-lang="de" data-edit={`timeline.${i}.year`}>{t.year}</span>
-                    <span data-lang="en" data-edit={`timeline.${i}.yearEn`}>{t.yearEn}</span>
-                  </div>
-                  <h3 class="timeline__title">
-                    <span data-lang="de" data-edit={`timeline.${i}.title.de`}>{t.title.de}</span>
-                    <span data-lang="en" data-edit={`timeline.${i}.title.en`}>{t.title.en}</span>
-                  </h3>
-                  <p class="timeline__body">
-                    <span data-lang="de" data-edit={`timeline.${i}.body.de`}>{t.body.de}</span>
-                    <span data-lang="en" data-edit={`timeline.${i}.body.en`}>{t.body.en}</span>
-                  </p>
-                </div>
-              </li>
-          ))
-        }
-      </ol>
-    </div>
-  </section>
-
-  <section class="section pt-0" data-block-id="education" data-block-type="education" data-block-source="native" data-block-label="Ausbildung">
-    <div class="wrap">
-      <h2 class="display mb-8 text-[clamp(1.5rem,3.5vw,2.2rem)]">
-        <span data-lang="de">{copy.de.about.educationTitle}</span>
-        <span data-lang="en">{copy.en.about.educationTitle}</span>
-      </h2>
-          <div class="grid gap-4 sm:grid-cols-2">
-        {
-          education.map((e, i) => (
-            <div data-reveal style={`--reveal-delay:${i * 0.05}s`}>
-              <div class="h-full rounded-[var(--radius)] border border-[var(--stroke)] bg-[var(--panel-soft)] p-5">
-                <div class="mb-2 text-[0.72rem] font-bold uppercase tracking-[0.16em] text-[var(--meta)]" data-edit={`education.${i}.year`}>{e.year}</div>
-                <h3 class="display mb-2 text-base text-[var(--text)]">
-                  <span data-lang="de" data-edit={`education.${i}.title.de`}>{e.title.de}</span>
-                  <span data-lang="en" data-edit={`education.${i}.title.en`}>{e.title.en}</span>
-                </h3>
-                <p class="m-0 text-[0.95rem] normal-case tracking-normal text-[var(--dim)]">
-                  <span data-lang="de" data-edit={`education.${i}.body.de`}>{e.body.de}</span>
-                  <span data-lang="en" data-edit={`education.${i}.body.en`}>{e.body.en}</span>
-                </p>
-                {
-                  'url' in e && e.url ? (
-                    <a
-                      class="mt-3 inline-flex text-[0.8rem] font-semibold uppercase tracking-[0.12em] text-[var(--violet)] transition-colors hover:text-[var(--text)]"
-                      href={e.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <span data-lang="de">{e.urlLabel?.de ?? 'Zertifikat ansehen'}</span>
-                      <span data-lang="en">{e.urlLabel?.en ?? 'View certificate'}</span>
-                      <span aria-hidden="true" class="ml-1">↗</span>
-                    </a>
-                  ) : null
-                }
-              </div>
-            </div>
-          ))
-        }
-      </div>
-    </div>
-  </section>
-
+<BaseLayout title={title} description={description} mode="case" station={station}>
+  <script type="application/ld+json" set:html={JSON.stringify(profileLd)} />
+  <HallGuard />
+  <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug="kasse" mode="case" homeHref={p()} />
+  <AboutOverlay items={items} index={kasseIndex} homeHref={p()} />
 </BaseLayout>
