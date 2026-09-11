@@ -37,3 +37,4 @@ Detailed machine-readable logs and screenshots are kept locally in ignored .sour
 - Pixel-only cold-start recordings previously showed a roughly 300 ms gap. The updated normal and 6× CPU-throttled recordings show no such gap after the visible cube begins moving.
 - Desktop and mobile navigation tests cover 16 route hops each, browser Back/Forward, unchanged canvas identity and no repeated model/environment requests. Edge checks cover direct About entry, legal-first entry, resizing while parked, keyboard isolation and a genuine reload.
 - Reproduction tools: scripts/build-loading-prism.mjs, scripts/build-hall-environment.mjs and scripts/qa/hall-session.mjs. Generator scripts accept PLAYWRIGHT_MODULE for the local browser runtime.
+- Landing-page interaction handlers are loaded once with the shared session and bind synchronously after DOM swaps, preventing clicks lost while a newly fetched script is still loading.

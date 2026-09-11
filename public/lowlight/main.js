@@ -1,5 +1,6 @@
 (() => {
-  const stage = document.getElementById('record-stage');
+  function initialize() {
+const stage = document.getElementById('record-stage');
   const note = document.getElementById('record-note');
   const caption = document.getElementById('theme-caption');
   const buttons = [...document.querySelectorAll('[data-record]')];
@@ -36,4 +37,7 @@
       void select(buttons[next]);
     });
   }
+  }
+  document.addEventListener('astro:after-swap', initialize);
+  initialize();
 })();
