@@ -88,3 +88,11 @@ test('cached fixtures follow moving world transforms without traversing the scen
     } finally {scene.traverse=traverse;}
   }
 });
+
+test('shared baked lighting fades once and restores after a failed render',()=>{
+ const scene=new THREE.Scene(),power={value:.8};const materials=[0,1].map(()=>{const m=new THREE.MeshStandardMaterial();m.userData.hallPower=power;m.lightMap=new THREE.Texture();m.lightMapIntensity=2;scene.add(new THREE.Mesh(new THREE.PlaneGeometry(),m));return m;});scene.updateMatrixWorld(true);
+ const factor=roomPowerLevels(4500).room;
+ assert.throws(()=>withRoomPower(scene,4500,0,()=>{assert.ok(Math.abs(power.value-.8*factor)<1e-9);for(const m of materials)assert.ok(Math.abs(m.lightMapIntensity-2*factor)<1e-9);throw new Error('reflection render failed');}));
+ assert.equal(power.value,.8);for(const m of materials)assert.equal(m.lightMapIntensity,2);
+ withRoomPower(scene,0,0,()=>{assert.equal(power.value,0);});assert.equal(power.value,.8);
+});

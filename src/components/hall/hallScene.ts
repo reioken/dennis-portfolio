@@ -9,7 +9,8 @@
  * optional "marquee" (Leuchtschild), auf die wir Texturen legen.
  */
 import * as THREE from 'three';
-import { floorReflectionShader } from './floorReflectionShader';
+import { createHallFloor } from './floorReflectionShader';
+import { HallLighting } from './hallLighting';
 import { ScreenDissolve } from './screenDissolve';
 import { textTexture } from './marqueeTexture';
 import { tvPresentation } from './presentation.mjs';
@@ -21,7 +22,6 @@ import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMateria
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
-import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -486,7 +486,7 @@ export class HallScene {
   private composer?: EffectComposer;
   /** nur für Dev-Inspektion über window.__hall */
   machines: Machine[] = [];
-  private lights: THREE.PointLight[] = [];
+  private roomLighting!: HallLighting;
   private neonLight!: THREE.PointLight;
   private loadingManager = new THREE.LoadingManager();
   private loader = new THREE.TextureLoader(this.loadingManager);
@@ -563,7 +563,7 @@ export class HallScene {
   private mirror?: Reflector;
   /** Spiegel neu rendern, obwohl die Kamera steht (Bildschirm gewechselt, Fernseher, Figur bewegt) */
   private mirrorDirty = true;
-  private spots: THREE.SpotLight[] = [];
+
   /**
    * Fernseher an der Deckenschiene: fährt mit dem Fokus zwischen den Automaten mit (nicht zur Kasse,
    * nicht zum Telefon) und zeigt das aktuelle Capture groß — Phone-Captures zu dritt nebeneinander.
@@ -578,7 +578,7 @@ export class HallScene {
   private surfaceMaps = makeSurfaceMaps();
   private glassWear = makeGlassWear();
   private reflectionResources: { dispose(): void }[] = [];
-  private floorGlows = new Map<number, THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>[]>();
+
   private wallTitleKey = "";
   private artworkTextures = new Set<THREE.Texture>();
   private cabinetArtSources = new Map<string, THREE.Texture>();
@@ -642,7 +642,7 @@ export class HallScene {
     // Umgebungslicht für Metall, Lack und Glas — ohne Environment-Map rendert alles Glänzende schwarz
     const environmentDone = this.track(initial);
     void this.loadEnvironment().catch(error => this.failStartup(error)).finally(environmentDone);
-    this.scene.environmentIntensity = .38;
+    this.scene.environmentIntensity = 1.2;
     this.scene.fog = new THREE.Fog(0x05060a, 10.5, 24);
     this.camera = new THREE.PerspectiveCamera(opts.lite ? 52 : 42, container.clientWidth / container.clientHeight, 0.1, 80);
 
@@ -667,7 +667,7 @@ export class HallScene {
       const target = new THREE.WebGLRenderTarget(container.clientWidth * pr, container.clientHeight * pr, { type: THREE.HalfFloatType, samples: 4 });
       const comp = new EffectComposer(r, target);
       comp.addPass(new RenderPass(this.scene, this.camera));
-      const bloom = new UnrealBloomPass(new THREE.Vector2(container.clientWidth / 2, container.clientHeight / 2), 0.22, 0.45, 0.92);
+      const bloom = new UnrealBloomPass(new THREE.Vector2(container.clientWidth / 2, container.clientHeight / 2), 0.14, 0.35, 1.05);
       // addPass/setSize setzen die Bloom-Auflösung auf volle Größe zurück — der Blur darf in Viertelauflösung
       // laufen (13 Vollbild-Durchgänge weniger Fläche), sichtbar ist das nicht
       const bloomSetSize = bloom.setSize.bind(bloom);
@@ -736,89 +736,8 @@ export class HallScene {
   /* ---------- Raum ---------- */
   private buildRoom() {
     const s = this.scene;
-    s.add(new THREE.AmbientLight(0x2a2f45, 2.2));
-    const hemi = new THREE.HemisphereLight(0x3a3f5c, 0x05060a, 1.2);
-    s.add(hemi);
-
-    // Boden: Spiegel + halbtransparente Fliesen darüber
-    // Spiegelboden rendert die Szene ein zweites Mal — klein halten, auf schwachen Geräten weglassen
-    if (!this.lite) {
-      const MW = 512;
-      const MH = 256;
-      const mirror = new Reflector(new THREE.PlaneGeometry(90, 24), {
-        clipBias: 0.003,
-        textureWidth: MW,
-        textureHeight: MH,
-        color: 0x11151c,
-        shader: floorReflectionShader,
-        multisample: 0,
-      });
-      // Polierter Boden statt Spiegel: die Spiegelung wird in zwei Durchgängen weichgezeichnet, bevor sie
-      // auf den Boden kommt — kein spiegelverkehrter Text, keine harten Lichtflecken
-      const blurA = new THREE.WebGLRenderTarget(MW, MH, { depthBuffer: false });
-      const blurB = new THREE.WebGLRenderTarget(MW, MH, { depthBuffer: false });
-      const blurMat = new THREE.ShaderMaterial({
-        uniforms: { tDiffuse: { value: null }, dir: { value: new THREE.Vector2(1 / MW, 0) } },
-        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-        fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 dir; varying vec2 vUv;
-          void main(){
-            vec4 c = texture2D(tDiffuse, vUv) * 0.227027;
-            c += texture2D(tDiffuse, vUv + dir * 1.384615) * 0.316216;
-            c += texture2D(tDiffuse, vUv - dir * 1.384615) * 0.316216;
-            c += texture2D(tDiffuse, vUv + dir * 3.230769) * 0.070270;
-            c += texture2D(tDiffuse, vUv - dir * 3.230769) * 0.070270;
-            gl_FragColor = c;
-          }`,
-        depthTest: false,
-        depthWrite: false,
-      });
-      const quad = new FullScreenQuad(blurMat);
-      const mirrorRT = mirror.getRenderTarget();
-      const uniforms = (mirror.material as THREE.ShaderMaterial).uniforms;
-      // Der Spiegel rendert die ganze Szene ein zweites Mal — nur, wenn sich seit dem letzten Mal etwas bewegt hat
-      const mirrorRender = mirror.onBeforeRender;
-      const lastCam = new THREE.Matrix4();
-      let lastFrame = -1;
-      const reflectionWidth = MW;
-      this.reflectionResources.push(mirror,blurA,blurB,blurMat,quad);
-      mirror.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
-        const moved = !lastCam.equals(camera.matrixWorld);
-        if (!moved && !this.mirrorDirty && lastFrame >= 0) return;
-        // The concealed warm-up and initial dark frame must never reuse a bright reflection.
-        if (this.readyDone && !moved && performance.now()-lastFrame < (this.perfLevel===2?50:120))return;
-        // Keep attachments stable while rendering; quality tiers change update frequency.
-        lastCam.copy(camera.matrixWorld);
-        lastFrame = performance.now();
-        this.mirrorDirty = false;
-        uniforms.tDiffuse.value = mirrorRT.texture;
-        mirrorRender.call(mirror, renderer, scene, camera, geometry, material, group);
-        // Rough stone: soften the captured image before the Fresnel/distance falloff.
-        const prev = renderer.getRenderTarget();
-        let src: THREE.Texture = mirrorRT.texture;
-        for (let pass = 0; pass < 1; pass++) {
-          blurMat.uniforms.tDiffuse.value = src;
-          blurMat.uniforms.dir.value.set((1.8 + pass) / reflectionWidth, 0);
-          renderer.setRenderTarget(blurA);
-          quad.render(renderer);
-          blurMat.uniforms.tDiffuse.value = blurA.texture;
-          blurMat.uniforms.dir.value.set(0, (2.4 + pass) / (reflectionWidth / 2));
-          renderer.setRenderTarget(blurB);
-          quad.render(renderer);
-          src = blurB.texture;
-        }
-        renderer.setRenderTarget(prev);
-        uniforms.tDiffuse.value = blurB.texture;
-      };
-      mirror.rotation.x = -Math.PI / 2;
-      mirror.position.y = 0;
-      s.add(mirror);
-      this.mirror = mirror;
-    } else {
-      const dark = new THREE.Mesh(new THREE.PlaneGeometry(90, 24), new THREE.MeshStandardMaterial({ color: 0x14161d, roughness: .78, metalness: 0, envMapIntensity: 0 }));
-      dark.rotation.x = -Math.PI / 2;
-      s.add(dark);
-    }
-    // Marmorboden (Quaternius, CC0) halbtransparent über dem Spiegel: Fugen + Rauheit, Spiegelung scheint durch
+    s.add(new THREE.HemisphereLight(0x939cb8, 0x05060a, .32));
+    this.roomLighting = new HallLighting(s,this.items,this.stationX,this.loader,this.lite);
     const pbr = (base: string, repeat: [number, number]) => {
       const load = (name: string, srgb = false) => {
         const t = this.loader.load(`${TEX}/${base}_${name}.webp`);
@@ -831,23 +750,15 @@ export class HallScene {
       const orm = load('orm');
       return { map: load('basecolor', true), normalMap: load('normal'), aoMap: orm, roughnessMap: orm, metalnessMap: orm };
     };
-    const floorBase = new THREE.Mesh(new THREE.PlaneGeometry(90, 24), new THREE.MeshStandardMaterial({ color: 0x10131b, roughness: .65, metalness: .15 }));
-    floorBase.rotation.x = -Math.PI / 2;
-    floorBase.position.y = -.008;
-    s.add(floorBase);
     const floorTex = pbr('marble', [45, 12]);
-    const tiles = new THREE.Mesh(
-      new THREE.PlaneGeometry(90, 24),
-      new THREE.MeshStandardMaterial({ ...floorTex, color: 0x343943, transparent: true, opacity: .24, roughness: .72, metalness: 0, envMapIntensity: 0, normalScale: new THREE.Vector2(.2, .2), depthWrite: false }),
-    );
-    tiles.rotation.x = -Math.PI / 2;
-    tiles.position.y = 0.002;
-    s.add(tiles);
-
+    const floor = createHallFloor(floorTex,this.roomLighting,this.lite,this.container.clientWidth/this.container.clientHeight,()=>({dirty:this.mirrorDirty,ready:this.readyDone,quality:this.perfLevel}),()=>{this.mirrorDirty=false;});
+    s.add(floor.mesh);this.reflectionResources.push(floor);
+    if(floor.mesh instanceof Reflector)this.mirror=floor.mesh;
     // Rückwand aus Ziegel (Quaternius, CC0), Decke dunkel
     const wallTex = pbr('brick', [60, 8]);
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(180, 24), new THREE.MeshStandardMaterial({ ...wallTex, color: 0x353a44, roughness: 1, metalness: 0 }));
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(180, 24), new THREE.MeshStandardMaterial({ ...wallTex, color: 0x858c99, roughness: 1, metalness: 0 }));
     this.wallPaint.attach(wall.material);
+    this.roomLighting.decorate(wall.material,'wall');
     wall.name = 'hall-back-wall';
     wall.position.set((this.stationX[0] + this.stationX[this.stationX.length - 1]) / 2, 12, -1.6);
     s.add(wall);
@@ -858,15 +769,6 @@ export class HallScene {
     ceiling.position.y = 24;
     s.add(ceiling);
 
-    // Deckenlampen: fünf warme Spots, die mit der Kamera mitwandern (jedes Licht kostet pro Pixel)
-    for (let i = -2; i <= 2; i++) {
-      const spot = new THREE.SpotLight(0xd8dff0, 26, 12, Math.PI / 4.2, 0.7, 1.3);
-      spot.position.set(i * SPACING * 2, 4.05, 1.2);
-      spot.target.position.set(i * SPACING * 2, 0, 0.6);
-      s.add(spot, spot.target);
-      this.spots.push(spot);
-    }
-
     this.buildTv(s);
 
     // Farblicht hinter dem Neonschild — färbt die Rückwand in der Produktfarbe
@@ -874,24 +776,6 @@ export class HallScene {
     this.neonLight.position.set(0, -1.07, -0.12);
     this.tv.hang.add(this.neonLight);
 
-  }
-
-  /** Subtle emitter-aligned reflection footprints survive the lowest GPU tier. */
-  private addFloorGlows(index:number, color:THREE.Color, width:number) {
-    const c=document.createElement('canvas');c.width=64;c.height=256;
-    const ctx=c.getContext('2d')!;
-    const gradient=ctx.createRadialGradient(32,50,0,32,50,120);
-    gradient.addColorStop(0,'rgba(255,255,255,.95)');gradient.addColorStop(.18,'rgba(255,255,255,.45)');gradient.addColorStop(.6,'rgba(255,255,255,.08)');gradient.addColorStop(1,'rgba(255,255,255,0)');
-    ctx.fillStyle=gradient;ctx.fillRect(0,0,64,256);
-    const tex=new THREE.CanvasTexture(c);this.artworkTextures.add(tex);
-    const glows=[];
-    for(const side of [-1,1]){
-      const mat=new THREE.MeshBasicMaterial({color:color.clone(),map:tex,transparent:true,opacity:.16,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false});
-      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.22,1.4),mat);
-      mesh.rotation.x=-Math.PI/2;mesh.position.set(this.stationX[index]+side*(width/2-.025),.006,1.0);mesh.renderOrder=2;
-      this.scene.add(mesh);glows.push(mesh);
-    }
-    this.floorGlows.set(index,glows);
   }
 
   /* ---------- Automaten ---------- */
@@ -903,7 +787,7 @@ export class HallScene {
     group.rotation.y = 0;
     group.userData.index = index;
     this.scene.add(group);
-    this.addFloorGlows(index,brand,cabinetWidth(item.slug));
+
     const m: Machine = { index, item, group, screen, marquee, marqueeGlow, textures: [], raw: [], bitmaps: [], screenIdx: 0, loaded: false, brand, props: [], ctl: new Map() };
     this.machines.push(m);
 
@@ -1225,9 +1109,9 @@ export class HallScene {
     return out;
   }
 
-  /** Identical prefiltered RoomEnvironment, baked offline instead of blocking startup's GPU. */
+  /** Authored dark hall illumination, prefiltered offline before startup. */
   private async loadEnvironment() {
-    const response = await fetch('/textures/hall-environment.bin.gz');
+    const response = await fetch('/textures/hall-environment-v2.bin.gz');
     if (!response.ok) throw new Error('Hall environment unavailable');
     let buffer = await response.arrayBuffer();
     const magic = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
@@ -2668,8 +2552,7 @@ export class HallScene {
   }
 
   private applyFocus(immediate: boolean) {
-    const lights = this.lights;
-    let li = 0;
+
     for (const m of this.machines) {
       const d = Math.abs(m.index - this.focus);
       // Jenseits von sechs Stationen steht alles im Nebel — gar nicht erst zeichnen (Modelle, die noch laden,
@@ -2678,16 +2561,9 @@ export class HallScene {
       if (d <= NEAR) this.ensureTextures(m);
       const bright = d === 0 ? 1 : this.pose !== 'hall' ? 0.14 : d === 1 ? 0.62 : 0.4;
       m.group.userData.targetBright = bright;
-      for(const glow of this.floorGlows.get(m.index)??[]){glow.visible=this.lite&&d<=5&&(this.pose==='hall'||this.pose==='zoom');glow.material.opacity=(d===0?.09:d===1?.06:.035)*(this.pose==='hall'?1:.55);}
       if (immediate) m.group.userData.bright = bright;
     }
-    // Lampenreihe um den Fokus zentrieren (auf ganze Stationen gerastert, damit nichts springt)
-    const base = this.stationX[this.focus];
-    this.spots.forEach((spot, i) => {
-      const x = base + (i - 2) * SPACING * 2;
-      spot.position.x = x;
-      spot.target.position.x = x;
-    });
+    this.roomLighting.setFocus(this.focus);
   }
 
   /** Stationen, deren Hülle der Strahl trifft — spart den Dreiecks-Test an allen 16 Modellen */
@@ -2862,6 +2738,8 @@ export class HallScene {
       document.dispatchEvent(new CustomEvent('hall:settled', { detail: { pose: this.pose } }));
     }
     const ctlMoving = this.tickControls(now, dt);
+    const lightingMoving = this.roomLighting.update(dt,inHall);
+    if(lightingMoving)this.mirrorDirty=true;
     // Nebel: vor dem Automaten dichter, die Nachbarn treten zurück
     const fog = this.scene.fog as THREE.Fog;
     const close = this.pose === 'play' || this.pose === 'screen';
@@ -2934,12 +2812,12 @@ export class HallScene {
       tv.noise.visible = true;
     } else tv.noise.visible = false;
     const glowLevel = tv.screen.material.opacity * (1 - tv.staticMix * 0.55);
-    if (tv.light) tv.light.intensity = glowLevel * 9;
-    tv.glow.material.opacity = glowLevel * 0.6;
-    this.neonLight.intensity = glowLevel * 2;
+    if (tv.light) tv.light.intensity = glowLevel * 2.2;
+    tv.glow.material.opacity = glowLevel * 0.16;
+    this.neonLight.intensity = glowLevel * .45;
     tv.led.material.color.setHex(screenOn ? 0x2bd67b : 0xff3b30);
     if (cur && hasPic) {
-      if (!parked || !tv.key) this.neonLight.color.lerp(cur.brand, Math.min(1, dt * 12));
+      this.neonLight.color.lerp(parked ? focused.brand : cur.brand, 1-Math.exp(-dt*7));
       tv.glow.material.color.copy(this.neonLight.color);
       tv.light?.color.copy(this.neonLight.color);
       if (arrived && tv.phase !== 'static') this.updateTv(cur, inHall, now);
@@ -3015,7 +2893,7 @@ export class HallScene {
     if (this.tvDissolve?.tick(now)) wallMoving = true;
 
     // Außerhalb der Halle nur rendern, wenn sich etwas bewegt — die Seite daneben bleibt flüssig
-    if (inHall || camMoving || brightMoving || fogMoving || wallMoving || ctlMoving || this.dirty || !this.readyDone) {
+    if (inHall || camMoving || lightingMoving || brightMoving || fogMoving || wallMoving || ctlMoving || this.dirty || !this.readyDone) {
       if (brightMoving || wallMoving || ctlMoving || this.dirty) this.mirrorDirty = true;
       this.dirty = false;
       this.renderFrame();
@@ -3093,9 +2971,9 @@ export class HallScene {
         this.mirrorDirty = true;
         console.info('[hall] Leistung: reduzierte Reflexion, Bloom aus');
       } else {
-        this.renderer.setPixelRatio(1);
+        this.renderer.setPixelRatio(Math.min(1,this.pixelRatioFor(this.container.clientWidth,this.container.clientHeight,this.lite)*.7));
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight, false);
-        console.info('[hall] Leistung: Pixelratio 1');
+        console.info('[hall] Leistung: reduzierte Renderfläche');
       }
     }
   }
@@ -3132,6 +3010,7 @@ export class HallScene {
     this.tv?.tex.dispose();this.tv?.logoTex.dispose();this.tv?.noiseTex.dispose();
     this.surfaceMaps.normal.dispose(); this.surfaceMaps.roughness.dispose();
     this.reflectionResources.forEach(resource=>resource.dispose());
+    this.roomLighting.dispose();
     this.artworkTextures.forEach((texture) => texture.dispose());
     this.artworkTextures.clear();
     this.cabinetArtSources.forEach(texture=>texture.dispose());this.cabinetArtSources.clear();

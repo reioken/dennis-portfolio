@@ -1,0 +1,1 @@
+import sharp from 'sharp';import fs from 'node:fs/promises';await fs.mkdir('public/textures/hall-light',{recursive:true});for(const surface of ['floor','wall'])for(const kind of ['bounce','contact'])await sharp(`.source-assets/hall-light-bakes/${surface}-${kind}-v1.png`).webp({lossless:true}).toFile(`public/textures/hall-light/${surface}-${kind}-v1.webp`);

@@ -44,8 +44,8 @@ export function clearScreenGlass(wear: ReturnType<typeof makeGlassWear>, mesh?: 
     geometry.setAttribute('uv',new THREE.BufferAttribute(uv,2));
   }
   const mat=new THREE.MeshPhysicalMaterial({color:enclosure?0x11171d:0x000000,transparent:true,opacity:.06,
-    roughness:enclosure?.8:.65,roughnessMap:wear.roughness,metalness:0,specularIntensity:1,
-    clearcoat:enclosure?.65:.45,clearcoatRoughness:enclosure?.12:.085,envMapIntensity:enclosure?.7:1.15,depthWrite:false,
+    roughness:enclosure?.8:.65,roughnessMap:wear.roughness,metalness:0,specularIntensity:enclosure?.7:.5,
+    clearcoat:enclosure?.45:.22,clearcoatRoughness:enclosure?.12:.085,envMapIntensity:enclosure?.7:1.15,depthWrite:false,
     side:enclosure?THREE.DoubleSide:THREE.FrontSide,forceSinglePass:true});
   // Keep reflected light visible without adding an opaque diffuse veil.
   if (!enclosure) {
@@ -65,11 +65,11 @@ export function clearScreenGlass(wear: ReturnType<typeof makeGlassWear>, mesh?: 
       // Preserve grazing highlights while keeping the front-facing display
       // readable. A constant reflection gain made broad lamp reflections
       // overwhelm screenshots, especially on the shallow laptop screens.
-      gl_FragColor.rgb *= 0.24 + glassEdge * 0.41;
+      gl_FragColor.rgb *= 0.12 + glassEdge * 0.24;
       gl_FragColor.a = clamp(0.035 + glassEdge * 0.24 + max(0.0, glassMarks - 0.16) * 0.045, 0.035, 0.32);
     `);
   };
-  mat.customProgramCacheKey=()=> enclosure ? 'clear-worn-enclosure-v2' : 'convex-screen-glass-v3';
+  mat.customProgramCacheKey=()=> enclosure ? 'clear-worn-enclosure-v3' : 'convex-screen-glass-v4';
   return mat;
 }
 

@@ -94,7 +94,11 @@ export function withRoomPower(scene, elapsed, originX, draw, preparing=false, ta
       materials.set(material, Math.max(materials.get(material) ?? 0, power));
     }
   }
+  const scaledUniforms = new Set();
   for (const [material, power] of materials) {
+    const uniform=material.userData?.hallPower;
+    if(uniform&&!scaledUniforms.has(uniform)){const value=uniform.value;uniform.value*=room;scaledUniforms.add(uniform);restore.push(()=>{uniform.value=value;});}
+    if(material.lightMap){const intensity=material.lightMapIntensity;material.lightMapIntensity*=room;restore.push(()=>{material.lightMapIntensity=intensity;});}
     if (material.isMeshBasicMaterial || material.isSpriteMaterial) {
       const color = material.color.clone();
       material.color.multiplyScalar(power);
