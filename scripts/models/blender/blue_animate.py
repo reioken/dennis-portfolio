@@ -199,7 +199,9 @@ def solve(P):
     return mats
 
 # ---------------------------------------------------------------- clips
-STRIDE_SPEED = .19; WALK_CYCLE = 1.2; STANCE = .65
+# A cat's stride is long and its cadence low: 37 cm per cycle at 0.34 m/s (about 0.9 strides/s), not 23 cm at 1.5.
+# The runtime scales the clip's time by speed / STRIDE_SPEED, so the roam at 0.21 m/s becomes a slow prowl.
+STRIDE_SPEED = .34; WALK_CYCLE = 1.1; STANCE = .62
 TROT_SPEED = .9; TROT_CYCLE = .52; TROT_STANCE = .5
 
 def look_around(P, t, D, scale=1.):
@@ -242,7 +244,9 @@ def walk(t, D):
     P['yaw']['Pelvis'] = .05 * math.sin(ph)
     P['bend']['Spine'] = .055 * math.sin(ph + .3); P['bend']['Chest'] = .045 * math.sin(ph + .9)
     P['bend']['Neck'] = -.03 * math.sin(ph + 1.2); P['bend']['Head'] = -.02 * math.sin(ph + 1.5)
-    P['head']['pitch'] = .025 * math.sin(2 * ph + .6); P['head']['roll'] = .02 * math.sin(ph)
+    # The head is not bolted to the trunk: it bobs about 2 cm on its own timing and nods a little with each step.
+    P['head']['pitch'] = .05 * math.sin(2 * ph + .6); P['head']['roll'] = .02 * math.sin(ph)
+    P['head_lift'] = .011 * math.sin(2 * ph + 2.0)
     stride = STRIDE_SPEED * D * STANCE
     for (leg, side), offset in {('Hind', 'L'): 0, ('Front', 'L'): .25, ('Hind', 'R'): .5, ('Front', 'R'): .75}.items():
         L = P['legs'][(leg, side)]; cycle = (t / D + offset) % 1
@@ -255,9 +259,10 @@ def walk(t, D):
             L['dz'] = math.sin(math.pi * u ** .8) * (.045 if leg == 'Front' else .038)
             L['pitch'] = .55 * math.sin(math.pi * u) * (1 - u) ** .5
             L['root_dz'] = (.012 if leg == 'Front' else .008) * math.sin(math.pi * u)
-    P['tail_lift'] = .15
+    # Tail carried relaxed, not hooked: a low lift with a lazy lateral wave that grows towards the tip.
+    P['tail_lift'] = .10
     for i in range(6):
-        k = i / 5; P['tail_wave'][i] = math.sin(ph - i * .55) * .022 * k
+        k = i / 5; P['tail_wave'][i] = math.sin(ph - i * .55) * .03 * k; P['tail_lift_wave'][i] = .006 * k * math.sin(2 * ph + 1)
     for side, flick in (('L', pulse(t, .1 * D, .25)), ('R', pulse(t, .6 * D, .25))): P['ears'][side][0] += .12 * flick
     return P
 
@@ -295,10 +300,12 @@ def apply_rest(P, front, torso, hind, tail, head):
     P['tail_rest'] = tail
 
 def settle(t, D):
+    """Lying down takes a cat about a second and a half: front folds, the torso arrives with a small overshoot, the
+    hindquarters tuck, the tail lies down last."""
     P = base()
-    apply_rest(P, ease(t, .2, 1.5), min(1, ease_back(t, .5, 1.9, 1.1)), ease(t, .8, 2.2), ease(t, 1.0, 2.4), ease_out(t, .6, 2.0))
-    P['head']['pitch'] = .10 * ease_out(t, .6, 2.0)
-    P['bob'] += -.006 * pulse(t, .4, 1.2)  # a quick dip as the front end folds
+    apply_rest(P, ease(t, .12, 1.0), min(1, ease_back(t, .3, 1.25, 1.1)), ease(t, .5, 1.45), ease(t, .65, 1.6), ease_out(t, .4, 1.3))
+    P['head']['pitch'] = .10 * ease_out(t, .4, 1.3)
+    P['bob'] += -.006 * pulse(t, .25, .8)  # a quick dip as the front end folds
     return P
 
 def sleep(t, D):
@@ -331,21 +338,38 @@ def happy(t, D):
         k = i / 5; P['tail_wave'][i] = math.sin(2 * w - i * .45) * .02 * k
     return P
 
-def apply_sit(P, hind, torso, tail):
-    """Upright sit: rear lowered onto tucked hind legs, front legs straight, tail on the floor."""
+SIT_FRONT_BACK = .035  # the forepaws step in under the chest as the rear comes down
+def apply_sit(P, hind, torso, tail, front=None):
+    """Upright sit: rear lowered onto tucked hind legs, front legs straight, tail on the floor. Nothing is quite
+    symmetrical: one forepaw a little ahead of the other, the head a touch off axis."""
+    if front is None: front = torso
     for n in TORSO: P['drop'][n] = SIT_DROP[n] * torso
     P['hind'] = {'amount': hind, 'target': HIND_SIT[0], 'bend': HIND_SIT[1]}
     P['tail_rest'] = tail
     P['head']['pitch'] += -.04 * torso
+    P['legs'][('Front', 'L')]['dy'] += SIT_FRONT_BACK * front; P['legs'][('Front', 'R')]['dy'] += (SIT_FRONT_BACK - .012) * front
+    P['head']['yaw'] += .05 * torso; P['head']['roll'] += .03 * torso
 
 def sit(t, D):
-    P = base(); apply_sit(P, ease(t, .1, 1.5), min(1, ease_back(t, .2, 1.7, 1.2)), ease(t, .6, 1.8))
-    P['push'] += .012 * pulse(t, .05, 1.0)  # weight rocks back before the hindquarters come down
+    """Down in under a second: the weight rocks back with a small nod, the rear folds, the forepaws step in, the
+    tail lies down last."""
+    P = base(); apply_sit(P, ease_out(t, .08, .55, 2.2), min(1, ease_back(t, .12, .72, 1.15)), ease(t, .4, .9), ease(t, .3, .8))
+    P['push'] += .014 * pulse(t, .0, .5)
+    P['head']['pitch'] += .06 * pulse(t, .1, .5)
     return P
 
 def sitidle(t, D):
     P = base(); apply_sit(P, 1, 1, 1); look_around(P, t, D, scale=.6)
     P['tail_wave'][5] += .012 * pulse(t, .45 * D, .6) + .008 * pulse(t, .9 * D, .5)
+    return P
+
+def sitarch(t, D):
+    """Stroked along the back while seated: the back rounds up into the hand, the head dips, the tail lifts."""
+    P = base(); apply_sit(P, 1, 1, 1); a = ease(t, .1, .55) * (1 - ease(t, 1.1, 1.6))
+    P['drop']['Spine'] += -.03 * a; P['drop']['Chest'] += -.018 * a; P['drop']['Pelvis'] += -.01 * a
+    P['head']['pitch'] += .22 * a; P['head_lift'] += -.006 * a
+    P['tail_rest'] = 1 - .6 * a; P['tail_lift'] = .5 * a
+    for side in 'LR': P['ears'][side][0] += .14 * a
     return P
 
 # ---------------------------------------------------------------- jumps with root motion
@@ -354,53 +378,86 @@ def sitidle(t, D):
 # body and warps it to the actual take-off and landing points, so the pose and the flight can never disagree.
 JUMP_UP = (.63, 1.95)
 JUMP_DOWN = (.63, 1.95)
+G = 9.81
 
 def jumpup(t, D):
-    """Onto the ledge: look up, load the hindquarters, launch nose-up, rise past the marquee, hook the front paws
-    over its top and swing the body in, hind paws follow, absorb, settle. Forward travel only starts once the body
-    is above the top, so nothing passes through the marquee front."""
+    """Onto the ledge, the way a cat does it: sit back and stare at the spot, load the hindquarters, launch almost
+    straight up on a real parabola from 38 cm in front of the cabinet, hook the lip with the forepaws just short of
+    the top, haul the chest up and over while the hind legs scramble, then a soft landing crouch. Timings: crouch
+    .08-.40, launch .40-.46, flight .46-.98 (hook), pull-up .98-1.30, land 1.30-1.65. Every key uses `curve()`, so
+    the flight has no zero-velocity hitches; the old smoothstep tracks rose like a lift and slid forward at the top."""
     P = base()
-    P['head']['pitch'] = track(t, [(0, 0), (.15, -.30), (.45, -.22), (.6, -.05), (.9, .05), (1.05, .22), (1.25, .05), (1.5, 0)])
-    load = track(t, [(.12, 0), (.42, 1), (.55, -.3), (.7, 0), (1.05, 0), (1.22, .7), (1.5, 0)])
-    for n, d in (('Pelvis', .085), ('Spine', .07), ('Chest', .045), ('Neck', .02), ('Head', .012)): P['drop'][n] = d * load
-    P['push'] = track(t, [(.12, 0), (.42, .022), (.55, -.03), (.8, -.01), (1.5, 0)])
-    P['body_pitch'] = track(t, [(.28, 0), (.42, .08), (.58, -.36), (.85, -.28), (1.0, -.08), (1.14, .16), (1.36, 0)])
-    up = track(t, [(.5, 0), (.8, 1.6), (.97, 2.12), (1.2, JUMP_UP[1])])
-    forward = track(t, [(.5, 0), (.9, .03), (.97, .1), (1.2, JUMP_UP[0])])
+    T0, TH, TP, TL = .46, .98, 1.30, 1.65
+    HOOK_Y, HOOK_Z, OVER_Y = 1.62, .08, 2.10  # body origin at the hook (36 cm below the top, still 30 cm out) and over the lip
+    flight = TH - T0; tau = max(0., min(flight, t - T0))
+    vy = (HOOK_Y + .5 * G * flight * flight) / flight  # ≈ 5.7 m/s, still rising a little at the hook
+    if t < TH:
+        up = vy * tau - .5 * G * tau * tau; forward = HOOK_Z * tau / flight
+    else:
+        up = curve(t, [(TH, HOOK_Y), (TP, OVER_Y, 'out'), (TL - .12, JUMP_UP[1], 'smooth')])
+        forward = curve(t, [(TH, HOOK_Z), (TP - .06, .18, 'in'), (TL - .15, JUMP_UP[0], 'out')])
     P['root_move'] = V((0, -forward, up))
+    # Sit back and load, pitch nose-up through the launch and the rise, level out at the hook, over the edge in the pull-up.
+    load = curve(t, [(.08, 0), (.30, 1, 'smooth'), (.40, 1.05), (T0, .2, 'snap'), (.7, 0)])
+    for n, d in (('Pelvis', .09), ('Spine', .075), ('Chest', .05), ('Neck', .02), ('Head', .01)): P['drop'][n] = d * load
+    P['push'] = curve(t, [(.05, 0), (.30, .025), (T0, -.03, 'snap'), (.8, -.01), (TH, 0)])
+    # The nose-up pitch only starts once the hind paws have left the floor (it rotates about the chest, so an early
+    # pitch would push the rear through the ground).
+    P['body_pitch'] = curve(t, [(.2, 0), (.38, .06), (T0, .02), (T0 + .09, -.55, 'snap'), (.75, -.62), (TH, -.55), (TP, .25, 'smooth'), (TL - .1, 0, 'out')])
+    P['head']['pitch'] = curve(t, [(0, 0), (.14, -.32, 'out'), (.36, -.26), (T0, -.05), (.8, .10), (TH, .25), (TP, .30), (TL - .2, .05), (TL, 0)])
+    land = curve(t, [(TP - .02, 0), (TP + .12, 1, 'out'), (TL, 0, 'back')])
+    for n, d in (('Pelvis', .05), ('Spine', .045), ('Chest', .04), ('Neck', .015)): P['drop'][n] += d * land
     for side in 'LR':
-        P['ears'][side][0] = track(t, [(.35, 0), (.55, .16), (.9, .05), (1.1, .12), (1.5, 0)])
+        P['ears'][side][0] = curve(t, [(.3, 0), (T0, .15), (.85, .05), (TH, .12), (TP, .18), (TL, 0)])
         F, H = P['legs'][('Front', side)], P['legs'][('Hind', side)]
-        F['dy'] = track(t, [(.42, 0), (.58, -.06), (.85, -.11), (.97, -.09), (1.2, 0)])
-        F['dz'] = track(t, [(.42, 0), (.55, .06), (.8, .14), (.9, .04), (.97, -.05), (1.2, 0)])
-        F['pitch'] = track(t, [(.45, 0), (.6, .5), (.85, .3), (.97, -.25), (1.2, 0)])
-        H['dy'] = track(t, [(.4, 0), (.56, .14), (.85, .10), (1.15, .06), (1.32, 0)])
-        H['dz'] = track(t, [(.4, 0), (.5, 0), (.64, .12), (1.05, .14), (1.22, .02), (1.32, 0)])
-    P['tail_back'] = track(t, [(.3, 0), (.55, .9), (1.1, .8), (1.35, .2), (1.5, 0)])
-    P['tail_lift'] = track(t, [(0, 0), (.35, .3), (.55, 0)])
+        # Forepaws fold at launch, reach forward-up, hook the lip, then hold it while the body rises to meet them.
+        # (the body's own nose-up pitch already carries the paws upward, so the reach here is mostly forward)
+        F['dy'] = curve(t, [(T0 - .02, 0), (T0 + .1, -.05), (.8, -.15), (TH, -.20), (TP, -.10), (TL - .15, 0, 'out')])
+        F['dz'] = curve(t, [(T0 - .02, 0), (T0 + .1, .06), (.8, .12), (TH, .16), (TP, .02, 'out'), (TL - .15, 0)])
+        F['pitch'] = curve(t, [(T0, 0), (T0 + .15, .5), (.85, .25), (TH, -.35), (TP, -.1), (TL - .2, 0)])
+        # Hind legs drive, trail, then scramble up over the lip.
+        H['dy'] = curve(t, [(.36, 0), (T0 + .08, .13), (.85, .10), (TH, .08), (TP - .05, .04), (TL - .2, 0)])
+        H['dz'] = curve(t, [(.36, 0), (T0 + .04, 0), (.7, .12), (TH, .10), (TP - .10, .14, 'smooth'), (TP + .06, .02, 'out'), (TL - .2, 0)])
+        H['pitch'] = curve(t, [(T0, 0), (T0 + .1, .3), (TH, .1), (TL - .2, 0)])
+    P['tail_back'] = curve(t, [(.3, 0), (T0 + .1, .9, 'out'), (TH, .8), (TP, .5), (TL, 0, 'out')])
+    P['tail_lift'] = curve(t, [(0, 0), (.3, .3), (T0, 0)])
     return P
 
 def jumpdown(t, D):
-    """Off the ledge: peer down, push off forward first so the hindquarters clear the marquee, then drop nose-down,
-    the front paws take the landing, the hindquarters follow."""
+    """Off the ledge: peer down, gather, hop off with a little forward push, fall under gravity nose-down, the
+    forelimbs take the landing with a deep crouch, the hind paws follow, up and away. Timings: peer 0-.30, push
+    .30-.42, flight .42-1.10, landing crouch 1.10-1.45."""
     P = base()
-    P['head']['pitch'] = track(t, [(0, 0), (.2, .35), (.4, .25), (.55, .1), (.85, .28), (1.05, .05), (1.3, 0)])
-    load = track(t, [(.05, 0), (.32, .7), (.42, .2), (.55, 0), (.9, 0), (1.02, 1), (1.3, 0)])
-    for n, d in (('Pelvis', .05), ('Spine', .065), ('Chest', .07), ('Neck', .03), ('Head', .015)): P['drop'][n] = d * load
-    P['push'] = track(t, [(.1, 0), (.32, -.02), (.45, -.04), (.7, 0)])
-    P['body_pitch'] = track(t, [(.2, 0), (.42, .12), (.62, .36), (.85, .3), (.98, .05), (1.1, -.08), (1.3, 0)])
-    down = track(t, [(.4, 0), (.55, .05), (.7, .5), (.85, 1.3), (.95, JUMP_DOWN[1])])
-    forward = track(t, [(.4, 0), (.55, .3), (.75, .5), (.95, JUMP_DOWN[0])])
+    T0, TL, TE = .42, 1.10, 1.45
+    flight = TL - T0; tau = max(0., min(flight, t - T0))
+    hop = .35  # m/s upward at the push-off
+    fall = -(hop * tau - .5 * G * tau * tau); fall_end = -(hop * flight - .5 * G * flight * flight)
+    # The forepaws touch down with the body still 12 cm up and pitched nose-down; the last 12 cm are the legs
+    # flexing under it, not gravity (a body that reached the floor with the legs extended put the paws through it).
+    CONTACT = JUMP_DOWN[1] - .12
+    down = CONTACT * fall / fall_end if t >= T0 else 0.
+    if t >= TL: down = curve(t, [(TL, CONTACT), (TL + .12, JUMP_DOWN[1], 'out')])
+    forward = curve(t, [(T0 - .06, 0), (T0, .02), (TL, .58, 'smooth'), (TE - .15, JUMP_DOWN[0], 'out')])
     P['root_move'] = V((0, -forward, -down))
+    P['head']['pitch'] = curve(t, [(0, 0), (.16, .38, 'out'), (T0, .30), (.8, .45), (TL, .40), (TL + .1, .25), (TE, 0, 'out')])
+    gather = curve(t, [(.05, 0), (.30, .8, 'smooth'), (T0, .3, 'snap'), (T0 + .1, 0)])
+    for n, d in (('Pelvis', .05), ('Spine', .06), ('Chest', .06), ('Neck', .03), ('Head', .015)): P['drop'][n] = d * gather
+    # Forelimbs first: the deep crouch peaks 0.1 s after contact, the hindquarters land and fold a beat later.
+    land_f = curve(t, [(TL - .02, 0), (TL + .10, 1, 'out'), (TE, 0, 'back')])
+    land_h = curve(t, [(TL + .04, 0), (TL + .16, 1, 'out'), (TE + .05, 0, 'back')])
+    P['drop']['Chest'] += .09 * land_f; P['drop']['Neck'] += .05 * land_f; P['drop']['Head'] += .02 * land_f
+    P['drop']['Spine'] += .06 * (.5 * land_f + .5 * land_h); P['drop']['Pelvis'] += .05 * land_h
+    P['push'] = curve(t, [(.1, 0), (.30, -.02), (T0, -.04, 'snap'), (.7, 0)])
+    P['body_pitch'] = curve(t, [(T0 - .1, 0), (T0 + .15, .30), (.85, .50), (TL, .55), (TL + .12, .15, 'out'), (TE, 0, 'out')])
     for side in 'LR':
-        P['ears'][side][0] = track(t, [(.3, 0), (.5, .1), (.9, .14), (1.3, 0)])
+        P['ears'][side][0] = curve(t, [(.3, 0), (T0, .1), (.9, .14), (TE, 0)])
         F, H = P['legs'][('Front', side)], P['legs'][('Hind', side)]
-        F['dy'] = track(t, [(.35, 0), (.5, -.08), (.85, -.10), (1.0, 0)])
-        F['dz'] = track(t, [(.35, 0), (.55, -.04), (.85, -.08), (.95, 0)])
-        F['pitch'] = track(t, [(.4, 0), (.6, -.3), (.9, .1), (1.05, 0)])
-        H['dy'] = track(t, [(.35, 0), (.5, .06), (.9, .08), (1.12, 0)])
-        H['dz'] = track(t, [(.3, 0), (.45, 0), (.6, .10), (.92, .12), (1.04, .02), (1.14, 0)])
-    P['tail_back'] = track(t, [(.3, 0), (.55, .8), (.9, .9), (1.1, .3), (1.3, 0)])
+        F['dy'] = curve(t, [(T0 - .05, 0), (T0 + .1, -.08), (.9, -.10), (TL, -.06), (TE, 0, 'out')])
+        F['dz'] = curve(t, [(T0 - .05, 0), (T0 + .15, -.03), (.9, -.09), (TL - .02, -.10), (TL + .10, .07, 'out'), (TE, 0)])
+        F['pitch'] = curve(t, [(T0, 0), (.6, -.3), (TL, -.15), (TL + .1, .1), (TE, 0)])
+        H['dy'] = curve(t, [(T0 - .05, 0), (T0 + .1, .06), (.9, .08), (TL + .04, .05), (TE, 0, 'out')])
+        H['dz'] = curve(t, [(T0 - .08, 0), (T0 + .05, 0), (.65, .10), (TL, .11), (TL + .06, .0), (TE, 0)])
+    P['tail_back'] = curve(t, [(.3, 0), (T0 + .1, .8), (.9, .9), (TL + .1, .3), (TE, 0, 'out')])
     return P
 
 # ---------------------------------------------------------------- touch reactions
@@ -471,10 +528,10 @@ def perchidle(t, D):
 
 def stand(t, D):
     """Up from the sit: weight rocks forward, the hind legs push, the rear rises, the tail lifts off last."""
-    P = base(); apply_sit(P, 1 - ease(t, .15, 1.05), 1 - ease(t, .3, 1.25), 1 - ease(t, .55, 1.35))
-    P['push'] += -.012 * pulse(t, .05, 1.1); P['head_lift'] += .006 * pulse(t, .2, 1.0)
-    P['head']['pitch'] += -.05 * pulse(t, .1, .9)
-    for side in 'LR': P['ears'][side][0] += .06 * pulse(t, .1, .8)
+    P = base(); apply_sit(P, 1 - ease(t, .1, .62), 1 - ease(t, .18, .75), 1 - ease(t, .35, .85), 1 - ease(t, .25, .8))
+    P['push'] += -.012 * pulse(t, .03, .65); P['head_lift'] += .006 * pulse(t, .12, .6)
+    P['head']['pitch'] += -.05 * pulse(t, .06, .55)
+    for side in 'LR': P['ears'][side][0] += .06 * pulse(t, .06, .5)
     return P
 
 def unperch(t, D):
@@ -496,75 +553,76 @@ def unperch(t, D):
 # around rather than as a turntable. Authored in the turning frame: planted paws keep their world position,
 # the Root bone carries the yaw, the runtime strips it and rotates the body by the same curve.
 PIVOT = V((0, -.03, 0))
-TURN_SWING_T, TURN_PAUSE, TURN_LEAD_IN, TURN_SETTLE = .26, .11, .2, .4
-TURN_LIFT = {'Front': .055, 'Hind': .045}
+# A cat turns in one motion: the head goes first, the body follows in a single decelerating sweep (about 0.4 s for
+# 45°, 0.6 s for 90°) and two or three quick diagonal steps reposition the paws while it happens. The old version
+# (four equal beats with full stops between them and a dead half second at the end) measured 2.1 s for 90° and
+# read as a turntable that ticks.
+TURN_LEAD, TURN_SETTLE = .10, .12
+TURN_LIFT = {'Front': .05, 'Hind': .04}
 
 def turn_plan(theta, sign):
-    """Beats of (start, end, pair, yaw_from, yaw_to, landing): the first pair steps ahead of the body."""
-    beats = 2 if theta < math.radians(60) else 4
+    """A sweep length and a list of steps (start, end, pair, lead). `lead` is how far past the body's yaw at the
+    moment of landing the paw is set down, so the last step leaves every paw squared up to the new heading."""
+    big = theta >= math.radians(60)
+    sweep = .62 if big else .42
     inner, outer = ('L', 'R') if sign > 0 else ('R', 'L')
-    pairs = [[('Front', inner), ('Hind', outer)], [('Front', outer), ('Hind', inner)]]
-    plan = []; t = TURN_LEAD_IN
-    for k in range(beats):
-        yaw_from, yaw_to = theta * k / beats, theta * (k + 1) / beats
-        plan.append((t, t + TURN_SWING_T * jitter(k * 3 + 1, .08), pairs[k % 2], yaw_from, yaw_to, min(theta, yaw_to + theta / beats)))
-        t += TURN_SWING_T + TURN_PAUSE * jitter(k * 5 + 2, .2)
-    return plan, t + TURN_SETTLE
+    A = [('Front', inner), ('Hind', outer)]; B = [('Front', outer), ('Hind', inner)]
+    steps = [(TURN_LEAD + .02, TURN_LEAD + .24, A, .10), (TURN_LEAD + .20, TURN_LEAD + .42, B, .12 if big else .10)]
+    if big: steps.append((TURN_LEAD + .40, TURN_LEAD + .62, A, 0.))
+    steps = [(s * jitter(i * 7 + 3, .05), min(e * jitter(i * 7 + 5, .05), TURN_LEAD + sweep), pair, lead) for i, (s, e, pair, lead) in enumerate(steps)]
+    return {'sweep': sweep, 'steps': steps}, TURN_LEAD + sweep + TURN_SETTLE
 
 def turn_yaw(t, plan, theta):
-    y = 0.
-    for start, stop, pair, yaw_from, yaw_to, landing in plan:
-        if t >= stop: y = yaw_to
-        elif t >= start: return yaw_from + (yaw_to - yaw_from) * smooth((t - start) / (stop - start))
-    return y
+    u = clamp((t - TURN_LEAD) / plan['sweep'])
+    return theta * smooth(u ** .85)  # launches quickly, settles slowly
 
-def turn_paw(t, plan, foot):
-    """World angle, lift and pitch of one paw: it stays planted until its pair swings."""
+def turn_paw(t, plan, foot, theta):
+    """World angle, lift and pitch of one paw: planted until its step, then swung to a spot a little ahead of the body."""
     angle = 0.
-    for start, stop, pair, yaw_from, yaw_to, landing in plan:
+    for start, stop, pair, lead in plan['steps']:
         if foot not in pair: continue
+        landing = min(theta, turn_yaw(stop, plan, theta) + theta * lead)
         if t >= stop: angle = landing
         elif t >= start:
             u = (t - start) / (stop - start)
-            return angle + (landing - angle) * smooth(u), math.sin(math.pi * u), .5 * math.sin(math.pi * u) * (1 - u) ** .5
+            return angle + (landing - angle) * (1 - (1 - u) ** 2.4), math.sin(math.pi * u ** .9), .5 * math.sin(math.pi * u) * (1 - u) ** .5
     return angle, 0., 0.
 
 def turn(t, D, theta, sign, plan):
     P = base(); y = turn_yaw(t, plan, theta); P['root_yaw'] = sign * y
     u = clamp(t / D); arc = math.sin(math.pi * u)
     scale = theta / (math.pi / 2)
-    # Head snaps first, the spine bends into a C behind it and unwinds as the body catches up.
-    lead = curve(t, [(0, 0), (.16, .5, 'snap'), (.55 * D, .28), (D - .1, 0, 'out')]) * sign * scale
-    P['head']['yaw'] = lead * .55
-    P['bend']['Neck'] = lead * .25; P['bend']['Chest'] = lead * .42; P['bend']['Spine'] = lead * .3
-    P['head']['roll'] = sign * .06 * arc; P['head']['pitch'] = -.04 * ease_out(t, 0, .25) * (1 - ease(t, D - .5, D))
+    # Eyes and head go first, the spine bends into a C behind them and unwinds as the body catches up.
+    lead = curve(t, [(0, 0), (.12, .55, 'snap'), (TURN_LEAD + plan['sweep'] * .55, .22), (D - .05, 0, 'out')]) * sign * scale
+    P['head']['yaw'] = lead * .6
+    P['bend']['Neck'] = lead * .22; P['bend']['Chest'] = lead * .38; P['bend']['Spine'] = lead * .28
+    P['head']['roll'] = sign * .05 * arc; P['head']['pitch'] = -.04 * ease_out(t, 0, .2) * (1 - ease(t, D - .3, D))
     P['yaw']['Pelvis'] = -sign * .05 * arc
-    P['roll']['Chest'] = -sign * .06 * arc
+    P['roll']['Chest'] = -sign * .07 * arc
     inner = 'L' if sign > 0 else 'R'
     P['ears'][inner][1] += sign * .14 * arc; P['ears'][inner][0] += .06 * arc
-    for side in 'LR': P['ears'][side][0] += .10 * ease_out(t, 0, .2) * (1 - ease(t, .3, .8))
+    for side in 'LR': P['ears'][side][0] += .10 * ease_out(t, 0, .15) * (1 - ease(t, .25, .6))
     P['tail_lift'] = .2 * arc
     for i in range(6):
         k = i / 5
-        P['tail_wave'][i] += -sign * .07 * k ** 1.4 * math.sin(math.pi * clamp((t - .1) / (D - .2))) + sign * .02 * k * k * pulse(t, .55 * D, .5)
-        P['tail_lift_wave'][i] += .01 * k * pulse(t, .3 * D, .6)
-    # Each step: the body dips as the pair lands and the weight rocks onto the planted diagonal.
-    for k, (start, stop, pair, yaw_from, yaw_to, landing) in enumerate(plan):
+        P['tail_wave'][i] += -sign * .08 * k ** 1.4 * math.sin(math.pi * clamp((t - .05) / (D - .1))) + sign * .02 * k * k * pulse(t, .55 * D, .35)
+        P['tail_lift_wave'][i] += .01 * k * pulse(t, .3 * D, .4)
+    # Weight rocks onto the planted diagonal while a pair swings, and the body dips as it lands.
+    for k, (start, stop, pair, lead_) in enumerate(plan['steps']):
         swing = pulse(t, start, stop - start)
-        P['bob'] += -.006 * swing - .007 * pulse(t, stop - .05, .22)
+        P['bob'] += -.005 * swing - .006 * pulse(t, stop - .04, .16)
         P['sway'] += (sign if k % 2 == 0 else -sign) * .012 * swing
         P['roll']['Pelvis'] += (1 if k % 2 == 0 else -1) * sign * .035 * swing
-        P['push'] += .005 * swing
     for leg in ('Front', 'Hind'):
         for side in 'LR':
             paw = f'{leg}Paw.{side}'
-            a, lift, pitch = turn_paw(t, plan, (leg, side))
+            a, lift, pitch = turn_paw(t, plan, (leg, side), theta)
             rel = heads[paw] - PIVOT
             pos = PIVOT + Matrix.Rotation(sign * (a - y), 4, 'Z') @ rel + V((0, 0, TURN_LIFT[leg] * lift))
-            outward = pos - PIVOT; outward.z = 0; outward = outward.normalized() * .025 * lift
+            outward = pos - PIVOT; outward.z = 0; outward = outward.normalized() * .02 * lift
             pos = pos + outward
             L = P['legs'][(leg, side)]; L['dx'], L['dy'], L['dz'], L['pitch'] = (pos - heads[paw]).x, (pos - heads[paw]).y, (pos - heads[paw]).z, pitch
-            L['root_dz'] = (.014 if leg == 'Front' else .009) * lift
+            L['root_dz'] = (.012 if leg == 'Front' else .008) * lift
     return P
 
 TURNS = []
@@ -573,8 +631,8 @@ for degrees in (45, 90):
         theta = math.radians(degrees); plan, D = turn_plan(theta, sign)
         TURNS.append((f'turn{side}{degrees}', round(D, 2), (lambda th, sg, pl: lambda t, D: turn(t, D, th, sg, pl))(theta, sign, plan)))
 
-CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 2.4, settle), ('sleep', 6.0, sleep), ('wake', 1.5, wake), ('happy', 4.0, happy),
-         ('sit', 1.8, sit), ('sitidle', 6.0, sitidle), ('stand', 1.4, stand), ('jumpup', 1.5, jumpup), ('jumpdown', 1.3, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
+CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 1.6, settle), ('sleep', 6.0, sleep), ('wake', 1.5, wake), ('happy', 4.0, happy),
+         ('sit', .9, sit), ('sitidle', 6.0, sitidle), ('sitarch', 1.6, sitarch), ('stand', .9, stand), ('jumpup', 1.7, jumpup), ('jumpdown', 1.5, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
          ('unperch', 1.6, unperch)] + TURNS
 
 # ---------------------------------------------------------------- floor contact correctives
@@ -758,8 +816,12 @@ inner, outer, ring = np.array([.95, .66, .22]), np.array([.70, .38, .10]), np.ar
 fibres = 1 + .10 * np.sin(phi * 48 + 3 * np.sin(phi * 7)) * np.clip((t - .15) / .5, 0, 1) * np.clip(1 - t, 0, 1)
 colour = (inner[None, None, :] * (1 - np.clip(t, 0, 1))[..., None] + outer[None, None, :] * np.clip(t, 0, 1)[..., None]) * fibres[..., None]
 ring_mix = np.clip((t - .78) / .12, 0, 1)[..., None]; colour = colour * (1 - ring_mix) + ring[None, None, :] * ring_mix
-pupil = np.clip((1 - ((tx / .58) ** 2 + (ty / .66) ** 2)) * 8, 0, 1)[..., None]  # big, round and dark: dilated in the dim hall
-colour = colour * (1 - pupil) + np.array([.01, .01, .012])[None, None, :] * pupil
+# Big and round, dilated in the dim hall, but with a clear amber margin all round so the eye reads as an eye and not
+# as a ring; a small catchlight near the top gives it the wet look of the photos at any size.
+pupil = np.clip((1 - ((tx / .50) ** 2 + (ty / .50) ** 2)) * 8, 0, 1)[..., None]
+colour = colour * (1 - pupil) + np.array([.012, .012, .015])[None, None, :] * pupil
+catch = np.clip((1 - ((tx / .085) ** 2 + ((ty - .26) / .075) ** 2)) * 5, 0, 1)[..., None]
+colour = colour * (1 - catch) + np.array([.96, .95, .92])[None, None, :] * catch
 outside = np.clip((t - 1.0) / .04, 0, 1)[..., None]; colour = colour * (1 - outside) + np.array([.03, .028, .03])[None, None, :] * outside
 iris = bpy.data.images.new('BlueIris', IR, IR, alpha=False)
 iris_px = np.ones((IR, IR, 4), dtype=np.float32); iris_px[:, :, :3] = np.clip(colour, 0, 1)
@@ -783,6 +845,26 @@ for side, (centre, normal) in eye_islands.items():
     eye.parent = arm; eye.parent_type = 'BONE'; eye.parent_bone = 'Head'
     eye.matrix_world = placement
     eye_objects.append(eye)
+    # Eyelids: two spherical caps a hair larger than the eyeball, hinged on the eye's lateral axis. The Meshy head has
+    # no lid geometry (its blink morph only squashes the socket rim, and the eye stayed visibly open while he slept),
+    # so these carry the blink. The runtime rotates them about local X by `blink` × LID_CLOSE; here they rest open.
+    # Whatever sits inside the head is hidden by the skin; only the part that swings over the visible cap shows.
+    for lid, pole, cap_deg, open_deg in (('U', 1, 78, 12), ('D', -1, 62, 6)):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=48, radius=EYE_RADIUS + (.0014 if lid == 'U' else .0008), location=(0, 0, 0))
+        cap = bpy.context.object; cap.name = f'Lid.{lid}.{side}'; cap.data.name = cap.name
+        bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='DESELECT'); bpy.ops.object.mode_set(mode='OBJECT')
+        limit = math.cos(math.radians(cap_deg))
+        for v in cap.data.vertices: v.select = (v.co.normalized().y * pole) < limit
+        bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.delete(type='VERT'); bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.shade_smooth()
+        cap.data.materials.append(ear_back)
+        cap.parent = arm; cap.parent_type = 'BONE'; cap.parent_bone = 'Head'
+        # Same bone-relative transform as the eyeball (assigning matrix_world here evaluated the bone at a different
+        # depsgraph state and put the caps 12 mm above the eye), tipped back a little further than the pole so the
+        # open lid only hoods the top (or bottom) of the visible cap.
+        cap.matrix_parent_inverse = eye.matrix_parent_inverse.copy()
+        cap.matrix_basis = eye.matrix_basis @ Matrix.Rotation(math.radians(-pole * open_deg), 4, 'X')
+        eye_objects.append(cap)
 
 bpy.context.view_layer.update()
 bpy.ops.file.pack_all()

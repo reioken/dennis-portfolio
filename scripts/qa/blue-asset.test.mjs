@@ -11,7 +11,7 @@ const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear
   'FrontUpper.L', 'FrontLower.L', 'FrontPaw.L', 'FrontUpper.R', 'FrontLower.R', 'FrontPaw.R',
   'HindUpper.L', 'HindLower.L', 'HindPaw.L', 'HindUpper.R', 'HindLower.R', 'HindPaw.R',
   'Tail0', 'Tail1', 'Tail2', 'Tail3', 'Tail4', 'Tail5'];
-const CLIPS = ['arch', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'settle', 'sit', 'sitidle', 'sleep', 'stand', 'trot',
+const CLIPS = ['arch', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'settle', 'sit', 'sitarch', 'sitidle', 'sleep', 'stand', 'trot',
   'turnL45', 'turnL90', 'turnR45', 'turnR90', 'unperch', 'wake', 'walk'];
 const MORPHS = ['BlueBlink', 'BlueGround', 'BlueSit', 'BluePerch'];
 
@@ -73,12 +73,12 @@ test('morph targets keep their names and order, the materials and eyeballs exist
   const materials = root.listMaterials().map(m => m.getName());
   for (const name of ['Blue amber eyeball', 'Blue face', 'Blue ear back', 'Material_0']) assert.ok(materials.includes(name), name);
   const nodes = root.listNodes().map(n => n.getName());
-  for (const eye of ['Eye.L', 'Eye.R']) {
+  for (const eye of ['Eye.L', 'Eye.R', 'Lid.U.L', 'Lid.U.R', 'Lid.D.L', 'Lid.D.R']) {
     const node = root.listNodes().find(n => n.getName() === eye);
     assert.ok(node?.getMesh(), `${eye} is a mesh node`);
     assert.equal(node.getParentNode()?.getName(), 'Head', `${eye} hangs off the Head bone`);
   }
-  assert.ok(nodes.length >= 28);
+  assert.ok(nodes.length >= 32);
 });
 
 test('the file stays within its budget', async () => {

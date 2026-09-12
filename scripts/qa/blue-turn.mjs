@@ -42,7 +42,8 @@ try {
   assert.ok(clips.every(c => /^turn[LR](45|90)$/.test(c)), 'turn clips: ' + clips);
   assert.ok(Math.abs(turnYaw) > 1.7, 'the turn clips carried most of the 180°: ' + report.behind.turnYawDeg);
   assert.ok(report.behind.maxWalkYawRate < 1.15, 'walking yaw rate bounded: ' + report.behind.maxWalkYawRate);
-  assert.ok(report.behind.maxTurnYawRate < 4.5, 'turn yaw rate plausible (stepped beats peak near 3 rad/s): ' + report.behind.maxTurnYawRate);
+  // One continuous sweep: 90° in about 0.6 s peaks near 4 rad/s, a stretched 135° turn a little higher.
+  assert.ok(report.behind.maxTurnYawRate < 6.5, 'turn yaw rate plausible: ' + report.behind.maxTurnYawRate);
   // Arrival at the basket: a turn precedes the settle, and the settle itself no longer spins.
   const home = await page.evaluate(() => {
     const h = window.__hall, b = h.blue;

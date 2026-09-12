@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'arch' | 'sit' | 'sitidle' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn';
+type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'arch' | 'sit' | 'sitidle' | 'sitarch' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn';
 type Region = 'head' | 'back' | 'tail';
 type AfterTurn = 'walk' | 'arrive' | 'jump';
 type Arrival = 'idle' | 'home' | 'sit' | 'jump' | 'perch';
@@ -21,15 +21,17 @@ const BOUNDS = { minX: -2.05, maxX: 40, minZ: .12, maxZ: 1.5 };
 const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, .80), landing: new THREE.Vector3(0, 1.95, .17), spot: new THREE.Vector3(0, 1.95, .17) };
 /** Sitting spot beside a cabinet: in the gap in front of the arcades, on the side Blue arrives from. */
 const STATION_LANE_Z = .8, STATION_SIDE_X = .92;
-/** Metres per second the in-place walk clip covers at time scale 1 (stride × stance ÷ cycle). */
-const STRIDE_SPEED = .19;
+/** Metres per second the in-place walk clip covers at time scale 1 (37 cm stride over a 1.1 s cycle; the roam plays it at 0.62 as a slow prowl). */
+const STRIDE_SPEED = .34;
 const ROAM_SPEED = .21, TRAVEL_SPEED = .34;
 /** Beyond this distance a goal is worth trotting to; the in-place trot clip covers TROT_SPEED at time scale 1. */
-const FAR_DISTANCE = 1.8, RUN_SPEED = .9, TROT_SPEED = .9;
-/** Heading errors above this are answered with a turn-in-place clip; smaller ones are absorbed while walking, whose yaw rate follows a turning radius. */
-const TURN_MIN = .2, TURN_RADIUS = .45;
+const FAR_DISTANCE = 1.5, RUN_SPEED = .9, TROT_SPEED = .9;
+/** Heading errors above this (4.6°) are answered with a turn-in-place clip, warped to the angle and played faster the smaller it is; anything less is invisible and eases in during the next clip. */
+const TURN_MIN = .08, TURN_RADIUS = .45;
 /** Authored turn clips: nominal angle and how far the runtime may stretch or shrink that angle before it chains another turn. */
-const TURN_CLIPS = [{ name: '45', angle: Math.PI / 4, scale: [.25, 1.3] }, { name: '90', angle: Math.PI / 2, scale: [.65, 1.25] }];
+const TURN_CLIPS = [{ name: '45', angle: Math.PI / 4, scale: [.12, 1.35] }, { name: '90', angle: Math.PI / 2, scale: [.6, 1.5] }];
+/** Eyelid caps close over the eyeballs by these angles about the eye's lateral axis (upper lid down, lower lid up). */
+const LID_CLOSE_UPPER = 1.30, LID_CLOSE_LOWER = .72;
 /** Heading Blue settles into on the cushion, so the lying pose reads from the frontal hall camera. */
 const REST_YAW = .95;
 const REST_FORWARD = new THREE.Vector3(Math.sin(REST_YAW), 0, Math.cos(REST_YAW));
@@ -63,7 +65,7 @@ const decayCritical = (x: THREE.Vector3, v: THREE.Vector3, settle: number, dt: n
 };
 /** Settle time of an inertialized interrupt and the rest transitions that keep their long crossfades instead. */
 const INERTIA_SETTLE = .22;
-const SOFT: Mood[] = ['settle', 'sleep', 'wake', 'sit', 'sitidle', 'perch', 'perchidle'];
+const SOFT: Mood[] = ['settle', 'sleep', 'wake', 'sit', 'sitidle', 'sitarch', 'perch', 'perchidle'];
 /** Spring lag per tail bone (stiffness falls towards the tip) and for the ears; damping ratio below 1 leaves a little overshoot. */
 const TAIL_SPRING = [{ k: 420, zeta: .75 }, { k: 260, zeta: .65 }, { k: 170, zeta: .6 }, { k: 110, zeta: .55 }, { k: 75, zeta: .5 }];
 const EAR_SPRING = { k: 520, zeta: .5 };
@@ -113,6 +115,8 @@ export class BlueCat {
   private turnClip = '';
   private turnApplied = 0;
   private turnScale = 1;
+  /** Playback rate of the current turn clip: small adjustments play fast, wide turns a little slower. */
+  private turnRate = 1;
   private afterTurn: AfterTurn = 'walk';
   private planChanged = false;
   private yawRate = 0;
@@ -130,8 +134,14 @@ export class BlueCat {
   private bounds = new THREE.Box3();
   private button: HTMLButtonElement;
   private eyelids: THREE.Mesh[] = [];
-  /** Separate eyeball meshes under the head bone: they sink into the head as the lids close over them. */
+  /** Separate eyeball meshes under the head bone: they sink into the head a little as the lids close over them. */
   private eyeballs: { node: THREE.Object3D; rest: THREE.Vector3; axis: THREE.Vector3 }[] = [];
+  /**
+   * Eyelid caps hinged on each eye's lateral axis; `close` is the signed angle at a full blink. The packer's
+   * quantization recentres every mesh and moves the offset onto its node, so a cap's node origin is the cap's own
+   * bounding-box centre, not the eye's: the lid is rotated rigidly about the eyeball's rest position instead.
+   */
+  private lids: { node: THREE.Object3D; rest: THREE.Quaternion; restPos: THREE.Vector3; centre: THREE.Vector3; close: number }[] = [];
   private blink = 0;
   private blinkAge = 0;
   private blinkPeriod = 5.1;
@@ -228,9 +238,15 @@ export class BlueCat {
         for (const value of Object.values(m)) if (value instanceof THREE.Texture) { value.anisotropy = 8; this.textures.add(value); }
       }
     });
+    // GLTFLoader sanitizes node names (dots are dropped), so Blender's `Eye.L` arrives as `EyeL`; look for both.
+    const named = (name: string) => gltf.scene.getObjectByName(name) ?? gltf.scene.getObjectByName(name.replace(/\./g, ''));
     for (const name of ['Eye.L', 'Eye.R']) {
-      const node = gltf.scene.getObjectByName(name);
+      const node = named(name);
       if (node) this.eyeballs.push({ node, rest: node.position.clone(), axis: new THREE.Vector3(0, 0, 1).applyQuaternion(node.quaternion).normalize() });
+    }
+    for (const [name, close] of [['Lid.U.L', LID_CLOSE_UPPER], ['Lid.U.R', LID_CLOSE_UPPER], ['Lid.D.L', -LID_CLOSE_LOWER], ['Lid.D.R', -LID_CLOSE_LOWER]] as [string, number][]) {
+      const node = named(name), eye = this.eyeballs[name.endsWith('L') ? 0 : 1];
+      if (node && eye) this.lids.push({ node, rest: node.quaternion.clone(), restPos: node.position.clone(), centre: eye.rest.clone(), close });
     }
     this.neck = gltf.scene.getObjectByName('Neck');
     this.head = gltf.scene.getObjectByName('Head');
@@ -547,16 +563,22 @@ export class BlueCat {
     const magnitude = Math.abs(error);
     const pick = TURN_CLIPS.find(c => magnitude <= c.angle * c.scale[1]) ?? TURN_CLIPS[TURN_CLIPS.length - 1];
     this.turnScale = THREE.MathUtils.clamp(magnitude / pick.angle, pick.scale[0], pick.scale[1]);
+    // A 10° adjustment is two quick steps, a 130° turn a little longer than the authored 90°.
+    this.turnRate = THREE.MathUtils.clamp(1 / Math.sqrt(this.turnScale), .85, 2);
     this.turnClip = `turn${error > 0 ? 'L' : 'R'}${pick.name}`;
     this.turnApplied = 0;
     this.afterTurn = then;
     this.speed = 0;
     this.enter('turn');
+    this.layer?.setEffectiveTimeScale(this.turnRate);
   }
+
+  /** Clip time of the running turn (the clip may play faster than real time). */
+  private get turnTime() { return Math.min(this.age * this.turnRate, this.length(this.turnClip)); }
 
   /** Apply this frame's slice of the turn clip's root yaw to the body. */
   private applyTurn() {
-    const yaw = (this.turnYaw.get(this.turnClip) ?? (() => 0))(Math.min(this.age, this.length(this.turnClip))) * this.turnScale;
+    const yaw = (this.turnYaw.get(this.turnClip) ?? (() => 0))(this.turnTime) * this.turnScale;
     this.body.rotateY(yaw - this.turnApplied);
     this.turnApplied = yaw;
   }
@@ -575,7 +597,10 @@ export class BlueCat {
     if (region === 'tail') {
       if (this.flick) this.flick.reset().play();
       this.slowBlink = 0;
-    } else if (this.mood === 'perch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'sitidle') {
+    } else if (region === 'back' && (this.mood === 'sit' || this.mood === 'sitidle')) {
+      // A stroke along the back while seated: the back rounds up into the hand.
+      this.enter('sitarch');
+    } else if (this.mood === 'perch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'sitidle' || this.mood === 'sitarch') {
       // Seated or on the ledge Blue answers with closed eyes and a head push instead of standing up.
       this.purr = 2.6;
       this.slowBlink = 1;
@@ -632,7 +657,7 @@ export class BlueCat {
       case 'happy': case 'arch': case 'jump': case 'stand': case 'unperch': case 'wake': return; // finish, then resume
       case 'turn': this.planChanged = true; return;
       case 'perch': case 'perchidle': if (plan.kind !== 'perch') this.enter('unperch'); return;
-      case 'sit': case 'sitidle': if (plan.kind !== 'station' || flat(this.body.position, this.stationSpot(plan.index, stationX)) > .04) this.enter('stand'); return;
+      case 'sit': case 'sitidle': case 'sitarch': if (plan.kind !== 'station' || flat(this.body.position, this.stationSpot(plan.index, stationX)) > .04) this.enter('stand'); return;
       case 'sleep': case 'settle': this.enter('wake'); return;
       default: this.resume(stationX);
     }
@@ -733,7 +758,7 @@ export class BlueCat {
     switch (this.mood) {
       case 'settle': this.enter('sleep'); break;
       case 'wake': if (this.pendingHappy) this.enter('happy'); else { this.enter('idle'); this.resume(stationX); } break;
-      case 'sit': this.enter('sitidle'); break;
+      case 'sit': case 'sitarch': this.enter('sitidle'); break;
       case 'stand': this.enter('idle'); this.resume(stationX); break;
       case 'perch': this.enter('perchidle'); break;
       case 'unperch': this.enter('idle'); this.resume(stationX); break;
@@ -794,7 +819,7 @@ export class BlueCat {
 
   private attend(dt: number, camera: THREE.Camera, reduce: boolean) {
     if (!this.head) return;
-    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'arch';
+    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'sitarch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'arch';
     let wanted = 0;
     if (!reduce && awake) {
       if (this.hover || this.purr > 0) wanted = 1;
@@ -815,17 +840,19 @@ export class BlueCat {
       this.gazeYaw = THREE.MathUtils.damp(this.gazeYaw, yaw, 7, dt);
       this.gazePitch = THREE.MathUtils.damp(this.gazePitch, pitch, 7, dt);
     }
-    const push = this.purr > 0 ? .12 * Math.sin(Math.min(1, this.purr / 2.6) * Math.PI) : 0;
+    // Being petted: the head pushes up into the hand and rolls into it, the chest leans along; big enough to read at hall size.
+    const petted = this.purr > 0 ? Math.sin(Math.min(1, this.purr / 2.6) * Math.PI) : 0;
+    const push = .28 * petted, tilt = .18 * petted;
     // From the ledge the camera sits only a few degrees below him; tuck the chin so the look-down reads.
     const ledgeBias = this.mood === 'perchidle' ? .22 * this.gazeWeight : 0;
     // Curving while walking: the chest rolls into the turn and the head looks along the path ahead of the body.
     const curve = reduce || this.mood !== 'walk' ? 0 : THREE.MathUtils.clamp(this.yawRate, -1.2, 1.2);
     const lead = curve * .22;
     const yaw = this.gazeYaw * this.gazeWeight + lead, pitch = this.gazePitch * this.gazeWeight - push - ledgeBias;
-    this.overlay(this.chest, curve * .04, 0, -curve * .05);
-    this.overlay(this.neck, yaw * .38, -pitch * .35, 0);
-    this.overlay(this.head, yaw * .62, -pitch * .65, 0);
-    const earBack = this.purr > 0 ? .18 : 0;
+    this.overlay(this.chest, curve * .04, -push * .25, -curve * .05 + tilt * .3);
+    this.overlay(this.neck, yaw * .38, -pitch * .35, tilt * .3);
+    this.overlay(this.head, yaw * .62, -pitch * .65, tilt);
+    const earBack = this.purr > 0 ? .28 : 0;
     for (const ear of this.ears) this.overlay(ear, 0, -this.perk * .22 + earBack, ear === this.ears[0] ? this.perk * .06 : -this.perk * .06);
   }
 
@@ -947,7 +974,8 @@ export class BlueCat {
         case 'idle': if (this.plan.kind === 'home' && this.age > this.dwell) this.startWalk(); break;
         case 'walk': this.locomote(dt, stationX); break;
         case 'settle': if (this.age > this.length('settle')) this.advance(stationX); break;
-        case 'turn': if (this.age > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
+        case 'turn': if (this.age * this.turnRate > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
+        case 'sitarch': if (this.age > this.length('sitarch')) this.advance(stationX); break;
         case 'sleep':
           if (this.undisturbed && this.hover && this.clock - this.hoverSince > .35) this.disturb();
           else if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
@@ -1005,13 +1033,21 @@ export class BlueCat {
     const eyeGoal = this.mood === 'wake' ? 1 - step(this.age, .05, .4) : resting ? 1 : this.mood === 'happy' || this.purr > .4 ? .94 : !reduce && (this.blinkAge > this.blinkPeriod - .24 || this.slowBlink > .45) ? 1 : 0;
     this.blink = THREE.MathUtils.damp(this.blink, eyeGoal, this.mood === 'wake' ? 12 : resting || this.slowBlink > 0 || this.purr > 0 ? 7 : 20, dt);
     // Pose-space floor correctives: sphinx rest, upright sit and the ledge perch each keep their underside above the surface.
-    const settled = this.mood === 'sleep' ? 1 : this.mood === 'settle' ? step(this.age, .5, 2.2) : this.mood === 'wake' ? 1 - step(this.age, .5, 1.9) : 0;
-    const seated = this.mood === 'sitidle' ? 1 : this.mood === 'sit' ? step(this.age, .3, 1.6) : this.mood === 'stand' ? 1 - step(this.age, .2, 1.5) : 0;
+    const settled = this.mood === 'sleep' ? 1 : this.mood === 'settle' ? step(this.age, .35, 1.5) : this.mood === 'wake' ? 1 - step(this.age, .4, 1.4) : 0;
+    const seated = this.mood === 'sitidle' || this.mood === 'sitarch' ? 1 : this.mood === 'sit' ? step(this.age, .15, .75) : this.mood === 'stand' ? 1 - step(this.age, .1, .8) : 0;
     const perched = this.mood === 'perchidle' ? 1 : this.mood === 'perch' ? step(this.age, .4, 1.8) : this.mood === 'unperch' ? 1 - step(this.age, .2, 1.6) : 0;
     this.ground = THREE.MathUtils.damp(this.ground, settled, 14, dt);
     this.seatGround = THREE.MathUtils.damp(this.seatGround, seated, 14, dt);
     this.perchGround = THREE.MathUtils.damp(this.perchGround, perched, 14, dt);
-    for (const eye of this.eyeballs) eye.node.position.copy(eye.rest).addScaledVector(eye.axis, -this.blink * .017);
+    for (const eye of this.eyeballs) eye.node.position.copy(eye.rest).addScaledVector(eye.axis, -this.blink * .006);
+    for (const lid of this.lids) {
+      // Hinge about the lid's own lateral axis, then express that rotation in the head frame (rest · hinge · rest⁻¹)
+      // and swing the node's origin around the eye centre with it.
+      this.tmpQ.setFromAxisAngle(tmpAxis.set(1, 0, 0), this.blink * lid.close);
+      lid.node.quaternion.copy(lid.rest).multiply(this.tmpQ);
+      this.tmpQ2.copy(lid.node.quaternion).multiply(this.tmpQ3.copy(lid.rest).invert());
+      lid.node.position.copy(lid.restPos).sub(lid.centre).applyQuaternion(this.tmpQ2).add(lid.centre);
+    }
     for (const mesh of this.eyelids) {
       const dict = mesh.morphTargetDictionary, influences = mesh.morphTargetInfluences;
       if (!dict || !influences) continue;
