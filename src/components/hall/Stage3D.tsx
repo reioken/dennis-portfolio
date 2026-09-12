@@ -93,5 +93,5 @@ export default function Stage3D({ items, focus, attract, reduce, lite, pose, fra
     scene.current?.setReduce(reduce);
   }, [reduce]);
 
-  return <div ref={ref} className="hall__stage" aria-hidden />;
+  return <div ref={ref} className="hall__stage" />;
 }

@@ -1449,3 +1449,27 @@ body[data-mode='case'] .hall-panel__btn--coin {
 .hall__tick:last-child .hall__tick-label {
   opacity: 1;
 }
+
+/* Keyboard/touch target follows Blue; ordinary pointer hits use his actual mesh. */
+.hall__blue-pet {
+  transition: none !important;
+  animation: none !important;
+  position: absolute;
+  z-index: 2;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  color: transparent;
+  pointer-events: none;
+}
+.hall__blue-pet[hidden] { display: none; }
+.hall__blue-pet:focus-visible {
+  outline: 2px solid #c8b6ea;
+  outline-offset: 5px;
+  box-shadow: 0 0 24px #b29ad633;
+}
+@media (pointer: coarse) { .hall__blue-pet { pointer-events: auto; } }

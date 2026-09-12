@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { createHallFloor } from './floorReflectionShader';
 import { HallLighting } from './hallLighting';
+import { BlueCat } from './blueCat';
 import { ScreenDissolve } from './screenDissolve';
 import { textTexture } from './marqueeTexture';
 import { tvPresentation } from './presentation.mjs';
@@ -487,6 +488,7 @@ export class HallScene {
   /** nur für Dev-Inspektion über window.__hall */
   machines: Machine[] = [];
   private roomLighting!: HallLighting;
+  private blue?: BlueCat;
   private neonLight!: THREE.PointLight;
   private loadingManager = new THREE.LoadingManager();
   private loader = new THREE.TextureLoader(this.loadingManager);
@@ -635,6 +637,7 @@ export class HallScene {
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = .98;
     r.domElement.className = 'hall__canvas';
+    r.domElement.setAttribute('aria-hidden', 'true');
     container.appendChild(r.domElement);
     this.renderer = r;
 
@@ -652,6 +655,15 @@ export class HallScene {
     this.focus = initial;
     this.initialFocus = initial;
     items.forEach((it, i) => this.addMachine(it, i));
+    const blueDone = this.track(initial);
+    this.gltf.load('/models/blue-rigged-v1.glb', gltf => {
+      if (!this.disposed) {
+        this.blue = new BlueCat(gltf, container, this.stationX[0]);
+        this.scene.add(this.blue.root);
+        this.dirty = this.mirrorDirty = true;
+      }
+      blueDone();
+    }, undefined, () => blueDone());
     this.focus = initial;
     this.camX = this.targetX = this.stationX[initial];
     this.wallX = this.camX;
@@ -2606,6 +2618,11 @@ export class HallScene {
     if (this.tweenDur > 0 && performance.now() - this.tweenStart < this.tweenDur) return;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
+    const blueHit = this.blue?.hit(this.raycaster);
+    if (blueHit && (!hits.length || blueHit.distance < hits[0].distance)) {
+      this.renderer.domElement.style.cursor = 'pointer';
+      return;
+    }
     let cursor = '';
     if (hits.length) {
       let o: THREE.Object3D | null = hits[0].object;
@@ -2627,6 +2644,12 @@ export class HallScene {
     const p = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
     this.raycaster.setFromCamera(p, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
+    const blueHit = this.blue?.hit(this.raycaster);
+    if (blueHit && (!hits.length || blueHit.distance < hits[0].distance)) {
+      this.blue?.pet();
+      this.dirty = this.mirrorDirty = true;
+      return;
+    }
     if (!hits.length) {
       if (this.pose !== 'hall') this.cb.onBackdrop?.();
       return;
@@ -2890,6 +2913,9 @@ export class HallScene {
     }
 
     for (const m of this.machines) if (m.dissolve?.tick(now)) brightMoving = true;
+    if (this.blue?.update(dt, this.camera, this.focus <= 2 && (inHall || this.focus === 0), this.reduce)) {
+      this.dirty = this.mirrorDirty = true;
+    }
     if (this.tvDissolve?.tick(now)) wallMoving = true;
 
     // Außerhalb der Halle nur rendern, wenn sich etwas bewegt — die Seite daneben bleibt flüssig
@@ -3003,6 +3029,7 @@ export class HallScene {
   }
 
   private releaseResources() {
+    this.blue?.dispose();
     this.wallPaint.dispose();
     this.glassWear.roughness.dispose();
     this.tvSlides.forEach(texture=>texture.dispose());this.tvSlides.clear();
