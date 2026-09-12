@@ -4,7 +4,7 @@ Prepared 2026-09-12 from the repository, retained QA reports, and the current co
 
 ## 1. Current state and immediate next step
 
-Latest application commit: **`3e07dc8`** (Blue v2: re-authored clips, cleaned coat, pointer attention), committed and pushed to `origin/feat/werkstatt`. **It is not yet on production.** The Pages upload was blocked by the agent's permission layer on 2026-09-12; production still serves the `f5e84f7` build (`678ba401` deployment). The deploy command for the tested `dist` is in section 7. Dennis's feedback on the first Blue release was that the cat was not clean, not interactive enough and its animation not smooth; that pass is implemented and documented in `docs/research/blue-cat.md` (section "v2 polish"). Dennis has not yet reviewed v2; expect vetoes on the sphinx rest pose, the satin-black coat or the attention behaviour.
+Latest application commit: **`3e07dc8`** (Blue v2: re-authored clips, cleaned coat, pointer attention), pushed to `origin/feat/werkstatt` and **published on 2026-09-12** at Dennis's explicit request (deployment `85fc5078`, uploaded from a fresh build of `4eb7b56`, which only adds handover text on top of `3e07dc8`). Dennis's feedback on the first Blue release was that the cat was not clean, not interactive enough and its animation not smooth; that pass is implemented and documented in `docs/research/blue-cat.md` (section "v2 polish"). Dennis has not yet reviewed v2 on the live site; expect vetoes on the sphinx rest pose, the satin-black coat or the attention behaviour.
 
 | Item | Current value |
 | --- | --- |
@@ -12,7 +12,7 @@ Latest application commit: **`3e07dc8`** (Blue v2: re-authored clips, cleaned co
 | Working / pushed branch | `feat/werkstatt` |
 | Git remote | `https://github.com/reioken/dennis-portfolio.git` |
 | Production | `https://www.dennisbf.design` |
-| Latest verified deployment | `https://678ba401.dennis-portfolio-87g.pages.dev` (build of `f5e84f7`; Blue v2 not yet deployed) |
+| Latest verified deployment | `https://85fc5078.dennis-portfolio-87g.pages.dev` (Blue v2, build of `4eb7b56`) |
 | Cloudflare Pages project | `dennis-portfolio` |
 | Pages production branch argument | `main` |
 | Local development | `http://localhost:4321/` |
@@ -228,10 +228,12 @@ Latest successful release sequence (already completed):
 
 ```powershell
 git push origin feat/werkstatt
-npx wrangler pages deploy dist --project-name=dennis-portfolio --branch=main --commit-hash=3e07dc8 --commit-dirty=true
+npx astro build
+npm run audit
+npx wrangler pages deploy dist --project-name=dennis-portfolio --branch=main --commit-hash=4eb7b56 --commit-dirty=true
 ```
 
-Blue v2 (2026-09-12) is built, audited and pushed but **not deployed**: the upload above was blocked by the agent's permission layer. Run it from a fresh `npx astro build` of `3e07dc8` (or later), then verify that `/models/blue-rigged-v2.glb` on the deployment matches the local file byte for byte and record the deployment URL here.
+Blue v2 upload (2026-09-12): the agent's permission layer first blocked the upload; Dennis then asked explicitly to put it on the website and the sequence above ran. Verified afterwards: `/models/blue-rigged-v2.glb` (2,144,196 bytes) and the `Stage3D` chunk that loads it returned 200 with SHA-256 identical to the local `dist` on both `85fc5078.dennis-portfolio-87g.pages.dev` and `www.dennisbf.design`; the homepage returned 200. This is HTTP/asset verification, not a production browser QA sweep.
 
 For the next application release, rebuild and audit the actual new commit, substitute its hash, inspect the working tree and upload only the intended build. The dirty flag was needed because of unrelated local Claude settings; it is not a reason to skip reviewing changes. Do not redeploy a stale `dist` directory or unnecessarily redeploy the contact Worker.
 
