@@ -173,3 +173,11 @@ The cause was in the authoring, not the runtime: every clip was symmetric smooth
 - *Trot.* New two-beat diagonal gait (0.52 s cycle, 0.9 m/s nominal, bouncing back with the spine flexing, long reaching strides, tail carried up and back). The runtime blends walk into trot by speed (0.42–0.62 m/s) and trots to any goal further than 1.8 m at 0.9 m/s with stronger acceleration; the off-screen teleport for far stations is gone.
 
 Stretch reports stayed in range for every clip (walk p99 1.52, turn frames 1.19–1.62). Asset after packing 943 KB.
+
+### Hall models (Phase 9)
+
+Dennis: optimise all the other 3D models too. Two scripts, run in this order: `scripts/models/shrink-textures.mjs` caps textures (base colour and emissive 2048², normal/roughness/occlusion 1024², all WebP at quality 86) and `scripts/models/pack-models.mjs` deduplicates buffers, prunes, resamples animations and Meshopt-compresses with quantization, in place, keeping originals in `.source-assets/models-original/`. The packer guards structure (node, mesh, material, animation and skin names unchanged, one unnamed wrapper node tolerated) because the hall addresses controls, screens and glow parts by name, and restores any file the pass would make larger. Kenney props are skipped (not loaded by the hall); Blue keeps his own packer.
+
+Two traps: glTF Transform's `textureCompress` and the `functions` bundle pull in a second native sharp build, and two libvips in one process fail every encode with "colourspace: parameter space not set", so the texture pass lives in its own process; and sharp ignores a `Uint8Array`'s byte offset into the GLB buffer, so images are copied into a `Buffer` first.
+
+Result, measured as what the hall actually downloads on a fresh visit: 13.0 MB → 6.1 MB over 19 files. Dennis figure 4.8 → 1.5 MB (its three 4096² maps were 268 MB of GPU memory; now 2048/1024/1024), Nori 2.0 → 0.6 MB, taxi 1.4 → 1.1 MB, Lowlight cabinet 0.54 → 0.19 MB, payphone 0.45 → 0.18 MB, the generated cabinets roughly halved. Before/after screenshots of the hall, About and a station are indistinguishable (`.source-assets/models-qa/`). The two versioned URLs (`dennis.glb?v=`, `mach-lowlight.glb?v=`) got new hashes.

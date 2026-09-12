@@ -140,7 +140,7 @@ async function build(): Promise<HallData> {
       href: p('about'),
       portrait: p('media/me/portrait-poster-1122.webp'),
       // Freigegebene Figur mit Foto-Tattoos; Version verhindert veraltete GLB-Caches.
-      figure: fs.existsSync(path.join(process.cwd(), 'public', 'models', 'dennis.glb')) ? p('models/dennis.glb?v=9326936a358e') : undefined,
+      figure: fs.existsSync(path.join(process.cwd(), 'public', 'models', 'dennis.glb')) ? p('models/dennis.glb?v=d16f60564f2a') : undefined,
     },
     ...machines,
     { kind: 'phone', slug: 'telefon', href: p('contact') },
