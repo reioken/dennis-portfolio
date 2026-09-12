@@ -1,30 +1,45 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy';
+type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'sit' | 'sitidle' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch';
+type Arrival = 'idle' | 'home' | 'sit' | 'jump' | 'perch';
+type Plan = { kind: 'home' } | { kind: 'station'; index: number } | { kind: 'perch' };
+/** What the hall tells Blue every frame so he can accompany the visitor. */
+export interface BlueScene { focus: number; pose: 'hall' | 'zoom' | 'play' | 'screen'; stationX: number[]; inHall: boolean; }
+
 const HOME = new THREE.Vector3(-1.65, 0, .18);
 const SPOTS = [new THREE.Vector3(-1.35, 0, .62), new THREE.Vector3(-.8, 0, .76), new THREE.Vector3(-1.95, 0, .6), new THREE.Vector3(-1.1, 0, .42), new THREE.Vector3(-1.55, 0, .76)];
-const BOUNDS = { minX: -2.05, maxX: -.7, minZ: .12, maxZ: 1.5 };
+const BOUNDS = { minX: -2.05, maxX: 40, minZ: .12, maxZ: 1.5 };
+/** The claw cabinet: top surface, its front edge, where Blue takes off, lands and lies (root-local, station 0 at x 0). */
+const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, 1.05), landing: new THREE.Vector3(0, 1.95, .02), spot: new THREE.Vector3(0, 1.95, .20) };
+/** Sitting spot beside a cabinet: in the gap in front of the arcades, on the side Blue arrives from. */
+const STATION_LANE_Z = .8, STATION_SIDE_X = .92;
 /** Metres per second the in-place walk clip covers at time scale 1 (stride × stance ÷ cycle). */
 const STRIDE_SPEED = .19;
-const MAX_SPEED = .21, ACCEL = .28, DECEL = .36, TURN_RATE = 2.4;
+const ROAM_SPEED = .21, TRAVEL_SPEED = .34, TURN_RATE = 2.4;
+/** Further away than this, Blue is placed just outside the frame and strolls in past the arcades. */
+const TELEPORT_DISTANCE = 3.4, TELEPORT_RUNWAY = 2.6;
 /** Heading Blue settles into on the cushion, so the lying pose reads from the frontal hall camera. */
 const REST_YAW = .95;
-const CLIP = { settle: 2.4, wake: 2.4 };
+const CLIP = { settle: 2.4, wake: 2.4, sit: 1.8, stand: 1.8, perch: 2.0, unperch: 2.0, jump: 1.4 };
+/** Jump clip phases: crouch and launch on the ground, flight, then the landing crouch. */
+const JUMP = { launch: .42, flight: .68 };
 const UP = new THREE.Vector3(0, 1, 0);
 const FORWARD = new THREE.Vector3(0, 0, 1);
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const step = (x: number, a: number, b: number) => THREE.MathUtils.smoothstep(x, a, b);
+const flat = (a: THREE.Vector3, b: THREE.Vector3) => Math.hypot(a.x - b.x, a.z - b.z);
 
 /** Blue has his own clock: navigation and tab pauses never advance his route. */
 export class BlueCat {
   readonly root = new THREE.Group();
   readonly body = new THREE.Group();
+  private model: THREE.Object3D;
   private mixer: THREE.AnimationMixer;
   private actions = new Map<string, THREE.AnimationAction>();
   private idle: THREE.AnimationAction;
   private walk: THREE.AnimationAction;
-  /** Current settle / sleep / wake / happy action layered over the locomotion pair. */
+  /** Current layered action (everything except the idle/walk locomotion pair). */
   private layer?: THREE.AnimationAction;
   private fade = .5;
   private loco = 1;
@@ -32,12 +47,26 @@ export class BlueCat {
   private mood: Mood = 'idle';
   private age = 0;
   private clock = 0;
+  private frame = 0;
   private dwell = 4;
   private speed = 0;
+  private travelSpeed = ROAM_SPEED;
   private goal = HOME.clone();
+  private arrival: Arrival = 'idle';
   private visits = 0;
   private plannedVisits = 2;
   private pendingHappy = false;
+  private plan: Plan = { kind: 'home' };
+  private spotSide = -1;
+  private faceYaw: number | null = null;
+  private shift = new THREE.Vector3();
+  private scale = 1;
+  private elevation = 0;
+  private jumpFrom = new THREE.Vector3();
+  private jumpTo = new THREE.Vector3();
+  private jumpUp = true;
+  private pitch = 0;
+  private purr = 0;
   private forward = new THREE.Vector3();
   private heading = new THREE.Vector3();
   private targetRotation = new THREE.Quaternion();
@@ -50,6 +79,8 @@ export class BlueCat {
   private blinkPeriod = 5.1;
   private slowBlink = 0;
   private ground = 0;
+  private seatGround = 0;
+  private perchGround = 0;
   private textures = new Set<THREE.Texture>();
   private shadow: THREE.Mesh;
   // Attention overlay: neck, head and ears follow the pointer after the clips have been applied.
@@ -76,7 +107,8 @@ export class BlueCat {
     this.body.userData.blue = true;
     this.body.position.copy(HOME);
     this.body.rotation.y = REST_YAW;
-    this.body.add(gltf.scene);
+    this.model = gltf.scene;
+    this.body.add(this.model);
     this.root.add(this.body, this.makeBasket());
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 64;
@@ -176,23 +208,32 @@ export class BlueCat {
     return basket;
   }
 
-  /** Switch mood. Settle/sleep/wake/happy fade in over the idle/walk pair; the pair fades back when they end. */
+  /* ---------- animation layers ---------- */
+
+  /** Switch mood. Layered clips fade in over the idle/walk pair; the pair fades back when they end. */
   private enter(mood: Mood) {
     const previous = this.mood;
     this.mood = mood;
     this.age = 0;
     if (mood === 'idle') this.dwell = rand(3, 6.5);
-    if (mood === 'sleep') this.dwell = rand(14, 24);
+    if (mood === 'sleep') this.dwell = previous === 'sitidle' ? rand(14, 22) : rand(14, 24);
+    if (mood === 'sitidle') this.dwell = rand(18, 36);
     if (mood === 'settle') { this.visits = 0; this.plannedVisits = 2 + Math.floor(Math.random() * 3); }
     if (mood !== 'wake') this.pendingHappy = false;
-    this.fade = mood === 'happy' ? .35 : previous === 'settle' && mood === 'sleep' ? .3 : .5;
-    const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(mood);
-    if (next === this.layer) return;
+    const resting = (m: Mood) => m === 'sit' || m === 'sitidle' || m === 'sleep' || m === 'settle';
+    this.fade = mood === 'happy' ? .35 : mood === 'jump' ? .25 : previous === 'settle' && mood === 'sleep' ? .3
+      : resting(previous) && resting(mood) ? 1.2 : mood === 'stand' || mood === 'unperch' ? .3 : .5;
+    const reverse = mood === 'stand' ? 'sit' : mood === 'unperch' ? 'perch' : undefined;
+    const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(reverse ?? mood);
+    if (next === this.layer && !reverse) return;
     if (this.layer) this.layer.fadeOut(this.fade);
     if (next) {
       next.reset();
-      next.setLoop(mood === 'settle' || mood === 'wake' ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+      const once = mood === 'settle' || mood === 'wake' || mood === 'sit' || mood === 'stand' || mood === 'jump' || mood === 'perch' || mood === 'unperch';
+      next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
       next.clampWhenFinished = true;
+      if (reverse) { next.time = next.getClip().duration; next.setEffectiveTimeScale(-1); }
+      else next.setEffectiveTimeScale(1);
       next.play();
       next.fadeIn(this.fade);
     }
@@ -202,7 +243,12 @@ export class BlueCat {
   readonly pet = (event?: Event) => {
     event?.stopPropagation();
     if (!this.root.visible) return;
-    if (this.mood === 'settle' || this.mood === 'sleep') { this.enter('wake'); this.pendingHappy = true; }
+    if (this.mood === 'jump') return;
+    if (this.mood === 'perch' || this.mood === 'perchidle' || this.mood === 'unperch') {
+      // On the ledge Blue answers with closed eyes and a head push instead of standing up.
+      this.purr = 2.6;
+      this.slowBlink = 1;
+    } else if (this.mood === 'settle' || this.mood === 'sleep') { this.enter('wake'); this.pendingHappy = true; }
     else if (this.mood === 'wake') this.pendingHappy = true;
     else this.enter('happy');
     this.container.dispatchEvent(new CustomEvent('hall:blue-petted', { bubbles: true }));
@@ -228,67 +274,200 @@ export class BlueCat {
     this.gazeAt = this.clock;
   }
 
-  private startWalk() {
-    if (this.visits >= this.plannedVisits) this.goal.copy(HOME);
-    else {
-      let spot = SPOTS[Math.floor(Math.random() * SPOTS.length)];
-      if (spot.distanceTo(this.body.position) < .3) spot = SPOTS[(SPOTS.indexOf(spot) + 1) % SPOTS.length];
-      this.goal.copy(spot);
+  /* ---------- plans ---------- */
+
+  private wanted(scene?: BlueScene): Plan {
+    if (!scene || scene.focus === 0) return scene && scene.pose !== 'hall' ? { kind: 'perch' } : { kind: 'home' };
+    return { kind: 'station', index: scene.focus };
+  }
+
+  /** Cabinet-relative points expressed in Blue's root space (the root shifts and shrinks on compact layouts). */
+  private local(point: THREE.Vector3) {
+    return point.clone().sub(this.shift).divideScalar(this.scale);
+  }
+
+  private stationSpot(index: number, stationX: number[]) {
+    return this.local(new THREE.Vector3(stationX[index] - stationX[0] + this.spotSide * STATION_SIDE_X, 0, STATION_LANE_Z));
+  }
+
+  private replan(plan: Plan, stationX: number[], reduce: boolean) {
+    this.plan = plan;
+    if (plan.kind === 'station') this.spotSide = this.body.position.x > stationX[plan.index] - stationX[0] ? 1 : -1;
+    if (reduce) { this.snap(stationX); return; }
+    switch (this.mood) {
+      case 'happy': case 'jump': case 'stand': case 'unperch': case 'wake': return; // finish, then resume
+      case 'perch': case 'perchidle': if (plan.kind !== 'perch') this.enter('unperch'); return;
+      case 'sit': case 'sitidle': if (plan.kind !== 'station' || flat(this.body.position, this.stationSpot(plan.index, stationX)) > .04) this.enter('stand'); return;
+      case 'sleep': case 'settle': this.enter('wake'); return;
+      default: this.resume(stationX);
+    }
+  }
+
+  /** Reduced motion: no travelling or jumping, Blue is simply where the plan puts him. */
+  private snap(stationX: number[]) {
+    this.speed = 0; this.loco = 1; this.walkMix = 0;
+    const previous = this.layer;
+    if (previous) { previous.fadeOut(0); this.layer = undefined; }
+    this.mood = 'idle'; this.age = 0;
+    if (this.plan.kind === 'perch') { this.body.position.copy(this.local(LEDGE.spot)); this.elevation = this.body.position.y; this.body.rotation.y = 0; this.enter('perchidle'); }
+    else if (this.plan.kind === 'station') { this.elevation = 0; this.body.position.copy(this.stationSpot(this.plan.index, stationX)); this.body.rotation.y = -this.spotSide * .6; this.enter('sitidle'); }
+    else { this.elevation = 0; this.body.position.copy(HOME); this.body.rotation.y = REST_YAW; }
+    const current: THREE.AnimationAction | undefined = this.layer;
+    if (current) { current.fadeIn(0); current.setEffectiveWeight(1); this.loco = 0; }
+  }
+
+  /** Continue the current plan from wherever Blue is. */
+  private resume(stationX: number[]) {
+    const plan = this.plan, at = this.body.position;
+    const takeoff = this.local(LEDGE.takeoff), spot = this.local(LEDGE.spot);
+    if (this.elevation > 0) {
+      if (plan.kind !== 'perch') return this.startJump(at, takeoff, false);
+      if (flat(at, spot) < .03) return this.enter('perch');
+      return this.travelTo(spot, .12, 'perch');
+    }
+    if (plan.kind === 'perch') {
+      if (flat(at, takeoff) < .05) return this.startJump(at, this.local(LEDGE.landing), true);
+      return this.travelTo(takeoff, TRAVEL_SPEED, 'jump');
+    }
+    if (plan.kind === 'station') {
+      const spot = this.stationSpot(plan.index, stationX);
+      if (flat(at, spot) < .05) return this.enter('sit');
+      return this.travelTo(spot, TRAVEL_SPEED, 'sit');
+    }
+    if (flat(at, HOME) > 1.4) { this.visits = this.plannedVisits; return this.travelTo(HOME, TRAVEL_SPEED, 'home'); }
+    this.enter('idle');
+  }
+
+  private travelTo(goal: THREE.Vector3, speed: number, arrival: Arrival) {
+    this.goal.copy(goal);
+    this.travelSpeed = speed;
+    this.arrival = arrival;
+    const away = goal.x - this.body.position.x;
+    if (this.elevation === 0 && Math.abs(away) > TELEPORT_DISTANCE) {
+      // Far stations: appear just outside the frame and stroll in past the arcades instead of crossing the whole hall.
+      this.body.position.set(goal.x - Math.sign(away) * TELEPORT_RUNWAY, 0, STATION_LANE_Z);
+      this.body.rotation.set(0, Math.atan2(Math.sign(away), 0), 0);
+      this.speed = speed * .6;
     }
     this.enter('walk');
   }
 
-  private locomote(dt: number) {
+  private startJump(from: THREE.Vector3, to: THREE.Vector3, up: boolean) {
+    this.jumpFrom.copy(from); this.jumpTo.copy(to); this.jumpUp = up;
+    this.speed = 0;
+    this.body.rotation.set(0, Math.atan2(to.x - from.x, to.z - from.z), 0);
+    this.enter('jump');
+  }
+
+  private startWalk() {
+    if (this.visits >= this.plannedVisits) { this.goal.copy(HOME); this.arrival = 'home'; }
+    else {
+      let spot = SPOTS[Math.floor(Math.random() * SPOTS.length)];
+      if (spot.distanceTo(this.body.position) < .3) spot = SPOTS[(SPOTS.indexOf(spot) + 1) % SPOTS.length];
+      this.goal.copy(spot); this.arrival = 'idle';
+    }
+    this.travelSpeed = ROAM_SPEED;
+    this.enter('walk');
+  }
+
+  private arrive(stationX: number[]) {
+    this.body.position.x = this.goal.x;
+    this.body.position.z = this.goal.z;
+    this.speed = 0;
+    switch (this.arrival) {
+      case 'home': this.faceYaw = REST_YAW; this.enter('settle'); break;
+      case 'sit': this.faceYaw = -this.spotSide * .55; this.enter('sit'); break;
+      case 'perch': this.faceYaw = 0; this.enter('perch'); break;
+      case 'jump': this.startJump(this.body.position, this.local(LEDGE.landing), true); break;
+      default: this.visits++; this.enter('idle'); this.resumeIfNeeded(stationX);
+    }
+  }
+
+  private resumeIfNeeded(stationX: number[]) {
+    if (this.plan.kind !== 'home') this.resume(stationX);
+  }
+
+  /** A layered once-clip has finished: continue the plan. */
+  private advance(stationX: number[]) {
+    switch (this.mood) {
+      case 'settle': this.enter('sleep'); break;
+      case 'wake': if (this.pendingHappy) this.enter('happy'); else { this.enter('idle'); this.resume(stationX); } break;
+      case 'sit': this.enter('sitidle'); break;
+      case 'stand': this.enter('idle'); this.resume(stationX); break;
+      case 'perch': this.enter('perchidle'); break;
+      case 'unperch': this.enter('idle'); this.resume(stationX); break;
+      case 'jump': this.elevation = this.jumpTo.y; this.body.position.copy(this.jumpTo); this.enter('idle'); this.resume(stationX); break;
+      case 'happy': this.enter('idle'); this.resume(stationX); break;
+    }
+  }
+
+  private locomote(dt: number, stationX: number[]) {
     this.forward.subVectors(this.goal, this.body.position);
     this.forward.y = 0;
     const distance = this.forward.length();
-    if (distance < .015 && this.speed < .03) {
-      this.body.position.x = this.goal.x;
-      this.body.position.z = this.goal.z;
-      this.speed = 0;
-      if (this.goal.equals(HOME)) this.enter('settle');
-      else { this.visits++; this.enter('idle'); }
-      return;
-    }
+    if (distance < .015 && this.speed < .03) { this.arrive(stationX); return; }
     this.targetRotation.setFromAxisAngle(UP, Math.atan2(this.forward.x, this.forward.z));
     const angle = this.body.quaternion.angleTo(this.targetRotation);
     // Turns ease out into alignment instead of stopping dead at a fixed angular rate.
     this.body.quaternion.rotateTowards(this.targetRotation, THREE.MathUtils.clamp(angle * 4, .25, TURN_RATE) * dt);
     const aligned = 1 - step(angle, .35, 1.3);
-    const wanted = Math.min(MAX_SPEED, Math.sqrt(2 * DECEL * Math.max(0, distance - .01))) * aligned;
-    this.speed = this.speed < wanted ? Math.min(wanted, this.speed + ACCEL * dt) : Math.max(wanted, this.speed - DECEL * dt);
+    const accel = this.travelSpeed > ROAM_SPEED ? .42 : .28, decel = this.travelSpeed > ROAM_SPEED ? .5 : .36;
+    const wanted = Math.min(this.travelSpeed, Math.sqrt(2 * decel * Math.max(0, distance - .01))) * aligned;
+    this.speed = this.speed < wanted ? Math.min(wanted, this.speed + accel * dt) : Math.max(wanted, this.speed - decel * dt);
     this.heading.copy(FORWARD).applyQuaternion(this.body.quaternion);
     this.body.position.addScaledVector(this.heading, this.speed * dt);
-    this.body.position.x = THREE.MathUtils.clamp(this.body.position.x, BOUNDS.minX, BOUNDS.maxX);
-    this.body.position.z = THREE.MathUtils.clamp(this.body.position.z, BOUNDS.minZ, BOUNDS.maxZ);
+    if (this.elevation === 0) {
+      this.body.position.x = THREE.MathUtils.clamp(this.body.position.x, BOUNDS.minX, BOUNDS.maxX);
+      this.body.position.z = THREE.MathUtils.clamp(this.body.position.z, BOUNDS.minZ, BOUNDS.maxZ);
+    }
   }
+
+  /** Body trajectory during the jump clip's flight phase; the clip itself stays in place. */
+  private fly() {
+    const u = THREE.MathUtils.clamp((this.age - JUMP.launch) / JUMP.flight, 0, 1);
+    const from = this.jumpFrom, to = this.jumpTo;
+    const horizontal = step(u, 0, 1);
+    this.body.position.x = THREE.MathUtils.lerp(from.x, to.x, horizontal);
+    this.body.position.z = THREE.MathUtils.lerp(from.z, to.z, horizontal);
+    const rise = this.jumpUp ? 1 - (1 - u) * (1 - u) : u * u;
+    this.body.position.y = THREE.MathUtils.lerp(from.y, to.y, rise) + (this.jumpUp ? .10 : .16) * Math.sin(Math.PI * u);
+    const wantedPitch = this.age < JUMP.launch ? 0 : this.jumpUp ? THREE.MathUtils.lerp(-.32, .15, u) : THREE.MathUtils.lerp(.05, .38, u);
+    this.pitch = THREE.MathUtils.damp(this.pitch, wantedPitch, 12, 1 / 60);
+  }
+
+  /* ---------- attention overlay ---------- */
 
   private attend(dt: number, camera: THREE.Camera, reduce: boolean) {
     if (!this.head) return;
-    const awake = this.mood === 'idle' || this.mood === 'walk';
+    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'perchidle' || this.mood === 'sit';
     let wanted = 0;
     if (!reduce && awake) {
-      if (this.hover) wanted = 1;
+      if (this.hover || this.purr > 0) wanted = 1;
       else if (this.gazeValid && this.clock - this.gazeAt < 6) wanted = this.mood === 'walk' ? .55 : 1;
-      else if (this.mood === 'idle' && !this.gazeValid) wanted = .3;
+      else if (this.mood === 'perchidle') wanted = .75; // looks down at the visitor from the ledge
+      else if (this.mood !== 'walk' && !this.gazeValid) wanted = .3;
     }
     this.gazeWeight = THREE.MathUtils.damp(this.gazeWeight, wanted, 4, dt);
     this.perk = THREE.MathUtils.damp(this.perk, !reduce && this.hover && awake ? 1 : 0, 6, dt);
     if (wanted > 0) {
-      const target = this.hover || !this.gazeValid ? camera.position : this.gazePoint;
+      const target = this.hover || !this.gazeValid || this.purr > 0 ? camera.position : this.gazePoint;
       this.head.getWorldPosition(this.tmpV);
       this.tmpV.subVectors(target, this.tmpV);
       this.body.getWorldQuaternion(this.tmpQ).invert();
       this.tmpV.applyQuaternion(this.tmpQ);
       const yaw = THREE.MathUtils.clamp(Math.atan2(this.tmpV.x, this.tmpV.z), -.75, .75);
-      const pitch = THREE.MathUtils.clamp(Math.atan2(this.tmpV.y, Math.hypot(this.tmpV.x, this.tmpV.z)), -.3, .42);
+      const pitch = THREE.MathUtils.clamp(Math.atan2(this.tmpV.y, Math.hypot(this.tmpV.x, this.tmpV.z)), this.elevation > 0 ? -.55 : -.3, .42);
       this.gazeYaw = THREE.MathUtils.damp(this.gazeYaw, yaw, 7, dt);
       this.gazePitch = THREE.MathUtils.damp(this.gazePitch, pitch, 7, dt);
     }
-    const yaw = this.gazeYaw * this.gazeWeight, pitch = this.gazePitch * this.gazeWeight;
+    const push = this.purr > 0 ? .12 * Math.sin(Math.min(1, this.purr / 2.6) * Math.PI) : 0;
+    // From the ledge the camera sits only a few degrees below him; tuck the chin so the look-down reads.
+    const ledgeBias = this.mood === 'perchidle' ? .22 * this.gazeWeight : 0;
+    const yaw = this.gazeYaw * this.gazeWeight, pitch = this.gazePitch * this.gazeWeight - push - ledgeBias;
     this.overlay(this.neck, yaw * .38, -pitch * .35, 0);
     this.overlay(this.head, yaw * .62, -pitch * .65, 0);
-    for (const ear of this.ears) this.overlay(ear, 0, -this.perk * .22, ear === this.ears[0] ? this.perk * .06 : -this.perk * .06);
+    const earBack = this.purr > 0 ? .18 : 0;
+    for (const ear of this.ears) this.overlay(ear, 0, -this.perk * .22 + earBack, ear === this.ears[0] ? this.perk * .06 : -this.perk * .06);
   }
 
   /** Post-mixer additive rotation in bone space (X pitch, Y yaw, Z roll). Re-uses the last mixer pose if the mixer wrote nothing. */
@@ -305,38 +484,58 @@ export class BlueCat {
     applied.copy(bone.quaternion);
   }
 
-  update(dt: number, camera: THREE.Camera, active: boolean, reduce: boolean) {
+  /* ---------- per frame ---------- */
+
+  update(dt: number, camera: THREE.Camera, active: boolean, reduce: boolean, scene?: BlueScene) {
     const compact = this.container.clientWidth < 600;
-    this.root.scale.setScalar(compact ? .75 : 1);
-    this.root.position.set(this.stationX + (compact ? .4 : 0), 0, compact ? .05 : 0);
+    this.scale = compact ? .75 : 1;
+    this.root.scale.setScalar(this.scale);
+    this.shift.set(compact ? .4 : 0, 0, compact ? .05 : 0);
+    this.root.position.set(this.stationX + this.shift.x, 0, this.shift.z);
     this.root.visible = active;
     this.button.hidden = !active;
     if (!active) return false;
     this.age += dt;
     this.clock += dt;
+    this.frame++;
+    const stationX = scene?.stationX ?? [this.stationX];
+    const plan = this.wanted(scene);
+    if (plan.kind !== this.plan.kind || (plan.kind === 'station' && this.plan.kind === 'station' && plan.index !== this.plan.index)) this.replan(plan, stationX, reduce);
     if (!reduce) {
       switch (this.mood) {
-        case 'idle': if (this.age > this.dwell) this.startWalk(); break;
-        case 'walk': this.locomote(dt); break;
-        case 'settle':
-          this.targetRotation.setFromAxisAngle(UP, REST_YAW);
-          this.body.quaternion.rotateTowards(this.targetRotation, THREE.MathUtils.clamp(this.body.quaternion.angleTo(this.targetRotation) * 2.5, .15, 1.2) * dt);
-          if (this.age > CLIP.settle) this.enter('sleep');
+        case 'idle': if (this.plan.kind === 'home' && this.age > this.dwell) this.startWalk(); break;
+        case 'walk': this.locomote(dt, stationX); break;
+        case 'settle': if (this.age > CLIP.settle) this.advance(stationX); break;
+        case 'sleep':
+          if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
           break;
-        case 'sleep': if (this.age > this.dwell) this.enter('wake'); break;
-        case 'wake': if (this.age > CLIP.wake) this.enter(this.pendingHappy ? 'happy' : 'idle'); break;
+        case 'wake': if (this.age > CLIP.wake) this.advance(stationX); break;
+        case 'sit': if (this.age > CLIP.sit) this.advance(stationX); break;
+        case 'sitidle': if (this.age > this.dwell) this.enter('sleep'); break;
+        case 'stand': if (this.age > CLIP.stand) this.advance(stationX); break;
+        case 'perch': if (this.age > CLIP.perch) this.advance(stationX); break;
+        case 'unperch': if (this.age > CLIP.unperch) this.advance(stationX); break;
+        case 'jump': if (this.age > CLIP.jump) this.advance(stationX); else this.fly(); break;
       }
     }
     if (this.mood === 'happy') {
-      if (this.age > 5) this.enter('idle');
+      if (this.age > 5) this.advance(stationX);
       else if (!reduce) {
         this.targetRotation.setFromAxisAngle(UP, Math.atan2(camera.position.x - this.root.position.x - this.body.position.x, camera.position.z - this.body.position.z));
         const angle = this.body.quaternion.angleTo(this.targetRotation);
         this.body.quaternion.rotateTowards(this.targetRotation, THREE.MathUtils.clamp(angle * 3, .2, 1.8) * dt);
       }
     }
-    if (this.mood !== 'walk') this.speed = Math.max(0, this.speed - DECEL * dt);
-    if (reduce && this.mood !== 'happy' && this.layer) this.enter('idle');
+    // Settling clips finish the turn the walk left unfinished: onto the cushion, towards the cabinet, or facing the viewer on the ledge.
+    if (this.faceYaw !== null && !reduce && (this.mood === 'settle' || this.mood === 'sit' || this.mood === 'perch')) {
+      this.targetRotation.setFromAxisAngle(UP, this.faceYaw);
+      this.body.quaternion.rotateTowards(this.targetRotation, THREE.MathUtils.clamp(this.body.quaternion.angleTo(this.targetRotation) * 2.5, .15, 1.2) * dt);
+    }
+    if (this.mood !== 'walk') this.speed = Math.max(0, this.speed - .5 * dt);
+    if (this.mood !== 'jump') this.pitch = THREE.MathUtils.damp(this.pitch, 0, 10, dt);
+    this.model.rotation.x = this.pitch;
+    this.purr = Math.max(0, this.purr - dt);
+    if (reduce && this.mood !== 'happy' && this.layer && this.plan.kind === 'home') this.enter('idle');
     // Locomotion pair: idle and walk share one layer whose split follows the actual ground speed, so feet never slide.
     const locoGoal = this.layer ? 0 : 1;
     this.loco = THREE.MathUtils.clamp(this.loco + Math.sign(locoGoal - this.loco) * dt / this.fade, 0, 1);
@@ -351,19 +550,32 @@ export class BlueCat {
     if (this.blinkAge > this.blinkPeriod) { this.blinkAge = 0; this.blinkPeriod = rand(3.2, 6.5); }
     this.slowBlink = Math.max(0, this.slowBlink - dt / .9);
     const resting = this.mood === 'sleep' || this.mood === 'settle' || this.mood === 'wake';
-    const eyeGoal = resting ? 1 : this.mood === 'happy' ? .94 : !reduce && (this.blinkAge > this.blinkPeriod - .24 || this.slowBlink > .45) ? 1 : 0;
-    this.blink = THREE.MathUtils.damp(this.blink, eyeGoal, resting || this.slowBlink > 0 ? 7 : 20, dt);
+    const eyeGoal = resting ? 1 : this.mood === 'happy' || this.purr > .4 ? .94 : !reduce && (this.blinkAge > this.blinkPeriod - .24 || this.slowBlink > .45) ? 1 : 0;
+    this.blink = THREE.MathUtils.damp(this.blink, eyeGoal, resting || this.slowBlink > 0 || this.purr > 0 ? 7 : 20, dt);
+    // Pose-space floor correctives: sphinx rest, upright sit and the ledge perch each keep their underside above the surface.
     const settled = this.mood === 'sleep' ? 1 : this.mood === 'settle' ? step(this.age, .5, 2.2) : this.mood === 'wake' ? 1 - step(this.age, .5, 1.9) : 0;
+    const seated = this.mood === 'sitidle' ? 1 : this.mood === 'sit' ? step(this.age, .3, 1.6) : this.mood === 'stand' ? 1 - step(this.age, .2, 1.5) : 0;
+    const perched = this.mood === 'perchidle' ? 1 : this.mood === 'perch' ? step(this.age, .4, 1.8) : this.mood === 'unperch' ? 1 - step(this.age, .2, 1.6) : 0;
     this.ground = THREE.MathUtils.damp(this.ground, settled, 14, dt);
+    this.seatGround = THREE.MathUtils.damp(this.seatGround, seated, 14, dt);
+    this.perchGround = THREE.MathUtils.damp(this.perchGround, perched, 14, dt);
     for (const mesh of this.eyelids) {
-      if (mesh.morphTargetInfluences && mesh.morphTargetDictionary) mesh.morphTargetInfluences[mesh.morphTargetDictionary.BlueBlink] = this.blink;
-      if (mesh.morphTargetInfluences && mesh.morphTargetDictionary?.BlueGround !== undefined) mesh.morphTargetInfluences[mesh.morphTargetDictionary.BlueGround] = this.ground;
+      const dict = mesh.morphTargetDictionary, influences = mesh.morphTargetInfluences;
+      if (!dict || !influences) continue;
+      influences[dict.BlueBlink] = this.blink;
+      if (dict.BlueGround !== undefined) influences[dict.BlueGround] = this.ground;
+      if (dict.BlueSit !== undefined) influences[dict.BlueSit] = this.seatGround;
+      if (dict.BluePerch !== undefined) influences[dict.BluePerch] = this.perchGround;
     }
     // Blend the last few centimetres onto the cushion, including after petting there.
-    const homeDistance = Math.hypot(this.body.position.x - HOME.x, this.body.position.z - HOME.z);
-    this.body.position.y = step(.4 - homeDistance, 0, .22) * .095;
-    this.shadow.position.set(this.body.position.x, .003, this.body.position.z);
+    if (this.mood !== 'jump') {
+      const homeDistance = flat(this.body.position, HOME);
+      this.body.position.y = this.elevation + (this.elevation === 0 ? step(.4 - homeDistance, 0, .22) * .095 : 0);
+    }
+    const groundY = this.mood === 'jump' ? (this.age < JUMP.launch + JUMP.flight * .5 ? this.jumpFrom.y : this.jumpTo.y) : this.elevation;
+    this.shadow.position.set(this.body.position.x, groundY + .003, this.body.position.z);
     this.shadow.rotation.z = -this.body.rotation.y;
+    (this.shadow.material as THREE.MeshBasicMaterial).opacity = 1 - step(this.body.position.y - groundY, .05, .6) * .7;
     this.body.updateWorldMatrix(true, true);
     this.projection.set(0, .27, 0).applyMatrix4(this.body.matrixWorld).project(camera);
     const inView = Math.abs(this.projection.x) < .94 && Math.abs(this.projection.y) < .94 && this.projection.z > -1 && this.projection.z < 1;
@@ -373,7 +585,11 @@ export class BlueCat {
       this.button.style.top = `${(-this.projection.y * .5 + .5) * 100}%`;
       this.button.setAttribute('aria-label', document.documentElement.dataset.lang === 'en' ? 'Pet Blue the cat' : 'Blue streicheln');
     }
-    return !reduce || this.mood === 'happy' || this.gazeWeight > .001 || this.perk > .001;
+    if (reduce) return this.mood === 'happy' || this.gazeWeight > .001 || this.perk > .001;
+    // Beside an open panel only calm moods are throttled, so reading stays smooth while Blue keeps breathing.
+    const calm = this.mood === 'perchidle' || this.mood === 'sitidle' || this.mood === 'sleep';
+    if (scene && !scene.inHall && calm && this.gazeWeight < .05 && this.perk < .05 && this.purr <= 0) return this.frame % 3 === 0;
+    return true;
   }
 
   dispose() {

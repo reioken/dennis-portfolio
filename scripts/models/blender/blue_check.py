@@ -28,13 +28,17 @@ cd.type = 'ORTHO'; cd.ortho_scale = .92
 VIEWS = {'three-quarter': (1.4, -2, 1), 'side': (2.4, 0, .5), 'front': (0, -2.4, .6)}
 lengths = [(mesh.data.vertices[e.vertices[0]].co - mesh.data.vertices[e.vertices[1]].co).length for e in mesh.data.edges]
 SHOTS = [('idle', 0, 'three-quarter'), ('idle', 66, 'front'), ('walk', 9, 'side'), ('walk', 27, 'three-quarter'), ('settle', 36, 'three-quarter'),
-         ('sleep', 0, 'three-quarter'), ('sleep', 90, 'side'), ('sleep', 0, 'front'), ('happy', 30, 'three-quarter'), ('happy', 90, 'front')]
+         ('sleep', 0, 'three-quarter'), ('sleep', 90, 'side'), ('sleep', 0, 'front'), ('happy', 30, 'three-quarter'), ('happy', 90, 'front'),
+         ('sit', 54, 'three-quarter'), ('sitidle', 60, 'side'), ('sitidle', 30, 'front'), ('jump', 9, 'side'), ('jump', 15, 'side'), ('jump', 24, 'side'), ('jump', 36, 'side'),
+         ('perch', 60, 'three-quarter'), ('perch', 60, 'side'), ('perchidle', 45, 'front')]
 report = []
 for label, frame, view in SHOTS:
     action = bpy.data.actions[label]; arm.animation_data.action = action; arm.animation_data.action_slot = action.slots[0]
     blocks = mesh.data.shape_keys.key_blocks
     blocks['BlueBlink'].value = 1 if label in ['sleep', 'happy'] else 0
     blocks['BlueGround'].value = 1 if label == 'sleep' else (.5 if label == 'settle' else 0)
+    if 'BlueSit' in blocks: blocks['BlueSit'].value = 1 if label == 'sitidle' else (.6 if label == 'sit' else 0)
+    if 'BluePerch' in blocks: blocks['BluePerch'].value = 1 if label in ['perch', 'perchidle'] else 0
     scene.frame_set(frame); bpy.context.view_layer.update()
     dg = bpy.context.evaluated_depsgraph_get(); em = mesh.evaluated_get(dg).to_mesh()
     worst = []

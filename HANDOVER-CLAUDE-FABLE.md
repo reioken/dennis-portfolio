@@ -93,6 +93,10 @@ Research: `3c42905`; implementation: `e300b79`.
 
 References: `docs/research/hall-lighting-atmosphere.md`, `hall-lighting-implementation.md`. Generators: `scripts/build-hall-environment.mjs`, `scripts/models/blender/bake_hall_light.py`, `scripts/build-hall-light-maps.mjs`.
 
+### Loading cube: bracket sync (`c2d80fb`, 2026-09-12)
+
+Dennis: the cube felt out of sync with the outer brackets. Cause: the cube faces started animating on first style while the brackets and signal started when the startup class arrived, and the four brackets ran staggered delays (0/240/480/720 ms) inward against the cube's uniform outward breath. Now every startup animation starts on the same style flush and shares one 2400 ms cycle (widest and brightest at 1200 ms, settled at 2400 ms); cube keyframes are unchanged. Verified: all eleven animations share one `startTime`; Chromium screencast and native Firefox compositor regressions still pass (max holds 31 ms / 41 ms). Evidence strip: `.source-assets/cube-compositor-qa/sync-strip.png`.
+
 ### Loading cube: actual Firefox cause and final fix
 
 **Use `9ecd880` as the baseline.** Earlier animated-WebP and parent-rotation implementations were repeatedly reported as frozen by the user. Do not restore them based on old documentation or a visually moving outer bracket.
@@ -127,6 +131,14 @@ Dennis's accepted stylized toy figure is `public/models/dennis.glb`, referenced 
 - `src/components/hall/blueCat.ts`: idle/walk blended by ground speed (no foot sliding), acceleration-limited locomotion with eased turns and random stops, layered settle/sleep/wake/happy, petting a resting cat wakes it first, a fixed resting heading so the lying pose reads from the frontal camera, and a post-mixer attention overlay: neck/head/ears follow the pointer, look at the viewer with perked ears and a slow blink on hover, glance at the camera without a pointer. Velvet sheen material, glossy eyes.
 - `hallScene.ts` feeds the pointer ray/hover state through `look()` and clears it on `pointerleave`; loader failures are logged.
 - Known residue: faint mip-bleed specks from the eye texels on the resting cat under strong light (see the research note), wrist stretch in the sphinx pose hidden from the camera, native Firefox and physical devices not rerun for v2.
+
+**Blue companion (same day, after v2)** — Dennis: on "Über mich" Blue should jump onto the claw machine, look down and lie there like his photo on a shelf edge; at the other stations he should slowly walk past the arcades and sit in front of them.
+
+- Five more clips (`sit`, `sitidle`, `jump`, `perch`, `perchidle`; `stand`/`unperch` are reversed playback) and two more pose-space correctives (`BlueSit`, `BluePerch`, the latter skipping the hanging front legs). Morph normals dropped from the export. Asset now 2,260,396 bytes, 11 clips.
+- `hallScene.ts` passes `{ focus, pose, stationX, inHall }` each frame and keeps Blue active at every station and behind panels. `blueCat.ts` plans **home** (basket routine), **station n** (stroll at 0.34 m/s along a lane 0.8 m in front of the cabinets, sit 0.92 m beside the focused one on the approach side, later lie down and sit up again; far targets appear 2.6 m outside the frame and walk in) or **perch** (walk to 1.05 m in front of the claw cabinet, leap onto its 1.95 m top, turn, step to the marquee edge, lie with paws hanging; petting there closes the eyes and pushes the head; leaving hops him down and walks him home). Cabinet-relative targets are divided by the compact root scale (0.75) and shifted, otherwise phones put him inside the glass.
+- Reduced motion snaps to the plan's end pose. Calm moods beside an open panel render every third frame.
+- New regression `scripts/qa/blue-companion.mjs` (desktop, reduced motion, 390×844): sit position, perch height/edge/heading, ledge petting, climb-down after `history.back()`, no console errors. Screenshots `.source-assets/blue/qa/companion-*.png`.
+- Known limits: the leap is stylised (a real cat would need a run-up), the sit stretch at the hocks and the perch armpit are the worst skin areas (hidden by the viewing angle), native Firefox not rerun.
 
 Detailed pipeline/QA: `docs/research/blue-cat.md`. Meshy CLI adapter used: `C:/Users/denni/Projects/survivorlike/tools/meshy.py`. No API credential is included in this handover; never recover one by printing conversation secrets into files/logs. Public rigging API support must be rechecked before using it for quadrupeds; this delivery used local Blender rigging.
 
@@ -185,6 +197,8 @@ Some QA scripts hard-code these paths and localhost:4321; adapt deliberately on 
 | --- | --- |
 | Portrait, section presence, return navigation, responsive layout | `node scripts/qa/portrait-navigation.mjs` |
 | Cat behavior, actual pointer/keyboard, reduced motion | `node scripts/qa/blue-cat.mjs` |
+| Cat companion: station sit, About perch, petting on the ledge, climb-down, phone | `node scripts/qa/blue-companion.mjs` |
+| Cat clips: pose renders and skin stretch per clip | `blender --background --python scripts/models/blender/blue_check.py` |
 | Native Firefox cat | `node scripts/qa/blue-cat-firefox.mjs` |
 | Cube rotation under stalls / startup | `node scripts/qa/loading-prism.mjs`, `node scripts/qa/loading-prism-firefox.mjs` |
 | Lighting, station focus, mobile Lite | `node scripts/qa/hall-lighting.mjs` |
@@ -214,7 +228,7 @@ There is **no unfinished requested implementation** from the portrait/Blue relea
 4. **Firefox/driver breadth.** Final cube compositor behavior is verified in native headless Firefox 155.0.1 on this machine. If Dennis reports another stall, capture actual cube rotation separately from expansion/brackets and confirm live build identity; do not repeat cosmetic rewrites based on computed transforms alone.
 5. **Figure edge shimmer.** Several fixes reduced Dennis's white edge flicker, especially hair. No universal elimination across drivers/resolutions is proven. Inspect moving live frames if the user still sees it; preserve current accepted model and avoid excessive blur.
 6. **Performance budget.** Large JS bundle warning remains. Profile before cutting features or changing animation timing. Room warm-up, GPU uploads and model loading need coverage on slower hardware. Keep Blue behind the existing startup gate.
-7. **Blue v2 review.** Dennis has not yet judged v2 live. If he still finds it unclean, the remaining candidates are the faint eye-texel mip bleed on the resting cat (custom mip chain or a lower eye cap in `blue_animate.py`), the wrist stretch in the sphinx pose (weights, not clips), and the head/neck overlay weights. Rerun `scripts/qa/blue-cat-firefox.mjs` before claiming Firefox parity. Check feet/floor contact, route bounds, basket relation, happy-expression readability and the projected click target at new resolutions before changing behavior.
+7. **Blue v2 and companion review.** Dennis has not yet judged v2 or the companion behaviour live. Likely tuning requests: stroll speed between stations, the sitting side/offset, the leap height or a run-up, how far the head tucks down on the ledge. If he still finds it unclean, the remaining candidates are the faint eye-texel mip bleed on the resting cat (custom mip chain or a lower eye cap in `blue_animate.py`), the wrist stretch in the sphinx pose (weights, not clips), and the head/neck overlay weights. Rerun `scripts/qa/blue-cat-firefox.mjs` before claiming Firefox parity. Check feet/floor contact, route bounds, basket relation, happy-expression readability and the projected click target at new resolutions before changing behavior.
 8. **Tattoo fidelity.** Current Dennis model was accepted “for now”; perfect anatomical/texture accuracy was not achieved or certified. Any future improvement should map the original photos and preserve corrected left/right/hand/forearm placements.
 9. **External links/downloads.** Latest built-site audit covers local links and metadata. Do not infer it downloaded and executed the NEXUS installer or revalidated every external destination. Smoke-test changed destinations without installing software or submitting contact messages unnecessarily.
 10. **Git main alignment.** Current source is on `feat/werkstatt`, production is a direct Pages deployment. Decide a proper main merge with current remote evidence if requested; GitHub Actions deploys pushes to main/master and runs `npm run build`, including its scanner.

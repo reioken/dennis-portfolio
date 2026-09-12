@@ -2920,7 +2920,8 @@ export class HallScene {
     }
 
     for (const m of this.machines) if (m.dissolve?.tick(now)) brightMoving = true;
-    if (this.blue?.update(dt, this.camera, this.focus <= 2 && (inHall || this.focus === 0), this.reduce)) {
+    // Blue accompanies every station and climbs the claw cabinet while the About panel is open.
+    if (this.blue?.update(dt, this.camera, inHall || this.pose !== 'hall', this.reduce, { focus: this.focus, pose: this.pose, stationX: this.stationX, inHall })) {
       this.dirty = this.mirrorDirty = true;
     }
     if (this.tvDissolve?.tick(now)) wallMoving = true;

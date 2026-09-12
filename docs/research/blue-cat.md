@@ -82,6 +82,17 @@ Two texture lessons from this atlas: the polygons are only a few texels wide at 
 - Material: `MeshPhysicalMaterial` sheen (0.55, roughness 0.6, cool grey) gives the coat a velvet rim under the rect lights; eyes are glossy (roughness 0.32). Normal map strength 0.35, texture anisotropy 8.
 - `hallScene.ts` passes the pointer ray and hover state through `look()` on every cursor update and clears it on `pointerleave`; loader errors are now logged instead of swallowed.
 
+### Companion behaviour (same day, Dennis's follow-up)
+
+Dennis asked for two things: on "Über mich" Blue should jump onto the claw machine, look down and lie there like a photo of him on a shelf edge with his front paws hanging over; on the other stations he should slowly walk past the arcades and sit in front of them.
+
+- Five more clips in `blue_animate.py`: `sit` (1.8 s, stand → upright sit), `sitidle` (6 s loop with glances, ear flicks and tail-tip flicks), `jump` (1.4 s in place: crouch 0–0.30 s, launch, flight 0.42–1.10 s, landing crouch; the runtime moves the body), `perch` (2 s, stand → lying at a ledge with the front legs hanging below it) and `perchidle` (6 s loop). `stand` and `unperch` are `sit` and `perch` played backwards. Two more pose-space correctives, `BlueSit` and `BluePerch`, keep each underside on its surface; `BluePerch` skips the front-leg vertices because those are meant to hang. Morph normals are no longer exported (they cost 350 KB and change nothing visible). Asset: 2,260,396 bytes, 11 clips, four morphs.
+- The hall now passes `{ focus, pose, stationX, inHall }` every frame and keeps Blue active at every station and behind open panels. `blueCat.ts` derives a plan from that: **home** (station 0 in the hall: the basket routine as before), **station n** (sit beside cabinet n) or **perch** (About: station 0 with a non-hall pose). Plan changes stand him up, wake him or climb him down first, then `resume()` continues from wherever he is.
+- Station: he strolls at 0.34 m/s along a lane 0.8 m in front of the cabinets and sits 0.92 m beside the focused one, on the side he arrives from, facing the visitor; after 18–36 s he lies down (sphinx), 14–22 s later he sits up again. If the target is further than 3.4 m he is placed 2.6 m outside the frame on the approach side and walks in, so long hall jumps do not turn into 30-second treks.
+- Perch: he walks to 1.05 m in front of the claw cabinet, crouches and leaps 1.95 m onto its top (a stylised cat leap with an eased rise and a small overshoot, nose up then down), turns to face the viewer, steps to the marquee's front edge (top surface 1.95 m, front face z 0.42 measured by raycast) and lies down with the paws hanging in front of the marquee. Petting on the ledge closes his eyes and pushes his head instead of standing him up. Leaving About plays `unperch`, a forward hop down to the floor, then the walk home.
+- Reduced motion snaps to the plan's final pose without travelling. Beside an open panel only calm moods render every third frame.
+- `scripts/qa/blue-companion.mjs` drives the whole scenario in Chromium at 1440×900 (plus reduced motion and 390×844): station sit position, perch position/heading/height, petting on the ledge, climb-down after `history.back()`, no console errors. Screenshots in `.source-assets/blue/qa/companion-*.png`.
+
 ### Verification
 
 - Blender: pose renders and stretch report for all clips (`blue_check.py`).

@@ -15,7 +15,7 @@ try {
       const h=window.__hall,b=h.blue;h.stop();
       return {position:b.body.position.toArray(),mood:b.mood,actions:[...b.actions.keys()],meshes:[],overflow:document.documentElement.scrollWidth>innerWidth,buttonHidden:b.button.hidden};
     });
-    assert.deepEqual([...initial.actions].sort(),['happy','idle','settle','sleep','wake','walk']);
+    assert.deepEqual([...initial.actions].sort(),['happy','idle','jump','perch','perchidle','settle','sit','sitidle','sleep','wake','walk']);
     assert.equal(initial.overflow,false); assert.equal(initial.buttonHidden,false);
     assert.equal(await page.getByRole('button', {name: 'Blue streicheln'}).count(), 1);
     await page.screenshot({path:`${out}/${width}-${reduce?'reduced':'room'}.png`});
