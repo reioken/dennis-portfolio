@@ -102,6 +102,8 @@ def base():
         'front_side': {'L': 1., 'R': 1.},  # per-side multiplier of the front-leg pose amount (one paw at a time)
         'tail_lift': 0., 'tail_wave': [0.] * 6, 'tail_lift_wave': [0.] * 6,
         'root_yaw': 0.,  # carried by the Root bone; the runtime strips it from the clip and turns the body instead
+        'root_move': V((0, 0, 0)),  # likewise for translation: the jump clips carry their own trajectory
+        'body_pitch': 0.,  # whole-body pitch about the chest (negative = nose up); stays on the skeleton, not the Root
     }
 
 def solve(P):
@@ -153,9 +155,16 @@ def solve(P):
         rot[TAIL[i]] = (heads[TAIL[i + 1]] - heads[TAIL[i]]).rotation_difference(p[TAIL[i + 1]] - p[TAIL[i]])
     rot['Tail5'] = rot['Tail4']
     mats = {n: Matrix.Translation(p[n]) @ rot[n].to_matrix().to_4x4() @ restq[n].to_matrix().to_4x4() for n in names}
+    if P['body_pitch']:
+        pivot = V((0, -.05, .2))
+        pitch = Matrix.Translation(pivot) @ Matrix.Rotation(P['body_pitch'], 4, 'X') @ Matrix.Translation(-pivot)
+        mats = {n: (pitch @ m if n != 'Root' else m) for n, m in mats.items()}
     if P['root_yaw']:
         turn = Matrix.Rotation(P['root_yaw'], 4, 'Z')
         mats = {n: turn @ m for n, m in mats.items()}
+    if P['root_move'].length:
+        move = Matrix.Translation(P['root_move'])
+        mats = {n: move @ m for n, m in mats.items()}
     return mats
 
 # ---------------------------------------------------------------- clips
@@ -255,6 +264,58 @@ def sitidle(t, D):
     P['tail_wave'][5] += .012 * pulse(t, .45 * D, .6) + .008 * pulse(t, .9 * D, .5)
     return P
 
+# ---------------------------------------------------------------- jumps with root motion
+# The Root bone carries the trajectory (JUMP_UP: 1.95 m up and 1.03 m forward onto the claw cabinet, JUMP_DOWN the
+# reverse from the lying spot to the floor in front). The runtime strips the Root track, replays the curve on the
+# body and warps it to the actual take-off and landing points, so the pose and the flight can never disagree.
+JUMP_UP = (1.03, 1.95)
+JUMP_DOWN = (.88, 1.95)
+
+def jumpup(t, D):
+    """Onto the ledge: look up, load the hindquarters, launch nose-up, arc, front paws land first, absorb, settle."""
+    P = base()
+    P['head']['pitch'] = track(t, [(0, 0), (.15, -.30), (.45, -.22), (.58, -.05), (.8, .0), (.95, .18), (1.15, .05), (1.5, 0)])
+    load = track(t, [(.12, 0), (.42, 1), (.55, -.3), (.7, 0), (.95, 0), (1.08, .7), (1.5, 0)])
+    for n, d in (('Pelvis', .085), ('Spine', .07), ('Chest', .045), ('Neck', .02), ('Head', .012)): P['drop'][n] = d * load
+    P['push'] = track(t, [(.12, 0), (.42, .022), (.55, -.03), (.8, -.01), (1.5, 0)])
+    P['body_pitch'] = track(t, [(.28, 0), (.42, .08), (.58, -.36), (.8, -.26), (.95, .04), (1.08, .2), (1.32, 0)])
+    up = track(t, [(.5, 0), (.75, 1.3), (.95, 2.0), (1.02, JUMP_UP[1])])
+    forward = track(t, [(.5, 0), (1.0, JUMP_UP[0])])
+    P['root_move'] = V((0, -forward, up))
+    for side in 'LR':
+        P['ears'][side][0] = track(t, [(.35, 0), (.55, .16), (.9, .05), (1.08, .12), (1.5, 0)])
+        F, H = P['legs'][('Front', side)], P['legs'][('Hind', side)]
+        F['dy'] = track(t, [(.42, 0), (.58, -.06), (.8, -.12), (.95, -.07), (1.15, 0)])
+        F['dz'] = track(t, [(.42, 0), (.55, .06), (.8, .14), (.93, .03), (1.0, 0)])
+        F['pitch'] = track(t, [(.45, 0), (.6, .5), (.85, .3), (.95, -.15), (1.1, 0)])
+        H['dy'] = track(t, [(.4, 0), (.56, .14), (.8, .10), (1.05, .06), (1.2, 0)])
+        H['dz'] = track(t, [(.4, 0), (.5, 0), (.64, .12), (.95, .14), (1.1, .02), (1.2, 0)])
+    P['tail_back'] = track(t, [(.3, 0), (.55, .9), (1.0, .8), (1.3, .2), (1.5, 0)])
+    P['tail_lift'] = track(t, [(0, 0), (.35, .3), (.55, 0)])
+    return P
+
+def jumpdown(t, D):
+    """Off the ledge: peer down, push off, drop nose-down, the front paws take the landing, the hindquarters follow."""
+    P = base()
+    P['head']['pitch'] = track(t, [(0, 0), (.2, .35), (.4, .25), (.55, .1), (.85, .28), (1.05, .05), (1.3, 0)])
+    load = track(t, [(.05, 0), (.32, .7), (.42, .2), (.55, 0), (.85, 0), (.98, 1), (1.3, 0)])
+    for n, d in (('Pelvis', .05), ('Spine', .065), ('Chest', .07), ('Neck', .03), ('Head', .015)): P['drop'][n] = d * load
+    P['push'] = track(t, [(.1, 0), (.32, -.02), (.45, -.04), (.7, 0)])
+    P['body_pitch'] = track(t, [(.2, 0), (.42, .15), (.6, .38), (.85, .3), (.98, .05), (1.1, -.08), (1.3, 0)])
+    down = track(t, [(.4, 0), (.6, .3), (.8, 1.1), (.92, JUMP_DOWN[1])])
+    forward = track(t, [(.4, 0), (.92, JUMP_DOWN[0])])
+    P['root_move'] = V((0, -forward, -down))
+    for side in 'LR':
+        P['ears'][side][0] = track(t, [(.3, 0), (.5, .1), (.9, .14), (1.3, 0)])
+        F, H = P['legs'][('Front', side)], P['legs'][('Hind', side)]
+        F['dy'] = track(t, [(.35, 0), (.5, -.08), (.85, -.10), (1.0, 0)])
+        F['dz'] = track(t, [(.35, 0), (.55, -.03), (.8, -.06), (.92, 0)])
+        F['pitch'] = track(t, [(.4, 0), (.6, -.3), (.9, .1), (1.05, 0)])
+        H['dy'] = track(t, [(.35, 0), (.5, .06), (.9, .08), (1.1, 0)])
+        H['dz'] = track(t, [(.3, 0), (.45, 0), (.6, .10), (.9, .12), (1.02, .02), (1.12, 0)])
+    P['tail_back'] = track(t, [(.3, 0), (.55, .8), (.9, .9), (1.1, .3), (1.3, 0)])
+    return P
+
 def jump(t, D):
     """In place: crouch (0-.30), launch (.30-.42), airborne (.42-1.10), land (1.10-1.40)."""
     P = base()
@@ -296,8 +357,111 @@ def perchidle(t, D):
     P['tail_wave'][5] += .010 * math.sin(2 * w); P['tail_wave'][4] += .005 * math.sin(2 * w)
     return P
 
+def stand(t, D):
+    """Up from the sit: weight rocks forward, the hind legs push, the rear rises, the tail lifts off last."""
+    P = base(); apply_sit(P, 1 - ease(t, .15, 1.05), 1 - ease(t, .3, 1.25), 1 - ease(t, .55, 1.35))
+    P['push'] += -.012 * pulse(t, .05, 1.1); P['head_lift'] += .006 * pulse(t, .2, 1.0)
+    P['head']['pitch'] += -.05 * pulse(t, .1, .9)
+    for side in 'LR': P['ears'][side][0] += .06 * pulse(t, .1, .8)
+    return P
+
+def unperch(t, D):
+    """Off the ledge: one front paw after the other comes back onto the top, the chest lifts, then the hindquarters."""
+    P = base()
+    front_l, front_r = 1 - ease(t, .1, .75), 1 - ease(t, .35, 1.0)
+    apply_perch(P, 1, 1 - ease(t, .45, 1.35), 1 - ease(t, .7, 1.55), 1 - ease(t, .55, 1.45), 1 - ease(t, .2, .95))
+    P['front_side'] = {'L': front_l, 'R': front_r}
+    for side, amount in (('L', front_l), ('R', front_r)):
+        L, H = P['legs'][('Front', side)], HANG_SIDE[side]
+        L['pitch'] += H['pitch'] * (amount - 1)  # the curl follows its own paw, not the shared amount
+        L['dz'] += .025 * pulse(t, .1 if side == 'L' else .35, .65)  # lift over the lip
+    P['head']['pitch'] += -.06 * pulse(t, .05, .8); P['head_lift'] += .008 * pulse(t, .1, .9)
+    return P
+
+# ---------------------------------------------------------------- turning in place
+# Authored in the turning frame: the body yaws by yaw(t) around PIVOT while planted paws stay where they are in
+# the world, so in body space they sweep backwards until their next step. The Root bone carries yaw(t); the
+# runtime strips that track from the clip and turns the body by the same curve, so heading stays continuous.
+PIVOT = V((0, -.03, 0))
+TURN_STEP = {'Front': math.radians(45), 'Hind': math.radians(45)}  # a paw steps once per this much body yaw
+TURN_SWING = {'Front': .13, 'Hind': .15}
+TURN_LIFT = {'Front': .03, 'Hind': .025}
+
+def turn_yaw(t, D, theta, start=.1, tail=.22, ramp=.3):
+    """Trapezoid yaw profile: the rate ramps up, holds and ramps down, so the peak stays within what the paws can step."""
+    T = D - tail - start; u = clamp((t - start) / T) * T
+    if u < ramp: f = u * u / (2 * ramp)
+    elif u < T - ramp: f = u - ramp / 2
+    else: f = (T - ramp) - (T - u) ** 2 / (2 * ramp)
+    return theta * f / (T - ramp)
+
+def turn_schedule(theta, D, sign):
+    """Per paw: list of (start, end, from_angle, to_angle) swings, found by simulating the step rule."""
+    inner, outer = ('L', 'R') if sign > 0 else ('R', 'L')
+    feet = [('Front', inner), ('Hind', outer), ('Front', outer), ('Hind', inner)]
+    first = {('Front', inner): .2, ('Hind', outer): .24, ('Front', outer): .5, ('Hind', inner): .54}  # diagonal pairs start together
+    planted = {f: 0. for f in feet}; swings = {f: [] for f in feet}; last_start = -1.
+    t = 0.
+    while t < D:
+        y = turn_yaw(t, D, theta)
+        active = [f for f in feet if swings[f] and swings[f][-1][1] > t]
+        # The paw furthest behind the body steps first, so no single paw can hog consecutive steps.
+        for f in sorted(feet, key=lambda f: planted[f] - y):
+            if f in active or theta - planted[f] < 1e-4: continue
+            step = TURN_STEP[f[0]]; remaining = theta - planted[f]
+            threshold = min(step * (first[f] if not swings[f] else .5), remaining * .5)
+            if y - planted[f] <= threshold or t - last_start < .02: continue
+            # Only a diagonal pair may swing together: never both front, both hind or the same side.
+            if any(g[0] == f[0] or g[1] == f[1] for g in active): continue
+            to = min(theta, y + step * .5)  # land half a step ahead of the body, wherever it is now
+            swings[f].append((t, t + TURN_SWING[f[0]], planted[f], to)); planted[f] = to; last_start = t
+            active.append(f)
+        t += 1 / 240
+    return swings
+
+def turn_foot(swings, t):
+    """Planted angle, lift and paw pitch of one paw at time t."""
+    a = 0.
+    for s, e, a0, a1 in swings:
+        if t >= e: a = a1; continue
+        if t >= s:
+            u = (t - s) / (e - s)
+            return a0 + (a1 - a0) * smooth(u), math.sin(math.pi * u), .45 * math.sin(math.pi * u) * (1 - u) ** .5
+        break
+    return a, 0., 0.
+
+def turn(t, D, theta, sign, swings):
+    P = base(); y = turn_yaw(t, D, theta); P['root_yaw'] = sign * y
+    arc = math.sin(math.pi * clamp(t / D))
+    # Head and chest acquire the new direction first and settle as the body catches up; the pelvis lags.
+    P['head']['yaw'] = sign * track(t, [(0, 0), (.16, .34), (.55 * D, .2), (D - .12, 0)])
+    P['head']['roll'] = sign * .05 * arc; P['head']['pitch'] = -.03 * arc
+    P['yaw']['Chest'] = sign * .09 * arc; P['yaw']['Pelvis'] = -sign * .045 * arc
+    P['roll']['Chest'] = -sign * .035 * arc
+    P['sway'] = sign * .006 * arc; P['bob'] = -.006 * arc
+    inner = 'L' if sign > 0 else 'R'
+    P['ears'][inner][1] += sign * .12 * arc; P['ears'][inner][0] += .05 * arc
+    P['tail_lift'] = .15 * arc
+    for i in range(6):
+        k = i / 5; P['tail_wave'][i] += -sign * .05 * k ** 1.5 * math.sin(math.pi * clamp((t - .08) / D))
+    for leg in ('Front', 'Hind'):
+        for side in 'LR':
+            paw = f'{leg}Paw.{side}'
+            a, lift, pitch = turn_foot(swings[(leg, side)], t)
+            rel = heads[paw] - PIVOT
+            pos = PIVOT + Matrix.Rotation(sign * (a - y), 4, 'Z') @ rel + V((0, 0, TURN_LIFT[leg] * lift))
+            L = P['legs'][(leg, side)]; L['dx'], L['dy'], L['dz'], L['pitch'] = (pos - heads[paw]).x, (pos - heads[paw]).y, (pos - heads[paw]).z, pitch
+    return P
+
+TURNS = []
+for degrees, D in ((45, 1.15), (90, 1.7)):
+    for side, sign in (('L', 1), ('R', -1)):
+        theta = math.radians(degrees); swings = turn_schedule(theta, D, sign)
+        TURNS.append((f'turn{side}{degrees}', D, (lambda th, sg, sw: lambda t, D: turn(t, D, th, sg, sw))(theta, sign, swings)))
+
 CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('settle', 2.4, settle), ('sleep', 6.0, sleep), ('wake', 2.4, wake), ('happy', 4.0, happy),
-         ('sit', 1.8, sit), ('sitidle', 6.0, sitidle), ('jump', 1.4, jump), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle)]
+         ('sit', 1.8, sit), ('sitidle', 6.0, sitidle), ('stand', 1.4, stand), ('jumpup', 1.5, jumpup), ('jumpdown', 1.3, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle),
+         ('unperch', 1.6, unperch)] + TURNS
 
 # ---------------------------------------------------------------- floor contact correctives
 # Pose-space morphs lift whatever the folded pose pushes below the surface: the sphinx rest,

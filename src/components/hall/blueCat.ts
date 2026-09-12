@@ -27,8 +27,6 @@ const TURN_CLIPS = [{ name: '45', angle: Math.PI / 4, scale: [.5, 1.3] }, { name
 const TELEPORT_DISTANCE = 3.4, TELEPORT_RUNWAY = 2.6;
 /** Heading Blue settles into on the cushion, so the lying pose reads from the frontal hall camera. */
 const REST_YAW = .95;
-/** Jump clip phases: crouch and launch on the ground, flight, then the landing crouch. */
-const JUMP = { launch: .42, flight: .68 };
 const UP = new THREE.Vector3(0, 1, 0);
 const FORWARD = new THREE.Vector3(0, 0, 1);
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -71,9 +69,11 @@ export class BlueCat {
   private jumpFrom = new THREE.Vector3();
   private jumpTo = new THREE.Vector3();
   private jumpUp = true;
-  private pitch = 0;
-  /** Turn-in-place: yaw curve of the playing clip, how much of it has been applied, its stretch, and what follows. */
+  private jumpClip = 'jumpup';
+  private jumpAir = 0;
+  /** Root motion: yaw curve of each turn clip, displacement curve of each jump clip (authored, before warping). */
   private turnYaw = new Map<string, (t: number) => number>();
+  private jumpMove = new Map<string, { at: (t: number) => THREE.Vector3; total: THREE.Vector3 }>();
   private turnClip = '';
   private turnApplied = 0;
   private turnScale = 1;
@@ -172,6 +172,7 @@ export class BlueCat {
     this.mixer = new THREE.AnimationMixer(gltf.scene);
     for (const clip of gltf.animations) {
       if (clip.name.startsWith('turn')) this.turnYaw.set(clip.name, this.extractRootYaw(clip));
+      if (clip.name.startsWith('jump')) this.jumpMove.set(clip.name, this.extractRootMove(clip));
       this.actions.set(clip.name, this.mixer.clipAction(clip));
     }
     this.idle = this.actions.get('idle')!;
@@ -203,6 +204,22 @@ export class BlueCat {
       q.fromArray(interpolant.evaluate(t) as Float32Array).multiply(rest);
       return Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z));
     };
+  }
+
+  /**
+   * Root motion for the jump clips: the Root bone carries the authored trajectory (1.95 m up and about a metre
+   * forward onto the cabinet, or the reverse). The runtime replays it on the body, warped to the real end points.
+   */
+  private extractRootMove(clip: THREE.AnimationClip): { at: (t: number) => THREE.Vector3; total: THREE.Vector3 } {
+    const track = clip.tracks.find(t => t.name === 'Root.position') as THREE.VectorKeyframeTrack | undefined;
+    clip.tracks = clip.tracks.filter(t => !t.name.startsWith('Root.'));
+    clip.resetDuration();
+    const out = new THREE.Vector3();
+    if (!track) return { at: () => out.set(0, 0, 0), total: new THREE.Vector3() };
+    const interpolant = track.InterpolantFactoryMethodLinear(new Float32Array(3));
+    const start = new THREE.Vector3().fromArray(interpolant.evaluate(0) as Float32Array);
+    const at = (t: number) => out.fromArray(interpolant.evaluate(t) as Float32Array).sub(start);
+    return { at, total: at(clip.duration).clone() };
   }
 
   private length(name: string) {
@@ -265,7 +282,7 @@ export class BlueCat {
     const resting = (m: Mood) => m === 'sit' || m === 'sitidle' || m === 'sleep' || m === 'settle';
     this.fade = mood === 'happy' ? .35 : mood === 'jump' ? .25 : mood === 'turn' || previous === 'turn' ? .2 : previous === 'settle' && mood === 'sleep' ? .3
       : resting(previous) && resting(mood) ? 1.2 : mood === 'stand' || mood === 'unperch' ? .3 : .5;
-    const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(mood === 'turn' ? this.turnClip : mood);
+    const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(mood === 'turn' ? this.turnClip : mood === 'jump' ? this.jumpClip : mood);
     if (next === this.layer) return;
     if (this.layer) this.layer.fadeOut(this.fade);
     if (next) {
@@ -428,6 +445,8 @@ export class BlueCat {
 
   private startJump(from: THREE.Vector3, to: THREE.Vector3, up: boolean) {
     this.jumpFrom.copy(from); this.jumpTo.copy(to); this.jumpUp = up;
+    this.jumpClip = up ? 'jumpup' : 'jumpdown';
+    this.jumpAir = 0;
     this.speed = 0;
     const error = this.headingError(to.x - from.x, to.z - from.z);
     if (Math.abs(error) > TURN_MIN) { this.startTurn(error, 'jump'); return; }
@@ -515,17 +534,20 @@ export class BlueCat {
     }
   }
 
-  /** Body trajectory during the jump clip's flight phase; the clip itself stays in place. */
+  /**
+   * Replay the jump clip's authored trajectory on the body, warped so the forward and vertical distances match the
+   * actual take-off and landing points (the compact layout scales the cabinet differently from Blue).
+   */
   private fly() {
-    const u = THREE.MathUtils.clamp((this.age - JUMP.launch) / JUMP.flight, 0, 1);
+    const motion = this.jumpMove.get(this.jumpClip);
+    if (!motion) return;
     const from = this.jumpFrom, to = this.jumpTo;
-    const horizontal = step(u, 0, 1);
-    this.body.position.x = THREE.MathUtils.lerp(from.x, to.x, horizontal);
-    this.body.position.z = THREE.MathUtils.lerp(from.z, to.z, horizontal);
-    const rise = this.jumpUp ? 1 - (1 - u) * (1 - u) : u * u;
-    this.body.position.y = THREE.MathUtils.lerp(from.y, to.y, rise) + (this.jumpUp ? .10 : .16) * Math.sin(Math.PI * u);
-    const wantedPitch = this.age < JUMP.launch ? 0 : this.jumpUp ? THREE.MathUtils.lerp(-.32, .15, u) : THREE.MathUtils.lerp(.05, .38, u);
-    this.pitch = THREE.MathUtils.damp(this.pitch, wantedPitch, 12, 1 / 60);
+    const sample = motion.at(Math.min(this.age, this.length(this.jumpClip)));
+    const forward = Math.abs(motion.total.z) > 1e-3 ? sample.z / motion.total.z : 0;
+    const rise = Math.abs(motion.total.y) > 1e-3 ? sample.y / motion.total.y : 0;
+    const dx = to.x - from.x, dz = to.z - from.z;
+    this.body.position.set(from.x + dx * forward, from.y + (to.y - from.y) * rise, from.z + dz * forward);
+    this.jumpAir = rise;
   }
 
   /* ---------- attention overlay ---------- */
@@ -613,7 +635,7 @@ export class BlueCat {
         case 'stand': if (this.age > this.length('stand')) this.advance(stationX); break;
         case 'perch': if (this.age > this.length('perch')) this.advance(stationX); break;
         case 'unperch': if (this.age > this.length('unperch')) this.advance(stationX); break;
-        case 'jump': if (this.age > this.length('jump')) this.advance(stationX); else this.fly(); break;
+        case 'jump': if (this.age > this.length(this.jumpClip)) this.advance(stationX); else this.fly(); break;
       }
     }
     if (this.mood === 'happy') {
@@ -634,8 +656,6 @@ export class BlueCat {
     this.yawRate = THREE.MathUtils.damp(this.yawRate, wrap(this.yaw - this.lastYaw) / Math.max(dt, 1e-4), 8, dt);
     this.lastYaw = this.yaw;
     if (this.mood !== 'walk') this.speed = Math.max(0, this.speed - .5 * dt);
-    if (this.mood !== 'jump') this.pitch = THREE.MathUtils.damp(this.pitch, 0, 10, dt);
-    this.model.rotation.x = this.pitch;
     this.purr = Math.max(0, this.purr - dt);
     if (reduce && this.mood !== 'happy' && this.layer && this.plan.kind === 'home') this.enter('idle');
     // Locomotion pair: idle and walk share one layer whose split follows the actual ground speed, so feet never slide.
@@ -674,7 +694,7 @@ export class BlueCat {
       const homeDistance = flat(this.body.position, HOME);
       this.body.position.y = this.elevation + (this.elevation === 0 ? step(.4 - homeDistance, 0, .22) * .095 : 0);
     }
-    const groundY = this.mood === 'jump' ? (this.age < JUMP.launch + JUMP.flight * .5 ? this.jumpFrom.y : this.jumpTo.y) : this.elevation;
+    const groundY = this.mood === 'jump' ? (this.jumpAir < .5 ? this.jumpFrom.y : this.jumpTo.y) : this.elevation;
     this.shadow.position.set(this.body.position.x, groundY + .003, this.body.position.z);
     this.shadow.rotation.z = -this.yaw;
     (this.shadow.material as THREE.MeshBasicMaterial).opacity = 1 - step(this.body.position.y - groundY, .05, .6) * .7;
