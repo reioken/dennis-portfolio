@@ -44,9 +44,12 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
   background: linear-gradient(135deg,#c9bfbb,#777d94 35%,#272b39 70%,#8fa5ad);
   backface-visibility: visible;
   transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,0deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12px);
-  animation: hall-cube-panel 4800ms linear infinite;
   will-change: transform;
 }
+/* The faces start on the same style flush as the brackets and signal, so their
+   shared 2400 ms breath (two expansions per 4800 ms turn) stays phase-locked. */
+html.gl-pending .hall-startup__cube > i,
+html:has(.hall__stage[data-power]) .hall-startup__cube > i { animation: hall-cube-panel 4800ms linear infinite; }
 .hall-startup__cube > i::after {
   content: ''; position: absolute; inset: 4px;
   border: 1px solid #f1e6ff36;
@@ -99,8 +102,8 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
 .hall-startup__orbit { position: absolute; left: 3px; top: 0; width: 66px; height: 66px; }
 .hall-startup__orbit > i {
   position: absolute; inset: 7px;
-  transform: rotate(var(--angle)) translate3d(-3px, -3px, 0);
-  opacity: .55;
+  transform: rotate(var(--angle)) translate3d(2px, 2px, 0);
+  opacity: .35;
 }
 .hall-startup__orbit > i::before {
   content: ''; position: absolute; left: 0; top: 0;
@@ -108,38 +111,40 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
   border-top: 1px solid #d5d5e7; border-left: 1px solid #b8cdd6;
   background: linear-gradient(135deg, #d1c4e227, transparent 65%);
 }
-.hall-startup__orbit > i:nth-child(1) { --angle: 0deg; --delay: 0ms; }
-.hall-startup__orbit > i:nth-child(2) { --angle: 90deg; --delay: -240ms; }
-.hall-startup__orbit > i:nth-child(3) { --angle: 180deg; --delay: -480ms; }
-.hall-startup__orbit > i:nth-child(4) { --angle: 270deg; --delay: -720ms; }
+.hall-startup__orbit > i:nth-child(1) { --angle: 0deg; }
+.hall-startup__orbit > i:nth-child(2) { --angle: 90deg; }
+.hall-startup__orbit > i:nth-child(3) { --angle: 180deg; }
+.hall-startup__orbit > i:nth-child(4) { --angle: 270deg; }
 .hall-startup__signal { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: 4px; }
 .hall-startup__signal > i {
   flex: 1; height: 2px;
   background: linear-gradient(90deg, #b9a9c9, #c8d1d5); opacity: .2;
 }
-.hall-startup__signal > i:nth-child(2) { --signal-delay: 160ms; }
-.hall-startup__signal > i:nth-child(3) { --signal-delay: 320ms; }
-.hall-startup__signal > i:nth-child(4) { --signal-delay: 480ms; }
-.hall-startup__signal > i:nth-child(5) { --signal-delay: 640ms; }
+.hall-startup__signal > i:nth-child(2) { --signal-delay: 80ms; }
+.hall-startup__signal > i:nth-child(3) { --signal-delay: 160ms; }
+.hall-startup__signal > i:nth-child(4) { --signal-delay: 240ms; }
+.hall-startup__signal > i:nth-child(5) { --signal-delay: 320ms; }
 html.gl-pending .hall-startup,
 html:has(.hall__stage[data-power]) .hall-startup { opacity: 1; visibility: visible; }
 /* Continuous rotation across preparation; ignition immediately starts the exit fade. */
 html.gl-pending .hall-startup__orbit,
 html:has(.hall__stage[data-power]) .hall-startup__orbit { animation: hall-orbit-turn 9600ms linear infinite; }
+/* Brackets and signal share the cube's 2400 ms breath: everything is widest and brightest
+   at 1200 ms, when the faces reach their outer 17 px, and settles together at 2400 ms. */
 html.gl-pending .hall-startup__orbit > i,
-html:has(.hall__stage[data-power]) .hall-startup__orbit > i { animation: hall-orbit-dock 2400ms var(--delay) ease-in-out infinite; }
+html:has(.hall__stage[data-power]) .hall-startup__orbit > i { animation: hall-orbit-dock 2400ms ease-in-out infinite; }
 html.gl-pending .hall-startup__signal > i,
-html:has(.hall__stage[data-power]) .hall-startup__signal > i { animation: hall-signal 1600ms var(--signal-delay, 0ms) ease-in-out infinite; }
+html:has(.hall__stage[data-power]) .hall-startup__signal > i { animation: hall-signal 2400ms var(--signal-delay, 0ms) ease-in-out infinite; }
 html:has(.hall__stage[data-power='on']) .hall-startup { animation: hall-emblem-dismiss 320ms ease-out both; }
 @keyframes hall-orbit-turn {
   from { transform: rotate(0deg); }
   to { transform: rotate(-360deg); }
 }
 @keyframes hall-orbit-dock {
-  0%, 100% { transform: rotate(var(--angle)) translate3d(-3px, -3px, 0); opacity: .3; }
-  50% { transform: rotate(var(--angle)) translate3d(3px, 3px, 0); opacity: .9; }
+  0%, 100% { transform: rotate(var(--angle)) translate3d(2px, 2px, 0); opacity: .35; }
+  50% { transform: rotate(var(--angle)) translate3d(-3px, -3px, 0); opacity: .9; }
 }
-@keyframes hall-signal { 0%, 75%, 100% { opacity: .15; } 35% { opacity: .85; } }
+@keyframes hall-signal { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
 @keyframes hall-emblem-dismiss { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: no-preference) {
   .hall:has(.hall__stage[data-power='on']) .hall-dock { animation: hall-controls-power 6800ms ease-out both; }
