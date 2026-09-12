@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'sit' | 'sitidle' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch';
+type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'sit' | 'sitidle' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn';
+type AfterTurn = 'walk' | 'arrive' | 'jump';
 type Arrival = 'idle' | 'home' | 'sit' | 'jump' | 'perch';
 type Plan = { kind: 'home' } | { kind: 'station'; index: number } | { kind: 'perch' };
 /** What the hall tells Blue every frame so he can accompany the visitor. */
@@ -17,12 +18,15 @@ const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, 1.05), landing: new 
 const STATION_LANE_Z = .8, STATION_SIDE_X = .92;
 /** Metres per second the in-place walk clip covers at time scale 1 (stride × stance ÷ cycle). */
 const STRIDE_SPEED = .19;
-const ROAM_SPEED = .21, TRAVEL_SPEED = .34, TURN_RATE = 2.4;
+const ROAM_SPEED = .21, TRAVEL_SPEED = .34;
+/** Heading errors above this are answered with a turn-in-place clip; smaller ones are absorbed while walking, whose yaw rate follows a turning radius. */
+const TURN_MIN = .35, TURN_RADIUS = .45;
+/** Authored turn clips: nominal angle and how far the runtime may stretch or shrink that angle before it chains another turn. */
+const TURN_CLIPS = [{ name: '45', angle: Math.PI / 4, scale: [.5, 1.3] }, { name: '90', angle: Math.PI / 2, scale: [.65, 1.25] }];
 /** Further away than this, Blue is placed just outside the frame and strolls in past the arcades. */
 const TELEPORT_DISTANCE = 3.4, TELEPORT_RUNWAY = 2.6;
 /** Heading Blue settles into on the cushion, so the lying pose reads from the frontal hall camera. */
 const REST_YAW = .95;
-const CLIP = { settle: 2.4, wake: 2.4, sit: 1.8, stand: 1.8, perch: 2.0, unperch: 2.0, jump: 1.4 };
 /** Jump clip phases: crouch and launch on the ground, flight, then the landing crouch. */
 const JUMP = { launch: .42, flight: .68 };
 const UP = new THREE.Vector3(0, 1, 0);
@@ -30,6 +34,7 @@ const FORWARD = new THREE.Vector3(0, 0, 1);
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const step = (x: number, a: number, b: number) => THREE.MathUtils.smoothstep(x, a, b);
 const flat = (a: THREE.Vector3, b: THREE.Vector3) => Math.hypot(a.x - b.x, a.z - b.z);
+const wrap = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
 
 /** Blue has his own clock: navigation and tab pauses never advance his route. */
 export class BlueCat {
@@ -67,6 +72,15 @@ export class BlueCat {
   private jumpTo = new THREE.Vector3();
   private jumpUp = true;
   private pitch = 0;
+  /** Turn-in-place: yaw curve of the playing clip, how much of it has been applied, its stretch, and what follows. */
+  private turnYaw = new Map<string, (t: number) => number>();
+  private turnClip = '';
+  private turnApplied = 0;
+  private turnScale = 1;
+  private afterTurn: AfterTurn = 'walk';
+  private planChanged = false;
+  private yawRate = 0;
+  private lastYaw = 0;
   private purr = 0;
   private forward = new THREE.Vector3();
   private heading = new THREE.Vector3();
@@ -87,6 +101,7 @@ export class BlueCat {
   // Attention overlay: neck, head and ears follow the pointer after the clips have been applied.
   private neck?: THREE.Object3D;
   private head?: THREE.Object3D;
+  private chest?: THREE.Object3D;
   private ears: THREE.Object3D[] = [];
   private gazePoint = new THREE.Vector3();
   private gazeValid = false;
@@ -148,13 +163,17 @@ export class BlueCat {
     });
     this.neck = gltf.scene.getObjectByName('Neck');
     this.head = gltf.scene.getObjectByName('Head');
+    this.chest = gltf.scene.getObjectByName('Chest');
     for (const name of ['EarL', 'EarR', 'Ear.L', 'Ear.R']) {
       const ear = gltf.scene.getObjectByName(name);
       if (ear) this.ears.push(ear);
     }
-    for (const bone of [this.neck, this.head, ...this.ears]) if (bone) this.baseQuat.set(bone, [bone.quaternion.clone(), bone.quaternion.clone()]);
+    for (const bone of [this.neck, this.head, this.chest, ...this.ears]) if (bone) this.baseQuat.set(bone, [bone.quaternion.clone(), bone.quaternion.clone()]);
     this.mixer = new THREE.AnimationMixer(gltf.scene);
-    for (const clip of gltf.animations) this.actions.set(clip.name, this.mixer.clipAction(clip));
+    for (const clip of gltf.animations) {
+      if (clip.name.startsWith('turn')) this.turnYaw.set(clip.name, this.extractRootYaw(clip));
+      this.actions.set(clip.name, this.mixer.clipAction(clip));
+    }
     this.idle = this.actions.get('idle')!;
     this.walk = this.actions.get('walk')!;
     this.idle.play();
@@ -166,6 +185,28 @@ export class BlueCat {
     this.button.setAttribute('aria-label', 'Blue streicheln');
     this.button.addEventListener('click', this.pet);
     this.container.appendChild(this.button);
+  }
+
+  /**
+   * Root motion for the turn clips: the Root bone carries the authored yaw. It is taken out of the clip so the
+   * skeleton plays in the turning frame, and the body group is rotated by the same curve instead.
+   */
+  private extractRootYaw(clip: THREE.AnimationClip): (t: number) => number {
+    const track = clip.tracks.find(t => t.name === 'Root.quaternion') as THREE.QuaternionKeyframeTrack | undefined;
+    clip.tracks = clip.tracks.filter(t => !t.name.startsWith('Root.'));
+    clip.resetDuration();
+    if (!track) return () => 0;
+    const interpolant = track.InterpolantFactoryMethodLinear(new Float32Array(4));
+    const rest = new THREE.Quaternion().fromArray(interpolant.evaluate(0) as Float32Array).invert();
+    const q = new THREE.Quaternion();
+    return t => {
+      q.fromArray(interpolant.evaluate(t) as Float32Array).multiply(rest);
+      return Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z));
+    };
+  }
+
+  private length(name: string) {
+    return this.actions.get(name)?.getClip().duration ?? 1;
   }
 
   private makeBasket() {
@@ -222,23 +263,54 @@ export class BlueCat {
     if (mood === 'settle') { this.visits = 0; this.plannedVisits = 2 + Math.floor(Math.random() * 3); }
     if (mood !== 'wake') this.pendingHappy = false;
     const resting = (m: Mood) => m === 'sit' || m === 'sitidle' || m === 'sleep' || m === 'settle';
-    this.fade = mood === 'happy' ? .35 : mood === 'jump' ? .25 : previous === 'settle' && mood === 'sleep' ? .3
+    this.fade = mood === 'happy' ? .35 : mood === 'jump' ? .25 : mood === 'turn' || previous === 'turn' ? .2 : previous === 'settle' && mood === 'sleep' ? .3
       : resting(previous) && resting(mood) ? 1.2 : mood === 'stand' || mood === 'unperch' ? .3 : .5;
-    const reverse = mood === 'stand' ? 'sit' : mood === 'unperch' ? 'perch' : undefined;
-    const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(reverse ?? mood);
-    if (next === this.layer && !reverse) return;
+    const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(mood === 'turn' ? this.turnClip : mood);
+    if (next === this.layer) return;
     if (this.layer) this.layer.fadeOut(this.fade);
     if (next) {
       next.reset();
-      const once = mood === 'settle' || mood === 'wake' || mood === 'sit' || mood === 'stand' || mood === 'jump' || mood === 'perch' || mood === 'unperch';
+      const once = mood !== 'sleep' && mood !== 'sitidle' && mood !== 'perchidle' && mood !== 'happy';
       next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
       next.clampWhenFinished = true;
-      if (reverse) { next.time = next.getClip().duration; next.setEffectiveTimeScale(-1); }
-      else next.setEffectiveTimeScale(1);
+      next.setEffectiveTimeScale(1);
       next.play();
       next.fadeIn(this.fade);
     }
     this.layer = next;
+  }
+
+  /** Heading in radians from the quaternion: Euler `rotation.y` folds past ±90°, so it must never be read as the yaw. */
+  get yaw() {
+    const q = this.body.quaternion;
+    return Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.z * q.z));
+  }
+
+  /** Signed yaw from the current heading to a direction, positive to Blue's left. */
+  private headingError(dx: number, dz: number) {
+    return wrap(Math.atan2(dx, dz) - this.yaw);
+  }
+
+  /**
+   * Answer a heading error with an authored turn-in-place instead of spinning: the closest clip is picked and its
+   * yaw curve is stretched a little so the body ends up facing the goal; larger errors chain a second turn.
+   */
+  private startTurn(error: number, then: AfterTurn) {
+    const magnitude = Math.abs(error);
+    const pick = TURN_CLIPS.find(c => magnitude <= c.angle * c.scale[1]) ?? TURN_CLIPS[TURN_CLIPS.length - 1];
+    this.turnScale = THREE.MathUtils.clamp(magnitude / pick.angle, pick.scale[0], pick.scale[1]);
+    this.turnClip = `turn${error > 0 ? 'L' : 'R'}${pick.name}`;
+    this.turnApplied = 0;
+    this.afterTurn = then;
+    this.speed = 0;
+    this.enter('turn');
+  }
+
+  /** Apply this frame's slice of the turn clip's root yaw to the body. */
+  private applyTurn() {
+    const yaw = (this.turnYaw.get(this.turnClip) ?? (() => 0))(Math.min(this.age, this.length(this.turnClip))) * this.turnScale;
+    this.body.rotateY(yaw - this.turnApplied);
+    this.turnApplied = yaw;
   }
 
   readonly pet = (event?: Event) => {
@@ -297,6 +369,7 @@ export class BlueCat {
     if (reduce) { this.snap(stationX); return; }
     switch (this.mood) {
       case 'happy': case 'jump': case 'stand': case 'unperch': case 'wake': return; // finish, then resume
+      case 'turn': this.planChanged = true; return;
       case 'perch': case 'perchidle': if (plan.kind !== 'perch') this.enter('unperch'); return;
       case 'sit': case 'sitidle': if (plan.kind !== 'station' || flat(this.body.position, this.stationSpot(plan.index, stationX)) > .04) this.enter('stand'); return;
       case 'sleep': case 'settle': this.enter('wake'); return;
@@ -356,7 +429,9 @@ export class BlueCat {
   private startJump(from: THREE.Vector3, to: THREE.Vector3, up: boolean) {
     this.jumpFrom.copy(from); this.jumpTo.copy(to); this.jumpUp = up;
     this.speed = 0;
-    this.body.rotation.set(0, Math.atan2(to.x - from.x, to.z - from.z), 0);
+    const error = this.headingError(to.x - from.x, to.z - from.z);
+    if (Math.abs(error) > TURN_MIN) { this.startTurn(error, 'jump'); return; }
+    this.body.rotation.set(0, this.yaw + error, 0);
     this.enter('jump');
   }
 
@@ -375,10 +450,17 @@ export class BlueCat {
     this.body.position.x = this.goal.x;
     this.body.position.z = this.goal.z;
     this.speed = 0;
+    const facing = this.arrival === 'home' ? REST_YAW : this.arrival === 'sit' ? -this.spotSide * .55 : this.arrival === 'perch' ? 0 : null;
+    if (facing !== null) {
+      // Face the cushion, the cabinet or the viewer with real steps before lying down; a small remainder eases in during the clip.
+      const error = wrap(facing - this.yaw);
+      if (Math.abs(error) > TURN_MIN) { this.startTurn(error, 'arrive'); return; }
+      this.faceYaw = facing;
+    }
     switch (this.arrival) {
-      case 'home': this.faceYaw = REST_YAW; this.enter('settle'); break;
-      case 'sit': this.faceYaw = -this.spotSide * .55; this.enter('sit'); break;
-      case 'perch': this.faceYaw = 0; this.enter('perch'); break;
+      case 'home': this.enter('settle'); break;
+      case 'sit': this.enter('sit'); break;
+      case 'perch': this.enter('perch'); break;
       case 'jump': this.startJump(this.body.position, this.local(LEDGE.landing), true); break;
       default: this.visits++; this.enter('idle'); this.resumeIfNeeded(stationX);
     }
@@ -399,6 +481,14 @@ export class BlueCat {
       case 'unperch': this.enter('idle'); this.resume(stationX); break;
       case 'jump': this.elevation = this.jumpTo.y; this.body.position.copy(this.jumpTo); this.enter('idle'); this.resume(stationX); break;
       case 'happy': this.enter('idle'); this.resume(stationX); break;
+      case 'turn': {
+        const next = this.afterTurn;
+        if (this.planChanged) { this.planChanged = false; this.enter('idle'); this.resume(stationX); }
+        else if (next === 'walk') this.enter('walk');
+        else if (next === 'arrive') this.arrive(stationX);
+        else this.startJump(this.body.position, this.jumpTo, this.jumpUp);
+        break;
+      }
     }
   }
 
@@ -407,11 +497,13 @@ export class BlueCat {
     this.forward.y = 0;
     const distance = this.forward.length();
     if (distance < .015 && this.speed < .03) { this.arrive(stationX); return; }
+    const error = this.headingError(this.forward.x, this.forward.z), angle = Math.abs(error);
+    // Standing and pointing the wrong way: step around with a turn clip. Under way, the yaw rate follows a turning
+    // radius, and a goal far off the heading brakes to a stop first so the turn clip can take over.
+    if (this.speed < .04 && angle > TURN_MIN) { this.startTurn(error, 'walk'); return; }
     this.targetRotation.setFromAxisAngle(UP, Math.atan2(this.forward.x, this.forward.z));
-    const angle = this.body.quaternion.angleTo(this.targetRotation);
-    // Turns ease out into alignment instead of stopping dead at a fixed angular rate.
-    this.body.quaternion.rotateTowards(this.targetRotation, THREE.MathUtils.clamp(angle * 4, .25, TURN_RATE) * dt);
-    const aligned = 1 - step(angle, .35, 1.3);
+    this.body.quaternion.rotateTowards(this.targetRotation, Math.min(angle * 4, THREE.MathUtils.clamp(this.speed / TURN_RADIUS, .3, 1)) * dt);
+    const aligned = 1 - step(angle, .45, 1.1);
     const accel = this.travelSpeed > ROAM_SPEED ? .42 : .28, decel = this.travelSpeed > ROAM_SPEED ? .5 : .36;
     const wanted = Math.min(this.travelSpeed, Math.sqrt(2 * decel * Math.max(0, distance - .01))) * aligned;
     this.speed = this.speed < wanted ? Math.min(wanted, this.speed + accel * dt) : Math.max(wanted, this.speed - decel * dt);
@@ -464,7 +556,11 @@ export class BlueCat {
     const push = this.purr > 0 ? .12 * Math.sin(Math.min(1, this.purr / 2.6) * Math.PI) : 0;
     // From the ledge the camera sits only a few degrees below him; tuck the chin so the look-down reads.
     const ledgeBias = this.mood === 'perchidle' ? .22 * this.gazeWeight : 0;
-    const yaw = this.gazeYaw * this.gazeWeight, pitch = this.gazePitch * this.gazeWeight - push - ledgeBias;
+    // Curving while walking: the chest rolls into the turn and the head looks along the path ahead of the body.
+    const curve = reduce || this.mood !== 'walk' ? 0 : THREE.MathUtils.clamp(this.yawRate, -1.2, 1.2);
+    const lead = curve * .22;
+    const yaw = this.gazeYaw * this.gazeWeight + lead, pitch = this.gazePitch * this.gazeWeight - push - ledgeBias;
+    this.overlay(this.chest, curve * .04, 0, -curve * .05);
     this.overlay(this.neck, yaw * .38, -pitch * .35, 0);
     this.overlay(this.head, yaw * .62, -pitch * .65, 0);
     const earBack = this.purr > 0 ? .18 : 0;
@@ -506,32 +602,37 @@ export class BlueCat {
       switch (this.mood) {
         case 'idle': if (this.plan.kind === 'home' && this.age > this.dwell) this.startWalk(); break;
         case 'walk': this.locomote(dt, stationX); break;
-        case 'settle': if (this.age > CLIP.settle) this.advance(stationX); break;
+        case 'settle': if (this.age > this.length('settle')) this.advance(stationX); break;
+        case 'turn': if (this.age > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
         case 'sleep':
           if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
           break;
-        case 'wake': if (this.age > CLIP.wake) this.advance(stationX); break;
-        case 'sit': if (this.age > CLIP.sit) this.advance(stationX); break;
+        case 'wake': if (this.age > this.length('wake')) this.advance(stationX); break;
+        case 'sit': if (this.age > this.length('sit')) this.advance(stationX); break;
         case 'sitidle': if (this.age > this.dwell) this.enter('sleep'); break;
-        case 'stand': if (this.age > CLIP.stand) this.advance(stationX); break;
-        case 'perch': if (this.age > CLIP.perch) this.advance(stationX); break;
-        case 'unperch': if (this.age > CLIP.unperch) this.advance(stationX); break;
-        case 'jump': if (this.age > CLIP.jump) this.advance(stationX); else this.fly(); break;
+        case 'stand': if (this.age > this.length('stand')) this.advance(stationX); break;
+        case 'perch': if (this.age > this.length('perch')) this.advance(stationX); break;
+        case 'unperch': if (this.age > this.length('unperch')) this.advance(stationX); break;
+        case 'jump': if (this.age > this.length('jump')) this.advance(stationX); else this.fly(); break;
       }
     }
     if (this.mood === 'happy') {
       if (this.age > 5) this.advance(stationX);
       else if (!reduce) {
+        // A petted cat only shifts a little towards the visitor; the head overlay does the actual looking.
         this.targetRotation.setFromAxisAngle(UP, Math.atan2(camera.position.x - this.root.position.x - this.body.position.x, camera.position.z - this.body.position.z));
         const angle = this.body.quaternion.angleTo(this.targetRotation);
-        this.body.quaternion.rotateTowards(this.targetRotation, THREE.MathUtils.clamp(angle * 3, .2, 1.8) * dt);
+        if (angle < .7) this.body.quaternion.rotateTowards(this.targetRotation, Math.min(angle * 2, .6) * dt);
       }
     }
-    // Settling clips finish the turn the walk left unfinished: onto the cushion, towards the cabinet, or facing the viewer on the ledge.
+    // Settling clips absorb the small remainder the turn clip left: onto the cushion, towards the cabinet, or facing the viewer on the ledge.
     if (this.faceYaw !== null && !reduce && (this.mood === 'settle' || this.mood === 'sit' || this.mood === 'perch')) {
       this.targetRotation.setFromAxisAngle(UP, this.faceYaw);
-      this.body.quaternion.rotateTowards(this.targetRotation, THREE.MathUtils.clamp(this.body.quaternion.angleTo(this.targetRotation) * 2.5, .15, 1.2) * dt);
+      this.body.quaternion.rotateTowards(this.targetRotation, Math.min(this.body.quaternion.angleTo(this.targetRotation) * 2, .45) * dt);
     }
+    // Measured yaw rate (smoothed) drives the lean and head lead while walking a curve.
+    this.yawRate = THREE.MathUtils.damp(this.yawRate, wrap(this.yaw - this.lastYaw) / Math.max(dt, 1e-4), 8, dt);
+    this.lastYaw = this.yaw;
     if (this.mood !== 'walk') this.speed = Math.max(0, this.speed - .5 * dt);
     if (this.mood !== 'jump') this.pitch = THREE.MathUtils.damp(this.pitch, 0, 10, dt);
     this.model.rotation.x = this.pitch;
@@ -575,7 +676,7 @@ export class BlueCat {
     }
     const groundY = this.mood === 'jump' ? (this.age < JUMP.launch + JUMP.flight * .5 ? this.jumpFrom.y : this.jumpTo.y) : this.elevation;
     this.shadow.position.set(this.body.position.x, groundY + .003, this.body.position.z);
-    this.shadow.rotation.z = -this.body.rotation.y;
+    this.shadow.rotation.z = -this.yaw;
     (this.shadow.material as THREE.MeshBasicMaterial).opacity = 1 - step(this.body.position.y - groundY, .05, .6) * .7;
     this.body.updateWorldMatrix(true, true);
     this.projection.set(0, .27, 0).applyMatrix4(this.body.matrixWorld).project(camera);

@@ -7,7 +7,7 @@ const out = '.source-assets/blue/qa'; await fs.mkdir(out, { recursive: true });
 const base = process.env.QA_BASE_URL || 'http://localhost:4321/';
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11'] });
 const report = {};
-const state = page => page.evaluate(() => { const h = window.__hall, b = h.blue; return { focus: h.focus, pose: h.pose, mood: b.mood, plan: b.plan, elevation: b.elevation, pos: b.body.position.toArray().map(v => +v.toFixed(3)), yaw: +b.body.rotation.y.toFixed(2), purr: +b.purr.toFixed(2), blink: +b.blink.toFixed(2), path: location.pathname }; });
+const state = page => page.evaluate(() => { const h = window.__hall, b = h.blue; return { focus: h.focus, pose: h.pose, mood: b.mood, plan: b.plan, elevation: b.elevation, pos: b.body.position.toArray().map(v => +v.toFixed(3)), yaw: +b.yaw.toFixed(2), purr: +b.purr.toFixed(2), blink: +b.blink.toFixed(2), path: location.pathname }; });
 async function until(page, predicate, timeout, label) {
   const start = Date.now();
   while (Date.now() - start < timeout) { const s = await state(page); if (predicate(s)) return s; await page.waitForTimeout(250); }
