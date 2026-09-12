@@ -61,11 +61,14 @@ def track(t, keys):
     return keys[-1][1]
 def q(axis, angle): return Quaternion(V(axis), angle)
 def ik(a, c, l1, l2, bend):
-    d = c - a; distance = min(d.length, l1 + l2 - .00001); axis = d.normalized()
+    # The leg never quite locks straight, and when the bend hint is (almost) along the leg the knee keeps a
+    # continuous side (a perpendicular built from the lateral axis) instead of flipping frame to frame.
+    d = c - a; distance = min(d.length, (l1 + l2) * .985); axis = d.normalized()
     along = (l1 * l1 - l2 * l2 + distance * distance) / (2 * max(distance, .00001))
     height = math.sqrt(max(0, l1 * l1 - along * along))
-    b = V(bend); b = (b - axis * b.dot(axis)).normalized()
-    return a + axis * along + b * height
+    b = V(bend); b = b - axis * b.dot(axis)
+    if b.length < .1: b = b + V((1, 0, 0)).cross(axis).normalized() * (.1 - b.length)
+    return a + axis * along + b.normalized() * height
 
 # Tail shapes as offsets from Tail0 (rest curl, carried upright, resting on the floor beside the body).
 TAIL_REST = [heads[n] - heads['Tail0'] for n in TAIL]

@@ -39,6 +39,34 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const step = (x: number, a: number, b: number) => THREE.MathUtils.smoothstep(x, a, b);
 const flat = (a: THREE.Vector3, b: THREE.Vector3) => Math.hypot(a.x - b.x, a.z - b.z);
 const wrap = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
+/** Rotation vector (axis × angle, shortest arc) of a unit quaternion, and back. */
+const toRotVec = (q: THREE.Quaternion, out: THREE.Vector3) => {
+  let { x, y, z, w } = q;
+  if (w < 0) { x = -x; y = -y; z = -z; w = -w; }
+  const sin = Math.sqrt(Math.max(0, 1 - w * w));
+  if (sin < 1e-6) return out.set(0, 0, 0);
+  const angle = 2 * Math.acos(Math.min(1, w));
+  return out.set(x, y, z).multiplyScalar(angle / sin);
+};
+const fromRotVec = (v: THREE.Vector3, out: THREE.Quaternion) => {
+  const angle = v.length();
+  if (angle < 1e-8) return out.set(0, 0, 0, 1);
+  return out.setFromAxisAngle(tmpAxis.copy(v).divideScalar(angle), angle);
+};
+const tmpAxis = new THREE.Vector3();
+/** Critically damped decay of an offset and its velocity towards zero (Bollo's inertialization curve). */
+const decayCritical = (x: THREE.Vector3, v: THREE.Vector3, settle: number, dt: number) => {
+  const omega = 4 / Math.max(settle, 1e-4), e = Math.exp(-omega * dt);
+  const j1x = v.x + x.x * omega, j1y = v.y + x.y * omega, j1z = v.z + x.z * omega;
+  x.set((x.x + j1x * dt) * e, (x.y + j1y * dt) * e, (x.z + j1z * dt) * e);
+  v.set((v.x - j1x * omega * dt) * e, (v.y - j1y * omega * dt) * e, (v.z - j1z * omega * dt) * e);
+};
+/** Settle time of an inertialized interrupt and the rest transitions that keep their long crossfades instead. */
+const INERTIA_SETTLE = .22;
+const SOFT: Mood[] = ['settle', 'sleep', 'wake', 'sit', 'sitidle', 'perch', 'perchidle'];
+/** Spring lag per tail bone (stiffness falls towards the tip) and for the ears; damping ratio below 1 leaves a little overshoot. */
+const TAIL_SPRING = [{ k: 420, zeta: .75 }, { k: 260, zeta: .65 }, { k: 170, zeta: .6 }, { k: 110, zeta: .55 }, { k: 75, zeta: .5 }];
+const EAR_SPRING = { k: 520, zeta: .5 };
 
 /** Blue has his own clock: navigation and tab pauses never advance his route. */
 export class BlueCat {
@@ -123,6 +151,20 @@ export class BlueCat {
   private gazeWeight = 0;
   private perk = 0;
   private baseQuat = new Map<THREE.Object3D, [THREE.Quaternion, THREE.Quaternion]>();
+  /** Post-mixer pose pipeline: every bone's inertial offset and velocity, last two written poses, and spring states. */
+  private bones: THREE.Object3D[] = [];
+  private inertia = new Map<THREE.Object3D, { offset: THREE.Vector3; velocity: THREE.Vector3; last: THREE.Quaternion; before: THREE.Quaternion }>();
+  private inertiaActive = false;
+  private pendingInertia = false;
+  private lastDt = 1 / 60;
+  private springs = new Map<THREE.Object3D, { current: THREE.Quaternion; velocity: THREE.Vector3; k: number; c: number; index: number }>();
+  private tail: THREE.Object3D[] = [];
+  private lastPosition = new THREE.Vector3();
+  private bodyVelocity = new THREE.Vector3();
+  private bodyAccel = new THREE.Vector3();
+  private earKick = 0;
+  private tmpV2 = new THREE.Vector3();
+  private tmpQ3 = new THREE.Quaternion();
   private tmpV = new THREE.Vector3();
   private tmpQ = new THREE.Quaternion();
   private tmpQ2 = new THREE.Quaternion();
@@ -179,7 +221,20 @@ export class BlueCat {
       const ear = gltf.scene.getObjectByName(name);
       if (ear) this.ears.push(ear);
     }
-    for (const bone of [this.neck, this.head, this.chest, ...this.ears]) if (bone) this.baseQuat.set(bone, [bone.quaternion.clone(), bone.quaternion.clone()]);
+    gltf.scene.traverse(node => { if ((node as THREE.Bone).isBone) this.bones.push(node); });
+    for (const bone of this.bones) {
+      this.baseQuat.set(bone, [bone.quaternion.clone(), bone.quaternion.clone()]);
+      this.inertia.set(bone, { offset: new THREE.Vector3(), velocity: new THREE.Vector3(), last: bone.quaternion.clone(), before: bone.quaternion.clone() });
+    }
+    for (let i = 1; i <= 5; i++) {
+      const bone = gltf.scene.getObjectByName(`Tail${i}`);
+      if (!bone) continue;
+      this.tail.push(bone);
+      const { k, zeta } = TAIL_SPRING[i - 1];
+      this.springs.set(bone, { current: bone.quaternion.clone(), velocity: new THREE.Vector3(), k, c: 2 * Math.sqrt(k) * zeta, index: i });
+    }
+    for (const ear of this.ears) this.springs.set(ear, { current: ear.quaternion.clone(), velocity: new THREE.Vector3(), k: EAR_SPRING.k, c: 2 * Math.sqrt(EAR_SPRING.k) * EAR_SPRING.zeta, index: 0 });
+    this.lastPosition.copy(this.body.position);
     this.mixer = new THREE.AnimationMixer(gltf.scene);
     for (const clip of gltf.animations) {
       if (clip.name.startsWith('turn')) this.turnYaw.set(clip.name, this.extractRootYaw(clip));
@@ -392,7 +447,14 @@ export class BlueCat {
       : resting(previous) && resting(mood) ? 1.2 : mood === 'stand' || mood === 'unperch' ? .3 : .5;
     const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(mood === 'turn' ? this.turnClip : mood === 'jump' ? this.jumpClip : mood);
     if (next === this.layer) return;
-    if (this.layer) this.layer.fadeOut(this.fade);
+    // Interrupts switch in one frame and carry the outgoing pose and velocity over as a decaying offset (the
+    // inertializer needs the whole jump at once); the slow rest transitions keep their crossfades.
+    const instant = !(SOFT.includes(previous) && SOFT.includes(mood));
+    if (instant) this.pendingInertia = true;
+    if (this.layer) {
+      if (instant) { this.layer.setEffectiveWeight(0); this.layer.stop(); }
+      else this.layer.fadeOut(this.fade);
+    }
     if (next) {
       next.reset();
       const once = mood !== 'sleep' && mood !== 'sitidle' && mood !== 'perchidle' && mood !== 'happy';
@@ -400,8 +462,9 @@ export class BlueCat {
       next.clampWhenFinished = true;
       next.setEffectiveTimeScale(1);
       next.play();
-      next.fadeIn(this.fade);
+      if (instant) next.setEffectiveWeight(1); else next.fadeIn(this.fade);
     }
+    if (instant) this.loco = next ? 0 : 1;
     this.layer = next;
   }
 
@@ -619,7 +682,7 @@ export class BlueCat {
       case 'stand': this.enter('idle'); this.resume(stationX); break;
       case 'perch': this.enter('perchidle'); break;
       case 'unperch': this.enter('idle'); this.resume(stationX); break;
-      case 'jump': this.elevation = this.jumpTo.y; this.body.position.copy(this.jumpTo); this.enter('idle'); this.resume(stationX); break;
+      case 'jump': this.elevation = this.jumpTo.y; this.body.position.copy(this.jumpTo); this.earKick = 1; this.enter('idle'); this.resume(stationX); break;
       case 'happy': case 'arch': this.enter('idle'); this.resume(stationX); break;
       case 'turn': {
         const next = this.afterTurn;
@@ -710,18 +773,100 @@ export class BlueCat {
     for (const ear of this.ears) this.overlay(ear, 0, -this.perk * .22 + earBack, ear === this.ears[0] ? this.perk * .06 : -this.perk * .06);
   }
 
-  /** Post-mixer additive rotation in bone space (X pitch, Y yaw, Z roll). Re-uses the last mixer pose if the mixer wrote nothing. */
+  /** Additive rotation in bone space (X pitch, Y yaw, Z roll) on the working pose. */
   private overlay(bone: THREE.Object3D | undefined, yaw: number, pitch: number, roll: number) {
     if (!bone) return;
-    const stored = this.baseQuat.get(bone)!;
-    const [base, applied] = stored;
-    if (bone.quaternion.equals(applied)) bone.quaternion.copy(base); else base.copy(bone.quaternion);
     this.tmpQ.setFromAxisAngle(UP, yaw);
     this.tmpQ2.setFromAxisAngle(FORWARD, roll);
     this.tmpQ.multiply(this.tmpQ2);
     this.tmpQ2.set(Math.sin(pitch / 2), 0, 0, Math.cos(pitch / 2));
     bone.quaternion.multiply(this.tmpQ.multiply(this.tmpQ2));
-    applied.copy(bone.quaternion);
+  }
+
+  /* ---------- post-mixer pose pipeline ---------- */
+
+  /**
+   * After the mixer: recover the mixer's pose for every bone (bones a clip does not key keep last frame's mixer
+   * value, not what we wrote), carry an interrupted pose over with a decaying offset, spring-lag the tail and
+   * ears, then the attention overlays, then remember what was written.
+   */
+  private pose(dt: number, camera: THREE.Camera, reduce: boolean) {
+    for (const bone of this.bones) {
+      const [base, applied] = this.baseQuat.get(bone)!;
+      if (bone.quaternion.equals(applied)) bone.quaternion.copy(base); else base.copy(bone.quaternion);
+    }
+    const step = Math.min(dt, 1 / 30);
+    if (!reduce) {
+      this.inertialize(step);
+      this.secondary(step);
+    }
+    this.attend(dt, camera, reduce);
+    for (const bone of this.bones) {
+      const state = this.inertia.get(bone)!;
+      state.before.copy(state.last); state.last.copy(bone.quaternion);
+      this.baseQuat.get(bone)![1].copy(bone.quaternion);
+    }
+    this.lastDt = Math.max(dt, 1e-4);
+  }
+
+  /** Inertialization: on a switch, the offset from the new pose back to the old one (and its velocity) decays to zero. */
+  private inertialize(dt: number) {
+    if (this.pendingInertia) {
+      this.pendingInertia = false; this.inertiaActive = true;
+      for (const bone of this.bones) {
+        const state = this.inertia.get(bone)!;
+        // offset: rotation from the mixer's new pose to the pose we last showed; velocity: how that shown pose was moving.
+        this.tmpQ.copy(state.last).multiply(this.tmpQ2.copy(bone.quaternion).invert());
+        toRotVec(this.tmpQ, state.offset);
+        this.tmpQ.copy(state.last).multiply(this.tmpQ2.copy(state.before).invert());
+        toRotVec(this.tmpQ, state.velocity).divideScalar(this.lastDt);
+        state.velocity.clampLength(0, 12);
+      }
+    }
+    if (!this.inertiaActive) return;
+    let remaining = 0;
+    for (const bone of this.bones) {
+      const state = this.inertia.get(bone)!;
+      decayCritical(state.offset, state.velocity, INERTIA_SETTLE, dt);
+      const size = state.offset.lengthSq();
+      if (size < 1e-8) continue;
+      remaining += size;
+      bone.quaternion.premultiply(fromRotVec(state.offset, this.tmpQ));
+    }
+    if (remaining === 0) this.inertiaActive = false;
+  }
+
+  /** Tail and ears follow their authored pose through springs and react to how the body moves. */
+  private secondary(dt: number) {
+    // Body motion in Blue's own frame: forward acceleration pulls the tail back and down, turning swings it outward.
+    const forwardAccel = this.bodyAccel.dot(this.heading.copy(FORWARD).applyQuaternion(this.body.quaternion));
+    const lateralAccel = this.bodyAccel.dot(this.tmpV2.set(this.heading.z, 0, -this.heading.x));
+    const yawRate = this.yawRate;
+    const substeps = 2, h = dt / substeps;
+    for (const [bone, spring] of this.springs) {
+      const target = bone.quaternion;
+      if (dt > .2) { spring.current.copy(target); spring.velocity.set(0, 0, 0); continue; }
+      const tailWeight = spring.index ? Math.max(0, 1 - (spring.index - 1) * .3) : 0;
+      for (let i = 0; i < substeps; i++) {
+        // Rotation from the current spring pose to the mixer's target, expressed in the parent frame.
+        this.tmpQ.copy(target).multiply(this.tmpQ2.copy(spring.current).invert());
+        toRotVec(this.tmpQ, this.tmpV);
+        const a = this.tmpV.multiplyScalar(spring.k).addScaledVector(spring.velocity, -spring.c);
+        if (tailWeight > 0) {
+          // Deflections the body motion asks for, as torques in the bone's own frame, rotated into the parent frame.
+          this.tmpV2.set(THREE.MathUtils.clamp(-forwardAccel * .12, -.35, .35), THREE.MathUtils.clamp(yawRate * .28 - lateralAccel * .1, -.45, .45), 0)
+            .multiplyScalar(spring.k * tailWeight).applyQuaternion(spring.current);
+          a.add(this.tmpV2);
+        } else if (this.earKick > 0) {
+          this.tmpV2.set(7 * this.earKick, 0, 0).applyQuaternion(spring.current);
+          spring.velocity.add(this.tmpV2);
+        }
+        spring.velocity.addScaledVector(a, h);
+        spring.current.premultiply(fromRotVec(this.tmpV.copy(spring.velocity).multiplyScalar(h), this.tmpQ3)).normalize();
+      }
+      bone.quaternion.copy(spring.current);
+    }
+    this.earKick = 0;
   }
 
   /* ---------- per frame ---------- */
@@ -782,7 +927,17 @@ export class BlueCat {
     this.walk.setEffectiveWeight(this.loco * this.walkMix);
     this.walk.setEffectiveTimeScale(this.speed / STRIDE_SPEED);
     this.mixer.update(reduce && this.mood !== 'happy' ? 0 : dt);
-    this.attend(dt, camera, reduce);
+    // Body velocity and (smoothed) acceleration for the secondary motion; a teleport or a long pause resets them.
+    this.tmpV.subVectors(this.body.position, this.lastPosition);
+    if (this.tmpV.length() > .5 || dt > .2) { this.bodyVelocity.set(0, 0, 0); this.bodyAccel.set(0, 0, 0); }
+    else {
+      this.tmpV.divideScalar(Math.max(dt, 1e-4));
+      this.tmpV2.subVectors(this.tmpV, this.bodyVelocity).divideScalar(Math.max(dt, 1e-4));
+      this.bodyAccel.lerp(this.tmpV2, 1 - Math.exp(-10 * dt));
+      this.bodyVelocity.copy(this.tmpV);
+    }
+    this.lastPosition.copy(this.body.position);
+    this.pose(dt, camera, reduce);
     // Facial blendshape closes the textured eyes together with the surrounding skin.
     this.blinkAge += dt;
     if (this.blinkAge > this.blinkPeriod) { this.blinkAge = 0; this.blinkPeriod = rand(3.2, 6.5); }
