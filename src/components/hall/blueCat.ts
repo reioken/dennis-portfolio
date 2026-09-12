@@ -142,6 +142,11 @@ export class BlueCat {
    * bounding-box centre, not the eye's: the lid is rotated rigidly about the eyeball's rest position instead.
    */
   private lids: { node: THREE.Object3D; rest: THREE.Quaternion; restPos: THREE.Vector3; centre: THREE.Vector3; close: number }[] = [];
+  /** v4: the blink swaps the coat's base colour for a copy with the lids painted shut while the lid morph squashes the eye. */
+  private coat?: THREE.MeshPhysicalMaterial;
+  private openMap: THREE.Texture | null = null;
+  private closedMap: THREE.Texture | null = null;
+  private showingClosed = false;
   private blink = 0;
   private blinkAge = 0;
   private blinkPeriod = 5.1;
@@ -214,13 +219,16 @@ export class BlueCat {
       mesh.frustumCulled = false; // Rest-pose bounds exclude the moving tail and paws.
       for (const mat of (Array.isArray(mesh.material) ? mesh.material : [mesh.material])) {
         const m = mat as THREE.MeshPhysicalMaterial;
-        // Three materials: the eyeballs (glossy, coated), the face (keeps its cleaned sculpt normal map) and the
-        // body coat (even black with the tiled fur grain).
-        const eyes = /amber/i.test(m.name), face = /face/i.test(m.name);
+        // v4 (one Meshy PBR material) keeps its own maps; v2 had three: the eyeballs (glossy, coated), the face (its
+        // cleaned sculpt normal map) and the body coat (even black with the tiled fur grain).
+        const v4 = /v4/i.test(m.name), eyes = /amber/i.test(m.name), face = /face/i.test(m.name);
         m.metalness = 0;
         m.roughness = eyes ? .2 : face ? .8 : .82;
         m.envMapIntensity = eyes ? 1.0 : .9;
-        if (eyes) {
+        if (v4) {
+          this.coat = m; this.openMap = m.map;
+          if (m.normalMap) m.normalScale.set(.7, .7);
+        } else if (eyes) {
           m.clearcoat = 1; m.clearcoatRoughness = .12;
         } else if (face) {
           m.normalScale.set(.85, .85);
@@ -238,6 +246,13 @@ export class BlueCat {
         for (const value of Object.values(m)) if (value instanceof THREE.Texture) { value.anisotropy = 8; this.textures.add(value); }
       }
     });
+    if (this.coat && this.openMap) {
+      // The closed-eye base colour is the same atlas with the lids painted shut; it shares the glTF UV convention.
+      new THREE.TextureLoader().load('/models/blue-v4-closed.webp', texture => {
+        texture.colorSpace = THREE.SRGBColorSpace; texture.flipY = false; texture.anisotropy = 8;
+        this.closedMap = texture; this.textures.add(texture);
+      });
+    }
     // GLTFLoader sanitizes node names (dots are dropped), so Blender's `Eye.L` arrives as `EyeL`; look for both.
     const named = (name: string) => gltf.scene.getObjectByName(name) ?? gltf.scene.getObjectByName(name.replace(/\./g, ''));
     for (const name of ['Eye.L', 'Eye.R']) {
@@ -1039,6 +1054,10 @@ export class BlueCat {
     this.ground = THREE.MathUtils.damp(this.ground, settled, 14, dt);
     this.seatGround = THREE.MathUtils.damp(this.seatGround, seated, 14, dt);
     this.perchGround = THREE.MathUtils.damp(this.perchGround, perched, 14, dt);
+    if (this.coat && this.closedMap && this.openMap) {
+      const closed = this.blink > .5;
+      if (closed !== this.showingClosed) { this.showingClosed = closed; this.coat.map = closed ? this.closedMap : this.openMap; }
+    }
     for (const eye of this.eyeballs) eye.node.position.copy(eye.rest).addScaledVector(eye.axis, -this.blink * .006);
     for (const lid of this.lids) {
       // Hinge about the lid's own lateral axis, then express that rotation in the head frame (rest · hinge · rest⁻¹)
@@ -1066,7 +1085,10 @@ export class BlueCat {
     this.shadow.rotation.z = -this.yaw;
     (this.shadow.material as THREE.MeshBasicMaterial).opacity = 1 - step(this.body.position.y - groundY, .05, .6) * .7;
     this.body.updateWorldMatrix(true, true);
-    this.projection.set(0, .27, 0).applyMatrix4(this.body.matrixWorld).project(camera);
+    // The click target sits on the body: lower when he lies or sits, so a pointer resting on it also hits the mesh.
+    const lying = this.mood === 'sleep' || this.mood === 'settle' || this.mood === 'wake' || this.mood === 'perch' || this.mood === 'perchidle';
+    const sitting = this.mood === 'sit' || this.mood === 'sitidle' || this.mood === 'sitarch';
+    this.projection.set(0, lying ? .15 : sitting ? .22 : .25, 0).applyMatrix4(this.body.matrixWorld).project(camera);
     const inView = Math.abs(this.projection.x) < .94 && Math.abs(this.projection.y) < .94 && this.projection.z > -1 && this.projection.z < 1;
     this.button.hidden = !inView;
     if (inView) {

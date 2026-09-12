@@ -21,9 +21,11 @@ from mathutils import Vector, Matrix, Quaternion
 
 ROOT = Path(__file__).resolve().parents[3]
 WORK = ROOT / '.source-assets/blue/v3'
-MASTER = WORK / 'blue-rigged-master.blend'
-OUT_BLEND = WORK / 'blue-animated-v2.blend'
-OUT_GLB = WORK / 'blue-rigged-v2.glb'
+import os as _os
+V4 = _os.environ.get('BLUE_V4') == '1'
+MASTER = Path(_os.environ['BLUE_MASTER']) if V4 else WORK / 'blue-rigged-master.blend'
+OUT_BLEND = WORK / ('blue-animated-v4.blend' if V4 else 'blue-animated-v2.blend')
+OUT_GLB = WORK / ('blue-rigged-v4.glb' if V4 else 'blue-rigged-v2.glb')
 FPS = 30
 
 bpy.ops.wm.open_mainfile(filepath=str(MASTER))
@@ -683,188 +685,203 @@ for a in actions:
     track_.strips.new(a.name, 0, a); track_.mute = True
 for pb in arm.pose.bones: pb.matrix_basis = Matrix.Identity(4)
 
-# ---------------------------------------------------------------- coat cleanup
-# The Meshy atlas carries streaky fur highlights and warm specks. Replace the dark coat
-# with a smoothed, neutral satin black while keeping the eyes and the inner ears.
-src = bpy.data.images['Image_0']
-W = src.size[0]
-px = np.empty(W * W * 4, dtype=np.float32); src.pixels.foreach_get(px)
-img = px.reshape(W, W, 4)[:, :, :3]
-S = 1024; f = W // S
-img = img.reshape(S, f, S, f, 3).mean(axis=(1, 3))
-lum = img @ np.array([.2126, .7152, .0722], dtype=np.float32)
-sat = img.max(axis=2) - img.min(axis=2)
-def sstep(x, a, b):
-    t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
-def blur(a, radius):
-    pad = np.pad(a, ((radius, radius), (radius, radius)) + ((0, 0),) * (a.ndim - 2), mode='edge')
-    cs = np.cumsum(pad, axis=0); a = (cs[2 * radius:] - cs[:-2 * radius]) / (2 * radius)
-    cs = np.cumsum(a, axis=1); return (cs[:, 2 * radius:] - cs[:, :-2 * radius]) / (2 * radius)
-# The atlas is fragmented, so the amber eyes are found through the UVs of the eye polygons rather than by colour;
-# baked highlight specks elsewhere would otherwise survive any colour threshold and glint under the hall lights.
-uv_layer = mesh.data.uv_layers.active.data
-yy, xx = np.mgrid[0:S, 0:S]
-def rasterize(select):
-    mask = np.zeros((S, S), dtype=np.float32)
-    for polygon in mesh.data.polygons:
-        if not select(polygon): continue
-        pts = [np.array(uv_layer[l].uv, dtype=np.float64) * S for l in polygon.loop_indices]
-        for i in range(1, len(pts) - 1):
-            a, b, c = pts[0], pts[i], pts[i + 1]
-            x0, x1 = int(max(0, min(a[0], b[0], c[0]) - 2)), int(min(S - 1, max(a[0], b[0], c[0]) + 2))
-            y0, y1 = int(max(0, min(a[1], b[1], c[1]) - 2)), int(min(S - 1, max(a[1], b[1], c[1]) + 2))
-            px = xx[y0:y1 + 1, x0:x1 + 1] + .5; py = yy[y0:y1 + 1, x0:x1 + 1] + .5
-            edge = lambda p, q: (q[0] - p[0]) * (py - p[1]) - (q[1] - p[1]) * (px - p[0])
-            e0, e1, e2 = edge(a, b), edge(b, c), edge(c, a)
-            inside = ((e0 >= 0) & (e1 >= 0) & (e2 >= 0)) | ((e0 <= 0) & (e1 <= 0) & (e2 <= 0))
-            mask[y0:y1 + 1, x0:x1 + 1] = np.maximum(mask[y0:y1 + 1, x0:x1 + 1], inside)
-    # No dilation: atlas polygons are only a few texels wide, so any margin paints the neighbouring island.
-    return mask
-eye = rasterize(lambda polygon: polygon.material_index == 1)
-# Cap the eye texels so the white catchlight cannot bleed into adjacent islands at coarse mip levels;
-# the glossy eye material provides the real reflection at runtime.
-eye_scale = np.where(eye > 0, np.minimum(1, .5 / np.maximum(lum, 1e-4)), 1)[:, :, None]
-img = img * eye_scale
-# Ear interiors: forward-facing polygons weighted to the ear bones. Only their pink survives; warm fur
-# highlights elsewhere in the atlas are the specks that glinted on the face and chest.
-ear_groups = {mesh.vertex_groups['Ear.L'].index, mesh.vertex_groups['Ear.R'].index}
-def ear_weight(v): return sum(g.weight for g in v.groups if g.group in ear_groups)
-inner_ear = rasterize(lambda polygon: polygon.normal.y < -.15 and sum(ear_weight(mesh.data.vertices[i]) for i in polygon.vertices) / len(polygon.vertices) > .5)
-pink = (img[:, :, 0] > img[:, :, 2] + .06) & (img[:, :, 0] > img[:, :, 1]) & (lum > .16) & (sat > .08)
-keep = inner_ear * pink  # the eye islands go black: the eyes are separate eyeball meshes now
-coat = 1 - keep
-m3 = coat[:, :, None]
-# The coat is one even, deep, slightly cool black. Any trace of the Meshy atlas (its island blotches and warm
-# specks) read as dirt on a black cat; the fur structure comes from the runtime's tiled grain normal and the
-# velvet sheen, not from the albedo.
-flat = np.array([.040, .037, .046], dtype=np.float32)
-clean = img * (1 - m3) + flat[None, None, :] * m3
-out = np.ones((S, S, 4), dtype=np.float32); out[:, :, :3] = np.clip(clean, 0, 1)
-cleaned = bpy.data.images.new('BlueCoatClean', S, S, alpha=False)
-cleaned.pixels.foreach_set(out.ravel()); cleaned.pack()
-cleaned.filepath_raw = str(WORK / 'blue-coat-clean.png'); cleaned.file_format = 'PNG'; cleaned.save()
-for mat in mesh.data.materials:
-    for node in mat.node_tree.nodes:
-        if node.type == 'TEX_IMAGE' and node.image == src: node.image = cleaned
-# The Meshy normal map is noise on the black body (sparkle under the hall's rect lights); the runtime tiles its
-# own fine fur-grain normal there. The face keeps the sculpted nose, mouth and brow through a cleaned copy.
-for mat in mesh.data.materials:
-    for link in list(mat.node_tree.links):
-        if link.to_socket.name == 'Normal' and link.to_node.type == 'BSDF_PRINCIPLED': mat.node_tree.links.remove(link)
-    for node in [n for n in mat.node_tree.nodes if n.type == 'NORMAL_MAP' or (n.type == 'TEX_IMAGE' and n.image and n.image.name == 'Image_2')]:
-        mat.node_tree.nodes.remove(node)
-
-# ---------------------------------------------------------------- face material
-# Polygons weighted to head, neck and ears get their own material with a denoised, softened copy of the Meshy
-# normal map at 2048², so the sculpted face detail survives without the body's speck noise.
-group_index = {g.name: g.index for g in mesh.vertex_groups}
-FACE_GROUPS = {group_index[n] for n in ('Head', 'Neck', 'Ear.L', 'Ear.R') if n in group_index}
-def dominant_group(v):
-    g = max(v.groups, key=lambda g: g.weight, default=None); return g.group if g else -1
-nsrc = bpy.data.images['Image_2']; NW = nsrc.size[0]
-npx = np.empty(NW * NW * 4, dtype=np.float32); nsrc.pixels.foreach_get(npx)
-NS = 2048; nf = max(1, NW // NS)
-nimg = npx.reshape(NW, NW, 4)[:, :, :3].reshape(NS, nf, NS, nf, 3).mean(axis=(1, 3))
-u8 = (np.clip(nimg, 0, 1) * 255).astype(np.uint8)
-median = np.median(np.stack([np.roll(np.roll(u8, dy, 0), dx, 1) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]), axis=0).astype(np.float32) / 255
-flat_normal = np.array([.5, .5, 1.], dtype=np.float32)
-face_n = np.ones((NS, NS, 4), dtype=np.float32); face_n[:, :, :3] = np.clip(flat_normal + (median - flat_normal) * .7, 0, 1)
-face_normal = bpy.data.images.new('BlueFaceNormal', NS, NS, alpha=False); face_normal.colorspace_settings.name = 'Non-Color'
-face_normal.pixels.foreach_set(face_n.ravel()); face_normal.pack()
-face_normal.filepath_raw = str(WORK / 'blue-face-normal.png'); face_normal.file_format = 'PNG'; face_normal.save()
-face_material = mesh.data.materials[0].copy(); face_material.name = 'Blue face'
-tree = face_material.node_tree; bsdf = tree.nodes['Principled BSDF']
-tex = tree.nodes.new('ShaderNodeTexImage'); tex.image = face_normal
-nmap = tree.nodes.new('ShaderNodeNormalMap'); nmap.inputs['Strength'].default_value = 1.0
-tree.links.new(tex.outputs['Color'], nmap.inputs['Color']); tree.links.new(nmap.outputs['Normal'], bsdf.inputs['Normal'])
-# Eye islands are measured before they are folded into the face material.
-eye_islands = {}
-for side, sign in (('L', 1), ('R', -1)):
-    polys = [p for p in mesh.data.polygons if p.material_index == 1 and p.center.x * sign > 0]
-    verts = {i for p in polys for i in p.vertices}
-    centre = sum((mesh.data.vertices[i].co for i in verts), Vector()) / len(verts)
-    normal = sum((p.normal * p.area for p in polys), Vector()).normalized()
-    eye_islands[side] = (centre, normal)
-    # The middle of the old eye island becomes the socket floor; its outer ring stays as the eyelids that frame the eye.
-    for i in verts:
-        v = mesh.data.vertices[i]; d = (v.co - centre).length
-        v.co -= v.normal * .0035 * (1 - smooth((d - .009) / .006))
-mesh.data.materials.append(face_material); face_index = len(mesh.data.materials) - 1
-for polygon in mesh.data.polygons:
-    votes = sum(1 for i in polygon.vertices if dominant_group(mesh.data.vertices[i]) in FACE_GROUPS)
-    if polygon.material_index == 1 or votes * 2 >= len(polygon.vertices): polygon.material_index = face_index
-# The outside of the ears shares atlas texels with the pink inside and came out skin-coloured; it gets a plain
-# black material with no texture at all.
-ear_back = bpy.data.materials.new('Blue ear back'); ear_back.use_nodes = True
-ear_bsdf = ear_back.node_tree.nodes['Principled BSDF']
-ear_bsdf.inputs['Base Color'].default_value = (.035, .032, .04, 1); ear_bsdf.inputs['Roughness'].default_value = .85
-mesh.data.materials.append(ear_back); ear_index = len(mesh.data.materials) - 1
-ear_groups_ids = {group_index[n] for n in ('Ear.L', 'Ear.R') if n in group_index}
-for polygon in mesh.data.polygons:
-    weight = sum(g.weight for i in polygon.vertices for g in mesh.data.vertices[i].groups if g.group in ear_groups_ids) / len(polygon.vertices)
-    if weight > .5 and polygon.normal.y > -.15: polygon.material_index = ear_index
-
-# ---------------------------------------------------------------- eyeballs
-# Real eyes: two smooth spheres parented to the head bone, each with a 512² generated iris (amber gradient,
-# radial fibres, dark limbal ring, vertical slit pupil). The atlas eyes were a few dozen blurry texels.
-IR = 512
-yy, xx = np.mgrid[0:IR, 0:IR]; u_ = (xx + .5) / IR; v_ = (yy + .5) / IR
-theta = (1 - v_) * math.pi; phi = u_ * 2 * math.pi   # theta 0 at the +Z pole, which faces out of the head
-tx, ty = theta * np.cos(phi), theta * np.sin(phi)
-IRIS_R = .95; t = np.clip(theta / IRIS_R, 0, 1.2)
-inner, outer, ring = np.array([.95, .66, .22]), np.array([.70, .38, .10]), np.array([.14, .06, .03])
-fibres = 1 + .10 * np.sin(phi * 48 + 3 * np.sin(phi * 7)) * np.clip((t - .15) / .5, 0, 1) * np.clip(1 - t, 0, 1)
-colour = (inner[None, None, :] * (1 - np.clip(t, 0, 1))[..., None] + outer[None, None, :] * np.clip(t, 0, 1)[..., None]) * fibres[..., None]
-ring_mix = np.clip((t - .78) / .12, 0, 1)[..., None]; colour = colour * (1 - ring_mix) + ring[None, None, :] * ring_mix
-# Big and round, dilated in the dim hall, but with a clear amber margin all round so the eye reads as an eye and not
-# as a ring; a small catchlight near the top gives it the wet look of the photos at any size.
-pupil = np.clip((1 - ((tx / .50) ** 2 + (ty / .50) ** 2)) * 8, 0, 1)[..., None]
-colour = colour * (1 - pupil) + np.array([.012, .012, .015])[None, None, :] * pupil
-catch = np.clip((1 - ((tx / .085) ** 2 + ((ty - .26) / .075) ** 2)) * 5, 0, 1)[..., None]
-colour = colour * (1 - catch) + np.array([.96, .95, .92])[None, None, :] * catch
-outside = np.clip((t - 1.0) / .04, 0, 1)[..., None]; colour = colour * (1 - outside) + np.array([.03, .028, .03])[None, None, :] * outside
-iris = bpy.data.images.new('BlueIris', IR, IR, alpha=False)
-iris_px = np.ones((IR, IR, 4), dtype=np.float32); iris_px[:, :, :3] = np.clip(colour, 0, 1)
-iris.pixels.foreach_set(iris_px.ravel()); iris.pack()
-iris.filepath_raw = str(WORK / 'blue-iris.png'); iris.file_format = 'PNG'; iris.save()
-eyeball_material = bpy.data.materials.new('Blue amber eyeball'); eyeball_material.use_nodes = True
-ebsdf = eyeball_material.node_tree.nodes['Principled BSDF']
-etex = eyeball_material.node_tree.nodes.new('ShaderNodeTexImage'); etex.image = iris
-eyeball_material.node_tree.links.new(etex.outputs['Color'], ebsdf.inputs['Base Color'])
-ebsdf.inputs['Roughness'].default_value = .2
-if 'Coat Weight' in ebsdf.inputs: ebsdf.inputs['Coat Weight'].default_value = 1.0
-EYE_RADIUS = .0185
+import os
+V4 = os.environ.get("BLUE_V4") == "1"
 eye_objects = []
-for side, (centre, normal) in eye_islands.items():
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=20, radius=EYE_RADIUS, location=(0, 0, 0))
-    eye = bpy.context.object; eye.name = 'Eye.' + side; eye.data.name = 'Eye.' + side
-    bpy.ops.object.shade_smooth()
-    eye.data.materials.append(eyeball_material)
-    z = normal.normalized(); y = (V((0, 0, 1)) - z * z.z).normalized(); x = y.cross(z)
-    placement = Matrix.Translation(centre - normal * .0105) @ Matrix((x, y, z)).transposed().to_4x4()
-    eye.parent = arm; eye.parent_type = 'BONE'; eye.parent_bone = 'Head'
-    eye.matrix_world = placement
-    eye_objects.append(eye)
-    # Eyelids: two spherical caps a hair larger than the eyeball, hinged on the eye's lateral axis. The Meshy head has
-    # no lid geometry (its blink morph only squashes the socket rim, and the eye stayed visibly open while he slept),
-    # so these carry the blink. The runtime rotates them about local X by `blink` × LID_CLOSE; here they rest open.
-    # Whatever sits inside the head is hidden by the skin; only the part that swings over the visible cap shows.
-    for lid, pole, cap_deg, open_deg in (('U', 1, 78, 12), ('D', -1, 62, 6)):
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=48, radius=EYE_RADIUS + (.0014 if lid == 'U' else .0008), location=(0, 0, 0))
-        cap = bpy.context.object; cap.name = f'Lid.{lid}.{side}'; cap.data.name = cap.name
-        bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='DESELECT'); bpy.ops.object.mode_set(mode='OBJECT')
-        limit = math.cos(math.radians(cap_deg))
-        for v in cap.data.vertices: v.select = (v.co.normalized().y * pole) < limit
-        bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.delete(type='VERT'); bpy.ops.object.mode_set(mode='OBJECT')
+if not V4:
+    # ---------------------------------------------------------------- coat cleanup
+    # The Meshy atlas carries streaky fur highlights and warm specks. Replace the dark coat
+    # with a smoothed, neutral satin black while keeping the eyes and the inner ears.
+    src = bpy.data.images['Image_0']
+    W = src.size[0]
+    px = np.empty(W * W * 4, dtype=np.float32); src.pixels.foreach_get(px)
+    img = px.reshape(W, W, 4)[:, :, :3]
+    S = 1024; f = W // S
+    img = img.reshape(S, f, S, f, 3).mean(axis=(1, 3))
+    lum = img @ np.array([.2126, .7152, .0722], dtype=np.float32)
+    sat = img.max(axis=2) - img.min(axis=2)
+    def sstep(x, a, b):
+        t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
+    def blur(a, radius):
+        pad = np.pad(a, ((radius, radius), (radius, radius)) + ((0, 0),) * (a.ndim - 2), mode='edge')
+        cs = np.cumsum(pad, axis=0); a = (cs[2 * radius:] - cs[:-2 * radius]) / (2 * radius)
+        cs = np.cumsum(a, axis=1); return (cs[:, 2 * radius:] - cs[:, :-2 * radius]) / (2 * radius)
+    # The atlas is fragmented, so the amber eyes are found through the UVs of the eye polygons rather than by colour;
+    # baked highlight specks elsewhere would otherwise survive any colour threshold and glint under the hall lights.
+    uv_layer = mesh.data.uv_layers.active.data
+    yy, xx = np.mgrid[0:S, 0:S]
+    def rasterize(select):
+        mask = np.zeros((S, S), dtype=np.float32)
+        for polygon in mesh.data.polygons:
+            if not select(polygon): continue
+            pts = [np.array(uv_layer[l].uv, dtype=np.float64) * S for l in polygon.loop_indices]
+            for i in range(1, len(pts) - 1):
+                a, b, c = pts[0], pts[i], pts[i + 1]
+                x0, x1 = int(max(0, min(a[0], b[0], c[0]) - 2)), int(min(S - 1, max(a[0], b[0], c[0]) + 2))
+                y0, y1 = int(max(0, min(a[1], b[1], c[1]) - 2)), int(min(S - 1, max(a[1], b[1], c[1]) + 2))
+                px = xx[y0:y1 + 1, x0:x1 + 1] + .5; py = yy[y0:y1 + 1, x0:x1 + 1] + .5
+                edge = lambda p, q: (q[0] - p[0]) * (py - p[1]) - (q[1] - p[1]) * (px - p[0])
+                e0, e1, e2 = edge(a, b), edge(b, c), edge(c, a)
+                inside = ((e0 >= 0) & (e1 >= 0) & (e2 >= 0)) | ((e0 <= 0) & (e1 <= 0) & (e2 <= 0))
+                mask[y0:y1 + 1, x0:x1 + 1] = np.maximum(mask[y0:y1 + 1, x0:x1 + 1], inside)
+        # No dilation: atlas polygons are only a few texels wide, so any margin paints the neighbouring island.
+        return mask
+    eye = rasterize(lambda polygon: polygon.material_index == 1)
+    # Cap the eye texels so the white catchlight cannot bleed into adjacent islands at coarse mip levels;
+    # the glossy eye material provides the real reflection at runtime.
+    eye_scale = np.where(eye > 0, np.minimum(1, .5 / np.maximum(lum, 1e-4)), 1)[:, :, None]
+    img = img * eye_scale
+    # Ear interiors: forward-facing polygons weighted to the ear bones. Only their pink survives; warm fur
+    # highlights elsewhere in the atlas are the specks that glinted on the face and chest.
+    ear_groups = {mesh.vertex_groups['Ear.L'].index, mesh.vertex_groups['Ear.R'].index}
+    def ear_weight(v): return sum(g.weight for g in v.groups if g.group in ear_groups)
+    inner_ear = rasterize(lambda polygon: polygon.normal.y < -.15 and sum(ear_weight(mesh.data.vertices[i]) for i in polygon.vertices) / len(polygon.vertices) > .5)
+    pink = (img[:, :, 0] > img[:, :, 2] + .06) & (img[:, :, 0] > img[:, :, 1]) & (lum > .16) & (sat > .08)
+    keep = inner_ear * pink  # the eye islands go black: the eyes are separate eyeball meshes now
+    coat = 1 - keep
+    m3 = coat[:, :, None]
+    # The coat is one even, deep, slightly cool black. Any trace of the Meshy atlas (its island blotches and warm
+    # specks) read as dirt on a black cat; the fur structure comes from the runtime's tiled grain normal and the
+    # velvet sheen, not from the albedo.
+    flat = np.array([.040, .037, .046], dtype=np.float32)
+    clean = img * (1 - m3) + flat[None, None, :] * m3
+    out = np.ones((S, S, 4), dtype=np.float32); out[:, :, :3] = np.clip(clean, 0, 1)
+    cleaned = bpy.data.images.new('BlueCoatClean', S, S, alpha=False)
+    cleaned.pixels.foreach_set(out.ravel()); cleaned.pack()
+    cleaned.filepath_raw = str(WORK / 'blue-coat-clean.png'); cleaned.file_format = 'PNG'; cleaned.save()
+    for mat in mesh.data.materials:
+        for node in mat.node_tree.nodes:
+            if node.type == 'TEX_IMAGE' and node.image == src: node.image = cleaned
+    # The Meshy normal map is noise on the black body (sparkle under the hall's rect lights); the runtime tiles its
+    # own fine fur-grain normal there. The face keeps the sculpted nose, mouth and brow through a cleaned copy.
+    for mat in mesh.data.materials:
+        for link in list(mat.node_tree.links):
+            if link.to_socket.name == 'Normal' and link.to_node.type == 'BSDF_PRINCIPLED': mat.node_tree.links.remove(link)
+        for node in [n for n in mat.node_tree.nodes if n.type == 'NORMAL_MAP' or (n.type == 'TEX_IMAGE' and n.image and n.image.name == 'Image_2')]:
+            mat.node_tree.nodes.remove(node)
+
+    # ---------------------------------------------------------------- face material
+    # Polygons weighted to head, neck and ears get their own material with a denoised, softened copy of the Meshy
+    # normal map at 2048², so the sculpted face detail survives without the body's speck noise.
+    group_index = {g.name: g.index for g in mesh.vertex_groups}
+    FACE_GROUPS = {group_index[n] for n in ('Head', 'Neck', 'Ear.L', 'Ear.R') if n in group_index}
+    def dominant_group(v):
+        g = max(v.groups, key=lambda g: g.weight, default=None); return g.group if g else -1
+    nsrc = bpy.data.images['Image_2']; NW = nsrc.size[0]
+    npx = np.empty(NW * NW * 4, dtype=np.float32); nsrc.pixels.foreach_get(npx)
+    NS = 2048; nf = max(1, NW // NS)
+    nimg = npx.reshape(NW, NW, 4)[:, :, :3].reshape(NS, nf, NS, nf, 3).mean(axis=(1, 3))
+    u8 = (np.clip(nimg, 0, 1) * 255).astype(np.uint8)
+    median = np.median(np.stack([np.roll(np.roll(u8, dy, 0), dx, 1) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]), axis=0).astype(np.float32) / 255
+    flat_normal = np.array([.5, .5, 1.], dtype=np.float32)
+    face_n = np.ones((NS, NS, 4), dtype=np.float32); face_n[:, :, :3] = np.clip(flat_normal + (median - flat_normal) * .7, 0, 1)
+    face_normal = bpy.data.images.new('BlueFaceNormal', NS, NS, alpha=False); face_normal.colorspace_settings.name = 'Non-Color'
+    face_normal.pixels.foreach_set(face_n.ravel()); face_normal.pack()
+    face_normal.filepath_raw = str(WORK / 'blue-face-normal.png'); face_normal.file_format = 'PNG'; face_normal.save()
+    face_material = mesh.data.materials[0].copy(); face_material.name = 'Blue face'
+    tree = face_material.node_tree; bsdf = tree.nodes['Principled BSDF']
+    tex = tree.nodes.new('ShaderNodeTexImage'); tex.image = face_normal
+    nmap = tree.nodes.new('ShaderNodeNormalMap'); nmap.inputs['Strength'].default_value = 1.0
+    tree.links.new(tex.outputs['Color'], nmap.inputs['Color']); tree.links.new(nmap.outputs['Normal'], bsdf.inputs['Normal'])
+    # Eye islands are measured before they are folded into the face material.
+    eye_islands = {}
+    for side, sign in (('L', 1), ('R', -1)):
+        polys = [p for p in mesh.data.polygons if p.material_index == 1 and p.center.x * sign > 0]
+        verts = {i for p in polys for i in p.vertices}
+        centre = sum((mesh.data.vertices[i].co for i in verts), Vector()) / len(verts)
+        normal = sum((p.normal * p.area for p in polys), Vector()).normalized()
+        eye_islands[side] = (centre, normal)
+        # The middle of the old eye island becomes the socket floor; its outer ring stays as the eyelids that frame the eye.
+        for i in verts:
+            v = mesh.data.vertices[i]; d = (v.co - centre).length
+            v.co -= v.normal * .0035 * (1 - smooth((d - .009) / .006))
+    mesh.data.materials.append(face_material); face_index = len(mesh.data.materials) - 1
+    for polygon in mesh.data.polygons:
+        votes = sum(1 for i in polygon.vertices if dominant_group(mesh.data.vertices[i]) in FACE_GROUPS)
+        if polygon.material_index == 1 or votes * 2 >= len(polygon.vertices): polygon.material_index = face_index
+    # The outside of the ears shares atlas texels with the pink inside and came out skin-coloured; it gets a plain
+    # black material with no texture at all.
+    ear_back = bpy.data.materials.new('Blue ear back'); ear_back.use_nodes = True
+    ear_bsdf = ear_back.node_tree.nodes['Principled BSDF']
+    ear_bsdf.inputs['Base Color'].default_value = (.035, .032, .04, 1); ear_bsdf.inputs['Roughness'].default_value = .85
+    mesh.data.materials.append(ear_back); ear_index = len(mesh.data.materials) - 1
+    ear_groups_ids = {group_index[n] for n in ('Ear.L', 'Ear.R') if n in group_index}
+    for polygon in mesh.data.polygons:
+        weight = sum(g.weight for i in polygon.vertices for g in mesh.data.vertices[i].groups if g.group in ear_groups_ids) / len(polygon.vertices)
+        if weight > .5 and polygon.normal.y > -.15: polygon.material_index = ear_index
+
+    # ---------------------------------------------------------------- eyeballs
+    # Real eyes: two smooth spheres parented to the head bone, each with a 512² generated iris (amber gradient,
+    # radial fibres, dark limbal ring, vertical slit pupil). The atlas eyes were a few dozen blurry texels.
+    IR = 512
+    yy, xx = np.mgrid[0:IR, 0:IR]; u_ = (xx + .5) / IR; v_ = (yy + .5) / IR
+    theta = (1 - v_) * math.pi; phi = u_ * 2 * math.pi   # theta 0 at the +Z pole, which faces out of the head
+    tx, ty = theta * np.cos(phi), theta * np.sin(phi)
+    IRIS_R = .95; t = np.clip(theta / IRIS_R, 0, 1.2)
+    inner, outer, ring = np.array([.95, .66, .22]), np.array([.70, .38, .10]), np.array([.14, .06, .03])
+    fibres = 1 + .10 * np.sin(phi * 48 + 3 * np.sin(phi * 7)) * np.clip((t - .15) / .5, 0, 1) * np.clip(1 - t, 0, 1)
+    colour = (inner[None, None, :] * (1 - np.clip(t, 0, 1))[..., None] + outer[None, None, :] * np.clip(t, 0, 1)[..., None]) * fibres[..., None]
+    ring_mix = np.clip((t - .78) / .12, 0, 1)[..., None]; colour = colour * (1 - ring_mix) + ring[None, None, :] * ring_mix
+    # Big and round, dilated in the dim hall, but with a clear amber margin all round so the eye reads as an eye and not
+    # as a ring; a small catchlight near the top gives it the wet look of the photos at any size.
+    pupil = np.clip((1 - ((tx / .50) ** 2 + (ty / .50) ** 2)) * 8, 0, 1)[..., None]
+    colour = colour * (1 - pupil) + np.array([.012, .012, .015])[None, None, :] * pupil
+    catch = np.clip((1 - ((tx / .085) ** 2 + ((ty - .26) / .075) ** 2)) * 5, 0, 1)[..., None]
+    colour = colour * (1 - catch) + np.array([.96, .95, .92])[None, None, :] * catch
+    outside = np.clip((t - 1.0) / .04, 0, 1)[..., None]; colour = colour * (1 - outside) + np.array([.03, .028, .03])[None, None, :] * outside
+    iris = bpy.data.images.new('BlueIris', IR, IR, alpha=False)
+    iris_px = np.ones((IR, IR, 4), dtype=np.float32); iris_px[:, :, :3] = np.clip(colour, 0, 1)
+    iris.pixels.foreach_set(iris_px.ravel()); iris.pack()
+    iris.filepath_raw = str(WORK / 'blue-iris.png'); iris.file_format = 'PNG'; iris.save()
+    eyeball_material = bpy.data.materials.new('Blue amber eyeball'); eyeball_material.use_nodes = True
+    ebsdf = eyeball_material.node_tree.nodes['Principled BSDF']
+    etex = eyeball_material.node_tree.nodes.new('ShaderNodeTexImage'); etex.image = iris
+    eyeball_material.node_tree.links.new(etex.outputs['Color'], ebsdf.inputs['Base Color'])
+    ebsdf.inputs['Roughness'].default_value = .2
+    if 'Coat Weight' in ebsdf.inputs: ebsdf.inputs['Coat Weight'].default_value = 1.0
+    EYE_RADIUS = .0185
+    eye_objects = []
+    for side, (centre, normal) in eye_islands.items():
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=20, radius=EYE_RADIUS, location=(0, 0, 0))
+        eye = bpy.context.object; eye.name = 'Eye.' + side; eye.data.name = 'Eye.' + side
         bpy.ops.object.shade_smooth()
-        cap.data.materials.append(ear_back)
-        cap.parent = arm; cap.parent_type = 'BONE'; cap.parent_bone = 'Head'
-        # Same bone-relative transform as the eyeball (assigning matrix_world here evaluated the bone at a different
-        # depsgraph state and put the caps 12 mm above the eye), tipped back a little further than the pole so the
-        # open lid only hoods the top (or bottom) of the visible cap.
-        cap.matrix_parent_inverse = eye.matrix_parent_inverse.copy()
-        cap.matrix_basis = eye.matrix_basis @ Matrix.Rotation(math.radians(-pole * open_deg), 4, 'X')
-        eye_objects.append(cap)
+        eye.data.materials.append(eyeball_material)
+        z = normal.normalized(); y = (V((0, 0, 1)) - z * z.z).normalized(); x = y.cross(z)
+        placement = Matrix.Translation(centre - normal * .0105) @ Matrix((x, y, z)).transposed().to_4x4()
+        eye.parent = arm; eye.parent_type = 'BONE'; eye.parent_bone = 'Head'
+        eye.matrix_world = placement
+        eye_objects.append(eye)
+        # Eyelids: two spherical caps a hair larger than the eyeball, hinged on the eye's lateral axis. The Meshy head has
+        # no lid geometry (its blink morph only squashes the socket rim, and the eye stayed visibly open while he slept),
+        # so these carry the blink. The runtime rotates them about local X by `blink` × LID_CLOSE; here they rest open.
+        # Whatever sits inside the head is hidden by the skin; only the part that swings over the visible cap shows.
+        for lid, pole, cap_deg, open_deg in (('U', 1, 78, 12), ('D', -1, 62, 6)):
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=48, radius=EYE_RADIUS + (.0014 if lid == 'U' else .0008), location=(0, 0, 0))
+            cap = bpy.context.object; cap.name = f'Lid.{lid}.{side}'; cap.data.name = cap.name
+            bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='DESELECT'); bpy.ops.object.mode_set(mode='OBJECT')
+            limit = math.cos(math.radians(cap_deg))
+            for v in cap.data.vertices: v.select = (v.co.normalized().y * pole) < limit
+            bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.delete(type='VERT'); bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.shade_smooth()
+            cap.data.materials.append(ear_back)
+            cap.parent = arm; cap.parent_type = 'BONE'; cap.parent_bone = 'Head'
+            # Same bone-relative transform as the eyeball (assigning matrix_world here evaluated the bone at a different
+            # depsgraph state and put the caps 12 mm above the eye), tipped back a little further than the pole so the
+            # open lid only hoods the top (or bottom) of the visible cap.
+            cap.matrix_parent_inverse = eye.matrix_parent_inverse.copy()
+            cap.matrix_basis = eye.matrix_basis @ Matrix.Rotation(math.radians(-pole * open_deg), 4, 'X')
+            eye_objects.append(cap)
+
+else:
+    # ---------------------------------------------------------------- v4: Meshy PBR textures stay; closed-eye texture
+    for mat in mesh.data.materials:
+        if mat: mat.name = 'Blue coat v4'
+    for img in bpy.data.images:
+        if img.size[0] > 2048 and img.name != 'BlueCoatClosed': img.scale(2048, 2048)
+    closed_src = MASTER.parent / 'blue-v4-closed.png'
+    if closed_src.exists():
+        closed = bpy.data.images.load(str(closed_src)); closed.scale(2048, 2048)
+        closed.filepath_raw = str(WORK / 'blue-v4-closed.webp'); closed.file_format = 'WEBP'; closed.save()
 
 bpy.context.view_layer.update()
 bpy.ops.file.pack_all()
@@ -950,5 +967,5 @@ encoded = json.dumps(document, separators=(',', ':')).encode(); encoded += b' ' 
 body = struct.pack('<II', len(encoded), 0x4e4f534a) + encoded + struct.pack('<II', len(packed), 0x004e4942) + bytes(packed)
 OUT_GLB.write_bytes(struct.pack('<III', 0x46546c67, 2, 12 + len(body)) + body)
 (WORK / 'rig-report-v2.json').write_text(json.dumps({'clips': [{'name': a.name, 'frames': list(a.frame_range)} for a in actions],
-    'ground_lifted_vertices': lifted, 'dropped_static_channels': dropped, 'glb_bytes': OUT_GLB.stat().st_size, 'coat_texture': S}, indent=2))
+    'ground_lifted_vertices': lifted, 'dropped_static_channels': dropped, 'glb_bytes': OUT_GLB.stat().st_size, 'coat_texture': None if V4 else S}, indent=2))
 print('BLUE_ANIMATE_EXPORTED', OUT_GLB.stat().st_size, flush=True)

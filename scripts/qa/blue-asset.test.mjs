@@ -6,7 +6,9 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
-const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v2.glb';
+const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v4.glb';
+/** v4 (Meshy multi-view mesh, one PBR material, eyes painted into the coat) has no eyeball or lid nodes. */
+const V4 = /v4/.test(FILE);
 const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear.R',
   'FrontUpper.L', 'FrontLower.L', 'FrontPaw.L', 'FrontUpper.R', 'FrontLower.R', 'FrontPaw.R',
   'HindUpper.L', 'HindLower.L', 'HindPaw.L', 'HindUpper.R', 'HindLower.R', 'HindPaw.R',
@@ -71,18 +73,25 @@ test('morph targets keep their names and order, the materials and eyeballs exist
   assert.deepEqual(mesh.getExtras().targetNames, MORPHS);
   for (const primitive of mesh.listPrimitives()) assert.equal(primitive.listTargets().length, MORPHS.length);
   const materials = root.listMaterials().map(m => m.getName());
-  for (const name of ['Blue amber eyeball', 'Blue face', 'Blue ear back', 'Material_0']) assert.ok(materials.includes(name), name);
   const nodes = root.listNodes().map(n => n.getName());
-  for (const eye of ['Eye.L', 'Eye.R', 'Lid.U.L', 'Lid.U.R', 'Lid.D.L', 'Lid.D.R']) {
-    const node = root.listNodes().find(n => n.getName() === eye);
-    assert.ok(node?.getMesh(), `${eye} is a mesh node`);
-    assert.equal(node.getParentNode()?.getName(), 'Head', `${eye} hangs off the Head bone`);
+  if (V4) {
+    assert.deepEqual(materials, ['Blue coat v4']);
+    const coat = root.listMaterials()[0];
+    assert.ok(coat.getBaseColorTexture() && coat.getNormalTexture(), 'the coat keeps its base colour and normal maps');
+    assert.ok(nodes.length >= 27);
+  } else {
+    for (const name of ['Blue amber eyeball', 'Blue face', 'Blue ear back', 'Material_0']) assert.ok(materials.includes(name), name);
+    for (const eye of ['Eye.L', 'Eye.R', 'Lid.U.L', 'Lid.U.R', 'Lid.D.L', 'Lid.D.R']) {
+      const node = root.listNodes().find(n => n.getName() === eye);
+      assert.ok(node?.getMesh(), `${eye} is a mesh node`);
+      assert.equal(node.getParentNode()?.getName(), 'Head', `${eye} hangs off the Head bone`);
+    }
+    assert.ok(nodes.length >= 32);
   }
-  assert.ok(nodes.length >= 32);
 });
 
 test('the file stays within its budget', async () => {
   const { stat } = await import('node:fs/promises');
   const bytes = (await stat(FILE)).size;
-  assert.ok(bytes < 1_600_000, `${bytes} bytes`);
+  assert.ok(bytes < (V4 ? 3_400_000 : 1_600_000), `${bytes} bytes`);
 });
