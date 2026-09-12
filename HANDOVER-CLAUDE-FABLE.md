@@ -4,7 +4,7 @@ Prepared 2026-09-12 from the repository, retained QA reports, and the current co
 
 ## 1. Current state and immediate next step
 
-The requested work is implemented, committed, pushed and published. Latest application commit: **`f5e84f7`**. The user's latest request is to document the work for you, not to start another redesign.
+Latest application commit: **`3e07dc8`** (Blue v2: re-authored clips, cleaned coat, pointer attention), committed and pushed to `origin/feat/werkstatt`. **It is not yet on production.** The Pages upload was blocked by the agent's permission layer on 2026-09-12; production still serves the `f5e84f7` build (`678ba401` deployment). The deploy command for the tested `dist` is in section 7. Dennis's feedback on the first Blue release was that the cat was not clean, not interactive enough and its animation not smooth; that pass is implemented and documented in `docs/research/blue-cat.md` (section "v2 polish"). Dennis has not yet reviewed v2; expect vetoes on the sphinx rest pose, the satin-black coat or the attention behaviour.
 
 | Item | Current value |
 | --- | --- |
@@ -12,11 +12,11 @@ The requested work is implemented, committed, pushed and published. Latest appli
 | Working / pushed branch | `feat/werkstatt` |
 | Git remote | `https://github.com/reioken/dennis-portfolio.git` |
 | Production | `https://www.dennisbf.design` |
-| Latest verified deployment | `https://678ba401.dennis-portfolio-87g.pages.dev` |
+| Latest verified deployment | `https://678ba401.dennis-portfolio-87g.pages.dev` (build of `f5e84f7`; Blue v2 not yet deployed) |
 | Cloudflare Pages project | `dennis-portfolio` |
 | Pages production branch argument | `main` |
 | Local development | `http://localhost:4321/` |
-| Latest delivered assets | `portrait-wide-v2-{1200,640}.webp`, `blue-rigged-v1.glb` |
+| Latest delivered assets | `portrait-wide-v2-{1200,640}.webp`, `blue-rigged-v2.glb` (`blue-rigged-v1.glb` retained for rollback only) |
 
 **Git branch and deployment branch are different.** Production was uploaded directly from the tested `feat/werkstatt` build with `--branch=main`; this did not merge the Git branch into `main`. Do not assume Git main contains this work. At inspection, local main was behind origin/main, whose tip was `3ad8ae9`; those refs have not been freshly fetched for this documentation pass. Reconcile intentionally if a main-branch merge is requested. Do not overwrite or force-push main.
 
@@ -120,6 +120,14 @@ Dennis's accepted stylized toy figure is `public/models/dennis.glb`, referenced 
 - Pointer hits actual cat before cabinet/background logic. Keyboard uses a projected accessible button; `transition:none!important` avoids a moving hit-target lag. `Stage3D.tsx` no longer hides this control from accessibility; canvas itself remains aria-hidden.
 - Keep opaque fur, amber eyes and generated pupil texture; no white markings, collar or alpha hair cards.
 
+**Blue v2 (`3e07dc8`, 2026-09-12)** answers Dennis's "not clean, not interactive, animations need to be way smoother":
+
+- Diagnosis: the glTF exporter had decimated the sampled clips to a handful of linear keys, the authored motion was tiny, the sleep pose dropped the torso through the floor (belly clearance is 12 cm), and the Meshy atlas carried streaky highlights.
+- `scripts/models/blender/blue_animate.py` opens the unchanged skin master and re-authors all six clips at 30 fps (idle look-around with ear flicks, real lateral-sequence walk, **sphinx rest** instead of the crushed loaf, breathing/drooping sleep, happy head tilt), rebuilds the floor-contact morph, cleans the coat via UV-selected eye and inner-ear islands, prunes static channels and repacks the GLB. `blue_check.py` renders poses and reports skin stretch. Runtime asset: `public/models/blue-rigged-v2.glb` (2,144,196 bytes).
+- `src/components/hall/blueCat.ts`: idle/walk blended by ground speed (no foot sliding), acceleration-limited locomotion with eased turns and random stops, layered settle/sleep/wake/happy, petting a resting cat wakes it first, a fixed resting heading so the lying pose reads from the frontal camera, and a post-mixer attention overlay: neck/head/ears follow the pointer, look at the viewer with perked ears and a slow blink on hover, glance at the camera without a pointer. Velvet sheen material, glossy eyes.
+- `hallScene.ts` feeds the pointer ray/hover state through `look()` and clears it on `pointerleave`; loader failures are logged.
+- Known residue: faint mip-bleed specks from the eye texels on the resting cat under strong light (see the research note), wrist stretch in the sphinx pose hidden from the camera, native Firefox and physical devices not rerun for v2.
+
 Detailed pipeline/QA: `docs/research/blue-cat.md`. Meshy CLI adapter used: `C:/Users/denni/Projects/survivorlike/tools/meshy.py`. No API credential is included in this handover; never recover one by printing conversation secrets into files/logs. Public rigging API support must be rechecked before using it for quadrupeds; this delivery used local Blender rigging.
 
 ## 4. Architecture and file map
@@ -137,7 +145,7 @@ Detailed pipeline/QA: `docs/research/blue-cat.md`. Meshy CLI adapter used: `C:/U
 | Navigation | `src/components/nav/GlassNav.tsx`, `site-nav.css` |
 | Nucleo | `src/components/icons/Icon.tsx`, `nucleo-sources.json` |
 | Models and reproducible generators | `public/models/`, `scripts/models/blender/` |
-| Blue | `src/components/hall/blueCat.ts` |
+| Blue | `src/components/hall/blueCat.ts`; asset pipeline `scripts/models/blender/blue_rig.py` (skin) → `blue_animate.py` (clips, coat, export) → `blue_check.py` (pose renders, stretch report) |
 | Release audit / regressions | `scripts/audit-build.mjs`, `scripts/qa/` |
 
 The shared `window.__hall` handle is used by local diagnostics (`readyDone`, `blue`, stop/start etc.). Read current implementations before scripting mutations. Hall camera/panel frame measurements are interdependent: test both initial entry and subsequent internal navigation if touching either. CSS dimensions alone can cause a delayed second reframe.
@@ -188,6 +196,7 @@ Test scripts from older iterations may assert historical UI. Inspect before trea
 ### What has actually been checked
 
 - Blue release: typecheck, all **27** regressions, build, **54-page** link/metadata audit, Chromium desktop/mobile/reduced motion, native Firefox interaction and cube regression.
+- Blue v2: Blender pose renders and stretch report; typecheck; `scripts/qa/blue-cat.mjs` at 1440×900, 390×844 and reduced motion; 27 regressions; `npx astro build`; 54-page audit (home JS 1259.7 KB across 21 files); Playwright evidence for pointer gaze left/right, hover perk with pointer cursor, petting, a 300-frame walk at 60 fps with acceleration under 0.36 m/s², and the settle → sleep → wake cycle. Native Firefox was **not** rerun for v2.
 - Latest hair correction: typecheck; visual enlarged cutouts; About navigation at **1440×900, 3789×1896, 390×844**; all four About sections; return button visibility/44px target; same persistent hall; no horizontal overflow or browser errors after dev-server restart.
 - Final publication: fresh build and 54-page audit passed. About and English About returned 200 and referenced portrait v2. Homepage returned 200. Both portrait files and Blue GLB were downloaded for SHA-256 comparison and matched the tested local build byte for byte.
 - Last build reported home reachable JS **1254.9 KB across 21 files**, CSS **174.7 KB across 2 files** (audit totals, not transfer-size or Core Web Vitals measurements). Large-chunk warning remains.
@@ -205,7 +214,7 @@ There is **no unfinished requested implementation** from the portrait/Blue relea
 4. **Firefox/driver breadth.** Final cube compositor behavior is verified in native headless Firefox 155.0.1 on this machine. If Dennis reports another stall, capture actual cube rotation separately from expansion/brackets and confirm live build identity; do not repeat cosmetic rewrites based on computed transforms alone.
 5. **Figure edge shimmer.** Several fixes reduced Dennis's white edge flicker, especially hair. No universal elimination across drivers/resolutions is proven. Inspect moving live frames if the user still sees it; preserve current accepted model and avoid excessive blur.
 6. **Performance budget.** Large JS bundle warning remains. Profile before cutting features or changing animation timing. Room warm-up, GPU uploads and model loading need coverage on slower hardware. Keep Blue behind the existing startup gate.
-7. **Blue motion refinement.** Current rig is custom/stylized and accepted for delivery, with possible joint-compression refinements. Check feet/floor contact, route bounds, basket relation, happy-expression readability and projected click target at new resolutions before changing behavior.
+7. **Blue v2 review.** Dennis has not yet judged v2 live. If he still finds it unclean, the remaining candidates are the faint eye-texel mip bleed on the resting cat (custom mip chain or a lower eye cap in `blue_animate.py`), the wrist stretch in the sphinx pose (weights, not clips), and the head/neck overlay weights. Rerun `scripts/qa/blue-cat-firefox.mjs` before claiming Firefox parity. Check feet/floor contact, route bounds, basket relation, happy-expression readability and the projected click target at new resolutions before changing behavior.
 8. **Tattoo fidelity.** Current Dennis model was accepted “for now”; perfect anatomical/texture accuracy was not achieved or certified. Any future improvement should map the original photos and preserve corrected left/right/hand/forearm placements.
 9. **External links/downloads.** Latest built-site audit covers local links and metadata. Do not infer it downloaded and executed the NEXUS installer or revalidated every external destination. Smoke-test changed destinations without installing software or submitting contact messages unnecessarily.
 10. **Git main alignment.** Current source is on `feat/werkstatt`, production is a direct Pages deployment. Decide a proper main merge with current remote evidence if requested; GitHub Actions deploys pushes to main/master and runs `npm run build`, including its scanner.
@@ -219,8 +228,10 @@ Latest successful release sequence (already completed):
 
 ```powershell
 git push origin feat/werkstatt
-npx wrangler pages deploy dist --project-name=dennis-portfolio --branch=main --commit-hash=f5e84f7 --commit-dirty=true
+npx wrangler pages deploy dist --project-name=dennis-portfolio --branch=main --commit-hash=3e07dc8 --commit-dirty=true
 ```
+
+Blue v2 (2026-09-12) is built, audited and pushed but **not deployed**: the upload above was blocked by the agent's permission layer. Run it from a fresh `npx astro build` of `3e07dc8` (or later), then verify that `/models/blue-rigged-v2.glb` on the deployment matches the local file byte for byte and record the deployment URL here.
 
 For the next application release, rebuild and audit the actual new commit, substitute its hash, inspect the working tree and upload only the intended build. The dirty flag was needed because of unrelated local Claude settings; it is not a reason to skip reviewing changes. Do not redeploy a stale `dist` directory or unnecessarily redeploy the contact Worker.
 
