@@ -150,3 +150,9 @@ Dennis: "do that too" for the remaining "move more realistically" items. `blueCa
 - *Ears.* The same spring (k 520, ζ 0.5) on both ear bones gives their authored flicks a little overshoot; landing a jump adds an angular impulse that kicks them back once (`earKick`).
 - Cost: ~0.045 ms per `update()` for the whole cat (26 bones), measured in Chromium.
 - Reduced motion skips the inertializer and the springs; a pause longer than 0.2 s or a teleport resets the spring states and the body-velocity estimate.
+
+### Asset budget (Phase 7)
+
+The runtime GLB had grown to 2.36 MB: a 24k-vertex skin at full float precision, four sparse morph targets and dense 30 fps keys on every bone for 20 clips. The textures were already WebP and small (48 KB normal map, 40 KB coat). New packaging step `scripts/models/blue-pack.mjs` (glTF Transform API) runs after `blue_animate.py`: `resample` at a 1e-4 tolerance drops the keys the bake produced on straight segments, `prune` removes what nothing references, and `meshopt` at level medium quantizes positions and normals to 16 bit, texture coordinates to 16 bit and weights to 8 bit and compresses geometry, morphs and animation with `EXT_meshopt_compression`. Result 919 KB (39 %). The hall's `GLTFLoader` gets `setMeshoptDecoder` from three's bundled WASM decoder; the other models are untouched.
+
+`scripts/qa/blue-asset.test.mjs` (part of `npm run test:review`) guards the file against an optimiser pass changing anything the runtime addresses by name: the 26 joints once each, the exact clip list, morph target names and order, the two materials, Root rotation only on turn clips and Root translation only on jump clips, turn end angles within 1.5° of nominal, jump displacements within 2 cm of authored, and a 1.6 MB size ceiling. KTX2/Basis textures were not adopted: at 88 KB the textures are not the cost, and the toolchain is not installed.

@@ -22,6 +22,7 @@ import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './
 import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMaterials';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -492,7 +493,8 @@ export class HallScene {
   private neonLight!: THREE.PointLight;
   private loadingManager = new THREE.LoadingManager();
   private loader = new THREE.TextureLoader(this.loadingManager);
-  private gltf = new GLTFLoader(this.loadingManager);
+  /** Blue's GLB is Meshopt-compressed (geometry, morphs and animation); the other models are plain. */
+  private gltf = new GLTFLoader(this.loadingManager).setMeshoptDecoder(MeshoptDecoder);
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2(0, 0);
   private camX = 0;
