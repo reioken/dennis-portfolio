@@ -268,52 +268,80 @@ def sitidle(t, D):
 # The Root bone carries the trajectory (JUMP_UP: 1.95 m up and 1.03 m forward onto the claw cabinet, JUMP_DOWN the
 # reverse from the lying spot to the floor in front). The runtime strips the Root track, replays the curve on the
 # body and warps it to the actual take-off and landing points, so the pose and the flight can never disagree.
-JUMP_UP = (1.03, 1.95)
-JUMP_DOWN = (.88, 1.95)
+JUMP_UP = (.63, 1.95)
+JUMP_DOWN = (.63, 1.95)
 
 def jumpup(t, D):
-    """Onto the ledge: look up, load the hindquarters, launch nose-up, arc, front paws land first, absorb, settle."""
+    """Onto the ledge: look up, load the hindquarters, launch nose-up, rise past the marquee, hook the front paws
+    over its top and swing the body in, hind paws follow, absorb, settle. Forward travel only starts once the body
+    is above the top, so nothing passes through the marquee front."""
     P = base()
-    P['head']['pitch'] = track(t, [(0, 0), (.15, -.30), (.45, -.22), (.58, -.05), (.8, .0), (.95, .18), (1.15, .05), (1.5, 0)])
-    load = track(t, [(.12, 0), (.42, 1), (.55, -.3), (.7, 0), (.95, 0), (1.08, .7), (1.5, 0)])
+    P['head']['pitch'] = track(t, [(0, 0), (.15, -.30), (.45, -.22), (.6, -.05), (.9, .05), (1.05, .22), (1.25, .05), (1.5, 0)])
+    load = track(t, [(.12, 0), (.42, 1), (.55, -.3), (.7, 0), (1.05, 0), (1.22, .7), (1.5, 0)])
     for n, d in (('Pelvis', .085), ('Spine', .07), ('Chest', .045), ('Neck', .02), ('Head', .012)): P['drop'][n] = d * load
     P['push'] = track(t, [(.12, 0), (.42, .022), (.55, -.03), (.8, -.01), (1.5, 0)])
-    P['body_pitch'] = track(t, [(.28, 0), (.42, .08), (.58, -.36), (.8, -.26), (.95, .04), (1.08, .2), (1.32, 0)])
-    up = track(t, [(.5, 0), (.75, 1.3), (.95, 2.0), (1.02, JUMP_UP[1])])
-    forward = track(t, [(.5, 0), (1.0, JUMP_UP[0])])
+    P['body_pitch'] = track(t, [(.28, 0), (.42, .08), (.58, -.36), (.85, -.28), (1.0, -.08), (1.14, .16), (1.36, 0)])
+    up = track(t, [(.5, 0), (.8, 1.6), (.97, 2.12), (1.2, JUMP_UP[1])])
+    forward = track(t, [(.5, 0), (.9, .03), (.97, .1), (1.2, JUMP_UP[0])])
     P['root_move'] = V((0, -forward, up))
     for side in 'LR':
-        P['ears'][side][0] = track(t, [(.35, 0), (.55, .16), (.9, .05), (1.08, .12), (1.5, 0)])
+        P['ears'][side][0] = track(t, [(.35, 0), (.55, .16), (.9, .05), (1.1, .12), (1.5, 0)])
         F, H = P['legs'][('Front', side)], P['legs'][('Hind', side)]
-        F['dy'] = track(t, [(.42, 0), (.58, -.06), (.8, -.12), (.95, -.07), (1.15, 0)])
-        F['dz'] = track(t, [(.42, 0), (.55, .06), (.8, .14), (.93, .03), (1.0, 0)])
-        F['pitch'] = track(t, [(.45, 0), (.6, .5), (.85, .3), (.95, -.15), (1.1, 0)])
-        H['dy'] = track(t, [(.4, 0), (.56, .14), (.8, .10), (1.05, .06), (1.2, 0)])
-        H['dz'] = track(t, [(.4, 0), (.5, 0), (.64, .12), (.95, .14), (1.1, .02), (1.2, 0)])
-    P['tail_back'] = track(t, [(.3, 0), (.55, .9), (1.0, .8), (1.3, .2), (1.5, 0)])
+        F['dy'] = track(t, [(.42, 0), (.58, -.06), (.85, -.11), (.97, -.09), (1.2, 0)])
+        F['dz'] = track(t, [(.42, 0), (.55, .06), (.8, .14), (.9, .04), (.97, -.05), (1.2, 0)])
+        F['pitch'] = track(t, [(.45, 0), (.6, .5), (.85, .3), (.97, -.25), (1.2, 0)])
+        H['dy'] = track(t, [(.4, 0), (.56, .14), (.85, .10), (1.15, .06), (1.32, 0)])
+        H['dz'] = track(t, [(.4, 0), (.5, 0), (.64, .12), (1.05, .14), (1.22, .02), (1.32, 0)])
+    P['tail_back'] = track(t, [(.3, 0), (.55, .9), (1.1, .8), (1.35, .2), (1.5, 0)])
     P['tail_lift'] = track(t, [(0, 0), (.35, .3), (.55, 0)])
     return P
 
 def jumpdown(t, D):
-    """Off the ledge: peer down, push off, drop nose-down, the front paws take the landing, the hindquarters follow."""
+    """Off the ledge: peer down, push off forward first so the hindquarters clear the marquee, then drop nose-down,
+    the front paws take the landing, the hindquarters follow."""
     P = base()
     P['head']['pitch'] = track(t, [(0, 0), (.2, .35), (.4, .25), (.55, .1), (.85, .28), (1.05, .05), (1.3, 0)])
-    load = track(t, [(.05, 0), (.32, .7), (.42, .2), (.55, 0), (.85, 0), (.98, 1), (1.3, 0)])
+    load = track(t, [(.05, 0), (.32, .7), (.42, .2), (.55, 0), (.9, 0), (1.02, 1), (1.3, 0)])
     for n, d in (('Pelvis', .05), ('Spine', .065), ('Chest', .07), ('Neck', .03), ('Head', .015)): P['drop'][n] = d * load
     P['push'] = track(t, [(.1, 0), (.32, -.02), (.45, -.04), (.7, 0)])
-    P['body_pitch'] = track(t, [(.2, 0), (.42, .15), (.6, .38), (.85, .3), (.98, .05), (1.1, -.08), (1.3, 0)])
-    down = track(t, [(.4, 0), (.6, .3), (.8, 1.1), (.92, JUMP_DOWN[1])])
-    forward = track(t, [(.4, 0), (.92, JUMP_DOWN[0])])
+    P['body_pitch'] = track(t, [(.2, 0), (.42, .12), (.62, .36), (.85, .3), (.98, .05), (1.1, -.08), (1.3, 0)])
+    down = track(t, [(.4, 0), (.55, .05), (.7, .5), (.85, 1.3), (.95, JUMP_DOWN[1])])
+    forward = track(t, [(.4, 0), (.55, .3), (.75, .5), (.95, JUMP_DOWN[0])])
     P['root_move'] = V((0, -forward, -down))
     for side in 'LR':
         P['ears'][side][0] = track(t, [(.3, 0), (.5, .1), (.9, .14), (1.3, 0)])
         F, H = P['legs'][('Front', side)], P['legs'][('Hind', side)]
         F['dy'] = track(t, [(.35, 0), (.5, -.08), (.85, -.10), (1.0, 0)])
-        F['dz'] = track(t, [(.35, 0), (.55, -.03), (.8, -.06), (.92, 0)])
+        F['dz'] = track(t, [(.35, 0), (.55, -.04), (.85, -.08), (.95, 0)])
         F['pitch'] = track(t, [(.4, 0), (.6, -.3), (.9, .1), (1.05, 0)])
-        H['dy'] = track(t, [(.35, 0), (.5, .06), (.9, .08), (1.1, 0)])
-        H['dz'] = track(t, [(.3, 0), (.45, 0), (.6, .10), (.9, .12), (1.02, .02), (1.12, 0)])
+        H['dy'] = track(t, [(.35, 0), (.5, .06), (.9, .08), (1.12, 0)])
+        H['dz'] = track(t, [(.3, 0), (.45, 0), (.6, .10), (.92, .12), (1.04, .02), (1.14, 0)])
     P['tail_back'] = track(t, [(.3, 0), (.55, .8), (.9, .9), (1.1, .3), (1.3, 0)])
+    return P
+
+# ---------------------------------------------------------------- touch reactions
+def arch(t, D):
+    """Stroked along the back: the spine arches up, the hindquarters rise, the tail goes up, the head dips."""
+    P = base(); a = ease(t, .15, .8) * (1 - ease(t, 1.7, 2.5))
+    P['drop']['Pelvis'] = -.035 * a; P['drop']['Spine'] = -.04 * a; P['drop']['Chest'] = -.012 * a
+    P['head']['pitch'] = .14 * a; P['head_lift'] = -.004 * a; P['push'] = .01 * a
+    P['tail_lift'] = a
+    for i in range(6):
+        k = i / 5; P['tail_wave'][i] = math.sin(math.tau * 1.5 * t / D - i * .4) * .012 * k * a
+    for side in 'LR': P['ears'][side][0] = .10 * a
+    return P
+
+def flick(t, D):
+    """Tail touched: the tail lashes, the ears go back, a glance over the shoulder, a small flinch. Played additively."""
+    P = base(); on = ease(t, 0, .12) * (1 - ease(t, 1.1, 1.7))
+    lash = math.sin(math.tau * 1.4 * t) * on
+    for i in range(6):
+        k = i / 5; P['tail_wave'][i] = lash * .06 * k ** 1.3
+    P['tail_lift'] = .35 * ease(t, 0, .15) * (1 - ease(t, 1.2, 1.8))
+    for side in 'LR': P['ears'][side][0] = .35 * ease(t, .02, .15) * (1 - ease(t, 1.0, 1.6))
+    look = ease(t, .05, .35) * (1 - ease(t, .9, 1.4))
+    P['head']['yaw'] = .5 * look; P['head']['pitch'] = .05 * look; P['head']['roll'] = .08 * look
+    P['bob'] = -.008 * pulse(t, .05, .4); P['sway'] = .006 * pulse(t, .05, .5)
     return P
 
 def jump(t, D):
@@ -460,7 +488,7 @@ for degrees, D in ((45, 1.15), (90, 1.7)):
         TURNS.append((f'turn{side}{degrees}', D, (lambda th, sg, sw: lambda t, D: turn(t, D, th, sg, sw))(theta, sign, swings)))
 
 CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('settle', 2.4, settle), ('sleep', 6.0, sleep), ('wake', 2.4, wake), ('happy', 4.0, happy),
-         ('sit', 1.8, sit), ('sitidle', 6.0, sitidle), ('stand', 1.4, stand), ('jumpup', 1.5, jumpup), ('jumpdown', 1.3, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle),
+         ('sit', 1.8, sit), ('sitidle', 6.0, sitidle), ('stand', 1.4, stand), ('jumpup', 1.5, jumpup), ('jumpdown', 1.3, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
          ('unperch', 1.6, unperch)] + TURNS
 
 # ---------------------------------------------------------------- floor contact correctives

@@ -15,13 +15,14 @@ try {
       const h=window.__hall,b=h.blue;h.stop();
       return {position:b.body.position.toArray(),mood:b.mood,actions:[...b.actions.keys()],meshes:[],overflow:document.documentElement.scrollWidth>innerWidth,buttonHidden:b.button.hidden};
     });
-    assert.deepEqual([...initial.actions].sort(),['happy','idle','jumpdown','jumpup','perch','perchidle','settle','sit','sitidle','sleep','stand','turnL45','turnL90','turnR45','turnR90','unperch','wake','walk']);
+    assert.deepEqual([...initial.actions].sort(),['arch','flick','happy','idle','jumpdown','jumpup','perch','perchidle','settle','sit','sitidle','sleep','stand','turnL45','turnL90','turnR45','turnR90','unperch','wake','walk']);
     assert.equal(initial.overflow,false); assert.equal(initial.buttonHidden,false);
     assert.equal(await page.getByRole('button', {name: 'Blue streicheln'}).count(), 1);
     await page.screenshot({path:`${out}/${width}-${reduce?'reduced':'room'}.png`});
     const simulation=await page.evaluate(reduce=>{
       const h=window.__hall,b=h.blue;
       const before=b.body.position.toArray(),seen=new Set();let bad=0;
+      if(!reduce)b.disturb(); // he starts the visit asleep; only the visitor wakes him
       for(let i=0;i<7200;i++){
         b.update(1/60,h.camera,true,reduce);seen.add(b.mood);
         if(!b.body.position.toArray().every(Number.isFinite)||b.body.position.x< -2.1||b.body.position.x>-.65||b.body.position.z<.1||b.body.position.z>1.6)bad++;
@@ -39,8 +40,9 @@ try {
       const h=window.__hall,b=h.blue;b.body.position.set(-1.35,0,.62);b.enter('idle');for(let i=0;i<30;i++)b.update(1/60,h.camera,true,false);h.dirty=h.mirrorDirty=true;h.renderFrame();
     });
     const pet=page.locator('.hall__blue-pet');
-    const rect=await pet.boundingBox();assert.ok(rect);await page.mouse.click(rect.x+rect.width/2,rect.y+rect.height/2);assert.equal(await page.evaluate(()=>window.__hall.blue.mood),'happy');assert.equal(new URL(page.url()).pathname,'/');
+    const rect=await pet.boundingBox();assert.ok(rect);await page.mouse.click(rect.x+rect.width/2,rect.y+rect.height/2);assert.ok(['happy','arch'].includes(await page.evaluate(()=>window.__hall.blue.mood)),'a body click purrs or arches');assert.equal(new URL(page.url()).pathname,'/');
     if(await pet.isVisible()) {
+      await page.evaluate(()=>{const b=window.__hall.blue;b.enter('idle');});
       await pet.focus();await page.keyboard.press('Enter');
       assert.equal(await page.evaluate(()=>window.__hall.blue.mood),'happy');
       assert.equal(new URL(page.url()).pathname,'/');

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'sit' | 'sitidle' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn';
+type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'arch' | 'sit' | 'sitidle' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn';
+type Region = 'head' | 'back' | 'tail';
 type AfterTurn = 'walk' | 'arrive' | 'jump';
 type Arrival = 'idle' | 'home' | 'sit' | 'jump' | 'perch';
 type Plan = { kind: 'home' } | { kind: 'station'; index: number } | { kind: 'perch' };
@@ -9,24 +10,29 @@ type Plan = { kind: 'home' } | { kind: 'station'; index: number } | { kind: 'per
 export interface BlueScene { focus: number; pose: 'hall' | 'zoom' | 'play' | 'screen'; stationX: number[]; inHall: boolean; }
 
 const HOME = new THREE.Vector3(-1.65, 0, .18);
+/** Cat bed: inner half-extents across and along Blue, bolster tube radius, superellipse exponent, plinth and cushion heights, centre offset behind the body origin. */
+const BED = { x: .20, z: .27, tube: .07, n: 2.7, base: .03, cushion: .06, back: .06 };
+/** How high the cushion carries Blue's body origin at the centre of the bed. */
+const HOME_LIFT = .085;
 const SPOTS = [new THREE.Vector3(-1.35, 0, .62), new THREE.Vector3(-.8, 0, .76), new THREE.Vector3(-1.95, 0, .6), new THREE.Vector3(-1.1, 0, .42), new THREE.Vector3(-1.55, 0, .76)];
 const BOUNDS = { minX: -2.05, maxX: 40, minZ: .12, maxZ: 1.5 };
 /** The claw cabinet: top surface, its front edge, where Blue takes off, lands and lies (root-local, station 0 at x 0). */
 /** The lying spot keeps the marquee's front face (z .42) .25 m ahead of the body origin, which is where the perch clip puts the elbows and wrists. */
-const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, 1.05), landing: new THREE.Vector3(0, 1.95, .02), spot: new THREE.Vector3(0, 1.95, .17) };
+const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, .80), landing: new THREE.Vector3(0, 1.95, .17), spot: new THREE.Vector3(0, 1.95, .17) };
 /** Sitting spot beside a cabinet: in the gap in front of the arcades, on the side Blue arrives from. */
 const STATION_LANE_Z = .8, STATION_SIDE_X = .92;
 /** Metres per second the in-place walk clip covers at time scale 1 (stride × stance ÷ cycle). */
 const STRIDE_SPEED = .19;
 const ROAM_SPEED = .21, TRAVEL_SPEED = .34;
 /** Heading errors above this are answered with a turn-in-place clip; smaller ones are absorbed while walking, whose yaw rate follows a turning radius. */
-const TURN_MIN = .35, TURN_RADIUS = .45;
+const TURN_MIN = .2, TURN_RADIUS = .45;
 /** Authored turn clips: nominal angle and how far the runtime may stretch or shrink that angle before it chains another turn. */
-const TURN_CLIPS = [{ name: '45', angle: Math.PI / 4, scale: [.5, 1.3] }, { name: '90', angle: Math.PI / 2, scale: [.65, 1.25] }];
+const TURN_CLIPS = [{ name: '45', angle: Math.PI / 4, scale: [.25, 1.3] }, { name: '90', angle: Math.PI / 2, scale: [.65, 1.25] }];
 /** Further away than this, Blue is placed just outside the frame and strolls in past the arcades. */
 const TELEPORT_DISTANCE = 3.4, TELEPORT_RUNWAY = 2.6;
 /** Heading Blue settles into on the cushion, so the lying pose reads from the frontal hall camera. */
 const REST_YAW = .95;
+const REST_FORWARD = new THREE.Vector3(Math.sin(REST_YAW), 0, Math.cos(REST_YAW));
 const UP = new THREE.Vector3(0, 1, 0);
 const FORWARD = new THREE.Vector3(0, 0, 1);
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -81,6 +87,11 @@ export class BlueCat {
   private planChanged = false;
   private yawRate = 0;
   private lastYaw = 0;
+  /** Asleep in the bed until the visitor does something: hovers on him, pets him or picks a station. */
+  private undisturbed = true;
+  private hoverSince = -Infinity;
+  private flick?: THREE.AnimationAction;
+  private regions: [THREE.Object3D, Region][] = [];
   private purr = 0;
   private forward = new THREE.Vector3();
   private heading = new THREE.Vector3();
@@ -173,13 +184,22 @@ export class BlueCat {
     for (const clip of gltf.animations) {
       if (clip.name.startsWith('turn')) this.turnYaw.set(clip.name, this.extractRootYaw(clip));
       if (clip.name.startsWith('jump')) this.jumpMove.set(clip.name, this.extractRootMove(clip));
+      // The tail flick plays on top of whatever pose he is in, so it is stored relative to its own first frame.
+      if (clip.name === 'flick') THREE.AnimationUtils.makeClipAdditive(clip, 0, clip);
       this.actions.set(clip.name, this.mixer.clipAction(clip));
     }
     this.idle = this.actions.get('idle')!;
     this.walk = this.actions.get('walk')!;
+    this.flick = this.actions.get('flick');
+    if (this.flick) { this.flick.setLoop(THREE.LoopOnce, 1); this.flick.clampWhenFinished = false; }
+    for (const [name, region] of [['Head', 'head'], ['Neck', 'head'], ['Chest', 'back'], ['Spine', 'back'], ['Pelvis', 'back'], ['Tail2', 'tail'], ['Tail3', 'tail'], ['Tail4', 'tail'], ['Tail5', 'tail']] as [string, Region][]) {
+      const bone = gltf.scene.getObjectByName(name);
+      if (bone) this.regions.push([bone, region]);
+    }
     this.idle.play();
     this.walk.play();
     this.walk.setEffectiveWeight(0);
+    this.startAsleep();
     this.button = document.createElement('button');
     this.button.type = 'button';
     this.button.className = 'hall__blue-pet';
@@ -222,6 +242,35 @@ export class BlueCat {
     return { at, total: at(clip.duration).clone() };
   }
 
+  /** Blue starts the visit asleep in his bed and only gets up once the visitor does something. */
+  private startAsleep() {
+    const sleep = this.actions.get('sleep');
+    if (!sleep) return;
+    this.mood = 'sleep'; this.age = 0; this.dwell = Infinity; this.undisturbed = true;
+    this.visits = 0; this.plannedVisits = 2 + Math.floor(Math.random() * 3);
+    sleep.reset().setLoop(THREE.LoopRepeat, Infinity).play(); sleep.setEffectiveWeight(1);
+    this.layer = sleep; this.loco = 0; this.idle.setEffectiveWeight(0);
+    this.blink = 1; this.ground = 1; this.faceYaw = REST_YAW;
+  }
+
+  /** Something happened: a sleeping cat wakes up (and stays awake for a while). */
+  disturb() {
+    this.undisturbed = false;
+    if (this.mood === 'sleep') { this.dwell = 0; this.enter('wake'); }
+  }
+
+  /** Which part of Blue a pointer hit landed on, by the nearest of a few bones. */
+  private region(hit: THREE.Intersection | null): Region {
+    if (!hit) return 'head';
+    let best: Region = 'back', bestDistance = Infinity;
+    for (const [bone, region] of this.regions) {
+      bone.getWorldPosition(this.tmpV);
+      const distance = this.tmpV.distanceTo(hit.point);
+      if (distance < bestDistance) { bestDistance = distance; best = region; }
+    }
+    return best;
+  }
+
   private length(name: string) {
     return this.actions.get(name)?.getClip().duration ?? 1;
   }
@@ -229,41 +278,100 @@ export class BlueCat {
   private makeBasket() {
     const basket = new THREE.Group();
     basket.name = 'Blue-basket';
-    basket.position.copy(HOME);
-    const weaveCanvas = document.createElement('canvas');
-    weaveCanvas.width = weaveCanvas.height = 32;
-    const context = weaveCanvas.getContext('2d')!;
-    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
-      const thread = ((x >> 2) + (y >> 2)) % 2 ? Math.sin(x * Math.PI / 4) : Math.sin(y * Math.PI / 4);
-      const value = Math.round(128 + thread * 28);
-      context.fillStyle = `rgb(${value},${value},${value})`; context.fillRect(x, y, 1, 1);
-    }
-    const bump = new THREE.CanvasTexture(weaveCanvas);
-    bump.wrapS = bump.wrapT = THREE.RepeatWrapping; bump.repeat.set(30, 12);
-    this.textures.add(bump);
-    const fabric = new THREE.MeshStandardMaterial({ color: '#514757', roughness: 1, bumpMap: bump, bumpScale: .0012 });
-    const cushion = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), fabric);
-    cushion.scale.set(.365, .055, .265); cushion.position.y = .055;
-    basket.add(cushion);
-    const vertices: number[] = [], uvs: number[] = [], indices: number[] = [];
-    for (let i = 0; i <= 96; i++) {
-      const u = i / 96 * Math.PI * 2;
-      const front = THREE.MathUtils.smoothstep(Math.sin(u), .3, .95);
-      for (let j = 0; j <= 12; j++) {
-        const v = j / 12 * Math.PI * 2;
-        vertices.push(Math.cos(u) * (.405 + Math.cos(v) * .06), .09 - front * .045 + Math.sin(v) * (.06 - front * .027), Math.sin(u) * (.30 + Math.cos(v) * .052));
-        uvs.push(i / 96, j / 12);
-        if (i < 96 && j < 12) {
-          const a = i * 13 + j, b = a + 13;
-          indices.push(a, a + 1, b, b, a + 1, b + 1);
-        }
+    // The bed lies along Blue's resting heading, its centre a little behind his body origin, with a low lip at the
+    // front so the sphinx paws and the head rest on it instead of poking through a bolster.
+    basket.position.copy(HOME).addScaledVector(REST_FORWARD, -BED.back);
+    basket.rotation.y = REST_YAW;
+    const superellipse = (a: number, b: number, angle: number) => {
+      const c = Math.cos(angle), sn = Math.sin(angle);
+      return new THREE.Vector2(a * Math.sign(c) * Math.pow(Math.abs(c), 2 / BED.n), b * Math.sign(sn) * Math.pow(Math.abs(sn), 2 / BED.n));
+    };
+    const grid = (nu: number, nv: number, closedU: boolean, at: (u: number, v: number) => [number, number, number, number, number]) => {
+      const vertices: number[] = [], uvs: number[] = [], indices: number[] = [];
+      const cols = closedU ? nu : nu + 1;
+      for (let i = 0; i < cols; i++) for (let j = 0; j <= nv; j++) {
+        const [x, y, z, s, t] = at(i / nu, j / nv);
+        vertices.push(x, y, z); uvs.push(s, t);
       }
+      for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+        const a = i * (nv + 1) + j, b = ((i + 1) % cols) * (nv + 1) + j;
+        indices.push(a, a + 1, b, b, a + 1, b + 1);
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices); geometry.computeVertexNormals();
+      return geometry;
+    };
+    const canvasTexture = (size: number, paint: (ctx: CanvasRenderingContext2D) => void, repeatX: number, repeatY: number) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      paint(canvas.getContext('2d')!);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(repeatX, repeatY);
+      this.textures.add(texture);
+      return texture;
+    };
+    const weave = canvasTexture(32, ctx => {
+      for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+        const thread = ((x >> 2) + (y >> 2)) % 2 ? Math.sin(x * Math.PI / 4) : Math.sin(y * Math.PI / 4);
+        const value = Math.round(128 + thread * 22);
+        ctx.fillStyle = `rgb(${value},${value},${value})`; ctx.fillRect(x, y, 1, 1);
+      }
+    }, 40, 6);
+    const quilt = canvasTexture(128, ctx => {
+      ctx.fillStyle = 'rgb(128,128,128)'; ctx.fillRect(0, 0, 128, 128);
+      ctx.strokeStyle = 'rgba(70,70,70,.9)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (let k = -128; k <= 256; k += 64) {
+        ctx.beginPath(); ctx.moveTo(k, 0); ctx.lineTo(k + 128, 128); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(k + 128, 0); ctx.lineTo(k, 128); ctx.stroke();
+      }
+      // Soft puff between the seams: a pale centre in every diamond.
+      for (let y = 0; y < 128; y += 64) for (let x = 0; x < 128; x += 64) {
+        const g = ctx.createRadialGradient(x + 32, y + 32, 2, x + 32, y + 32, 30);
+        g.addColorStop(0, 'rgba(180,180,180,.55)'); g.addColorStop(1, 'rgba(128,128,128,0)');
+        ctx.fillStyle = g; ctx.fillRect(x, y, 64, 64);
+      }
+    }, 4, 5.5);
+    const velvet = new THREE.MeshPhysicalMaterial({ color: '#4a4157', roughness: .85, sheen: .6, sheenRoughness: .55, sheenColor: new THREE.Color('#9d8fb8'), bumpMap: weave, bumpScale: .0012 });
+    const piping = new THREE.MeshStandardMaterial({ color: '#8f86a3', roughness: .55 });
+    const cushionMaterial = new THREE.MeshPhysicalMaterial({ color: '#645c78', roughness: .92, sheen: .35, sheenColor: new THREE.Color('#b7aacf'), bumpMap: quilt, bumpScale: .0035 });
+    const base = new THREE.MeshStandardMaterial({ color: '#2b2733', roughness: .95 });
+    // The bolster narrows and sinks towards the front lip (local +z is Blue's forward).
+    const lip = (z: number) => step(z / (BED.z + BED.tube), .35, .97);
+    const bolster = grid(96, 18, true, (u, v) => {
+      const angle = u * Math.PI * 2, theta = v * Math.PI * 2;
+      const centre = superellipse(BED.x + BED.tube, BED.z + BED.tube, angle);
+      const out = centre.clone().normalize();
+      const r = BED.tube * (1 - lip(centre.y) * .5);
+      return [centre.x + Math.cos(theta) * r * out.x, BED.base + r + Math.sin(theta) * r, centre.y + Math.cos(theta) * r * out.y, u * 12, v];
+    });
+    basket.add(new THREE.Mesh(bolster, velvet));
+    const seam = grid(96, 8, true, (u, v) => {
+      const angle = u * Math.PI * 2, theta = v * Math.PI * 2;
+      const centre = superellipse(BED.x + BED.tube, BED.z + BED.tube, angle);
+      const out = centre.clone().normalize();
+      const r = BED.tube * (1 - lip(centre.y) * .5), rope = .0055;
+      return [centre.x + Math.cos(theta) * rope * out.x, BED.base + 2 * r - .003 + Math.sin(theta) * rope, centre.y + Math.cos(theta) * rope * out.y, u, v];
+    });
+    basket.add(new THREE.Mesh(seam, piping));
+    // Quilted cushion: a slab whose top dips towards the middle so the cat sinks in a little.
+    const cushion = grid(64, 10, true, (u, v) => {
+      const angle = u * Math.PI * 2, radial = v;
+      const edge = superellipse(BED.x + .012, BED.z + .012, angle);
+      const x = edge.x * radial, z = edge.y * radial;
+      const top = BED.base + BED.cushion - .012 * (1 - step(radial, .2, .9)) - .02 * step(radial, .93, 1);
+      return [x, top, z, x / (2 * BED.x) + .5, z / (2 * BED.z) + .5];
+    });
+    basket.add(new THREE.Mesh(cushion, cushionMaterial));
+    const outline = new THREE.Shape();
+    for (let i = 0; i <= 96; i++) {
+      const point = superellipse(BED.x + 2 * BED.tube + .008, BED.z + 2 * BED.tube + .008, i / 96 * Math.PI * 2);
+      if (i === 0) outline.moveTo(point.x, -point.y); else outline.lineTo(point.x, -point.y);
     }
-    const bolster = new THREE.BufferGeometry();
-    bolster.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    bolster.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    bolster.setIndex(indices); bolster.computeVertexNormals();
-    basket.add(new THREE.Mesh(bolster, fabric));
+    const plinth = new THREE.Mesh(new THREE.ExtrudeGeometry(outline, { depth: BED.base, bevelEnabled: true, bevelThickness: .006, bevelSize: .006, bevelSegments: 3 }), base);
+    plinth.rotation.x = -Math.PI / 2;
+    basket.add(plinth);
     return basket;
   }
 
@@ -330,17 +438,28 @@ export class BlueCat {
     this.turnApplied = yaw;
   }
 
-  readonly pet = (event?: Event) => {
-    event?.stopPropagation();
+  /**
+   * Touch reactions by body part: the head gets the purr (lean in, slow blink), the back an arched stretch when he
+   * is standing or a lean when he sits or lies, the tail a lash with the ears back on top of any pose.
+   */
+  readonly pet = (arg?: Event | THREE.Intersection) => {
+    const hit = arg && 'point' in arg ? arg : null;
+    if (arg && !hit) (arg as Event).stopPropagation();
     if (!this.root.visible) return;
-    if (this.mood === 'jump') return;
-    if (this.mood === 'perch' || this.mood === 'perchidle' || this.mood === 'unperch') {
-      // On the ledge Blue answers with closed eyes and a head push instead of standing up.
+    if (this.mood === 'jump' || this.mood === 'stand' || this.mood === 'unperch') return;
+    const region = this.region(hit);
+    this.undisturbed = false;
+    if (region === 'tail') {
+      if (this.flick) this.flick.reset().play();
+      this.slowBlink = 0;
+    } else if (this.mood === 'perch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'sitidle') {
+      // Seated or on the ledge Blue answers with closed eyes and a head push instead of standing up.
       this.purr = 2.6;
       this.slowBlink = 1;
-    } else if (this.mood === 'settle' || this.mood === 'sleep') { this.enter('wake'); this.pendingHappy = true; }
+    } else if (this.mood === 'settle' || this.mood === 'sleep') { this.dwell = 0; this.enter('wake'); this.pendingHappy = true; }
     else if (this.mood === 'wake') this.pendingHappy = true;
-    else this.enter('happy');
+    else if (region === 'back' && (this.mood === 'idle' || this.mood === 'walk' || this.mood === 'happy')) this.enter('arch');
+    else if (this.mood !== 'arch') this.enter('happy');
     this.container.dispatchEvent(new CustomEvent('hall:blue-petted', { bubbles: true }));
   };
 
@@ -354,7 +473,7 @@ export class BlueCat {
 
   /** Pointer attention: where the cursor is in the scene and whether it rests on Blue. */
   look(ray: THREE.Ray | null, hover: boolean) {
-    if (hover && !this.hover) this.slowBlink = 1;
+    if (hover && !this.hover) { this.slowBlink = 1; this.hoverSince = this.clock; }
     this.hover = hover;
     if (!ray || !this.head) { this.gazeValid = false; return; }
     this.head.getWorldPosition(this.tmpV);
@@ -382,10 +501,12 @@ export class BlueCat {
 
   private replan(plan: Plan, stationX: number[], reduce: boolean) {
     this.plan = plan;
+    this.undisturbed = false;
+    if (this.mood === 'sleep') this.dwell = 0;
     if (plan.kind === 'station') this.spotSide = this.body.position.x > stationX[plan.index] - stationX[0] ? 1 : -1;
     if (reduce) { this.snap(stationX); return; }
     switch (this.mood) {
-      case 'happy': case 'jump': case 'stand': case 'unperch': case 'wake': return; // finish, then resume
+      case 'happy': case 'arch': case 'jump': case 'stand': case 'unperch': case 'wake': return; // finish, then resume
       case 'turn': this.planChanged = true; return;
       case 'perch': case 'perchidle': if (plan.kind !== 'perch') this.enter('unperch'); return;
       case 'sit': case 'sitidle': if (plan.kind !== 'station' || flat(this.body.position, this.stationSpot(plan.index, stationX)) > .04) this.enter('stand'); return;
@@ -402,7 +523,7 @@ export class BlueCat {
     this.mood = 'idle'; this.age = 0;
     if (this.plan.kind === 'perch') { this.body.position.copy(this.local(LEDGE.spot)); this.elevation = this.body.position.y; this.body.rotation.y = 0; this.enter('perchidle'); }
     else if (this.plan.kind === 'station') { this.elevation = 0; this.body.position.copy(this.stationSpot(this.plan.index, stationX)); this.body.rotation.y = -this.spotSide * .6; this.enter('sitidle'); }
-    else { this.elevation = 0; this.body.position.copy(HOME); this.body.rotation.y = REST_YAW; }
+    else { this.elevation = 0; this.body.position.copy(HOME); this.body.rotation.y = REST_YAW; this.enter('sleep'); this.dwell = Infinity; }
     const current: THREE.AnimationAction | undefined = this.layer;
     if (current) { current.fadeIn(0); current.setEffectiveWeight(1); this.loco = 0; }
   }
@@ -413,7 +534,7 @@ export class BlueCat {
     const takeoff = this.local(LEDGE.takeoff), spot = this.local(LEDGE.spot);
     if (this.elevation > 0) {
       if (plan.kind !== 'perch') return this.startJump(at, takeoff, false);
-      if (flat(at, spot) < .03) return this.enter('perch');
+      if (flat(at, spot) < .03) { this.goal.copy(spot); this.arrival = 'perch'; return this.arrive(stationX); }
       return this.travelTo(spot, .12, 'perch');
     }
     if (plan.kind === 'perch') {
@@ -499,7 +620,7 @@ export class BlueCat {
       case 'perch': this.enter('perchidle'); break;
       case 'unperch': this.enter('idle'); this.resume(stationX); break;
       case 'jump': this.elevation = this.jumpTo.y; this.body.position.copy(this.jumpTo); this.enter('idle'); this.resume(stationX); break;
-      case 'happy': this.enter('idle'); this.resume(stationX); break;
+      case 'happy': case 'arch': this.enter('idle'); this.resume(stationX); break;
       case 'turn': {
         const next = this.afterTurn;
         if (this.planChanged) { this.planChanged = false; this.enter('idle'); this.resume(stationX); }
@@ -554,7 +675,7 @@ export class BlueCat {
 
   private attend(dt: number, camera: THREE.Camera, reduce: boolean) {
     if (!this.head) return;
-    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'perchidle' || this.mood === 'sit';
+    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'arch';
     let wanted = 0;
     if (!reduce && awake) {
       if (this.hover || this.purr > 0) wanted = 1;
@@ -627,8 +748,10 @@ export class BlueCat {
         case 'settle': if (this.age > this.length('settle')) this.advance(stationX); break;
         case 'turn': if (this.age > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
         case 'sleep':
-          if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
+          if (this.undisturbed && this.hover && this.clock - this.hoverSince > .7) this.disturb();
+          else if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
           break;
+        case 'arch': if (this.age > this.length('arch')) this.advance(stationX); break;
         case 'wake': if (this.age > this.length('wake')) this.advance(stationX); break;
         case 'sit': if (this.age > this.length('sit')) this.advance(stationX); break;
         case 'sitidle': if (this.age > this.dwell) this.enter('sleep'); break;
@@ -638,26 +761,19 @@ export class BlueCat {
         case 'jump': if (this.age > this.length(this.jumpClip)) this.advance(stationX); else this.fly(); break;
       }
     }
-    if (this.mood === 'happy') {
-      if (this.age > 5) this.advance(stationX);
-      else if (!reduce) {
-        // A petted cat only shifts a little towards the visitor; the head overlay does the actual looking.
-        this.targetRotation.setFromAxisAngle(UP, Math.atan2(camera.position.x - this.root.position.x - this.body.position.x, camera.position.z - this.body.position.z));
-        const angle = this.body.quaternion.angleTo(this.targetRotation);
-        if (angle < .7) this.body.quaternion.rotateTowards(this.targetRotation, Math.min(angle * 2, .6) * dt);
-      }
-    }
+    // A petted cat never spins towards the visitor: the head overlay does the looking.
+    if (this.mood === 'happy' && this.age > 5) this.advance(stationX);
     // Settling clips absorb the small remainder the turn clip left: onto the cushion, towards the cabinet, or facing the viewer on the ledge.
     if (this.faceYaw !== null && !reduce && (this.mood === 'settle' || this.mood === 'sit' || this.mood === 'perch')) {
       this.targetRotation.setFromAxisAngle(UP, this.faceYaw);
-      this.body.quaternion.rotateTowards(this.targetRotation, Math.min(this.body.quaternion.angleTo(this.targetRotation) * 2, .45) * dt);
+      this.body.quaternion.rotateTowards(this.targetRotation, Math.min(this.body.quaternion.angleTo(this.targetRotation) * 2, .25) * dt);
     }
     // Measured yaw rate (smoothed) drives the lean and head lead while walking a curve.
     this.yawRate = THREE.MathUtils.damp(this.yawRate, wrap(this.yaw - this.lastYaw) / Math.max(dt, 1e-4), 8, dt);
     this.lastYaw = this.yaw;
     if (this.mood !== 'walk') this.speed = Math.max(0, this.speed - .5 * dt);
     this.purr = Math.max(0, this.purr - dt);
-    if (reduce && this.mood !== 'happy' && this.layer && this.plan.kind === 'home') this.enter('idle');
+    if (reduce && this.mood !== 'happy' && this.mood !== 'sleep' && this.layer && this.plan.kind === 'home') this.enter('idle');
     // Locomotion pair: idle and walk share one layer whose split follows the actual ground speed, so feet never slide.
     const locoGoal = this.layer ? 0 : 1;
     this.loco = THREE.MathUtils.clamp(this.loco + Math.sign(locoGoal - this.loco) * dt / this.fade, 0, 1);
@@ -692,7 +808,7 @@ export class BlueCat {
     // Blend the last few centimetres onto the cushion, including after petting there.
     if (this.mood !== 'jump') {
       const homeDistance = flat(this.body.position, HOME);
-      this.body.position.y = this.elevation + (this.elevation === 0 ? step(.4 - homeDistance, 0, .22) * .095 : 0);
+      this.body.position.y = this.elevation + (this.elevation === 0 ? step(.55 - homeDistance, 0, .25) * HOME_LIFT : 0);
     }
     const groundY = this.mood === 'jump' ? (this.jumpAir < .5 ? this.jumpFrom.y : this.jumpTo.y) : this.elevation;
     this.shadow.position.set(this.body.position.x, groundY + .003, this.body.position.z);

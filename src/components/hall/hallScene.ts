@@ -2653,7 +2653,7 @@ export class HallScene {
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
     const blueHit = this.blue?.hit(this.raycaster);
     if (blueHit && (!hits.length || blueHit.distance < hits[0].distance)) {
-      this.blue?.pet();
+      this.blue?.pet(blueHit);
       this.dirty = this.mirrorDirty = true;
       return;
     }
