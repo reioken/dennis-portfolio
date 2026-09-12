@@ -4,7 +4,9 @@ Prepared 2026-09-12 from the repository, retained QA reports, and the current co
 
 ## 1. Current state and immediate next step
 
-Latest application commit: **`f1d5aed`** (Blue companion: perch on About, sits at stations; on top of `c2d80fb` loading-cube sync and `3e07dc8` Blue v2), pushed to `origin/feat/werkstatt` and **published on 2026-09-12** (deployment `680d3b18`, fresh build of `f1d5aed`). Dennis had asked to put the Blue work on the website; the cube fix and the companion went out under that same instruction after their own build, audit and asset verification. Dennis's feedback on the first Blue release was that the cat was not clean, not interactive enough and its animation not smooth; that pass is implemented and documented in `docs/research/blue-cat.md` (section "v2 polish"). Dennis has not yet reviewed v2 on the live site; expect vetoes on the sphinx rest pose, the satin-black coat or the attention behaviour.
+Latest application commit: **`2b20ea9`** (Blue v3: root-motion jumps, on top of `da3f3b5` turning with steps and `0f64940` corrective/ledge fix), pushed to `origin/feat/werkstatt` on 2026-09-12 in the evening. **Not yet deployed:** the Pages upload of this build was blocked by the agent's permission classifier; `dist/` holds the audited build of `2b20ea9` (GLB SHA-256 identical to `public/models/blue-rigged-v2.glb`). Production still serves `f1d5aed` (deployment `680d3b18`). Next step: run `npx wrangler pages deploy dist --project-name=dennis-portfolio --branch=main --commit-dirty=true` (or authorise it), then verify `/models/blue-rigged-v2.glb` (2,292,652 bytes) and the home page, and record the deployment here.
+
+Dennis's verdict on v2 (2026-09-12): eyes bulge when Blue jumps onto the machine, legs hang far too low on the ledge, turning is a robotic spin, animations must be far smoother. The Perplexity research is `cat-animation.md` (untracked, repo root), the plan is `docs/research/blue-animation-plan.md`, the implementation record is the "v3" sections of `docs/research/blue-cat.md`. Phases 0–4 of the plan are done; see section 4. Dennis has not yet reviewed v3 live.
 
 | Item | Current value |
 | --- | --- |
@@ -12,11 +14,11 @@ Latest application commit: **`f1d5aed`** (Blue companion: perch on About, sits a
 | Working / pushed branch | `feat/werkstatt` |
 | Git remote | `https://github.com/reioken/dennis-portfolio.git` |
 | Production | `https://www.dennisbf.design` |
-| Latest verified deployment | `https://680d3b18.dennis-portfolio-87g.pages.dev` (Blue companion + cube sync, build of `f1d5aed`) |
+| Latest verified deployment | `https://680d3b18.dennis-portfolio-87g.pages.dev` (Blue companion + cube sync, build of `f1d5aed`); v3 build of `2b20ea9` awaits upload |
 | Cloudflare Pages project | `dennis-portfolio` |
 | Pages production branch argument | `main` |
 | Local development | `http://localhost:4321/` |
-| Latest delivered assets | `portrait-wide-v2-{1200,640}.webp`, `blue-rigged-v2.glb` (`blue-rigged-v1.glb` retained for rollback only) |
+| Latest delivered assets | `portrait-wide-v2-{1200,640}.webp`, `blue-rigged-v2.glb` (v3 build, 17 clips, 2,292,652 bytes; `blue-rigged-v1.glb` retained for rollback only) |
 
 **Git branch and deployment branch are different.** Production was uploaded directly from the tested `feat/werkstatt` build with `--branch=main`; this did not merge the Git branch into `main`. Do not assume Git main contains this work. At inspection, local main was behind origin/main, whose tip was `3ad8ae9`; those refs have not been freshly fetched for this documentation pass. Reconcile intentionally if a main-branch merge is requested. Do not overwrite or force-push main.
 
@@ -140,6 +142,14 @@ Dennis's accepted stylized toy figure is `public/models/dennis.glb`, referenced 
 - New regression `scripts/qa/blue-companion.mjs` (desktop, reduced motion, 390×844): sit position, perch height/edge/heading, ledge petting, climb-down after `history.back()`, no console errors. Screenshots `.source-assets/blue/qa/companion-*.png`.
 - Known limits: the leap is stylised (a real cat would need a run-up), the sit stretch at the hocks and the perch armpit are the worst skin areas (hidden by the viewing angle), native Firefox not rerun.
 
+**Blue v3 (evening of 2026-09-12, commits `0f64940`, `da3f3b5`, `2b20ea9`)** answers the verdict above:
+
+- *Eyes.* `scripts/models/blender/blue_forensics.py` proved the bulge was not the skin: every floor corrective had been created with Blender's default `shape_key_add(from_mix=True)` and carried a full copy of the blink (15 mm on each eye vertex) plus each other's lifts; lying down or perching shut the eyes and petting on the ledge doubled it. Correctives are now built from the basis with the face excluded; stretch outliers on every resting pose fell 3–13×. The eyeball rebuild from the plan is deferred (Dennis: barely visible at that size; the fixed morphs read fine).
+- *Ledge.* Elbows on the cabinet top behind the lip, wrists over the edge, paws 7.5 cm below the top instead of 20 cm, unequal curl; chest first, tail last. `LEDGE.spot` z 0.17 (edge 0.25 m ahead of the body origin, `EDGE_Y` in `blue_animate.py`).
+- *Turning.* Four turn-in-place clips authored in the turning frame with the yaw on the Root bone (trapezoid rate, paws step half a step ahead, diagonal pairs, laggiest paw first, head/chest lead). Runtime strips the Root track, replays the curve on the body, picks/stretches the nearest clip, chains a second, turns before settle/sit/perch/jump, limits walking yaw to a 0.45 m radius, rolls the chest and leads the head while curving. Authored `stand`/`unperch`. The heading is read from the quaternion (`blue.yaw`) because Euler `rotation.y` folds past ±90°.
+- *Jumps.* `jumpup`/`jumpdown` carry their trajectory on the Root; the runtime warps it per axis to the real take-off/landing, so the compact layout lands exactly too. `fly()`'s parabola and the separate model pitch are gone.
+- *Not done from the plan:* inertialization, contact/foot-lock IK, tail/ear springs, Meshopt/WebP budget pass, native Firefox rerun. Sidecar contact metadata was not needed because the walk time scale already matches ground speed.
+
 Detailed pipeline/QA: `docs/research/blue-cat.md`. Meshy CLI adapter used: `C:/Users/denni/Projects/survivorlike/tools/meshy.py`. No API credential is included in this handover; never recover one by printing conversation secrets into files/logs. Public rigging API support must be rechecked before using it for quadrupeds; this delivery used local Blender rigging.
 
 ## 4. Architecture and file map
@@ -198,6 +208,8 @@ Some QA scripts hard-code these paths and localhost:4321; adapt deliberately on 
 | Portrait, section presence, return navigation, responsive layout | `node scripts/qa/portrait-navigation.mjs` |
 | Cat behavior, actual pointer/keyboard, reduced motion | `node scripts/qa/blue-cat.mjs` |
 | Cat companion: station sit, About perch, petting on the ledge, climb-down, phone | `node scripts/qa/blue-companion.mjs` |
+| Cat turning: goal behind him, turn before settle, bounded walking yaw | `node scripts/qa/blue-turn.mjs` |
+| Cat eye/morph forensics: weights, per-morph deltas, launch-frame render matrix | `blender --background --python scripts/models/blender/blue_forensics.py` |
 | Cat clips: pose renders and skin stretch per clip | `blender --background --python scripts/models/blender/blue_check.py` |
 | Native Firefox cat | `node scripts/qa/blue-cat-firefox.mjs` |
 | Cube rotation under stalls / startup | `node scripts/qa/loading-prism.mjs`, `node scripts/qa/loading-prism-firefox.mjs` |
@@ -228,7 +240,8 @@ There is **no unfinished requested implementation** from the portrait/Blue relea
 4. **Firefox/driver breadth.** Final cube compositor behavior is verified in native headless Firefox 155.0.1 on this machine. If Dennis reports another stall, capture actual cube rotation separately from expansion/brackets and confirm live build identity; do not repeat cosmetic rewrites based on computed transforms alone.
 5. **Figure edge shimmer.** Several fixes reduced Dennis's white edge flicker, especially hair. No universal elimination across drivers/resolutions is proven. Inspect moving live frames if the user still sees it; preserve current accepted model and avoid excessive blur.
 6. **Performance budget.** Large JS bundle warning remains. Profile before cutting features or changing animation timing. Room warm-up, GPU uploads and model loading need coverage on slower hardware. Keep Blue behind the existing startup gate.
-7. **Blue v2 and companion review.** Dennis has not yet judged v2 or the companion behaviour live. Likely tuning requests: stroll speed between stations, the sitting side/offset, the leap height or a run-up, how far the head tucks down on the ledge. If he still finds it unclean, the remaining candidates are the faint eye-texel mip bleed on the resting cat (custom mip chain or a lower eye cap in `blue_animate.py`), the wrist stretch in the sphinx pose (weights, not clips), and the head/neck overlay weights. Rerun `scripts/qa/blue-cat-firefox.mjs` before claiming Firefox parity. Check feet/floor contact, route bounds, basket relation, happy-expression readability and the projected click target at new resolutions before changing behavior.
+7. **Blue v3 review.** Dennis has not judged v3 live (deploy pending, see section 1). The v2 notes below still apply where not superseded: stroll speed, sit side, head tuck. Turn duration (1.15 s / 1.7 s), `TURN_MIN`, `TURN_RADIUS` and the jump timing are the likely tuning knobs. Phases left from the plan: inertialization for interrupts, tail/ear springs, asset budget pass.
+8. **Blue v2 and companion review (historical).** Dennis has not yet judged v2 or the companion behaviour live. Likely tuning requests: stroll speed between stations, the sitting side/offset, the leap height or a run-up, how far the head tucks down on the ledge. If he still finds it unclean, the remaining candidates are the faint eye-texel mip bleed on the resting cat (custom mip chain or a lower eye cap in `blue_animate.py`), the wrist stretch in the sphinx pose (weights, not clips), and the head/neck overlay weights. Rerun `scripts/qa/blue-cat-firefox.mjs` before claiming Firefox parity. Check feet/floor contact, route bounds, basket relation, happy-expression readability and the projected click target at new resolutions before changing behavior.
 8. **Tattoo fidelity.** Current Dennis model was accepted “for now”; perfect anatomical/texture accuracy was not achieved or certified. Any future improvement should map the original photos and preserve corrected left/right/hand/forearm placements.
 9. **External links/downloads.** Latest built-site audit covers local links and metadata. Do not infer it downloaded and executed the NEXUS installer or revalidated every external destination. Smoke-test changed destinations without installing software or submitting contact messages unnecessarily.
 10. **Git main alignment.** Current source is on `feat/werkstatt`, production is a direct Pages deployment. Decide a proper main merge with current remote evidence if requested; GitHub Actions deploys pushes to main/master and runs `npm run build`, including its scanner.
@@ -246,6 +259,8 @@ npx astro build
 npm run audit
 npx wrangler pages deploy dist --project-name=dennis-portfolio --branch=main --commit-hash=f1d5aed --commit-dirty=true
 ```
+
+Environment note (evening 2026-09-12): `node_modules` and the Playwright browsers were found missing; `npm ci` and `node <codex playwright>/cli.js install chromium` restored them. Never edit files under the project while a Playwright regression runs against the dev server: Vite reloads the page mid-run. Blender resolves relative render paths against `C:\`; the scripts use absolute paths.
 
 Uploads on 2026-09-12: Blue v2 (`85fc5078`, after Dennis asked explicitly; the agent's permission layer had blocked the first attempt), then the companion + cube sync (`680d3b18`). The cube-only upload of `c2d80fb` was blocked by the permission layer and never went out on its own; it is included in `680d3b18`. Verified after the last upload: `/models/blue-rigged-v2.glb` (2,260,396 bytes) and the `Stage3D` chunk returned 200 with SHA-256 identical to the local `dist` on both the deployment URL and `www.dennisbf.design`; home and `/about/` returned 200. This is HTTP/asset verification, not a production browser QA sweep.
 
