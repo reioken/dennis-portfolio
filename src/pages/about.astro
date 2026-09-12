@@ -17,7 +17,7 @@ const { items } = await buildHallItems();
 const kasseIndex = Math.max(0, items.findIndex((it) => it.kind === 'kasse'));
 const station = { index: kasseIndex, total: items.length, title: copy.de.hall.kasseSub, titleEn: copy.en.hall.kasseSub };
 
-const portrait = p('media/me/portrait-wide-v1-1200.webp');
+const portrait = p('media/me/portrait-wide-v2-1200.webp');
 const siteUrl = (Astro.site ?? site.url).toString();
 const profileLd = {
   '@context': 'https://schema.org',

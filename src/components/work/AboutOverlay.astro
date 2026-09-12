@@ -21,7 +21,7 @@ const { items, index, homeHref } = Astro.props;
 const n = items.length;
 
 const isMachine = (it: HallItem | undefined): it is HallMachine => Boolean(it) && it!.kind !== 'kasse' && it!.kind !== 'phone';
-const portrait = p('media/me/portrait-wide-v1-1200.webp');
+const portrait = p('media/me/portrait-wide-v2-1200.webp');
 
 const D = copy.de;
 const E = copy.en;
@@ -87,7 +87,7 @@ const nextLabel = labelOf(next);
     <div class="hall-panel__body about-poster-body">
       <header class="about-poster" id="about-intro">
         <div class="about-poster__image">
-          <img src={portrait} srcset={`${p('media/me/portrait-wide-v1-640.webp')} 640w, ${portrait} 1200w`} sizes="(max-width: 599px) 53vw, (min-width: 1200px) 640px, 54vw" alt={site.name} width="1200" height="1138" loading="eager" decoding="async" />
+          <img src={portrait} srcset={`${p('media/me/portrait-wide-v2-640.webp')} 640w, ${portrait} 1200w`} sizes="(max-width: 599px) 53vw, (min-width: 1200px) 640px, 54vw" alt={site.name} width="1200" height="1138" loading="eager" decoding="async" />
         </div>
         <div class="about-poster__copy">
           <p class="about-poster__eyebrow"><span data-lang="de">{H.kasseSub}</span><span data-lang="en">{HE.kasseSub}</span><span class="about-panel__open"><span data-lang="de">{avail.de.open}</span><span data-lang="en">{avail.en.open}</span></span></p>
