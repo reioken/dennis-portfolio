@@ -130,6 +130,8 @@ export class BlueCat {
   private bounds = new THREE.Box3();
   private button: HTMLButtonElement;
   private eyelids: THREE.Mesh[] = [];
+  /** Separate eyeball meshes under the head bone: they sink into the head as the lids close over them. */
+  private eyeballs: { node: THREE.Object3D; rest: THREE.Vector3; axis: THREE.Vector3 }[] = [];
   private blink = 0;
   private blinkAge = 0;
   private blinkPeriod = 5.1;
@@ -202,17 +204,22 @@ export class BlueCat {
       mesh.frustumCulled = false; // Rest-pose bounds exclude the moving tail and paws.
       for (const mat of (Array.isArray(mesh.material) ? mesh.material : [mesh.material])) {
         const m = mat as THREE.MeshPhysicalMaterial;
-        const eyes = /amber/i.test(m.name);
+        // Three materials: the eyeballs (glossy, coated), the face (keeps its cleaned sculpt normal map) and the
+        // body coat (even black with the tiled fur grain).
+        const eyes = /amber/i.test(m.name), face = /face/i.test(m.name);
         m.metalness = 0;
-        m.roughness = eyes ? .32 : .82;
-        m.envMapIntensity = eyes ? 1.3 : .9;
-        if (!eyes) {
-          // The coat albedo is an even black; fur structure comes from a fine tiled grain normal and the velvet sheen.
+        m.roughness = eyes ? .2 : face ? .8 : .82;
+        m.envMapIntensity = eyes ? 1.0 : .9;
+        if (eyes) {
+          m.clearcoat = 1; m.clearcoatRoughness = .12;
+        } else if (face) {
+          m.normalScale.set(.85, .85);
+        } else {
           m.normalMap = fur;
           m.normalScale.set(.32, .32);
-        } else if (m.normalScale) m.normalScale.setScalar(.3);
+        }
         if (m.isMeshPhysicalMaterial) {
-          m.sheen = eyes ? 0 : .7;
+          m.sheen = eyes ? 0 : face ? .55 : .7;
           m.sheenRoughness = .62;
           m.sheenColor.setRGB(.40, .37, .48);
           m.specularIntensity = eyes ? 1 : .32;
@@ -221,6 +228,10 @@ export class BlueCat {
         for (const value of Object.values(m)) if (value instanceof THREE.Texture) { value.anisotropy = 8; this.textures.add(value); }
       }
     });
+    for (const name of ['Eye.L', 'Eye.R']) {
+      const node = gltf.scene.getObjectByName(name);
+      if (node) this.eyeballs.push({ node, rest: node.position.clone(), axis: new THREE.Vector3(0, 0, 1).applyQuaternion(node.quaternion).normalize() });
+    }
     this.neck = gltf.scene.getObjectByName('Neck');
     this.head = gltf.scene.getObjectByName('Head');
     this.chest = gltf.scene.getObjectByName('Chest');
@@ -1000,6 +1011,7 @@ export class BlueCat {
     this.ground = THREE.MathUtils.damp(this.ground, settled, 14, dt);
     this.seatGround = THREE.MathUtils.damp(this.seatGround, seated, 14, dt);
     this.perchGround = THREE.MathUtils.damp(this.perchGround, perched, 14, dt);
+    for (const eye of this.eyeballs) eye.node.position.copy(eye.rest).addScaledVector(eye.axis, -this.blink * .014);
     for (const mesh of this.eyelids) {
       const dict = mesh.morphTargetDictionary, influences = mesh.morphTargetInfluences;
       if (!dict || !influences) continue;

@@ -65,12 +65,20 @@ test('turn clips end at their nominal angle and jumps at their authored displace
   }
 });
 
-test('morph targets keep their names and order, and the two materials exist', () => {
-  const mesh = root.listMeshes()[0];
-  const names = mesh.getExtras()?.targetNames;
-  assert.deepEqual(names, MORPHS);
+test('morph targets keep their names and order, the materials and eyeballs exist', () => {
+  const mesh = root.listMeshes().find(m => m.getExtras()?.targetNames);
+  assert.ok(mesh, 'the skinned coat mesh carries morph targets');
+  assert.deepEqual(mesh.getExtras().targetNames, MORPHS);
   for (const primitive of mesh.listPrimitives()) assert.equal(primitive.listTargets().length, MORPHS.length);
-  assert.deepEqual(root.listMaterials().map(m => m.getName()).sort(), ['Blue amber eyes', 'Material_0']);
+  const materials = root.listMaterials().map(m => m.getName());
+  for (const name of ['Blue amber eyeball', 'Blue face', 'Material_0']) assert.ok(materials.includes(name), name);
+  const nodes = root.listNodes().map(n => n.getName());
+  for (const eye of ['Eye.L', 'Eye.R']) {
+    const node = root.listNodes().find(n => n.getName() === eye);
+    assert.ok(node?.getMesh(), `${eye} is a mesh node`);
+    assert.equal(node.getParentNode()?.getName(), 'Head', `${eye} hangs off the Head bone`);
+  }
+  assert.ok(nodes.length >= 28);
 });
 
 test('the file stays within its budget', async () => {

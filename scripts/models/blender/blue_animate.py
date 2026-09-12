@@ -683,7 +683,7 @@ ear_groups = {mesh.vertex_groups['Ear.L'].index, mesh.vertex_groups['Ear.R'].ind
 def ear_weight(v): return sum(g.weight for g in v.groups if g.group in ear_groups)
 inner_ear = rasterize(lambda polygon: polygon.normal.y < -.15 and sum(ear_weight(mesh.data.vertices[i]) for i in polygon.vertices) / len(polygon.vertices) > .5)
 pink = (img[:, :, 0] > img[:, :, 2] + .06) & (img[:, :, 0] > img[:, :, 1]) & (lum > .16) & (sat > .08)
-keep = np.maximum(eye, inner_ear * pink)
+keep = inner_ear * pink  # the eye islands go black: the eyes are separate eyeball meshes now
 coat = 1 - keep
 m3 = coat[:, :, None]
 # The coat is one even, deep, slightly cool black. Any trace of the Meshy atlas (its island blotches and warm
@@ -698,23 +698,100 @@ cleaned.filepath_raw = str(WORK / 'blue-coat-clean.png'); cleaned.file_format = 
 for mat in mesh.data.materials:
     for node in mat.node_tree.nodes:
         if node.type == 'TEX_IMAGE' and node.image == src: node.image = cleaned
-# The Meshy normal map is noise on a black coat (sparkle under the hall's rect lights); the runtime tiles its
-# own fine fur-grain normal instead, so the material carries no normal texture at all.
+# The Meshy normal map is noise on the black body (sparkle under the hall's rect lights); the runtime tiles its
+# own fine fur-grain normal there. The face keeps the sculpted nose, mouth and brow through a cleaned copy.
 for mat in mesh.data.materials:
     for link in list(mat.node_tree.links):
         if link.to_socket.name == 'Normal' and link.to_node.type == 'BSDF_PRINCIPLED': mat.node_tree.links.remove(link)
     for node in [n for n in mat.node_tree.nodes if n.type == 'NORMAL_MAP' or (n.type == 'TEX_IMAGE' and n.image and n.image.name == 'Image_2')]:
         mat.node_tree.nodes.remove(node)
 
+# ---------------------------------------------------------------- face material
+# Polygons weighted to head, neck and ears get their own material with a denoised, softened copy of the Meshy
+# normal map at 2048², so the sculpted face detail survives without the body's speck noise.
+group_index = {g.name: g.index for g in mesh.vertex_groups}
+FACE_GROUPS = {group_index[n] for n in ('Head', 'Neck', 'Ear.L', 'Ear.R') if n in group_index}
+def dominant_group(v):
+    g = max(v.groups, key=lambda g: g.weight, default=None); return g.group if g else -1
+nsrc = bpy.data.images['Image_2']; NW = nsrc.size[0]
+npx = np.empty(NW * NW * 4, dtype=np.float32); nsrc.pixels.foreach_get(npx)
+NS = 2048; nf = max(1, NW // NS)
+nimg = npx.reshape(NW, NW, 4)[:, :, :3].reshape(NS, nf, NS, nf, 3).mean(axis=(1, 3))
+u8 = (np.clip(nimg, 0, 1) * 255).astype(np.uint8)
+median = np.median(np.stack([np.roll(np.roll(u8, dy, 0), dx, 1) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]), axis=0).astype(np.float32) / 255
+flat_normal = np.array([.5, .5, 1.], dtype=np.float32)
+face_n = np.ones((NS, NS, 4), dtype=np.float32); face_n[:, :, :3] = np.clip(flat_normal + (median - flat_normal) * .7, 0, 1)
+face_normal = bpy.data.images.new('BlueFaceNormal', NS, NS, alpha=False); face_normal.colorspace_settings.name = 'Non-Color'
+face_normal.pixels.foreach_set(face_n.ravel()); face_normal.pack()
+face_normal.filepath_raw = str(WORK / 'blue-face-normal.png'); face_normal.file_format = 'PNG'; face_normal.save()
+face_material = mesh.data.materials[0].copy(); face_material.name = 'Blue face'
+tree = face_material.node_tree; bsdf = tree.nodes['Principled BSDF']
+tex = tree.nodes.new('ShaderNodeTexImage'); tex.image = face_normal
+nmap = tree.nodes.new('ShaderNodeNormalMap'); nmap.inputs['Strength'].default_value = 1.0
+tree.links.new(tex.outputs['Color'], nmap.inputs['Color']); tree.links.new(nmap.outputs['Normal'], bsdf.inputs['Normal'])
+# Eye islands are measured before they are folded into the face material.
+eye_islands = {}
+for side, sign in (('L', 1), ('R', -1)):
+    polys = [p for p in mesh.data.polygons if p.material_index == 1 and p.center.x * sign > 0]
+    verts = {i for p in polys for i in p.vertices}
+    centre = sum((mesh.data.vertices[i].co for i in verts), Vector()) / len(verts)
+    normal = sum((p.normal * p.area for p in polys), Vector()).normalized()
+    eye_islands[side] = (centre, normal)
+    # The old eye polygons become the socket floor: recessed into the head so the eyeball sits in a hollow.
+    for i in verts: mesh.data.vertices[i].co -= mesh.data.vertices[i].normal * .003
+mesh.data.materials.append(face_material); face_index = len(mesh.data.materials) - 1
+for polygon in mesh.data.polygons:
+    votes = sum(1 for i in polygon.vertices if dominant_group(mesh.data.vertices[i]) in FACE_GROUPS)
+    if polygon.material_index == 1 or votes * 2 >= len(polygon.vertices): polygon.material_index = face_index
+
+# ---------------------------------------------------------------- eyeballs
+# Real eyes: two smooth spheres parented to the head bone, each with a 512² generated iris (amber gradient,
+# radial fibres, dark limbal ring, vertical slit pupil). The atlas eyes were a few dozen blurry texels.
+IR = 512
+yy, xx = np.mgrid[0:IR, 0:IR]; u_ = (xx + .5) / IR; v_ = (yy + .5) / IR
+theta = (1 - v_) * math.pi; phi = u_ * 2 * math.pi   # theta 0 at the +Z pole, which faces out of the head
+tx, ty = theta * np.cos(phi), theta * np.sin(phi)
+IRIS_R = .95; t = np.clip(theta / IRIS_R, 0, 1.2)
+inner, outer, ring = np.array([.92, .62, .22]), np.array([.62, .32, .08]), np.array([.16, .07, .03])
+fibres = 1 + .10 * np.sin(phi * 48 + 3 * np.sin(phi * 7)) * np.clip((t - .15) / .5, 0, 1) * np.clip(1 - t, 0, 1)
+colour = (inner[None, None, :] * (1 - np.clip(t, 0, 1))[..., None] + outer[None, None, :] * np.clip(t, 0, 1)[..., None]) * fibres[..., None]
+ring_mix = np.clip((t - .78) / .12, 0, 1)[..., None]; colour = colour * (1 - ring_mix) + ring[None, None, :] * ring_mix
+pupil = np.clip((1 - ((tx / .16) ** 2 + (ty / .6) ** 2)) * 6, 0, 1)[..., None]  # dilated for the dim hall
+colour = colour * (1 - pupil) + np.array([.01, .01, .012])[None, None, :] * pupil
+outside = np.clip((t - 1.0) / .04, 0, 1)[..., None]; colour = colour * (1 - outside) + np.array([.03, .028, .03])[None, None, :] * outside
+iris = bpy.data.images.new('BlueIris', IR, IR, alpha=False)
+iris_px = np.ones((IR, IR, 4), dtype=np.float32); iris_px[:, :, :3] = np.clip(colour, 0, 1)
+iris.pixels.foreach_set(iris_px.ravel()); iris.pack()
+iris.filepath_raw = str(WORK / 'blue-iris.png'); iris.file_format = 'PNG'; iris.save()
+eyeball_material = bpy.data.materials.new('Blue amber eyeball'); eyeball_material.use_nodes = True
+ebsdf = eyeball_material.node_tree.nodes['Principled BSDF']
+etex = eyeball_material.node_tree.nodes.new('ShaderNodeTexImage'); etex.image = iris
+eyeball_material.node_tree.links.new(etex.outputs['Color'], ebsdf.inputs['Base Color'])
+ebsdf.inputs['Roughness'].default_value = .2
+if 'Coat Weight' in ebsdf.inputs: ebsdf.inputs['Coat Weight'].default_value = 1.0
+EYE_RADIUS = .016
+eye_objects = []
+for side, (centre, normal) in eye_islands.items():
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=20, radius=EYE_RADIUS, location=(0, 0, 0))
+    eye = bpy.context.object; eye.name = 'Eye.' + side; eye.data.name = 'Eye.' + side
+    bpy.ops.object.shade_smooth()
+    eye.data.materials.append(eyeball_material)
+    z = normal.normalized(); y = (V((0, 0, 1)) - z * z.z).normalized(); x = y.cross(z)
+    placement = Matrix.Translation(centre - normal * .009) @ Matrix((x, y, z)).transposed().to_4x4()
+    eye.parent = arm; eye.parent_type = 'BONE'; eye.parent_bone = 'Head'
+    eye.matrix_world = placement
+    eye_objects.append(eye)
+
 bpy.context.view_layer.update()
 bpy.ops.file.pack_all()
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT_BLEND))
 bpy.ops.object.select_all(action='DESELECT')
 arm.select_set(True); mesh.select_set(True); bpy.context.view_layer.objects.active = arm
+for eye in eye_objects: eye.select_set(True)
 bpy.ops.export_scene.gltf(filepath=str(OUT_GLB), export_format='GLB', use_selection=True,
     export_animations=True, export_animation_mode='ACTIONS', export_force_sampling=True,
     export_optimize_animation_size=False, export_morph=True, export_morph_normal=False, export_skins=True, export_all_influences=False,
-    export_image_format='WEBP', export_image_quality=88)
+    export_image_format='WEBP', export_image_quality=90)
 # ---------------------------------------------------------------- GLB post-processing
 # 1. Retain the amber multiply constant as the standard baseColorFactor (the exporter drops linked MixRGB constants).
 # 2. Drop sampled channels that never leave the node's rest value (every scale channel, static translations)
