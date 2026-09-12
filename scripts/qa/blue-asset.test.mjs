@@ -11,7 +11,7 @@ const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear
   'FrontUpper.L', 'FrontLower.L', 'FrontPaw.L', 'FrontUpper.R', 'FrontLower.R', 'FrontPaw.R',
   'HindUpper.L', 'HindLower.L', 'HindPaw.L', 'HindUpper.R', 'HindLower.R', 'HindPaw.R',
   'Tail0', 'Tail1', 'Tail2', 'Tail3', 'Tail4', 'Tail5'];
-const CLIPS = ['arch', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'settle', 'sit', 'sitidle', 'sleep', 'stand',
+const CLIPS = ['arch', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'settle', 'sit', 'sitidle', 'sleep', 'stand', 'trot',
   'turnL45', 'turnL90', 'turnR45', 'turnR90', 'unperch', 'wake', 'walk'];
 const MORPHS = ['BlueBlink', 'BlueGround', 'BlueSit', 'BluePerch'];
 

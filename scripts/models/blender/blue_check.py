@@ -36,7 +36,7 @@ VIEWS = {'three-quarter': (1.4, -2, 1), 'side': (2.4, 0, .5), 'front': (0, -2.4,
          'low-front': (0, -2.4, -.55), 'low-quarter': (1.3, -2.1, -.5)}
 LEDGE_SHOTS = {'perch', 'perchidle', 'unperch'}
 lengths = [(mesh.data.vertices[e.vertices[0]].co - mesh.data.vertices[e.vertices[1]].co).length for e in mesh.data.edges]
-SHOTS = [('idle', 0, 'three-quarter'), ('idle', 66, 'front'), ('walk', 9, 'side'), ('walk', 27, 'three-quarter'), ('settle', 36, 'three-quarter'),
+SHOTS = [('idle', 0, 'three-quarter'), ('idle', 66, 'front'), ('walk', 9, 'side'), ('walk', 27, 'three-quarter'), ('trot', 4, 'side'), ('trot', 11, 'three-quarter'), ('wake', 15, 'three-quarter'), ('settle', 36, 'three-quarter'),
          ('sleep', 0, 'three-quarter'), ('sleep', 90, 'side'), ('sleep', 0, 'front'), ('happy', 30, 'three-quarter'), ('happy', 90, 'front'),
          ('sit', 54, 'three-quarter'), ('sitidle', 60, 'side'), ('sitidle', 30, 'front'), ('jumpup', 12, 'side'), ('jumpup', 17, 'side'), ('jumpup', 24, 'side'), ('jumpup', 30, 'side'), ('jumpup', 36, 'side'), ('jumpup', 29, 'side'), ('jumpdown', 10, 'side'), ('jumpdown', 17, 'side'), ('jumpdown', 24, 'side'), ('jumpdown', 30, 'side'), ('arch', 30, 'side'), ('arch', 30, 'three-quarter'), ('flick', 12, 'three-quarter'), ('flick', 22, 'front'),
          ('perch', 60, 'three-quarter'), ('perch', 60, 'side'), ('perchidle', 45, 'front'), ('perchidle', 45, 'low-front'), ('perchidle', 100, 'low-quarter'), ('perch', 30, 'side'),

@@ -24,12 +24,12 @@ const STATION_LANE_Z = .8, STATION_SIDE_X = .92;
 /** Metres per second the in-place walk clip covers at time scale 1 (stride × stance ÷ cycle). */
 const STRIDE_SPEED = .19;
 const ROAM_SPEED = .21, TRAVEL_SPEED = .34;
+/** Beyond this distance a goal is worth trotting to; the in-place trot clip covers TROT_SPEED at time scale 1. */
+const FAR_DISTANCE = 1.8, RUN_SPEED = .9, TROT_SPEED = .9;
 /** Heading errors above this are answered with a turn-in-place clip; smaller ones are absorbed while walking, whose yaw rate follows a turning radius. */
 const TURN_MIN = .2, TURN_RADIUS = .45;
 /** Authored turn clips: nominal angle and how far the runtime may stretch or shrink that angle before it chains another turn. */
 const TURN_CLIPS = [{ name: '45', angle: Math.PI / 4, scale: [.25, 1.3] }, { name: '90', angle: Math.PI / 2, scale: [.65, 1.25] }];
-/** Further away than this, Blue is placed just outside the frame and strolls in past the arcades. */
-const TELEPORT_DISTANCE = 3.4, TELEPORT_RUNWAY = 2.6;
 /** Heading Blue settles into on the cushion, so the lying pose reads from the frontal hall camera. */
 const REST_YAW = .95;
 const REST_FORWARD = new THREE.Vector3(Math.sin(REST_YAW), 0, Math.cos(REST_YAW));
@@ -77,6 +77,8 @@ export class BlueCat {
   private actions = new Map<string, THREE.AnimationAction>();
   private idle: THREE.AnimationAction;
   private walk: THREE.AnimationAction;
+  private trot?: THREE.AnimationAction;
+  private trotMix = 0;
   /** Current layered action (everything except the idle/walk locomotion pair). */
   private layer?: THREE.AnimationAction;
   private fade = .5;
@@ -245,6 +247,8 @@ export class BlueCat {
     }
     this.idle = this.actions.get('idle')!;
     this.walk = this.actions.get('walk')!;
+    this.trot = this.actions.get('trot');
+    if (this.trot) { this.trot.play(); this.trot.setEffectiveWeight(0); }
     this.flick = this.actions.get('flick');
     if (this.flick) { this.flick.setLoop(THREE.LoopOnce, 1); this.flick.clampWhenFinished = false; }
     for (const [name, region] of [['Head', 'head'], ['Neck', 'head'], ['Chest', 'back'], ['Spine', 'back'], ['Pelvis', 'back'], ['Tail2', 'tail'], ['Tail3', 'tail'], ['Tail4', 'tail'], ['Tail5', 'tail']] as [string, Region][]) {
@@ -617,13 +621,8 @@ export class BlueCat {
     this.goal.copy(goal);
     this.travelSpeed = speed;
     this.arrival = arrival;
-    const away = goal.x - this.body.position.x;
-    if (this.elevation === 0 && Math.abs(away) > TELEPORT_DISTANCE) {
-      // Far stations: appear just outside the frame and stroll in past the arcades instead of crossing the whole hall.
-      this.body.position.set(goal.x - Math.sign(away) * TELEPORT_RUNWAY, 0, STATION_LANE_Z);
-      this.body.rotation.set(0, Math.atan2(Math.sign(away), 0), 0);
-      this.speed = speed * .6;
-    }
+    // Far goals are trotted to; nobody gets teleported.
+    if (this.elevation === 0 && flat(goal, this.body.position) > FAR_DISTANCE) this.travelSpeed = RUN_SPEED;
     this.enter('walk');
   }
 
@@ -707,7 +706,8 @@ export class BlueCat {
     this.targetRotation.setFromAxisAngle(UP, Math.atan2(this.forward.x, this.forward.z));
     this.body.quaternion.rotateTowards(this.targetRotation, Math.min(angle * 4, THREE.MathUtils.clamp(this.speed / TURN_RADIUS, .3, 1)) * dt);
     const aligned = 1 - step(angle, .45, 1.1);
-    const accel = this.travelSpeed > ROAM_SPEED ? .42 : .28, decel = this.travelSpeed > ROAM_SPEED ? .5 : .36;
+    const running = this.travelSpeed >= RUN_SPEED;
+    const accel = running ? .9 : this.travelSpeed > ROAM_SPEED ? .42 : .28, decel = running ? 1.0 : this.travelSpeed > ROAM_SPEED ? .5 : .36;
     const wanted = Math.min(this.travelSpeed, Math.sqrt(2 * decel * Math.max(0, distance - .01))) * aligned;
     this.speed = this.speed < wanted ? Math.min(wanted, this.speed + accel * dt) : Math.max(wanted, this.speed - decel * dt);
     this.heading.copy(FORWARD).applyQuaternion(this.body.quaternion);
@@ -893,7 +893,7 @@ export class BlueCat {
         case 'settle': if (this.age > this.length('settle')) this.advance(stationX); break;
         case 'turn': if (this.age > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
         case 'sleep':
-          if (this.undisturbed && this.hover && this.clock - this.hoverSince > .7) this.disturb();
+          if (this.undisturbed && this.hover && this.clock - this.hoverSince > .35) this.disturb();
           else if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
           break;
         case 'arch': if (this.age > this.length('arch')) this.advance(stationX); break;
@@ -923,9 +923,11 @@ export class BlueCat {
     const locoGoal = this.layer ? 0 : 1;
     this.loco = THREE.MathUtils.clamp(this.loco + Math.sign(locoGoal - this.loco) * dt / this.fade, 0, 1);
     this.walkMix = THREE.MathUtils.damp(this.walkMix, step(this.speed, .01, .08), 12, dt);
+    this.trotMix = this.trot ? THREE.MathUtils.damp(this.trotMix, step(this.speed, .42, .62), 8, dt) : 0;
     this.idle.setEffectiveWeight(this.loco * (1 - this.walkMix));
-    this.walk.setEffectiveWeight(this.loco * this.walkMix);
-    this.walk.setEffectiveTimeScale(this.speed / STRIDE_SPEED);
+    this.walk.setEffectiveWeight(this.loco * this.walkMix * (1 - this.trotMix));
+    this.walk.setEffectiveTimeScale(Math.min(this.speed, .5) / STRIDE_SPEED);
+    if (this.trot) { this.trot.setEffectiveWeight(this.loco * this.walkMix * this.trotMix); this.trot.setEffectiveTimeScale(Math.max(this.speed, .3) / TROT_SPEED); }
     this.mixer.update(reduce && this.mood !== 'happy' ? 0 : dt);
     // Body velocity and (smoothed) acceleration for the secondary motion; a teleport or a long pause resets them.
     this.tmpV.subVectors(this.body.position, this.lastPosition);
@@ -943,8 +945,9 @@ export class BlueCat {
     if (this.blinkAge > this.blinkPeriod) { this.blinkAge = 0; this.blinkPeriod = rand(3.2, 6.5); }
     this.slowBlink = Math.max(0, this.slowBlink - dt / .9);
     const resting = this.mood === 'sleep' || this.mood === 'settle' || this.mood === 'wake';
-    const eyeGoal = resting ? 1 : this.mood === 'happy' || this.purr > .4 ? .94 : !reduce && (this.blinkAge > this.blinkPeriod - .24 || this.slowBlink > .45) ? 1 : 0;
-    this.blink = THREE.MathUtils.damp(this.blink, eyeGoal, resting || this.slowBlink > 0 || this.purr > 0 ? 7 : 20, dt);
+    // Eyes open in the first half second of waking, well before the body is up.
+    const eyeGoal = this.mood === 'wake' ? 1 - step(this.age, .05, .4) : resting ? 1 : this.mood === 'happy' || this.purr > .4 ? .94 : !reduce && (this.blinkAge > this.blinkPeriod - .24 || this.slowBlink > .45) ? 1 : 0;
+    this.blink = THREE.MathUtils.damp(this.blink, eyeGoal, this.mood === 'wake' ? 12 : resting || this.slowBlink > 0 || this.purr > 0 ? 7 : 20, dt);
     // Pose-space floor correctives: sphinx rest, upright sit and the ledge perch each keep their underside above the surface.
     const settled = this.mood === 'sleep' ? 1 : this.mood === 'settle' ? step(this.age, .5, 2.2) : this.mood === 'wake' ? 1 - step(this.age, .5, 1.9) : 0;
     const seated = this.mood === 'sitidle' ? 1 : this.mood === 'sit' ? step(this.age, .3, 1.6) : this.mood === 'stand' ? 1 - step(this.age, .2, 1.5) : 0;
