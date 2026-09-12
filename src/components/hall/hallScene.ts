@@ -656,14 +656,14 @@ export class HallScene {
     this.initialFocus = initial;
     items.forEach((it, i) => this.addMachine(it, i));
     const blueDone = this.track(initial);
-    this.gltf.load('/models/blue-rigged-v1.glb', gltf => {
+    this.gltf.load('/models/blue-rigged-v2.glb', gltf => {
       if (!this.disposed) {
         this.blue = new BlueCat(gltf, container, this.stationX[0]);
         this.scene.add(this.blue.root);
         this.dirty = this.mirrorDirty = true;
       }
       blueDone();
-    }, undefined, () => blueDone());
+    }, undefined, error => { console.error('Blue failed to load', error); blueDone(); });
     this.focus = initial;
     this.camX = this.targetX = this.stationX[initial];
     this.wallX = this.camX;
@@ -707,6 +707,7 @@ export class HallScene {
     }).finally(fontDone);
 
     r.domElement.addEventListener('pointermove', this.onPointerMove);
+    r.domElement.addEventListener('pointerleave', this.onPointerLeave);
     r.domElement.addEventListener('click', this.onClick);
     window.addEventListener('resize', this.onResize);
     if (import.meta.env.DEV) (window as unknown as { __hall?: HallScene }).__hall = this;
@@ -2613,13 +2614,19 @@ export class HallScene {
       this.updateCursor();
     }
   };
+  private onPointerLeave = () => {
+    this.blue?.look(null, false);
+  };
   /** Zeiger: Automat anklickbar, Bildschirm öffnet die Großansicht */
   private updateCursor() {
     if (this.tweenDur > 0 && performance.now() - this.tweenStart < this.tweenDur) return;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
     const blueHit = this.blue?.hit(this.raycaster);
-    if (blueHit && (!hits.length || blueHit.distance < hits[0].distance)) {
+    const onBlue = !!blueHit && (!hits.length || blueHit.distance < hits[0].distance);
+    // Blue watches the pointer wherever it rests and looks up at the viewer once it lands on him.
+    this.blue?.look(this.raycaster.ray, onBlue);
+    if (onBlue) {
       this.renderer.domElement.style.cursor = 'pointer';
       return;
     }
@@ -3016,6 +3023,7 @@ export class HallScene {
     this.deferredScreens.clear();
     this.stop();
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.removeEventListener('pointerleave', this.onPointerLeave);
     this.renderer.domElement.removeEventListener('click', this.onClick);
     window.removeEventListener('resize', this.onResize);
     this.renderer.domElement.remove();
