@@ -1,3 +1,7 @@
+## Current handover
+
+Read [HANDOVER-CLAUDE-FABLE.md](HANDOVER-CLAUDE-FABLE.md) before continuing work. It records the current released site, user decisions, model/portrait sources, QA, known issues and deployment workflow. The September 10 handover is historical and contains superseded states.
+
 ## Development
 
 When starting the dev server, use background mode:

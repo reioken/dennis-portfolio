@@ -25,12 +25,19 @@ bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, -.001)); floor = bpy.
 fm = bpy.data.materials.new('Floor'); fm.diffuse_color = (.07, .07, .08, 1); floor.data.materials.append(fm)
 cd = bpy.data.cameras.new('Camera'); cam = bpy.data.objects.new('Camera', cd); scene.collection.objects.link(cam); scene.camera = cam
 cd.type = 'ORTHO'; cd.ortho_scale = .92
-VIEWS = {'three-quarter': (1.4, -2, 1), 'side': (2.4, 0, .5), 'front': (0, -2.4, .6)}
+# Marquee stand-in for the perch shots: top at z 0, front face at EDGE_Y (see blue_animate.py), so hanging legs stay visible.
+EDGE_Y = -.25
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, EDGE_Y + .35, -.201)); ledge = bpy.context.object; ledge.scale = (.7, .7, .4)
+lm = bpy.data.materials.new('Ledge'); lm.diffuse_color = (.16, .17, .2, 1); ledge.data.materials.append(lm)
+VIEWS = {'three-quarter': (1.4, -2, 1), 'side': (2.4, 0, .5), 'front': (0, -2.4, .6),
+         # The hall camera sees the cabinet top from below; these two views reproduce that angle.
+         'low-front': (0, -2.4, -.55), 'low-quarter': (1.3, -2.1, -.5)}
+LEDGE_SHOTS = {'perch', 'perchidle'}
 lengths = [(mesh.data.vertices[e.vertices[0]].co - mesh.data.vertices[e.vertices[1]].co).length for e in mesh.data.edges]
 SHOTS = [('idle', 0, 'three-quarter'), ('idle', 66, 'front'), ('walk', 9, 'side'), ('walk', 27, 'three-quarter'), ('settle', 36, 'three-quarter'),
          ('sleep', 0, 'three-quarter'), ('sleep', 90, 'side'), ('sleep', 0, 'front'), ('happy', 30, 'three-quarter'), ('happy', 90, 'front'),
          ('sit', 54, 'three-quarter'), ('sitidle', 60, 'side'), ('sitidle', 30, 'front'), ('jump', 9, 'side'), ('jump', 15, 'side'), ('jump', 24, 'side'), ('jump', 36, 'side'),
-         ('perch', 60, 'three-quarter'), ('perch', 60, 'side'), ('perchidle', 45, 'front')]
+         ('perch', 60, 'three-quarter'), ('perch', 60, 'side'), ('perchidle', 45, 'front'), ('perchidle', 45, 'low-front'), ('perchidle', 100, 'low-quarter'), ('perch', 30, 'side')]
 report = []
 for label, frame, view in SHOTS:
     action = bpy.data.actions[label]; arm.animation_data.action = action; arm.animation_data.action_slot = action.slots[0]
@@ -52,6 +59,9 @@ for label, frame, view in SHOTS:
     report.append({'clip': label, 'frame': frame, 'min_z': round(min(v.co.z for v in em.vertices), 4), 'max_stretch': round(ratios[0], 2),
                    'p99_stretch': round(ratios[int(len(ratios) * .01)], 3), 'edges_over_3x': sum(r > 3 for r in ratios), 'worst_locations': [w[1] for w in worst[:4]]})
     mesh.evaluated_get(dg).to_mesh_clear()
-    cam.location = VIEWS[view]; cam.rotation_euler = (Vector((0, 0, .22)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
+    on_ledge = label in LEDGE_SHOTS
+    floor.hide_render = on_ledge; ledge.hide_render = not on_ledge
+    aim = Vector((0, 0, .1 if on_ledge else .22))
+    cam.location = VIEWS[view]; cam.rotation_euler = (aim - cam.location).to_track_quat('-Z', 'Y').to_euler()
     scene.render.filepath = str(OUT / f'{label}-{frame}-{view}.png'); bpy.ops.render.render(write_still=True)
 (OUT / 'deformation-report.json').write_text(json.dumps(report, indent=2)); print(json.dumps(report))

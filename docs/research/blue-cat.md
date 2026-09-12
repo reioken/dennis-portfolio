@@ -99,3 +99,19 @@ Dennis asked for two things: on "Über mich" Blue should jump onto the claw mach
 - Chromium 1440×900 (Playwright, `scratchpad` evidence scripts): head direction follows the pointer left/right, hover perks ears with a pointer cursor, petting closes the eyes and keeps the route, walk peaks at 0.21 m/s with acceleration under 0.36 m/s² over 300 frames at 60 fps, settle → sleep → wake cycle, no console errors.
 - `scripts/qa/blue-cat.mjs` passes at 1440×900, 390×844 and reduced motion; `npm run test:review` 27/27; typecheck.
 - Not covered: native Firefox rerun, physical devices, Safari.
+
+## v3 — eye forensics and ledge pose (2026-09-12, evening)
+
+Dennis on the live companion: the eyes bulge upward when Blue jumps onto the machine, the legs hang far too low on the ledge, and turning is a robotic spin. The overhaul plan is `blue-animation-plan.md`; this section records the first two phases.
+
+### Eyes: the correctives carried the blink
+
+`scripts/models/blender/blue_forensics.py` audits the skin weights on the eye and socket polygons, the deltas of every shape key grouped by dominant bone, and renders the jump launch frames one morph at a time (`.source-assets/blue/v3/forensics-before/` and `forensics/`).
+
+Findings on the v2 asset: eye and socket vertices are weighted 100 % to `Head` and every vertex sums to 1, so skinning was never the problem. But `BlueGround`, `BlueSit` and `BluePerch` each moved the same 1,772 head vertices as `BlueBlink`, with the identical 15 mm maximum on the eyes, and `BlueSit`/`BluePerch` additionally carried 50–120 mm deltas on the tail and hind legs. Cause: `Object.shape_key_add()` defaults to `from_mix=True`, so each corrective started as a copy of whatever mix was active (the blink at 1 and the previously created correctives). At runtime that meant: lying down or perching faded the eyes shut, petting on the ledge stacked the real blink on top for a 30 mm displacement, and the "before" render with all morphs at 1 shows the eyes as two spikes. The extra deltas also explain the poor stretch numbers of every resting pose.
+
+Fix in `blue_animate.py`: all key values are zeroed, correctives are created with `from_mix=False`, the corrective uses the armature modifier's rule (missing weight stays at rest) and head, neck and ear vertices are excluded from every corrective. Result: no corrective touches an eye vertex; edges stretched over 3× fell from 364 → 104 (sleep), 340 → 78 (sit) and 1,039 → 79 (perch); the GLB lost 140 KB of sparse garbage (2,120,092 bytes). The eyeball rebuild from the plan is therefore deferred: at the hall's viewing size the flat eyes read fine once nothing deforms them.
+
+### Ledge pose
+
+The wrist target was an absolute 0.30 m drop. New pose (`EDGE_Y`, `FRONT_HANG`, `HANG_SIDE`): the marquee edge is 0.25 m in front of the body origin, the elbow rests on the top 3 cm behind the lip, the wrist crosses the edge 4 cm below it and the paws curl by 0.75/0.55 rad with a few millimetres of asymmetry, so the paws end about 7.5 cm below the top instead of 20 cm. Chest first, shoulders protract 1.2 cm toward the lip, front legs follow, neck relaxes after the chest, tail last. Per-leg offsets now apply after the pose target (they were no-ops at full amount before), so the perch idle stirs are visible. Runtime `LEDGE.spot` moved from z 0.20 to 0.17 so the cabinet front face lands at the authored edge. `blue_check.py` renders the perch on a ledge prop from two low camera angles that mimic the hall camera.

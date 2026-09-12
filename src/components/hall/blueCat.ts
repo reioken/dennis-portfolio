@@ -11,7 +11,8 @@ const HOME = new THREE.Vector3(-1.65, 0, .18);
 const SPOTS = [new THREE.Vector3(-1.35, 0, .62), new THREE.Vector3(-.8, 0, .76), new THREE.Vector3(-1.95, 0, .6), new THREE.Vector3(-1.1, 0, .42), new THREE.Vector3(-1.55, 0, .76)];
 const BOUNDS = { minX: -2.05, maxX: 40, minZ: .12, maxZ: 1.5 };
 /** The claw cabinet: top surface, its front edge, where Blue takes off, lands and lies (root-local, station 0 at x 0). */
-const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, 1.05), landing: new THREE.Vector3(0, 1.95, .02), spot: new THREE.Vector3(0, 1.95, .20) };
+/** The lying spot keeps the marquee's front face (z .42) .25 m ahead of the body origin, which is where the perch clip puts the elbows and wrists. */
+const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, 1.05), landing: new THREE.Vector3(0, 1.95, .02), spot: new THREE.Vector3(0, 1.95, .17) };
 /** Sitting spot beside a cabinet: in the gap in front of the arcades, on the side Blue arrives from. */
 const STATION_LANE_Z = .8, STATION_SIDE_X = .92;
 /** Metres per second the in-place walk clip covers at time scale 1 (stride × stance ÷ cycle). */

@@ -76,11 +76,17 @@ TAIL_BACK = [V(v) for v in [(0, 0, 0), (0, .075, -.02), (0, .15, -.03), (0, .225
 DROP = {'Pelvis': .10, 'Spine': .095, 'Chest': .085, 'Neck': .06, 'Head': .05}
 SIT_DROP = {'Pelvis': .115, 'Spine': .085, 'Chest': .03, 'Neck': 0., 'Head': 0.}
 # Leg targets (x is mirrored per side): sphinx front legs extended forward, hind legs tucked,
-# sitting hind legs tucked a little further forward, perching front legs hanging below the ledge.
+# sitting hind legs tucked a little further forward.
 FRONT_SPHINX = ((.072, -.365, .023), (0, .35, -1))
-FRONT_HANG = ((.062, -.30, -.17), (0, .25, -1))
 HIND_TUCK = ((.088, .035, .023), (0, 1, -.15))
 HIND_SIT = ((.085, .05, .023), (0, 1, -.15))
+# Ledge perch. The marquee edge runs EDGE_Y in front of the body origin (the runtime places him so the
+# cabinet front face sits there). Foreleg length is .22 m; the elbow rests on the top just behind the lip
+# (2 cm back, skin on the surface), the wrist crosses the edge 4 cm below it and the paws curl down by
+# unequal amounts, so the weight visibly sits on the chest and elbows instead of on two straight legs.
+EDGE_Y = -.25
+FRONT_HANG = ((.062, -.30, -.04), (0, .3, -1))
+HANG_SIDE = {'L': {'dy': 0., 'dz': 0., 'pitch': .75}, 'R': {'dy': .006, 'dz': -.008, 'pitch': .55}}
 
 def base():
     return {
@@ -93,7 +99,9 @@ def base():
         'head': {'yaw': 0., 'pitch': 0., 'roll': 0.},
         'ears': {'L': [0., 0.], 'R': [0., 0.]},
         'legs': {(leg, side): {'dx': 0., 'dy': 0., 'dz': 0., 'pitch': 0.} for leg in ('Front', 'Hind') for side in 'LR'},
+        'front_side': {'L': 1., 'R': 1.},  # per-side multiplier of the front-leg pose amount (one paw at a time)
         'tail_lift': 0., 'tail_wave': [0.] * 6, 'tail_lift_wave': [0.] * 6,
+        'root_yaw': 0.,  # carried by the Root bone; the runtime strips it from the clip and turns the body instead
     }
 
 def solve(P):
@@ -123,9 +131,11 @@ def solve(P):
             up, low, paw = [f'{leg}{part}.{side}' for part in ('Upper', 'Lower', 'Paw')]
             a = p[parent] + rot[parent] @ (heads[up] - heads[parent])
             L = P['legs'][(leg, side)]
-            c = heads[paw] + V((L['dx'], L['dy'], L['dz']))
             tx, ty, tz = spec['target']
-            c = c.lerp(V((sx * tx, ty, tz)), spec['amount']); bend = V((0, 1, 0)).lerp(V(spec['bend']), spec['amount'])
+            amount = spec['amount'] * (P['front_side'][side] if leg == 'Front' else 1.)
+            # Per-leg offsets apply after the pose target, so resting poses can carry asymmetry and small stirs.
+            c = heads[paw].lerp(V((sx * tx, ty, tz)), amount) + V((L['dx'], L['dy'], L['dz']))
+            bend = V((0, 1, 0)).lerp(V(spec['bend']), amount)
             b = ik(a, c, (heads[low] - heads[up]).length, (heads[paw] - heads[low]).length, bend)
             p[up], p[low], p[paw] = a, b, c
             rot[up] = (heads[low] - heads[up]).rotation_difference(b - a)
@@ -142,7 +152,11 @@ def solve(P):
     for i in range(len(TAIL) - 1):
         rot[TAIL[i]] = (heads[TAIL[i + 1]] - heads[TAIL[i]]).rotation_difference(p[TAIL[i + 1]] - p[TAIL[i]])
     rot['Tail5'] = rot['Tail4']
-    return {n: Matrix.Translation(p[n]) @ rot[n].to_matrix().to_4x4() @ restq[n].to_matrix().to_4x4() for n in names}
+    mats = {n: Matrix.Translation(p[n]) @ rot[n].to_matrix().to_4x4() @ restq[n].to_matrix().to_4x4() for n in names}
+    if P['root_yaw']:
+        turn = Matrix.Rotation(P['root_yaw'], 4, 'Z')
+        mats = {n: turn @ m for n, m in mats.items()}
+    return mats
 
 # ---------------------------------------------------------------- clips
 STRIDE_SPEED = .19; WALK_CYCLE = 1.2; STANCE = .65
@@ -262,10 +276,16 @@ def jump(t, D):
 def apply_perch(P, front, torso, hind, tail, head):
     apply_rest(P, 0, torso, hind, tail, head)
     P['front'] = {'amount': front, 'target': FRONT_HANG[0], 'bend': FRONT_HANG[1]}
+    P['push'] += -.012 * torso  # shoulders protract towards the lip once the chest is down
+    for side in 'LR':
+        L, H = P['legs'][('Front', side)], HANG_SIDE[side]
+        L['dy'] += H['dy'] * front; L['dz'] += H['dz'] * front; L['pitch'] += H['pitch'] * front
     P['head']['pitch'] += .06 * head; P['head_lift'] += .01 * head
 
 def perch(t, D):
-    P = base(); apply_perch(P, ease(t, .1, 1.4), ease(t, .3, 1.8), ease(t, .4, 1.9), ease(t, .8, 2.0), ease(t, .3, 1.7)); return P
+    # Chest first, then the elbows slide to the lip and the wrists drop over it; the neck relaxes
+    # after the chest has settled and the tail finishes last.
+    P = base(); apply_perch(P, ease(t, .5, 1.7), ease(t, .1, 1.3), ease(t, .4, 1.9), ease(t, 1.1, 2.0), ease(t, .9, 2.0)); return P
 
 def perchidle(t, D):
     P = base(); apply_perch(P, 1, 1, 1, 1, 1); w = math.tau * t / D
@@ -286,15 +306,22 @@ for key in ('BlueGround', 'BlueSit', 'BluePerch'):
     if key in mesh.data.shape_keys.key_blocks: mesh.shape_key_remove(mesh.data.shape_keys.key_blocks[key])
 groups = {g.index: g.name for g in mesh.vertex_groups}
 FRONT_LEG = {f'Front{part}.{side}' for part in ('Upper', 'Lower', 'Paw') for side in 'LR'}
+# The face never touches the surface in these poses; excluding it guarantees a corrective can never move the eyes.
+FACE = {'Head', 'Neck', 'Ear.L', 'Ear.R'}
 lifted = {}
-for key, pose, skip in (('BlueGround', sleep(0, 6.0), set()), ('BlueSit', sitidle(0, 6.0), set()), ('BluePerch', perchidle(0, 6.0), FRONT_LEG)):
-    corrective = mesh.shape_key_add(name=key)
+# shape_key_add copies the current mix unless told otherwise; v2 correctives silently carried the full blink
+# displacement (15 mm on every eye vertex) and each other's lifts, which is what deformed the eyes at rest.
+for block in mesh.data.shape_keys.key_blocks: block.value = 0.
+for key, pose, skip in (('BlueGround', sleep(0, 6.0), FACE), ('BlueSit', sitidle(0, 6.0), FACE), ('BluePerch', perchidle(0, 6.0), FRONT_LEG | FACE)):
+    corrective = mesh.shape_key_add(name=key, from_mix=False)
     mats = solve(pose)
     skin = {n: mats[n] @ rest[n].inverted() for n in names}
     lifted[key] = 0
     for v, cv in zip(mesh.data.vertices, corrective.data):
         if sum(g.weight for g in v.groups if groups[g.group] in skip) > .5: continue
-        matrix = Matrix(((0, 0, 0, 0),) * 4)
+        # Same rule as the armature modifier: whatever weight is missing keeps the vertex at rest.
+        total = sum(g.weight for g in v.groups)
+        matrix = Matrix.Identity(4) * (1 - total)
         for g in v.groups: matrix += skin[groups[g.group]] * g.weight
         posed = matrix @ v.co
         if posed.z < .002:
