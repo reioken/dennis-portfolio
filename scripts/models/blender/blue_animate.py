@@ -491,71 +491,55 @@ def unperch(t, D):
     return P
 
 # ---------------------------------------------------------------- turning in place
-# Authored in the turning frame: the body yaws by yaw(t) around PIVOT while planted paws stay where they are in
-# the world, so in body space they sweep backwards until their next step. The Root bone carries yaw(t); the
-# runtime strips that track from the clip and turns the body by the same curve, so heading stays continuous.
+# Explicit choreography instead of a schedule: the body only rotates while a diagonal pair of paws is in the
+# air, in two (45°) or four (90°) distinct steps with a pause between them, so the turn reads as stepping
+# around rather than as a turntable. Authored in the turning frame: planted paws keep their world position,
+# the Root bone carries the yaw, the runtime strips it and rotates the body by the same curve.
 PIVOT = V((0, -.03, 0))
-TURN_STEP = {'Front': math.radians(45), 'Hind': math.radians(45)}  # a paw steps once per this much body yaw
-TURN_SWING = {'Front': .12, 'Hind': .15}
-TURN_LIFT = {'Front': .03, 'Hind': .025}
+TURN_SWING_T, TURN_PAUSE, TURN_LEAD_IN, TURN_SETTLE = .26, .11, .2, .4
+TURN_LIFT = {'Front': .055, 'Hind': .045}
 
-def turn_yaw(t, D, theta, start=.1, tail=.15, ramp_in=.22, ramp_out=.5):
-    """Yaw profile with a quick start and a long settle: the rate ramps up fast, holds, and eases out slowly."""
-    T = D - tail - start; u = clamp((t - start) / T) * T
-    if u < ramp_in: f = u * u / (2 * ramp_in)
-    elif u < T - ramp_out: f = u - ramp_in / 2
-    else: f = (T - ramp_in / 2 - ramp_out / 2) - (T - u) ** 2 / (2 * ramp_out)
-    return theta * f / (T - (ramp_in + ramp_out) / 2)
-
-def turn_schedule(theta, D, sign):
-    """Per paw: list of (start, end, from_angle, to_angle) swings, found by simulating the step rule."""
+def turn_plan(theta, sign):
+    """Beats of (start, end, pair, yaw_from, yaw_to, landing): the first pair steps ahead of the body."""
+    beats = 2 if theta < math.radians(60) else 4
     inner, outer = ('L', 'R') if sign > 0 else ('R', 'L')
-    feet = [('Front', inner), ('Hind', outer), ('Front', outer), ('Hind', inner)]
-    first = {('Front', inner): .2, ('Hind', outer): .24, ('Front', outer): .5, ('Hind', inner): .54}  # diagonal pairs start together
-    planted = {f: 0. for f in feet}; swings = {f: [] for f in feet}; last_start = -1.
-    t = 0.
-    while t < D:
-        y = turn_yaw(t, D, theta)
-        active = [f for f in feet if swings[f] and swings[f][-1][1] > t]
-        # The paw furthest behind the body steps first, so no single paw can hog consecutive steps.
-        for f in sorted(feet, key=lambda f: planted[f] - y):
-            if f in active or theta - planted[f] < 1e-4: continue
-            step = TURN_STEP[f[0]]; remaining = theta - planted[f]
-            threshold = min(step * (first[f] if not swings[f] else .5), remaining * .5)
-            if y - planted[f] <= threshold or t - last_start < .02: continue
-            # Only a diagonal pair may swing together: never both front, both hind or the same side.
-            if any(g[0] == f[0] or g[1] == f[1] for g in active): continue
-            to = min(theta, y + step * .5)  # land half a step ahead of the body, wherever it is now
-            swings[f].append((t, t + TURN_SWING[f[0]] * jitter(t * 7 + len(swings[f])), planted[f], to)); planted[f] = to; last_start = t
-            active.append(f)
-        t += 1 / 240
-    return swings
+    pairs = [[('Front', inner), ('Hind', outer)], [('Front', outer), ('Hind', inner)]]
+    plan = []; t = TURN_LEAD_IN
+    for k in range(beats):
+        yaw_from, yaw_to = theta * k / beats, theta * (k + 1) / beats
+        plan.append((t, t + TURN_SWING_T * jitter(k * 3 + 1, .08), pairs[k % 2], yaw_from, yaw_to, min(theta, yaw_to + theta / beats)))
+        t += TURN_SWING_T + TURN_PAUSE * jitter(k * 5 + 2, .2)
+    return plan, t + TURN_SETTLE
 
-def turn_foot(swings, t):
-    """Planted angle, lift and paw pitch of one paw at time t."""
-    a = 0.
-    for s, e, a0, a1 in swings:
-        if t >= e: a = a1; continue
-        if t >= s:
-            u = (t - s) / (e - s)
-            return a0 + (a1 - a0) * smooth(u), math.sin(math.pi * u), .45 * math.sin(math.pi * u) * (1 - u) ** .5
-        break
-    return a, 0., 0.
+def turn_yaw(t, plan, theta):
+    y = 0.
+    for start, stop, pair, yaw_from, yaw_to, landing in plan:
+        if t >= stop: y = yaw_to
+        elif t >= start: return yaw_from + (yaw_to - yaw_from) * smooth((t - start) / (stop - start))
+    return y
 
-def turn(t, D, theta, sign, swings):
-    """The head snaps to the new direction, the spine bends into a C behind it, the weight shifts onto the inside
-    then rolls out as the paws step around in arcs, and the tail whips out and settles; the root yaw underneath
-    starts quickly and settles slowly."""
-    P = base(); y = turn_yaw(t, D, theta); P['root_yaw'] = sign * y
+def turn_paw(t, plan, foot):
+    """World angle, lift and pitch of one paw: it stays planted until its pair swings."""
+    angle = 0.
+    for start, stop, pair, yaw_from, yaw_to, landing in plan:
+        if foot not in pair: continue
+        if t >= stop: angle = landing
+        elif t >= start:
+            u = (t - start) / (stop - start)
+            return angle + (landing - angle) * smooth(u), math.sin(math.pi * u), .5 * math.sin(math.pi * u) * (1 - u) ** .5
+    return angle, 0., 0.
+
+def turn(t, D, theta, sign, plan):
+    P = base(); y = turn_yaw(t, plan, theta); P['root_yaw'] = sign * y
     u = clamp(t / D); arc = math.sin(math.pi * u)
-    scale = theta / (math.pi / 2)  # the 45° turn bends about half as much
-    lead = curve(t, [(0, 0), (.16, .5, 'snap'), (.55 * D, .28), (D - .08, 0, 'out')]) * sign * scale
+    scale = theta / (math.pi / 2)
+    # Head snaps first, the spine bends into a C behind it and unwinds as the body catches up.
+    lead = curve(t, [(0, 0), (.16, .5, 'snap'), (.55 * D, .28), (D - .1, 0, 'out')]) * sign * scale
     P['head']['yaw'] = lead * .55
     P['bend']['Neck'] = lead * .25; P['bend']['Chest'] = lead * .42; P['bend']['Spine'] = lead * .3
     P['head']['roll'] = sign * .06 * arc; P['head']['pitch'] = -.04 * ease_out(t, 0, .25) * (1 - ease(t, D - .5, D))
     P['yaw']['Pelvis'] = -sign * .05 * arc
-    P['roll']['Chest'] = -sign * .06 * arc; P['roll']['Pelvis'] = sign * .03 * math.sin(math.tau * u)
-    P['sway'] = sign * .012 * math.sin(math.tau * u + .3); P['bob'] = -.009 * arc; P['push'] = .006 * arc
+    P['roll']['Chest'] = -sign * .06 * arc
     inner = 'L' if sign > 0 else 'R'
     P['ears'][inner][1] += sign * .14 * arc; P['ears'][inner][0] += .06 * arc
     for side in 'LR': P['ears'][side][0] += .10 * ease_out(t, 0, .2) * (1 - ease(t, .3, .8))
@@ -564,24 +548,30 @@ def turn(t, D, theta, sign, swings):
         k = i / 5
         P['tail_wave'][i] += -sign * .07 * k ** 1.4 * math.sin(math.pi * clamp((t - .1) / (D - .2))) + sign * .02 * k * k * pulse(t, .55 * D, .5)
         P['tail_lift_wave'][i] += .01 * k * pulse(t, .3 * D, .6)
+    # Each step: the body dips as the pair lands and the weight rocks onto the planted diagonal.
+    for k, (start, stop, pair, yaw_from, yaw_to, landing) in enumerate(plan):
+        swing = pulse(t, start, stop - start)
+        P['bob'] += -.006 * swing - .007 * pulse(t, stop - .05, .22)
+        P['sway'] += (sign if k % 2 == 0 else -sign) * .012 * swing
+        P['roll']['Pelvis'] += (1 if k % 2 == 0 else -1) * sign * .035 * swing
+        P['push'] += .005 * swing
     for leg in ('Front', 'Hind'):
         for side in 'LR':
             paw = f'{leg}Paw.{side}'
-            a, lift, pitch = turn_foot(swings[(leg, side)], t)
+            a, lift, pitch = turn_paw(t, plan, (leg, side))
             rel = heads[paw] - PIVOT
             pos = PIVOT + Matrix.Rotation(sign * (a - y), 4, 'Z') @ rel + V((0, 0, TURN_LIFT[leg] * lift))
-            # Swinging paws arc outward instead of sliding straight to the next spot, and the shoulder lifts with them.
-            outward = (pos - PIVOT); outward.z = 0; outward = outward.normalized() * .02 * lift
+            outward = pos - PIVOT; outward.z = 0; outward = outward.normalized() * .025 * lift
             pos = pos + outward
             L = P['legs'][(leg, side)]; L['dx'], L['dy'], L['dz'], L['pitch'] = (pos - heads[paw]).x, (pos - heads[paw]).y, (pos - heads[paw]).z, pitch
-            L['root_dz'] = (.012 if leg == 'Front' else .008) * lift
+            L['root_dz'] = (.014 if leg == 'Front' else .009) * lift
     return P
 
 TURNS = []
-for degrees, D in ((45, 1.15), (90, 1.7)):
+for degrees in (45, 90):
     for side, sign in (('L', 1), ('R', -1)):
-        theta = math.radians(degrees); swings = turn_schedule(theta, D, sign)
-        TURNS.append((f'turn{side}{degrees}', D, (lambda th, sg, sw: lambda t, D: turn(t, D, th, sg, sw))(theta, sign, swings)))
+        theta = math.radians(degrees); plan, D = turn_plan(theta, sign)
+        TURNS.append((f'turn{side}{degrees}', round(D, 2), (lambda th, sg, pl: lambda t, D: turn(t, D, th, sg, pl))(theta, sign, plan)))
 
 CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 2.4, settle), ('sleep', 6.0, sleep), ('wake', 1.5, wake), ('happy', 4.0, happy),
          ('sit', 1.8, sit), ('sitidle', 6.0, sitidle), ('stand', 1.4, stand), ('jumpup', 1.5, jumpup), ('jumpdown', 1.3, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
@@ -737,12 +727,24 @@ for side, sign in (('L', 1), ('R', -1)):
     centre = sum((mesh.data.vertices[i].co for i in verts), Vector()) / len(verts)
     normal = sum((p.normal * p.area for p in polys), Vector()).normalized()
     eye_islands[side] = (centre, normal)
-    # The old eye polygons become the socket floor: recessed into the head so the eyeball sits in a hollow.
-    for i in verts: mesh.data.vertices[i].co -= mesh.data.vertices[i].normal * .003
+    # The middle of the old eye island becomes the socket floor; its outer ring stays as the eyelids that frame the eye.
+    for i in verts:
+        v = mesh.data.vertices[i]; d = (v.co - centre).length
+        v.co -= v.normal * .0035 * (1 - smooth((d - .009) / .006))
 mesh.data.materials.append(face_material); face_index = len(mesh.data.materials) - 1
 for polygon in mesh.data.polygons:
     votes = sum(1 for i in polygon.vertices if dominant_group(mesh.data.vertices[i]) in FACE_GROUPS)
     if polygon.material_index == 1 or votes * 2 >= len(polygon.vertices): polygon.material_index = face_index
+# The outside of the ears shares atlas texels with the pink inside and came out skin-coloured; it gets a plain
+# black material with no texture at all.
+ear_back = bpy.data.materials.new('Blue ear back'); ear_back.use_nodes = True
+ear_bsdf = ear_back.node_tree.nodes['Principled BSDF']
+ear_bsdf.inputs['Base Color'].default_value = (.035, .032, .04, 1); ear_bsdf.inputs['Roughness'].default_value = .85
+mesh.data.materials.append(ear_back); ear_index = len(mesh.data.materials) - 1
+ear_groups_ids = {group_index[n] for n in ('Ear.L', 'Ear.R') if n in group_index}
+for polygon in mesh.data.polygons:
+    weight = sum(g.weight for i in polygon.vertices for g in mesh.data.vertices[i].groups if g.group in ear_groups_ids) / len(polygon.vertices)
+    if weight > .5 and polygon.normal.y > -.15: polygon.material_index = ear_index
 
 # ---------------------------------------------------------------- eyeballs
 # Real eyes: two smooth spheres parented to the head bone, each with a 512² generated iris (amber gradient,
@@ -752,11 +754,11 @@ yy, xx = np.mgrid[0:IR, 0:IR]; u_ = (xx + .5) / IR; v_ = (yy + .5) / IR
 theta = (1 - v_) * math.pi; phi = u_ * 2 * math.pi   # theta 0 at the +Z pole, which faces out of the head
 tx, ty = theta * np.cos(phi), theta * np.sin(phi)
 IRIS_R = .95; t = np.clip(theta / IRIS_R, 0, 1.2)
-inner, outer, ring = np.array([.92, .62, .22]), np.array([.62, .32, .08]), np.array([.16, .07, .03])
+inner, outer, ring = np.array([.95, .66, .22]), np.array([.70, .38, .10]), np.array([.14, .06, .03])
 fibres = 1 + .10 * np.sin(phi * 48 + 3 * np.sin(phi * 7)) * np.clip((t - .15) / .5, 0, 1) * np.clip(1 - t, 0, 1)
 colour = (inner[None, None, :] * (1 - np.clip(t, 0, 1))[..., None] + outer[None, None, :] * np.clip(t, 0, 1)[..., None]) * fibres[..., None]
 ring_mix = np.clip((t - .78) / .12, 0, 1)[..., None]; colour = colour * (1 - ring_mix) + ring[None, None, :] * ring_mix
-pupil = np.clip((1 - ((tx / .16) ** 2 + (ty / .6) ** 2)) * 6, 0, 1)[..., None]  # dilated for the dim hall
+pupil = np.clip((1 - ((tx / .58) ** 2 + (ty / .66) ** 2)) * 8, 0, 1)[..., None]  # big, round and dark: dilated in the dim hall
 colour = colour * (1 - pupil) + np.array([.01, .01, .012])[None, None, :] * pupil
 outside = np.clip((t - 1.0) / .04, 0, 1)[..., None]; colour = colour * (1 - outside) + np.array([.03, .028, .03])[None, None, :] * outside
 iris = bpy.data.images.new('BlueIris', IR, IR, alpha=False)
@@ -769,7 +771,7 @@ etex = eyeball_material.node_tree.nodes.new('ShaderNodeTexImage'); etex.image = 
 eyeball_material.node_tree.links.new(etex.outputs['Color'], ebsdf.inputs['Base Color'])
 ebsdf.inputs['Roughness'].default_value = .2
 if 'Coat Weight' in ebsdf.inputs: ebsdf.inputs['Coat Weight'].default_value = 1.0
-EYE_RADIUS = .016
+EYE_RADIUS = .0185
 eye_objects = []
 for side, (centre, normal) in eye_islands.items():
     bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=20, radius=EYE_RADIUS, location=(0, 0, 0))
@@ -777,7 +779,7 @@ for side, (centre, normal) in eye_islands.items():
     bpy.ops.object.shade_smooth()
     eye.data.materials.append(eyeball_material)
     z = normal.normalized(); y = (V((0, 0, 1)) - z * z.z).normalized(); x = y.cross(z)
-    placement = Matrix.Translation(centre - normal * .009) @ Matrix((x, y, z)).transposed().to_4x4()
+    placement = Matrix.Translation(centre - normal * .0105) @ Matrix((x, y, z)).transposed().to_4x4()
     eye.parent = arm; eye.parent_type = 'BONE'; eye.parent_bone = 'Head'
     eye.matrix_world = placement
     eye_objects.append(eye)

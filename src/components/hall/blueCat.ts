@@ -1011,7 +1011,7 @@ export class BlueCat {
     this.ground = THREE.MathUtils.damp(this.ground, settled, 14, dt);
     this.seatGround = THREE.MathUtils.damp(this.seatGround, seated, 14, dt);
     this.perchGround = THREE.MathUtils.damp(this.perchGround, perched, 14, dt);
-    for (const eye of this.eyeballs) eye.node.position.copy(eye.rest).addScaledVector(eye.axis, -this.blink * .014);
+    for (const eye of this.eyeballs) eye.node.position.copy(eye.rest).addScaledVector(eye.axis, -this.blink * .017);
     for (const mesh of this.eyelids) {
       const dict = mesh.morphTargetDictionary, influences = mesh.morphTargetInfluences;
       if (!dict || !influences) continue;

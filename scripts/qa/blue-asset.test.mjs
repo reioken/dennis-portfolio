@@ -71,7 +71,7 @@ test('morph targets keep their names and order, the materials and eyeballs exist
   assert.deepEqual(mesh.getExtras().targetNames, MORPHS);
   for (const primitive of mesh.listPrimitives()) assert.equal(primitive.listTargets().length, MORPHS.length);
   const materials = root.listMaterials().map(m => m.getName());
-  for (const name of ['Blue amber eyeball', 'Blue face', 'Material_0']) assert.ok(materials.includes(name), name);
+  for (const name of ['Blue amber eyeball', 'Blue face', 'Blue ear back', 'Material_0']) assert.ok(materials.includes(name), name);
   const nodes = root.listNodes().map(n => n.getName());
   for (const eye of ['Eye.L', 'Eye.R']) {
     const node = root.listNodes().find(n => n.getName() === eye);
