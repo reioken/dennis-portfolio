@@ -194,6 +194,7 @@ export class BlueCat {
     this.shadow = new THREE.Mesh(new THREE.PlaneGeometry(.48, .78), new THREE.MeshBasicMaterial({ map: shadowMap, transparent: true, depthWrite: false, toneMapped: false }));
     this.shadow.rotation.x = -Math.PI / 2;
     this.root.add(this.shadow);
+    const fur = this.furGrain();
     gltf.scene.traverse(node => {
       const mesh = node as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -203,16 +204,20 @@ export class BlueCat {
         const m = mat as THREE.MeshPhysicalMaterial;
         const eyes = /amber/i.test(m.name);
         m.metalness = 0;
-        m.roughness = eyes ? .32 : .8;
-        m.envMapIntensity = eyes ? 1.3 : .8;
-        if (m.normalScale) m.normalScale.setScalar(eyes ? .3 : .35);
+        m.roughness = eyes ? .32 : .82;
+        m.envMapIntensity = eyes ? 1.3 : .9;
+        if (!eyes) {
+          // The coat albedo is an even black; fur structure comes from a fine tiled grain normal and the velvet sheen.
+          m.normalMap = fur;
+          m.normalScale.set(.32, .32);
+        } else if (m.normalScale) m.normalScale.setScalar(.3);
         if (m.isMeshPhysicalMaterial) {
-          // Velvet response lets the black coat read as fur under the rect lights instead of a flat silhouette.
-          m.sheen = eyes ? 0 : .55;
-          m.sheenRoughness = .6;
-          m.sheenColor.setRGB(.36, .34, .44);
-          m.specularIntensity = eyes ? 1 : .35;
+          m.sheen = eyes ? 0 : .7;
+          m.sheenRoughness = .62;
+          m.sheenColor.setRGB(.40, .37, .48);
+          m.specularIntensity = eyes ? 1 : .32;
         }
+        m.needsUpdate = true;
         for (const value of Object.values(m)) if (value instanceof THREE.Texture) { value.anisotropy = 8; this.textures.add(value); }
       }
     });
@@ -332,6 +337,46 @@ export class BlueCat {
 
   private length(name: string) {
     return this.actions.get(name)?.getClip().duration ?? 1;
+  }
+
+  /**
+   * Fine fur grain as a tiling tangent-space normal map: two octaves of hashed noise, stretched 2:1 so it reads as
+   * hair rather than sand, converted to normals from its gradients. Tiled seven times over the atlas.
+   */
+  private furGrain() {
+    const size = 256, canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d')!, image = ctx.createImageData(size, size);
+    const hash = (x: number, y: number, seed: number) => { const v = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453; return v - Math.floor(v); };
+    const smooth = (t: number) => t * t * (3 - 2 * t);
+    const noise = (x: number, y: number, seed: number) => {
+      const x0 = Math.floor(x), y0 = Math.floor(y), fx = smooth(x - x0), fy = smooth(y - y0);
+      const wrap = (v: number, n: number) => ((v % n) + n) % n;
+      const a = hash(wrap(x0, size), wrap(y0, size), seed), b = hash(wrap(x0 + 1, size), wrap(y0, size), seed);
+      const c = hash(wrap(x0, size), wrap(y0 + 1, size), seed), d = hash(wrap(x0 + 1, size), wrap(y0 + 1, size), seed);
+      return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+    };
+    const height = new Float32Array(size * size);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      // Stretched along y so the grain reads as strands; two octaves keep it from looking like a grid.
+      height[y * size + x] = noise(x * .3, y * .1, 1) * .7 + noise(x * .7, y * .24, 2) * .3;
+    }
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const at = (dx: number, dy: number) => height[((y + dy + size) % size) * size + (x + dx + size) % size];
+      const gx = (at(1, 0) - at(-1, 0)) * 1.4, gy = (at(0, 1) - at(0, -1)) * 1.4;
+      const length = Math.hypot(gx, gy, 1), i = (y * size + x) * 4;
+      image.data[i] = Math.round((-gx / length * .5 + .5) * 255);
+      image.data[i + 1] = Math.round((-gy / length * .5 + .5) * 255);
+      image.data[i + 2] = Math.round((1 / length * .5 + .5) * 255);
+      image.data[i + 3] = 255;
+    }
+    ctx.putImageData(image, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(7, 7);
+    texture.anisotropy = 8;
+    this.textures.add(texture);
+    return texture;
   }
 
   private makeBasket() {

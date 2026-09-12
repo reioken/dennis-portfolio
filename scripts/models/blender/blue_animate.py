@@ -686,11 +686,11 @@ pink = (img[:, :, 0] > img[:, :, 2] + .06) & (img[:, :, 0] > img[:, :, 1]) & (lu
 keep = np.maximum(eye, inner_ear * pink)
 coat = 1 - keep
 m3 = coat[:, :, None]
-soft = blur(img * m3, 9) / np.maximum(blur(m3, 9), 1e-4)
-flat = np.array([.075, .068, .078], dtype=np.float32)
-grey = soft @ np.array([.2126, .7152, .0722], dtype=np.float32)
-tone = flat[None, None, :] * (0.55 + 0.45 * np.clip(grey / .12, 0, 2))[:, :, None]
-clean = img * (1 - m3) + (0.35 * soft + 0.65 * tone) * m3
+# The coat is one even, deep, slightly cool black. Any trace of the Meshy atlas (its island blotches and warm
+# specks) read as dirt on a black cat; the fur structure comes from the runtime's tiled grain normal and the
+# velvet sheen, not from the albedo.
+flat = np.array([.040, .037, .046], dtype=np.float32)
+clean = img * (1 - m3) + flat[None, None, :] * m3
 out = np.ones((S, S, 4), dtype=np.float32); out[:, :, :3] = np.clip(clean, 0, 1)
 cleaned = bpy.data.images.new('BlueCoatClean', S, S, alpha=False)
 cleaned.pixels.foreach_set(out.ravel()); cleaned.pack()
@@ -698,8 +698,13 @@ cleaned.filepath_raw = str(WORK / 'blue-coat-clean.png'); cleaned.file_format = 
 for mat in mesh.data.materials:
     for node in mat.node_tree.nodes:
         if node.type == 'TEX_IMAGE' and node.image == src: node.image = cleaned
-normal = bpy.data.images['Image_2']
-if normal.size[0] > 1024: normal.scale(1024, 1024)
+# The Meshy normal map is noise on a black coat (sparkle under the hall's rect lights); the runtime tiles its
+# own fine fur-grain normal instead, so the material carries no normal texture at all.
+for mat in mesh.data.materials:
+    for link in list(mat.node_tree.links):
+        if link.to_socket.name == 'Normal' and link.to_node.type == 'BSDF_PRINCIPLED': mat.node_tree.links.remove(link)
+    for node in [n for n in mat.node_tree.nodes if n.type == 'NORMAL_MAP' or (n.type == 'TEX_IMAGE' and n.image and n.image.name == 'Image_2')]:
+        mat.node_tree.nodes.remove(node)
 
 bpy.context.view_layer.update()
 bpy.ops.file.pack_all()
