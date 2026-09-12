@@ -1,6 +1,6 @@
 ## Current handover
 
-Read [HANDOVER-CLAUDE-FABLE.md](HANDOVER-CLAUDE-FABLE.md) before continuing work. It records the current released site, user decisions, model/portrait sources, QA, known issues and deployment workflow. The September 10 handover is historical and contains superseded states.
+Read [HANDOVER-NEXT-AGENT.md](HANDOVER-NEXT-AGENT.md) first: it states what Dennis is unhappy with, what has been tried, what we want, and that your first task is a deep live analysis before any change. Then [HANDOVER-CLAUDE-FABLE.md](HANDOVER-CLAUDE-FABLE.md) for the site-wide state, deployment workflow and older decisions, and `docs/research/blue-cat.md` for the full technical record. The September 10 handover is historical.
 
 ## Development
 
