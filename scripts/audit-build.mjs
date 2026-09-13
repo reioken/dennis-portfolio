@@ -75,7 +75,7 @@ for (const file of marketingFiles) {
     failures.push(`${relative}: canonical missing`);
   }
   // The standalone English product landing has no translated counterpart.
-  const standaloneEnglish = ['lowlight/index.html', 'nexus/index.html'].includes(relative) && /<html\b[^>]*lang="en"/.test(html);
+  const standaloneEnglish = ['lowlight/index.html', 'nexus/index.html', 'rarer/index.html'].includes(relative) && /<html\b[^>]*lang="en"/.test(html);
   if (!standaloneEnglish && (!/hreflang="de"/.test(html) || !/hreflang="en"/.test(html))) {
     failures.push(`${relative}: hreflang pair missing`);
   }

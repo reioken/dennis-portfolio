@@ -1,0 +1,344 @@
+{
+  "provider": "PixelLab",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "footAnchor": {
+    "y": 48,
+    "x": 32
+  },
+  "images": {
+    "idle": "v5/mole-idle.png",
+    "climb": "v5/mole-climb.png",
+    "celebrate": "v5/mole-celebrate.png",
+    "recoil": "v5/mole-recoil.png",
+    "swing": "v5/mole-swing.png",
+    "walk": "v5/mole-walk.png",
+    "terrain": "v8/rock-fill.png",
+    "lantern": "v2/lantern.png",
+    "ore": "v2/ore.png",
+    "amethyst": "v2/amethyst.png",
+    "diamond": "v2/diamond.png",
+    "cave-back": "v8/cave-fill.png",
+    "rock-lip": "v4/rock-lip.png",
+    "horizon": "v4/horizon.png",
+    "horizon-dark": "v4/horizon-dark.png",
+    "entrance": "v5/entrance.png",
+    "ladder": "v5/ladder.png",
+    "track": "v6/track.png",
+    "support": "v5/support.png",
+    "cart": "v5/cart.png",
+    "rocks": "v5/rocks.png",
+    "track-start": "v6/track-start.png",
+    "track-tile": "v6/track-tile.png",
+    "track-end": "v6/track-end.png",
+    "hatch": "v5/hatch.png",
+    "track-bed-0": "v6/track-bed-0.png",
+    "track-bed-1": "v6/track-bed-1.png",
+    "track-bed-2": "v6/track-bed-2.png",
+    "house": "v10/house.png",
+    "pack-rear": "v10/pack-rear.png",
+    "pack-side": "v10/pack-side.png",
+    "house-front": "v10/house-front.png",
+    "pile-rocks": "v10/pile-rocks.png",
+    "pile-ore": "v10/pile-ore.png",
+    "pile-amethyst": "v10/pile-amethyst.png",
+    "pile-diamond": "v10/pile-diamond.png"
+  },
+  "animations": {
+    "idle": {
+      "loop": true,
+      "frames": [
+        {
+          "duration": 420,
+          "index": 0
+        },
+        {
+          "duration": 130,
+          "index": 1
+        },
+        {
+          "duration": 130,
+          "index": 2
+        },
+        {
+          "duration": 160,
+          "index": 3
+        },
+        {
+          "duration": 300,
+          "index": 4
+        }
+      ]
+    },
+    "climb": {
+      "loop": true,
+      "frames": [
+        {
+          "duration": 80,
+          "index": 1
+        },
+        {
+          "duration": 80,
+          "index": 2
+        },
+        {
+          "duration": 80,
+          "index": 3
+        },
+        {
+          "duration": 80,
+          "index": 4
+        },
+        {
+          "duration": 80,
+          "index": 5
+        },
+        {
+          "duration": 80,
+          "index": 6
+        },
+        {
+          "duration": 80,
+          "index": 7
+        },
+        {
+          "duration": 80,
+          "index": 8
+        }
+      ]
+    },
+    "celebrate": {
+      "loop": false,
+      "frames": [
+        {
+          "duration": 68,
+          "index": 0
+        },
+        {
+          "duration": 68,
+          "index": 1
+        },
+        {
+          "duration": 68,
+          "index": 2
+        },
+        {
+          "duration": 68,
+          "index": 3
+        },
+        {
+          "duration": 68,
+          "index": 4
+        },
+        {
+          "duration": 68,
+          "index": 5
+        },
+        {
+          "duration": 68,
+          "index": 6
+        },
+        {
+          "duration": 68,
+          "index": 7
+        },
+        {
+          "duration": 68,
+          "index": 8
+        }
+      ]
+    },
+    "recoil": {
+      "loop": false,
+      "frames": [
+        {
+          "duration": 50,
+          "index": 0
+        },
+        {
+          "duration": 90,
+          "index": 1
+        },
+        {
+          "duration": 110,
+          "index": 2
+        },
+        {
+          "duration": 95,
+          "index": 3
+        },
+        {
+          "duration": 75,
+          "index": 4
+        }
+      ]
+    },
+    "swing": {
+      "loop": false,
+      "frames": [
+        {
+          "duration": 45,
+          "index": 0
+        },
+        {
+          "duration": 50,
+          "index": 1
+        },
+        {
+          "duration": 80,
+          "index": 2
+        },
+        {
+          "duration": 65,
+          "index": 3
+        },
+        {
+          "duration": 40,
+          "index": 4
+        },
+        {
+          "duration": 55,
+          "index": 5
+        },
+        {
+          "duration": 60,
+          "index": 6
+        },
+        {
+          "duration": 45,
+          "index": 7
+        },
+        {
+          "duration": 55,
+          "index": 8
+        }
+      ],
+      "impactAt": 315
+    },
+    "walk": {
+      "loop": true,
+      "frames": [
+        {
+          "duration": 50,
+          "index": 1
+        },
+        {
+          "duration": 50,
+          "index": 2
+        },
+        {
+          "duration": 50,
+          "index": 3
+        },
+        {
+          "duration": 50,
+          "index": 4
+        },
+        {
+          "duration": 50,
+          "index": 5
+        },
+        {
+          "duration": 50,
+          "index": 6
+        },
+        {
+          "duration": 50,
+          "index": 7
+        },
+        {
+          "duration": 50,
+          "index": 8
+        }
+      ]
+    }
+  },
+  "cartFootAnchor": {
+    "y": 32,
+    "x": 18
+  },
+  "geology": {
+    "panelWidth": 512,
+    "panelHeight": 384,
+    "walkFoot": 48,
+    "cartFoot": 32,
+    "trackOffset": 14,
+    "entranceFoot": 38,
+    "seamless": true
+  },
+  "standOff": 20,
+  "props": {
+    "cart": {
+      "anchorX": 18,
+      "foot": 32,
+      "frontY": 12,
+      "height": 36,
+      "width": 36
+    },
+    "entrance": {
+      "anchorX": 30,
+      "foot": 38,
+      "height": 48,
+      "width": 60
+    },
+    "ladder": {
+      "footHeight": 8,
+      "footY": 56,
+      "head": 12,
+      "paddingBottom": 2,
+      "repeatHeight": 8,
+      "repeatY": 12,
+      "width": 20
+    },
+    "support": {
+      "footHeight": 10,
+      "footY": 36,
+      "head": 24,
+      "height": 46,
+      "paddingBottom": 1,
+      "repeatHeight": 6,
+      "repeatY": 24,
+      "top": 1,
+      "width": 27
+    },
+    "track": {
+      "frontRail": 11,
+      "offset": 3,
+      "tileWidth": 16,
+      "bedOffset": 7
+    },
+    "house": {
+      "width": 96,
+      "height": 80,
+      "anchorX": 48,
+      "foot": 74,
+      "top": 3,
+      "doorX": 34,
+      "pileX": 100,
+      "bounds": {
+        "bottom": 76,
+        "left": 7,
+        "right": 88,
+        "top": 3
+      }
+    },
+    "pack": {
+      "height": 24,
+      "width": 24
+    },
+    "pile": {
+      "amethyst": {
+        "top": 0
+      },
+      "diamond": {
+        "top": 2
+      },
+      "ore": {
+        "top": 0
+      },
+      "rocks": {
+        "top": 1
+      }
+    }
+  }
+}
