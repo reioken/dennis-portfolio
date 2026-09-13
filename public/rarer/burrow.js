@@ -1,5 +1,5 @@
-import {drawMaterial} from './terrain.js?v=2e123f57933a';
-import {drawPixelText,pixelTextWidth} from './pixel-type.js?v=2e123f57933a';
+import {drawMaterial} from './terrain.js?v=a55994f72823';
+import {drawPixelText,pixelTextWidth} from './pixel-type.js?v=a55994f72823';
 // Height keeps growing; the outdoor plot keeps the home and ruler together.
 export const pileHeight=points=>points>0?5+Math.sqrt(points/8):0;
 export const pointsAtHeight=height=>height<=5?0:8*(height-5)**2;
