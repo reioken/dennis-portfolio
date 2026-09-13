@@ -19,8 +19,8 @@ const BOUNDS = { minX: -2.05, maxX: 40, minZ: .12, maxZ: 1.5 };
 /** The claw cabinet: top surface, its front edge, where Blue takes off, lands and lies (root-local, station 0 at x 0). */
 /** The lying spot keeps the marquee's front face (z .42) .25 m ahead of the body origin, which is where the perch clip puts the elbows and wrists. */
 const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, .80), landing: new THREE.Vector3(0, 1.95, .17), spot: new THREE.Vector3(0, 1.95, .17) };
-/** Sitting spot beside a cabinet: in the gap in front of the arcades, on the side Blue arrives from. */
-const STATION_LANE_Z = .8, STATION_SIDE_X = .92;
+/** Sitting spot at a cabinet: on the lane in front of it, a hand's width off centre towards the side Blue arrives from. */
+const STATION_LANE_Z = .8, STATION_SIDE_X = .12;
 /** Metres per second the in-place walk clip covers at time scale 1 (37 cm stride over a 1.1 s cycle; the roam plays it at 0.62 as a slow prowl). */
 const STRIDE_SPEED = .34;
 const ROAM_SPEED = .21, TRAVEL_SPEED = .34;
@@ -221,13 +221,24 @@ export class BlueCat {
         const m = mat as THREE.MeshPhysicalMaterial;
         // v4 (one Meshy PBR material) keeps its own maps; v2 had three: the eyeballs (glossy, coated), the face (its
         // cleaned sculpt normal map) and the body coat (even black with the tiled fur grain).
-        const v4 = /v4/i.test(m.name), eyes = /amber/i.test(m.name), face = /face/i.test(m.name);
+        const v4 = /coat v\d+/i.test(m.name), eyes = /amber/i.test(m.name), face = /face/i.test(m.name);
         m.metalness = 0;
         m.roughness = eyes ? .2 : face ? .8 : .82;
         m.envMapIntensity = eyes ? 1.0 : .9;
         if (v4) {
+          // Fur, not plastic: fully matte, the painted fur normal map at full strength, a soft velvet rim, almost no
+          // specular and a dim environment reflection.
           this.coat = m; this.openMap = m.map;
-          if (m.normalMap) m.normalScale.set(.7, .7);
+          // Meshy's roughness map sits around 0.55 and multiplies the factor, which is where the plastic gloss came
+          // from at the About close-up; the coat is uniformly matte instead.
+          m.roughnessMap = null; m.metalnessMap = null;
+          m.roughness = .94;
+          m.envMapIntensity = .3;
+          // The Meshy normal map is nearly flat on the stylised mesh; the tiled fur grain gives the surface its hair
+          // direction instead (finer than on the old coat, stronger, so it reads at the About close-up).
+          fur.repeat.set(14, 14);
+          m.normalMap = fur;
+          m.normalScale.set(.9, .9);
         } else if (eyes) {
           m.clearcoat = 1; m.clearcoatRoughness = .12;
         } else if (face) {
@@ -237,18 +248,20 @@ export class BlueCat {
           m.normalScale.set(.32, .32);
         }
         if (m.isMeshPhysicalMaterial) {
-          m.sheen = eyes ? 0 : face ? .55 : .7;
-          m.sheenRoughness = .62;
+          m.sheen = eyes ? 0 : v4 ? .55 : face ? .55 : .7;
+          m.sheenRoughness = v4 ? .85 : .62;
           m.sheenColor.setRGB(.40, .37, .48);
-          m.specularIntensity = eyes ? 1 : .32;
+          m.specularIntensity = eyes ? 1 : v4 ? .08 : .32;
         }
         m.needsUpdate = true;
         for (const value of Object.values(m)) if (value instanceof THREE.Texture) { value.anisotropy = 8; this.textures.add(value); }
       }
     });
     if (this.coat && this.openMap) {
-      // The closed-eye base colour is the same atlas with the lids painted shut; it shares the glTF UV convention.
-      new THREE.TextureLoader().load('/models/blue-v4-closed.webp', texture => {
+      // The closed-eye base colour is the same atlas with the lids painted shut; it shares the glTF UV convention and
+      // is versioned with the material (`Blue coat v5` → `blue-v5-closed.webp`).
+      const version = this.coat.name.match(/v\d+/)?.[0] ?? 'v4';
+      new THREE.TextureLoader().load(`/models/blue-${version}-closed.webp`, texture => {
         texture.colorSpace = THREE.SRGBColorSpace; texture.flipY = false; texture.anisotropy = 8;
         this.closedMap = texture; this.textures.add(texture);
       });

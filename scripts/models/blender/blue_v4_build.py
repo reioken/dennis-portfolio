@@ -189,10 +189,17 @@ if base_image is not None:
     # limited to the upper front of the head.
     lum = col @ np.array([.2126, .7152, .0722])
     pink = (col[:, 0] > col[:, 1] + .08) & (col[:, 0] > col[:, 2] - .02) & (col[:, 1] < .45)
-    amber = (lum > .22) & ~pink & (co[:, 1] < config['nose_y'] + .16) & (co[:, 2] > H * .62) & (np.abs(co[:, 0]) > .012) & (np.abs(co[:, 0]) < .07)
+    # iris texels are amber: red over green over a small blue; pale inner-ear highlights have blue close to red and
+    # sit above the eye line, so the band is capped below the ear bases (the fur build's ears once passed as eyes)
+    hue = (col[:, 0] > col[:, 1]) & (col[:, 2] < col[:, 0] * .5)
+    amber = (lum > .15) & hue & ~pink & (co[:, 1] < config['nose_y'] + .16) & (co[:, 2] > H * .62) & (co[:, 2] < H * .86) & (np.abs(co[:, 0]) > .012) & (np.abs(co[:, 0]) < .07)
     eyes = {}
     for side, sx in (('L', 1), ('R', -1)):
         sel = amber & (np.sign(co[:, 0]) == sx)
+        if sel.sum() < 6 and ('L' if sx < 0 else 'R') in eyes:
+            # too few iris texels on this side: mirror the other eye and take the vertices around the mirrored centre
+            m = np.array(eyes['L' if sx < 0 else 'R']['centre']) * np.array([-1, 1, 1]); sel = np.linalg.norm(co - m, axis=1) < .012
+            print('BLUE_V4_EYE_MIRRORED', side, int(sel.sum()), flush=True)
         if sel.sum() < 6: continue
         # keep the dense cluster around the median (stray bright texels elsewhere on the head would inflate the radius)
         for _ in range(3):

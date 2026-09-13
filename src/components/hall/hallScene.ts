@@ -658,7 +658,7 @@ export class HallScene {
     this.initialFocus = initial;
     items.forEach((it, i) => this.addMachine(it, i));
     const blueDone = this.track(initial);
-    this.gltf.load('/models/blue-rigged-v4.glb', gltf => {
+    this.gltf.load('/models/blue-rigged-v5.glb', gltf => {
       if (!this.disposed) {
         this.blue = new BlueCat(gltf, container, this.stationX[0]);
         this.scene.add(this.blue.root);

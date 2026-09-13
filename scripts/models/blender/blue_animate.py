@@ -23,9 +23,10 @@ ROOT = Path(__file__).resolve().parents[3]
 WORK = ROOT / '.source-assets/blue/v3'
 import os as _os
 V4 = _os.environ.get('BLUE_V4') == '1'
+VERSION = _os.environ.get('BLUE_VERSION', 'v4')  # asset/material version for the Meshy-mesh pipeline
 MASTER = Path(_os.environ['BLUE_MASTER']) if V4 else WORK / 'blue-rigged-master.blend'
-OUT_BLEND = WORK / ('blue-animated-v4.blend' if V4 else 'blue-animated-v2.blend')
-OUT_GLB = WORK / ('blue-rigged-v4.glb' if V4 else 'blue-rigged-v2.glb')
+OUT_BLEND = WORK / (f'blue-animated-{VERSION}.blend' if V4 else 'blue-animated-v2.blend')
+OUT_GLB = WORK / (f'blue-rigged-{VERSION}.glb' if V4 else 'blue-rigged-v2.glb')
 FPS = 30
 
 bpy.ops.wm.open_mainfile(filepath=str(MASTER))
@@ -111,8 +112,10 @@ HIND_SIT = ((.085, .05, .023), (0, 1, -.15))
 # (2 cm back, skin on the surface), the wrist crosses the edge 4 cm below it and the paws curl down by
 # unequal amounts, so the weight visibly sits on the chest and elbows instead of on two straight legs.
 EDGE_Y = -.25
-FRONT_HANG = ((.062, -.30, -.04), (0, .3, -1))
-HANG_SIDE = {'L': {'dy': 0., 'dz': 0., 'pitch': .75}, 'R': {'dy': .006, 'dz': -.008, 'pitch': .55}}
+# Only the paws look over the lip (Dennis): the forelegs lie on the top, the wrists rest at the edge and the paws curl
+# just past it, 1.5 cm below the top instead of hanging 7.5 cm down.
+FRONT_HANG = ((.062, -.262, -.015), (0, .3, -1))
+HANG_SIDE = {'L': {'dy': 0., 'dz': 0., 'pitch': .8}, 'R': {'dy': .005, 'dz': -.004, 'pitch': .62}}
 
 def base():
     return {
@@ -663,7 +666,11 @@ for key, pose, skip in (('BlueGround', sleep(0, 6.0), FACE), ('BlueSit', sitidle
         for g in v.groups: matrix += skin[groups[g.group]] * g.weight
         posed = matrix @ v.co
         if posed.z < .002:
-            cv.co += matrix.to_3x3().inverted_safe() @ V((0, 0, .002 - posed.z)); lifted[key] += 1
+            # A vertex whose blended skin matrix is near-singular would get an enormous lift from the inverse (the
+            # v5 sit exploded into shards this way); such vertices are left alone.
+            lift = matrix.to_3x3().inverted_safe() @ V((0, 0, .002 - posed.z))
+            if lift.length > .3 or abs(matrix.to_3x3().determinant()) < 1e-4: continue  # legitimate lifts reach ~12 cm
+            cv.co += lift; lifted[key] += 1
 
 # ---------------------------------------------------------------- bake clips
 arm.animation_data_create()
@@ -873,15 +880,22 @@ if not V4:
             eye_objects.append(cap)
 
 else:
-    # ---------------------------------------------------------------- v4: Meshy PBR textures stay; closed-eye texture
+    # ---------------------------------------------------------------- Meshy-mesh versions: the PBR material stays.
+    # The base colour is kept at 2048², the normal / metallic-roughness maps go to 1024² (the runtime shows the cat
+    # at about 110 px; the About close-up is the only place the maps are seen larger). The closed-eye copy of the base
+    # colour is painted separately by scripts/models/blue-v4-closed-eyes.mjs (8-bit; Blender's float round-trip
+    # crushes the dark fur).
+    base_images = set()
     for mat in mesh.data.materials:
-        if mat: mat.name = 'Blue coat v4'
+        if not mat: continue
+        mat.name = f'Blue coat {VERSION}'
+        if mat.use_nodes:
+            for node in mat.node_tree.nodes:
+                if node.type == 'TEX_IMAGE' and node.image and any(l.to_socket.name == 'Base Color' for l in node.outputs[0].links): base_images.add(node.image.name)
     for img in bpy.data.images:
-        if img.size[0] > 2048 and img.name != 'BlueCoatClosed': img.scale(2048, 2048)
-    closed_src = MASTER.parent / 'blue-v4-closed.png'
-    if closed_src.exists():
-        closed = bpy.data.images.load(str(closed_src)); closed.scale(2048, 2048)
-        closed.filepath_raw = str(WORK / 'blue-v4-closed.webp'); closed.file_format = 'WEBP'; closed.save()
+        if img.name == 'BlueCoatClosed' or img.size[0] == 0: continue
+        target = 2048 if img.name in base_images else 1024
+        if img.size[0] > target: img.scale(target, target)
 
 bpy.context.view_layer.update()
 bpy.ops.file.pack_all()

@@ -1,15 +1,17 @@
 // Paint Blue v4's eyes shut on the 8-bit Meshy atlas by colour key (amber and pale texels, dilated) and write the 2048 WebP the runtime swaps in on a blink.
-// node scripts/models/blue-v4-closed-eyes.mjs   (reads .source-assets/blue/v4/build-gpt/tex-base.jpg and inspect-gpt/normalised.glb)
+// node scripts/models/blue-v4-closed-eyes.mjs <candidate> <version>   e.g. `pixar v5`: reads .source-assets/blue/v4/build-<candidate>/tex-base.jpg
+// and inspect-<candidate>/normalised.glb, writes public/models/blue-<version>-closed.webp
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import sharp from 'sharp';
 import fs from 'node:fs';
+const CAND = process.argv[2] || 'gpt', VER = process.argv[3] || 'v4';
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
-const doc = await io.read('.source-assets/blue/v4/inspect-gpt/normalised.glb');
+const doc = await io.read(`.source-assets/blue/v4/inspect-${CAND}/normalised.glb`);
 const prim = doc.getRoot().listMeshes()[0].listPrimitives()[0];
 const pos = prim.getAttribute('POSITION').getArray(), uv = prim.getAttribute('TEXCOORD_0').getArray();
-const cfg = JSON.parse(fs.readFileSync('.source-assets/blue/v4/build-gpt/rig-config.json', 'utf8'));
-const base = '.source-assets/blue/v4/build-gpt/tex-base.jpg';
+const cfg = JSON.parse(fs.readFileSync(`.source-assets/blue/v4/build-${CAND}/rig-config.json`, 'utf8'));
+const base = `.source-assets/blue/v4/build-${CAND}/tex-base.jpg`;
 const { data, info } = await sharp(base).raw().toBuffer({ resolveWithObject: true });
 const W = info.width, H = info.height, C = info.channels;
 const isAmber = (r, g, b) => r > 110 && g > 55 && b < 90 && r > b + 55;
@@ -40,6 +42,6 @@ let painted = 0;
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (dil[y * W + x]) { const i = (y * W + x) * C; out[i] = fur[0]; out[i + 1] = fur[1]; out[i + 2] = fur[2]; painted++; }
 console.log('amber texels', amberCount, 'painted', painted);
 const png = await sharp(out, { raw: { width: W, height: H, channels: C } }).png().toBuffer();
-fs.writeFileSync('.source-assets/blue/v4/build-gpt/closed-atlas.png', png);
-await sharp(png).resize(2048, 2048).webp({ quality: 90 }).toFile('public/models/blue-v4-closed.webp');
-console.log('closed webp bytes', fs.statSync('public/models/blue-v4-closed.webp').size);
+fs.writeFileSync(`.source-assets/blue/v4/build-${CAND}/closed-atlas.png`, png);
+await sharp(png).resize(2048, 2048).webp({ quality: 90 }).toFile(`public/models/blue-${VER}-closed.webp`);
+console.log('closed webp bytes', fs.statSync(`public/models/blue-${VER}-closed.webp`).size);

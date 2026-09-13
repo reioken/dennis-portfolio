@@ -32,7 +32,7 @@ try {
     const scale = width < 600 ? .75 : 1, shiftX = width < 600 ? .4 : 0, shiftZ = width < 600 ? .05 : 0;
     const world = pos => [pos[0] * scale + shiftX, pos[1] * scale, pos[2] * scale + shiftZ];
     const sitAt = world(seated.pos);
-    assert.ok(Math.abs(Math.abs(sitAt[0] - stationX[2]) - .92) < .08, 'sits beside the cabinet: ' + JSON.stringify(sitAt));
+    assert.ok(Math.abs(Math.abs(sitAt[0] - stationX[2]) - .12) < .08, 'sits in front of the cabinet: ' + JSON.stringify(sitAt));
     assert.ok(Math.abs(sitAt[2] - .8) < .08, 'sits on the lane: ' + JSON.stringify(sitAt));
     await page.waitForTimeout(reduce ? 300 : 2200); await crop(page, tag + 'station');
     report[tag + 'station'] = await state(page);

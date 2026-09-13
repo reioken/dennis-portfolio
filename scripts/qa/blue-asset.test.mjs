@@ -6,9 +6,10 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
-const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v4.glb';
-/** v4 (Meshy multi-view mesh, one PBR material, eyes painted into the coat) has no eyeball or lid nodes. */
-const V4 = /v4/.test(FILE);
+const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v5.glb';
+/** v4 and later (Meshy multi-view mesh, one PBR material, eyes painted into the coat) have no eyeball or lid nodes. */
+const VERSION = FILE.match(/v(\d+)\.glb$/)?.[1];
+const V4 = Number(VERSION) >= 4;
 const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear.R',
   'FrontUpper.L', 'FrontLower.L', 'FrontPaw.L', 'FrontUpper.R', 'FrontLower.R', 'FrontPaw.R',
   'HindUpper.L', 'HindLower.L', 'HindPaw.L', 'HindUpper.R', 'HindLower.R', 'HindPaw.R',
@@ -75,7 +76,7 @@ test('morph targets keep their names and order, the materials and eyeballs exist
   const materials = root.listMaterials().map(m => m.getName());
   const nodes = root.listNodes().map(n => n.getName());
   if (V4) {
-    assert.deepEqual(materials, ['Blue coat v4']);
+    assert.deepEqual(materials, [`Blue coat v${VERSION}`]);
     const coat = root.listMaterials()[0];
     assert.ok(coat.getBaseColorTexture() && coat.getNormalTexture(), 'the coat keeps its base colour and normal maps');
     assert.ok(nodes.length >= 27);

@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, 'C:/Users/denni/Projects/survivorlike/tools')
 from meshy import MeshyClient, image_data_uri, MeshyError, poll_task
 
-ROOT = Path(__file__).resolve().parents[2] / '.source-assets/blue/v4'
+ROOT = Path(__file__).resolve().parent
 REF = ROOT.parent / 'reference' / 'blue-standing-v1.png'
 key = os.environ.get('MESHY_API_KEY', '').strip()
 if not key.startswith('msy_'): raise SystemExit('MESHY_API_KEY missing; nothing was requested.')
@@ -94,6 +94,59 @@ try:
             task = run_task(f'images-{model}', 'image-to-image', dict(ai_model=model, prompt=TURNAROUND, reference_image_urls=[ref],
                             generate_multi_view=True, remove_background=False), 12)
             download_images(task, f'turn-{model}')
+    elif stage == 'style':
+        # Stylised turnarounds: smooth surfaces, no sculpted fur, for a light mesh. Identity from the reference and the
+        # set-B front view Dennis chose.
+        IDENTITY = ('this exact black cat: a stocky British Shorthair build, broad round head with full round cheeks, short muzzle, small '
+                    'black nose, small rounded wide-set ears with pink inside, very large round amber-yellow eyes with big round dark pupils, '
+                    'thick medium-length tail, short sturdy legs, big round paws')
+        STYLES = {
+            'film': ('Stylized 3D animated-film character design of ' + IDENTITY + '. Smooth, clean sculpted surfaces: the black fur is a '
+                     'soft matte surface with a gentle sheen, no individual hairs or fur clumps, appealing simplified shapes, slightly '
+                     'oversized head and eyes. Character turnaround: front, side and back views of the same cat in a neutral standing '
+                     'pose on all fours, plain light grey background, soft even studio lighting without cast shadows, whole body in frame.'),
+            'toy': ('Designer vinyl toy figure of ' + IDENTITY + '. Chunky simplified forms, smooth satin-matte black surface, no fur '
+                    'texture at all, crisp clean silhouette, cute proportions with a big round head. Product turnaround: front, side and '
+                    'back views of the same figure standing on all fours, plain light grey background, soft even studio lighting, whole '
+                    'body in frame.'),
+            'pixar': ('Pixar-style 3D animated feature film character of ' + IDENTITY + '. Appealing rounded shapes, a soft matte velvet '
+                      'fur surface with a gentle soft edge to the silhouette but no individual hairs or clumps, warm subsurface feel, big '
+                      'expressive round amber eyes with a wet highlight, friendly calm expression. Character turnaround: front, side and '
+                      'back views of the same cat in a neutral standing pose on all fours, plain light grey background, soft even studio '
+                      'lighting, whole body in frame.'),
+            'pixar-cute': ('Pixar-style animated film character of ' + IDENTITY + ', pushed cuter: oversized round head, huge round amber '
+                           'eyes with wet highlights, small mouth, plump body, short legs, big soft paws. Soft matte velvet fur without '
+                           'visible hairs, warm appealing shading, friendly expression. Character turnaround: front, side and back views '
+                           'of the same cat in a neutral standing pose on all fours, plain light grey background, soft even studio '
+                           'lighting, whole body in frame.'),
+            'pixar-true': ('Pixar-style animated film character of ' + IDENTITY + ', keeping the real cat\'s proportions faithfully: the '
+                           'broad flat face, full cheeks, small wide-set ears, stocky body. Soft matte velvet fur without visible hairs, '
+                           'warm appealing shading, big amber eyes with a wet highlight, calm expression. Character turnaround: front, '
+                           'side and back views of the same cat in a neutral standing pose on all fours, plain light grey background, '
+                           'soft even studio lighting, whole body in frame.'),
+            'dreamworks': ('Stylized animated-film cat character in the manner of a modern DreamWorks feature, of ' + IDENTITY + '. '
+                           'Elegant appealing shapes, soft matte fur surface without individual hairs, expressive big amber eyes with '
+                           'wet highlights, slightly heroic stance. Character turnaround: front, side and back views of the same cat in '
+                           'a neutral standing pose on all fours, plain light grey background, soft even studio lighting, whole body in frame.'),
+            'game': ('Stylized real-time game character of ' + IDENTITY + '. Low-detail smooth surfaces, the short black fur only suggested '
+                     'by a soft painted texture and a velvet sheen, no modelled hairs, clean readable silhouette, expressive big eyes. '
+                     'Character turnaround: front, side and back views of the same cat in a neutral standing pose on all fours, plain '
+                     'light grey background, soft even studio lighting, whole body in frame.'),
+        }
+        name = sys.argv[2]; refs = [image_data_uri(REF), image_data_uri(ROOT / 'turn-gpt-image-2-0.png')]
+        task = run_task(f'style-{name}', 'image-to-image', dict(ai_model='gpt-image-2', prompt=STYLES[name], reference_image_urls=refs,
+                        generate_multi_view=True, remove_background=False), 12)
+        download_images(task, f'style-{name}')
+    elif stage == 'retexture':
+        # Fur retexture of an existing mesh task: same geometry and UVs, new PBR maps painted from a fur prompt.
+        name = sys.argv[2]; source = load(f'mesh-{name}')['task_id']
+        prompt = os.environ.get('MESHY_TEXTURE_PROMPT') or ('dense short black fur with clearly visible fine individual hairs and soft fur direction '
+                 'flow across the body, matte velvet with a subtle sheen, slightly lighter fur tips catching the light, pink skin inside '
+                 'the ears, small black nose, large round amber-yellow eyes with big round dark pupils and a small bright catchlight, '
+                 'dark paw pads, no white markings')
+        task = run_task(f'retex-{name}', 'retexture', dict(input_task_id=source, text_style_prompt=prompt, enable_original_uv=True,
+                        enable_pbr=True, texture_resolution='2k', ai_model='latest'), 10)
+        download_model(task, f'retex-{name}')
     elif stage == 'text':
         preview = run_task('text-preview', 'text-to-3d', dict(mode='preview', prompt=TEXT_PROMPT, ai_model='latest', ultra_mode=True,
                            should_remesh=True, topology='quad', target_polycount=80000, art_style='realistic', target_formats=['glb'],
@@ -105,10 +158,14 @@ try:
     elif stage == 'mesh':
         name = sys.argv[2]; images = [Path(p) for p in sys.argv[3:]]
         if not 1 <= len(images) <= 4: raise SystemExit('1-4 images')
+        # MESHY_POLYS and MESHY_ULTRA choose the budget: the stylised cat is remeshed to a light quad mesh without ultra
+        # (ultra sculpts fine surface detail, which is where the fur clumps came from).
+        polys = int(os.environ.get('MESHY_POLYS', '80000')); ultra = os.environ.get('MESHY_ULTRA', '1') == '1'
+        tex_prompt = os.environ.get('MESHY_TEXTURE_PROMPT', TEXTURE_PROMPT)
         task = run_task(f'mesh-{name}', 'multi-image-to-3d', dict(image_urls=[image_data_uri(p) for p in images], ai_model='latest',
-                        ultra_mode=True, should_texture=True, enable_pbr=True, texture_resolution='4k', texture_prompt=TEXTURE_PROMPT,
-                        should_remesh=True, topology='quad', target_polycount=80000, save_pre_remeshed_model=True,
-                        target_formats=['glb'], alpha_thumbnail=True, multi_view_thumbnails=True), 40)
+                        ultra_mode=ultra, should_texture=True, enable_pbr=True, texture_resolution='2k' if polys <= 40000 else '4k', texture_prompt=tex_prompt,
+                        should_remesh=True, topology='quad', target_polycount=polys, save_pre_remeshed_model=True,
+                        target_formats=['glb'], alpha_thumbnail=True, multi_view_thumbnails=True), 40 if ultra else 35)
         download_model(task, f'mesh-{name}')
     else:
         raise SystemExit('unknown stage')
