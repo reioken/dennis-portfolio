@@ -1,8 +1,8 @@
-import {findFor,cargoSlot,lootPosition} from './feedback.js?v=859643e99d5c';
-import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=859643e99d5c';
-import {pileHeight} from './progress.js?v=859643e99d5c';
-import {drawMaterial,rebaseTween} from './terrain.js?v=859643e99d5c';
-import {drawBurrow,heapMetrics} from './burrow.js?v=859643e99d5c';
+import {findFor,cargoSlot,lootPosition} from './feedback.js?v=1479d059929f';
+import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=1479d059929f';
+import {pileHeight} from './progress.js?v=1479d059929f';
+import {drawMaterial,rebaseTween} from './terrain.js?v=1479d059929f';
+import {drawBurrow,heapMetrics} from './burrow.js?v=1479d059929f';
 const assetRoot='./assets/one-more-swing/';
 const loadImage=src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Missing art: '+src));img.src=assetRoot+src;});
 const clamp=n=>Math.max(0,Math.min(1,n));
@@ -15,7 +15,7 @@ export class MineScene {
   }
   freshState(){return {x:mineLayout.shaftX-(this.hillside?20:0),y:this.surface??54,edge:mineLayout.initialEdge,cam:0,viewY:0,pose:'idle',facing:1,crack:false,bust:false,reveal:0,revealCount:0,cartX:mineLayout.cartStart,deposit:0,pile:0};}
   async load(){
-    const manifest=await fetch(assetRoot+'v10/manifest.json').then(r=>{if(!r.ok)throw new Error('Missing art manifest');return r.json();});
+    const manifest=await fetch(assetRoot+'v11/manifest.json').then(r=>{if(!r.ok)throw new Error('Missing art manifest');return r.json();});
     await Promise.all(Object.entries(manifest.images).map(async([name,path])=>{this.assets[name]=await loadImage(path);}));
     this.meta=manifest;this.draw();this.ambient();return manifest;
   }
@@ -334,13 +334,13 @@ export class MineScene {
     const img=this.assets.track;if(!img)return;
     const floor=this.floor,start=mineLayout.trackStart,end=this.state.edge-7;
     if(this.meta?.props?.track){
-      const p=this.meta.props.track,count=Math.max(0,Math.floor((end-start-32)/16)),y=floor+p.offset;
+      const p=this.meta.props.track,unit=p.tileWidth,count=Math.max(0,Math.floor((end-start-unit*2)/unit)),y=floor+p.offset;
       if(this.assets['track-bed-0']){
-        for(let i=0;i<count+2;i++)this.sprite(ctx,'track-bed-'+i%3,start+i*16,floor+p.bedOffset);
+        for(let i=0;i<Math.ceil((count+2)*unit/16);i++)this.sprite(ctx,'track-bed-'+i%3,start+i*16,floor+p.bedOffset);
       }
       this.sprite(ctx,'track-start',start,y);
-      for(let i=0;i<count;i++)this.sprite(ctx,'track-tile',start+16+i*16,y);
-      this.sprite(ctx,'track-end',start+(count+1)*16,y);
+      for(let i=0;i<count;i++)this.sprite(ctx,'track-tile',start+unit+i*unit,y);
+      this.sprite(ctx,'track-end',start+(count+1)*unit,y);
       return;
     }
     ctx.save();ctx.beginPath();ctx.rect(start-1,floor+1,end-start+2,20);ctx.clip();
@@ -353,7 +353,7 @@ export class MineScene {
     const settle=t<1?Math.round(Math.sin(t*Math.PI*3)*(1-t)):0;
     const p=this.meta?.props?.cart??{anchorX:16,foot:cartFoot,frontY:10,width:32,height:32};
     this.sprite(ctx,'cart',x-p.anchorX,ground-p.foot);
-    for(const [i,item]of this.haul.slice(-12).entries()){const p=cargoSlot(i,x,ground);this.sprite(ctx,item.asset,p.x-8,p.y-8+settle);if(item.level===3&&!this.reduced.matches)this.sparkle(ctx,p.x,p.y,item.color,now+i*220,8);}
+    for(const [i,item]of this.haul.slice(-12).entries()){const p=cargoSlot(i,x,ground),img=this.assets[item.asset];this.sprite(ctx,item.asset,p.x-img.width/2,p.y-img.height/2+settle);if(item.level===3&&!this.reduced.matches)this.sparkle(ctx,p.x,p.y,item.color,now+i*220,8);}
     if(this.haul.length>12){ctx.fillStyle='#fff2d9';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText('×'+this.haul.length,x,ground-53);}
     // Repaint the hopper's front over the cargo, with its wheels fixed to the rail.
     if(this.assets.cart)ctx.drawImage(this.assets.cart,0,p.frontY,p.width,p.height-p.frontY,Math.round(x-p.anchorX),ground-p.foot+p.frontY,p.width,p.height-p.frontY);

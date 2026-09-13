@@ -1,4 +1,4 @@
-import {tier} from './core.js?v=859643e99d5c';
+import {tier} from './core.js?v=1479d059929f';
 const finds={
   common:{asset:'rocks',name:'Stone',chips:7,color:'#d5a18a',level:0},
   uncommon:{asset:'ore',name:'Ore',chips:9,color:'#75bd8b',level:1},

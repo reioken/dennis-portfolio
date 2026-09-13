@@ -1,4 +1,4 @@
-import {tiers,tier} from './core.js?v=859643e99d5c';
+import {tiers,tier} from './core.js?v=1479d059929f';
 // The catalog rank stays internal. Every step earns a distinct, positive value.
 export const treasureValue=rarity=>(rarity+1)*10;
 export const treasureSum=chain=>chain.reduce((total,a)=>total+treasureValue(a[1]),0);

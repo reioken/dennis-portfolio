@@ -1,5 +1,5 @@
-import {tiers,tier} from './core.js?v=859643e99d5c';
-import {treasureValue} from './rewards.js?v=859643e99d5c';
+import {tiers,tier} from './core.js?v=1479d059929f';
+import {treasureValue} from './rewards.js?v=1479d059929f';
 // Illustrative scores explain the rule; they are not today's answer ratings.
 const gem='<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 2h8v2h2v6h-2v2h-2v2H6v-2H4v-2H2V4h2z"/><path fill="var(--paper)" opacity=".6" d="M5 4h5v2H7v4H5z"/></svg>';
 const ladder='<svg viewBox="0 0 24 28" aria-hidden="true"><path d="M5 2v24M19 2v24M5 6h14M5 13h14M5 20h14" fill="none" stroke="currentColor" stroke-width="3"/><path d="m9 5 3-3 3 3M12 2v11" fill="none" stroke="var(--paper)" stroke-width="2"/></svg>';

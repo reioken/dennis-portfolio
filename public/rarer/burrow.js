@@ -1,4 +1,4 @@
-import {drawMaterial} from './terrain.js?v=859643e99d5c';
+import {drawMaterial} from './terrain.js?v=1479d059929f';
 // Height keeps growing; the outdoor plot keeps the home and ruler together.
 export const pileHeight=points=>points>0?5+Math.sqrt(points/8):0;
 export const pointsAtHeight=height=>height<=5?0:8*(height-5)**2;
@@ -70,8 +70,10 @@ export function drawBurrow(ctx,assets,meta,profile,center,ground,height,view={to
   const house=meta.props.house;if(!house||!assets.house)return;
   const x=Math.round(center-house.anchorX),y=Math.round(ground-house.foot),base=Math.round(ground),left=x+house.pileX,m=heapMetrics(profile.total,height);
   // The same rock material as the mine forms the cutaway's recessed back wall.
-  drawMaterial(ctx,assets['cave-back'],{x:x+14,y:y+26,width:68,height:house.foot-26},{x:0,y:ground-80});
-  ctx.fillStyle='#211c2859';ctx.fillRect(x+14,y+26,68,house.foot-26);
+  if(!house.selfContained){
+    drawMaterial(ctx,assets['cave-back'],{x:x+14,y:y+26,width:68,height:house.foot-26},{x:0,y:ground-80});
+    ctx.fillStyle='#211c2859';ctx.fillRect(x+14,y+26,68,house.foot-26);
+  }
   ctx.drawImage(assets.house,x,y);
   const finds=profile.finds||{},count=types.reduce((n,t)=>n+(finds[t]||0),0);
   if(count>12)m.pile=Math.max(25,m.pile);
