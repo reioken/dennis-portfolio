@@ -1,16 +1,16 @@
-import {treasureValue,treasureSum,baseScore,settlement,challenges} from './rewards.js?v=1479d059929f';
-import {bonusTrackers,rewardReceipt,bonusSummary} from './rewards-view.js?v=1479d059929f';
-import {mountWelcome} from './welcome.js?v=1479d059929f';
-import {visualGuide} from './how-to.js?v=1479d059929f';
-import {categories,tier,sum as oldSum,score as oldScore,assess,missed,shareText} from './core.js?v=1479d059929f';
-import {MineScene} from './scene.js?v=1479d059929f';
-import {BurrowView} from './burrow-view.js?v=1479d059929f';
-import {findFor} from './feedback.js?v=1479d059929f';
-import {mineLayout} from './geology.js?v=1479d059929f';
-import * as legacyProgress from './progress.js?v=1479d059929f';
-import * as dailyProgress from './daily-progress.js?v=1479d059929f';
-import {edition,loadDaily,useDay,utcDay} from './edition.js?v=1479d059929f';
-import {pointsLeft,takePenalty,dailyShare} from './risk.js?v=1479d059929f';
+import {treasureValue,treasureSum,baseScore,settlement,challenges} from './rewards.js?v=2e123f57933a';
+import {bonusTrackers,rewardReceipt,bonusSummary} from './rewards-view.js?v=2e123f57933a';
+import {mountWelcome} from './welcome.js?v=2e123f57933a';
+import {visualGuide} from './how-to.js?v=2e123f57933a';
+import {categories,tier,sum as oldSum,score as oldScore,assess,missed,shareText} from './core.js?v=2e123f57933a';
+import {MineScene} from './scene.js?v=2e123f57933a';
+import {BurrowView} from './burrow-view.js?v=2e123f57933a';
+import {findFor} from './feedback.js?v=2e123f57933a';
+import {mineLayout} from './geology.js?v=2e123f57933a';
+import * as legacyProgress from './progress.js?v=2e123f57933a';
+import * as dailyProgress from './daily-progress.js?v=2e123f57933a';
+import {edition,loadDaily,useDay,utcDay} from './edition.js?v=2e123f57933a';
+import {pointsLeft,takePenalty,dailyShare} from './risk.js?v=2e123f57933a';
 const $=id=>document.getElementById(id),escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const helpGuide=$('help-guide');if(helpGuide)helpGuide.innerHTML=visualGuide({help:true});
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -82,9 +82,9 @@ function render(){
     $('controls').innerHTML='<button class="primary" id="copy">Copy result</button><p class="message" id="copy-status">One square for every successful answer.</p>';
     $('copy').onclick=copy;
   }else{
-    $('panel').innerHTML='<p class="eyebrow">Dig '+(ci+1)+' of 3</p><h1>'+categories[ci].name+'</h1><p class="subtitle">'+(stage==='play'?(chain.length?'Find an answer worth more than '+value(chain.at(-1)[1])+' points.':'Start with any answer you know.'):stage==='banked'?(busy?'Bringing your haul home…':'Safely back at the surface.'):'That answer was too common.')+'</p>'+(chain.length?chainRows():'<p class="empty">Your first discovery starts the tunnel.</p>');
+    $('panel').innerHTML='<p class="eyebrow">Dig '+(ci+1)+' of 3</p><h1>'+categories[ci].name+'</h1><p class="subtitle">'+(stage==='play'?(chain.length?'Find a rarer answer.':'Start with any answer you know.'):stage==='banked'?(busy?'Bringing your haul home…':'Safely back at the surface.'):'That answer was too common.')+'</p>'+(chain.length?chainRows():'<p class="empty">Your first discovery starts the tunnel.</p>');
     if(stage==='play'){
-      $('controls').innerHTML='<div class="scoreline"><strong>'+fmt(haulPoints())+' points</strong><small>'+fmt(sum(chain))+' × '+chain.length+' links</small></div><form class="answer-form" id="answer-form"><label class="sr" for="answer">'+categories[ci].name+'</label><input id="answer" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="go" placeholder="'+(chain.length?'More than '+value(chain.at(-1)[1])+' points…':'Type an answer…')+'"><button class="submit" aria-label="Submit answer">→</button></form><p class="message" id="message">Unknown answers are free.</p><button class="primary" id="bank">Climb out · '+fmt(potentialBank())+'</button>';
+      $('controls').innerHTML='<div class="scoreline"><strong>'+fmt(haulPoints())+' points</strong><small>'+fmt(sum(chain))+' × '+chain.length+' links</small></div><form class="answer-form" id="answer-form"><label class="sr" for="answer">'+categories[ci].name+'</label><input id="answer" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="go" placeholder="'+(chain.length?'A rarer answer…':'Type an answer…')+'"><button class="submit" aria-label="Submit answer">→</button></form><p class="message" id="message">Unknown answers are free.</p><button class="primary" id="bank">Climb out · '+fmt(potentialBank())+'</button>';
       $('answer-form').onsubmit=e=>{e.preventDefault();submit($('answer').value);};$('bank').onclick=bank;
       if(focused)$('answer').focus({preventScroll:true});
     }else if(stage==='banked'){
@@ -101,8 +101,8 @@ function render(){
 
   if(scene.hillside){
     $('category-steps').innerHTML='<ol class="dig-steps">'+categories.map((c,i)=>'<li'+(stage!=='result'&&i===ci?' aria-current="step"':'')+(results[i]?' class="done"':'')+'><strong><span class="dig-icon">'+c.icon+'</span>'+escape(c.name)+'</strong><small>'+(results[i]?'✓ Complete':'Dig '+(i+1))+'</small></li>').join('')+'</ol>';
-    if(stage==='home')$('panel').innerHTML='<p class="eyebrow">Three new digs every day</p><h1>Go rarer. Go longer.</h1><p class="guide-intro">Rarer answers earn more. Beat your last find’s value.</p>'+visualGuide({risk:wantsDaily});
-    if(stage==='play')$('controls').insertAdjacentHTML('afterbegin','<h2 class="answer-prompt">'+(chain.length?'Find '+escape(categories[ci].name.replace(/^A /,'a '))+' worth more than '+value(chain.at(-1)[1])+' points.':'Name '+escape(categories[ci].name.replace(/^A /,'a '))+'.')+'</h2>');
+    if(stage==='home')$('panel').innerHTML='<p class="eyebrow">Three new digs every day</p><h1>Go rarer. Go longer.</h1><p class="guide-intro">Each answer must be rarer than your last.</p>'+visualGuide({risk:wantsDaily});
+    if(stage==='play')$('controls').insertAdjacentHTML('afterbegin','<h2 class="answer-prompt">'+(chain.length?'Find '+escape(categories[ci].name.replace(/^A /,'a rarer '))+'.':'Name '+escape(categories[ci].name.replace(/^A /,'a '))+'.')+'</h2>');
     if(stage==='result'&&!wantsDaily){$('controls').insertAdjacentHTML('beforeend','<button class="quiet-button" id="play-again">Play another sample</button>');$('play-again').onclick=reset;}
   }
   if(wantsDaily){
@@ -110,7 +110,7 @@ function render(){
       const risk=document.createElement('div');risk.className='riskline';risk.innerHTML='<span class="mistake-dots" aria-hidden="true">'+[0,1,2].map(i=>'<i class="'+(i<mistakes?'used':'')+'">'+(i<mistakes?'×':'·')+'</i>').join('')+'</span><span>'+mistakes+'/3 mistakes</span><small>'+(mistakes===2?'Next mistake loses this haul':'Wrong step: −25%')+'</small>';
       $('controls').insertBefore(risk,$('answer-form'));
       document.querySelector('.scoreline small').textContent=sum(chain)+' × '+chain.length+' links'+(lost?' − '+lost+' lost':'');
-      $('message').textContent='Worth more = rarer. Small steps build bigger chains.';
+      $('message').textContent='Go a little rarer each time. Build a longer chain.';
       if(!chain.length)$('message').textContent='Start common. Leave room to go rarer.';
       $('bank').insertAdjacentHTML('beforebegin',bonusTrackers(chain));
     }
@@ -165,7 +165,7 @@ async function mistake(answer){
   $('scene-caption').textContent=penalty.ended?'Three mistakes. The whole haul is lost.':'Not rarer. −'+penalty.amount+' points.';
   await scene.spillHaul(penalty.spill,penalty.amount,penalty.ended);
   if(penalty.ended){await scene.hold(300);await bringHome();lock(false);render();announce('Three mistakes. This dig’s treasure and points are lost.');}
-  else {lock(false);render();$('message').textContent=answer[0]+' is worth '+value(answer[1])+' points, not more than '+chain.at(-1)[0]+' ('+value(chain.at(-1)[1])+'). −'+penalty.amount+' points. '+(3-mistakes)+' mistakes left.';$('message').classList.add('error');announce($('message').textContent);}
+  else {lock(false);render();$('message').textContent=answer[0]+' isn’t rarer than '+chain.at(-1)[0]+'. −'+penalty.amount+' points. '+(3-mistakes)+' mistakes left.';$('message').classList.add('error');announce($('message').textContent);}
 }
 async function bust(answer){
   lock(true);hideFind();document.activeElement?.blur();failed=answer;settle('bust');scene.pose('swing');await scene.hold(scene.meta.animations.swing.impactAt??250);scene.state.bust=true;scene.strike(0,true);scene.pose('recoil');await scene.hold(420);scene.pose('idle');render();$('scene-caption').textContent='Too common. Your finds are safe.';await scene.hold(450);

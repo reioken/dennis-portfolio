@@ -1,5 +1,5 @@
-import {drawBurrow,heapMetrics,pileHeight} from './burrow.js?v=1479d059929f';
-import {drawMaterial} from './terrain.js?v=1479d059929f';
+import {drawBurrow,heapMetrics,pileHeight,rulerHeight,rulerLabelWidth} from './burrow.js?v=2e123f57933a';
+import {drawMaterial} from './terrain.js?v=2e123f57933a';
 const clamp=n=>Math.max(0,Math.min(1,n));
 export class BurrowView{
   constructor(dialog,scene){
@@ -13,7 +13,7 @@ export class BurrowView{
   center(){return 58;}
   open(profile){
     this.profile=profile;const p=this.scene.meta.props.house,m=heapMetrics(profile.total);
-    const desired=(Math.max(80,p.foot-p.top,m.height+16)+48)*2;
+    const desired=(Math.max(rulerHeight(m.height)+8,p.foot-p.top)+48)*2;
     this.scroll.style.height='max(150px, min(48dvh, '+desired+'px))';
     this.dialog.showModal();this.layout();this.go('door');
   }
@@ -22,9 +22,9 @@ export class BurrowView{
     this.scale=Math.min(2,this.scroll.clientWidth/225);
     this.canvas.width=Math.floor(this.scroll.clientWidth/this.scale);this.canvas.height=Math.floor(this.scroll.clientHeight/this.scale);
     const w=this.canvas.width,h=this.canvas.height,m=heapMetrics(this.profile.total),p=this.scene.meta.props.house;
-    this.worldHeight=Math.max(h,Math.max(80,p.foot-p.top,m.height+16)+48);
+    this.worldHeight=Math.max(h,Math.max(rulerHeight(m.height)+8,p.foot-p.top)+48);
     this.pileLeft=this.center()-p.anchorX+p.pileX;
-    this.worldWidth=Math.max(w,this.pileLeft+m.span+50);
+    this.worldWidth=Math.max(w,this.pileLeft+m.span+12+rulerLabelWidth(m.height)+8);
     this.canvas.style.width=w*this.scale+'px';this.canvas.style.height=h*this.scale+'px';
     this.spacer.style.height=Math.min(500000,this.worldHeight*this.scale)+'px';
     this.spacer.style.width=Math.min(500000,this.worldWidth*this.scale)+'px';

@@ -1,5 +1,5 @@
-import {tier} from './core.js?v=1479d059929f';
-import {baseScore as score} from './rewards.js?v=1479d059929f';
+import {tier} from './core.js?v=2e123f57933a';
+import {baseScore as score} from './rewards.js?v=2e123f57933a';
 export const pointsLeft=(chain,lost=0)=>Math.max(0,score(chain)-lost);
 export function takePenalty(chain,lost,mistakes,cargo){
  const count=mistakes+1,points=pointsLeft(chain,lost),amount=count>=3?points:Math.ceil(points*.25);

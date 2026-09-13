@@ -1,8 +1,8 @@
-import {findFor,cargoSlot,lootPosition} from './feedback.js?v=1479d059929f';
-import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=1479d059929f';
-import {pileHeight} from './progress.js?v=1479d059929f';
-import {drawMaterial,rebaseTween} from './terrain.js?v=1479d059929f';
-import {drawBurrow,heapMetrics} from './burrow.js?v=1479d059929f';
+import {findFor,cargoSlot,lootPosition} from './feedback.js?v=2e123f57933a';
+import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=2e123f57933a';
+import {pileHeight} from './progress.js?v=2e123f57933a';
+import {drawMaterial,rebaseTween} from './terrain.js?v=2e123f57933a';
+import {drawBurrow,heapMetrics} from './burrow.js?v=2e123f57933a';
 const assetRoot='./assets/one-more-swing/';
 const loadImage=src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Missing art: '+src));img.src=assetRoot+src;});
 const clamp=n=>Math.max(0,Math.min(1,n));
@@ -60,7 +60,7 @@ export class MineScene {
   houseX(){return this.hillside?280:Math.max(117,this.w-170);}
   doorX(){const p=this.meta?.props?.house;return this.houseX()-(p?.anchorX??48)+(p?.doorX??29);}
   homeViewY(){
-    if(this.hillside)return Math.max(0,this.h-this.canvas.height+Math.min(this.canvas.height-16,100,this.canvas.height*.68)-this.surface);
+    if(this.hillside)return Math.max(0,this.h-this.canvas.height+Math.min(this.canvas.height-16,148)-this.surface);
     const p=this.meta?.props?.house,m=heapMetrics(this.home?.total??0),roofClearance=Math.max(0,Math.min(100,Math.max(80,(p?.foot??71)-(p?.top??12),m.height+16))+18-this.surface);
     // On a phone, frame the surface and let the parked cart sit fully below
     // the camera, rather than showing a thin slice of its rim at the bottom.

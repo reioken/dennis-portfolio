@@ -1,4 +1,5 @@
-import {drawMaterial} from './terrain.js?v=1479d059929f';
+import {drawMaterial} from './terrain.js?v=2e123f57933a';
+import {drawPixelText,pixelTextWidth} from './pixel-type.js?v=2e123f57933a';
 // Height keeps growing; the outdoor plot keeps the home and ruler together.
 export const pileHeight=points=>points>0?5+Math.sqrt(points/8):0;
 export const pointsAtHeight=height=>height<=5?0:8*(height-5)**2;
@@ -8,14 +9,19 @@ export function heapMetrics(points,height=pileHeight(points)){
   return {pile,height:pile?Math.ceil(pile)+10:0,span,peak:Math.round(span*.45)};
 }
 export const heightLabel=height=>(height/16).toFixed(1)+' m';
+// Start at eight metres, then add whole two-metre sections with four metres
+// of headroom above the pile. The same extent drives the scrollable view.
+export const rulerHeight=height=>Math.max(128,Math.ceil((height+64)/32)*32);
+export const rulerLabelWidth=height=>Math.max(pixelTextWidth(heightLabel(height)),pixelTextWidth((rulerHeight(height)/16)+' m'))+16;
 export function pileRowBounds(metrics,dy){
   // The upper shoulder tapers; old layers below it remain a broad rough stack.
   const taper=Math.max(0,1-(metrics.pile-dy)/Math.min(42,Math.max(1,metrics.pile)));
   return {a:metrics.peak*taper,b:metrics.span-12-(metrics.span-12-metrics.peak)*taper};
 }
 export function drawHeightPole(ctx,x,ground,metrics,view){
-  const height=metrics.height,poleHeight=Math.max(80,height+16),top=ground-poleHeight;
-  if(x+37<view.left||x-7>view.right)return;
+  const height=Math.round(metrics.height),poleHeight=rulerHeight(height),top=ground-poleHeight-8;
+  x=Math.round(x);ground=Math.round(ground);
+  if(x+rulerLabelWidth(height)<view.left||x-7>view.right)return;
   const from=Math.max(top,view.top),to=Math.min(ground+3,view.bottom);
   if(to<=from)return;
   ctx.fillStyle='#352c30';ctx.fillRect(x-1,from,7,to-from);
@@ -23,21 +29,24 @@ export function drawHeightPole(ctx,x,ground,metrics,view){
   ctx.fillStyle='#cba374';ctx.fillRect(x,from,1,to-from);
   ctx.fillStyle='#e7c89a';ctx.fillRect(x-2,top,8,2);
   ctx.fillStyle='#554347';ctx.fillRect(x-4,ground,12,3);
-  ctx.font='8px monospace';ctx.textBaseline='middle';
-  const first=Math.max(0,Math.ceil((ground-view.bottom)/8)*8),last=Math.min(poleHeight-3,ground-view.top);
+  const plaque=(label,y,active=false)=>{
+    const left=x+9,width=pixelTextWidth(label)+6;
+    ctx.fillStyle=active?'#f2bd49':'#302a34';ctx.fillRect(left,y-6,width,13);
+    ctx.fillStyle=active?'#ffe09a':'#705940';ctx.fillRect(left,y-6,width,1);
+    ctx.fillStyle=active?'#302a34':'#f6e2bd';drawPixelText(ctx,label,left+3,y-3);
+  };
+  const first=Math.max(0,Math.ceil((ground-view.bottom)/8)*8),last=Math.min(poleHeight,ground-view.top);
   for(let rise=first;rise<=last;rise+=8){
     const major=rise%16===0,y=Math.round(ground-rise);
     ctx.fillStyle=major?'#ffe2ae':'#493530';ctx.fillRect(x,y,major?6:3,1);
     if(rise%32===0&&Math.abs(rise-height)>10){
-      const label=(rise/16)+' m';ctx.fillStyle='#302a34';ctx.fillRect(x+9,y-5,label.length*4.8+3,11);
-      ctx.fillStyle='#efdcb9';ctx.fillText(label,x+10,y);
+      plaque((rise/16)+' m',y);
     }
   }
   const y=Math.round(ground-height),label=heightLabel(height);
   if(y>=view.top-6&&y<=view.bottom+6){
     ctx.fillStyle='#f2bd49';ctx.fillRect(x-5,y-2,10,5);ctx.fillRect(x-7,y-1,2,3);
-    ctx.fillStyle='#302a34';ctx.fillRect(x+8,y-5,label.length*4.8+5,11);
-    ctx.fillStyle='#ffda79';ctx.fillText(label,x+10,y);
+    plaque(label,y,true);
   }
 }
 const types=['rocks','ore','amethyst','diamond'];
