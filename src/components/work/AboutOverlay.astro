@@ -120,7 +120,7 @@ const nextLabel = labelOf(next);
       </nav>
       <div class="about-editorial">
         <section class="about-story about-section" id="about-story" aria-labelledby="about-story-title">
-          <div class="about-section__heading"><span class="about-section__number">01</span><h2 id="about-story-title"><span data-lang="de">Über mich</span><span data-lang="en">About me</span></h2></div>
+          <div class="about-section__heading"><span class="about-section__number">01</span><h2 id="about-story-title"><span data-lang="de">Über mich</span><span data-lang="en">About me</span></h2><Icon name="about" size={24} /></div>
           <div class="about-story__copy">
             <p class="about-story__lead"><span data-lang="de" data-edit="about.lead.de">{A.lead}</span><span data-lang="en" data-edit="about.lead.en">{AE.lead}</span></p>
             <p><span data-lang="de" data-edit="about.body.de">{A.body}</span><span data-lang="en" data-edit="about.body.en">{AE.body}</span></p>
@@ -142,7 +142,7 @@ const nextLabel = labelOf(next);
           </ol>
         </section>
         <section class="about-section" id="about-training" aria-labelledby="about-education">
-          <div class="about-section__heading"><span class="about-section__number">03</span><h2 id="about-education"><span data-lang="de">{A.educationLabel}</span><span data-lang="en">{AE.educationLabel}</span></h2></div>
+          <div class="about-section__heading"><span class="about-section__number">03</span><h2 id="about-education"><span data-lang="de">{A.educationLabel}</span><span data-lang="en">{AE.educationLabel}</span></h2><Icon name="education" size={24} /></div>
           <div class="about-education">
             {education.map((e,i) => <article class="about-education__entry">
               <span class="about-career__year" data-edit={`education.${i}.year`}>{e.year}</span>
@@ -153,7 +153,7 @@ const nextLabel = labelOf(next);
           </div>
         </section>
         <section class="about-section" id="about-expertise" aria-labelledby="about-skills">
-          <div class="about-section__heading"><span class="about-section__number">04</span><h2 id="about-skills"><span data-lang="de">{A.skillsLabel}</span><span data-lang="en">{AE.skillsLabel}</span></h2></div>
+          <div class="about-section__heading"><span class="about-section__number">04</span><h2 id="about-skills"><span data-lang="de">{A.skillsLabel}</span><span data-lang="en">{AE.skillsLabel}</span></h2><Icon name="pen-nib" size={24} /></div>
           <div class="about-expertise">{skills.map(s => <div class="about-expertise__group"><h3><span data-lang="de">{s.group.de}</span><span data-lang="en">{s.group.en}</span></h3><ul>{s.items.de.map((item,j) => <li><span data-lang="de">{item}</span><span data-lang="en">{s.items.en[j]}</span></li>)}</ul></div>)}</div>
         </section>
         <div class="about-signoff"><a href={p('contact')}><span data-lang="de">{A.contact}</span><span data-lang="en">{AE.contact}</span><Icon name="external" size={25} /></a><a href="#about-intro" class="about-signoff__top"><span data-lang="de">Nach oben</span><span data-lang="en">Back to top</span><Icon name="arrow-up" size={18} /></a></div>

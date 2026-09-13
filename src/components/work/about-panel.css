@@ -13,9 +13,11 @@
 .about-panel__open::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .hall-panel--about .about-poster__name { margin: 0; font-family: var(--about-display); font-weight: 600; font-size: clamp(96px, 16cqw, 200px); line-height: .86; letter-spacing: -.025em; text-transform: uppercase; color: var(--about-ink); }
 .about-poster__name > span { display: block; }
+/* Compensate the large D's side bearing so its visible edge meets the text column. */
+.about-poster__name > span:first-child { transform: translateX(-.045em); }
 .hall-panel--about .about-poster__surname { font-size: clamp(31px, 4.5cqw, 59px); font-weight: 600; line-height: 1; letter-spacing: -.015em; margin-top: 14px; overflow-wrap: normal; }
-.hall-panel--about .about-poster__role { font-size: clamp(13px, 1.45cqw, 17px); line-height: 1.55; color: #c5c8d1; margin: 18px 0 0; max-width: 38ch; }
-.hall-panel--about .about-poster__statement { font-size: clamp(18px, 2.2cqw, 27px); line-height: 1.35; letter-spacing: -.025em; max-width: 29ch; margin: 26px 0 24px; text-wrap: pretty; color: #e0e1e7; }
+.hall-panel--about .about-poster__role { font-size: 14px; line-height: 1.5; color: #c5c8d1; margin: 18px 0 0; max-width: 38ch; }
+.hall-panel--about .about-poster__statement { font-size: 16px; font-weight: 400; line-height: 1.65; letter-spacing: normal; max-width: 42ch; margin: 24px 0; text-wrap: pretty; color: #e0e1e7; }
 .about-poster__actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; max-width: 440px; }
 .hall-panel--about .about-poster__button { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 46px; padding: 10px 16px; border: 1px solid #ffffff35; border-radius: 4px; text-decoration: none; font-size: 14px; font-weight: 550; background: #10121680; transition: background .15s, border-color .15s; }
 .hall-panel--about .about-poster__button--primary { background: #e3e4ed; color: #13151c; border-color: #e3e4ed; }
@@ -23,16 +25,16 @@
 .hall-panel--about .about-poster__button--primary:hover { background: #fff; }
 .about-index { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 0 clamp(16px,4cqw,52px); background: #121419; border-bottom: 1px solid var(--about-line); }
 .about-index::before { content: ''; position: absolute; inset: 0 0 auto; height: 1px; background: var(--ui-iridescence); }
-.hall-panel--about .about-index a { position: relative; display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 62px; padding: 12px 28px; font-size: 14px; text-align: center; text-decoration: none; color: #c9cbd5; border-bottom: 2px solid transparent; }
-.about-index__number { position: absolute; left: 12px; }
+.hall-panel--about .about-index a { position: relative; display: flex; justify-content: center; align-items: center; gap: 8px; min-height: 62px; padding: 12px 8px; font-size: 14px; text-align: center; text-decoration: none; color: #c9cbd5; border-bottom: 2px solid transparent; }
+.about-index__number { flex: 0 0 auto; }
 .hall-panel--about .about-index a:hover, .hall-panel--about .about-index a:focus-visible { color: #fff; background: #ffffff05; border-bottom-color: #bfc9e0; }
 .about-index__number, .about-section__number { font-family: var(--font-mono); font-size: 12px; color: #9299ad; }
 .about-editorial { max-width: 1440px; margin-inline: auto; padding: 0 clamp(24px,4cqw,52px); }
 .about-section { padding: 38px 0; border-bottom: 1px solid var(--about-line); scroll-margin-top: 8px; }
 .about-section__heading { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
 .hall-panel--about .about-section__heading h2 { margin: 0; font-family: var(--about-display); font-size: clamp(30px,3.7cqw,44px); font-weight: 600; letter-spacing: -.015em; line-height: 1.05; color: var(--about-ink); }
-.about-section__heading > svg { margin-left: auto; color: #b7b8cd; }
-.hall-panel--about .about-story__lead { font-size: clamp(20px,2.8cqw,30px); line-height: 1.4; letter-spacing: -.025em; max-width: 38ch; color: #e4e5eb; margin: 0 0 12px; }
+.about-section__heading > svg { margin-left: 0; color: #b7b8cd; }
+.hall-panel--about .about-story__lead { font-size: 18px; font-weight: 500; line-height: 1.5; letter-spacing: normal; max-width: 38ch; color: #e4e5eb; margin: 0 0 12px; }
 .hall-panel--about .about-story__copy > p:not(.about-story__lead) { color: var(--about-muted); font-size: 16px; line-height: 1.65; margin: 0; }
 .about-facts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; margin: 28px 0 0; }
 .about-facts dt { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #969daa; margin-bottom: 7px; }
@@ -68,16 +70,21 @@
  .hall-panel--about .about-poster__name { font-size: clamp(72px,22cqw,118px); }
  .hall-panel--about .about-poster__surname { max-width: 100%; font-size: clamp(25px,6.9cqw,39px); margin-top: 10px; }
  .hall-panel--about .about-poster__role { max-width: none; font-size: 13px; margin-top: 14px; }
- .hall-panel--about .about-poster__statement { font-size: 18px; margin: 22px 0 20px; }
+ .hall-panel--about .about-poster__statement { margin: 22px 0 20px; }
  .hall-panel--about .about-poster__button { padding-inline: 10px; }
  .about-index { padding-inline: 8px; }
- .hall-panel--about .about-index a { flex-direction: column; gap: 2px; padding: 8px 2px; font-size: 13px; min-height: 60px; }
+ .hall-panel--about .about-index a { gap: 6px; padding: 10px 2px; font-size: 13px; min-height: 52px; }
  .about-index__number { position: static; font-size: 11px; }
  .about-career__entry, .about-expertise__group { grid-template-columns: 1fr; gap: 7px; }
  .about-education { grid-template-columns: 1fr; gap: 24px; }
  .about-facts { grid-template-columns: 1fr; gap: 20px; }
  .about-section { padding-block: 30px; }
  .about-section__heading { gap: 10px; }
+}
+@container hall-panel (max-width: 359px) {
+ .about-index { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .hall-panel--about .about-index a { min-height: 44px; }
+ :root .hall-panel--about .about-poster-body { scroll-padding-top: 100px; }
 }
 @container hall-panel (min-width: 820px) {
  .about-story { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 clamp(24px,3cqw,44px); }
