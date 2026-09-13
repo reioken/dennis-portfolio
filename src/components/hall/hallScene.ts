@@ -672,8 +672,9 @@ export class HallScene {
         this.blue = new BlueCat(gltf, container, this.stationX[0]);
         this.scene.add(this.blue.root);
         this.dirty = this.mirrorDirty = true;
-      }
-      blueDone();
+        // The closed-eye texture and the coat's mip sheet belong to the cat: no reveal with the GPU's own mip chain.
+        this.blue.ready.then(() => { this.dirty = this.mirrorDirty = true; blueDone(); });
+      } else blueDone();
     }, undefined, error => { console.error('Blue failed to load', error); blueDone(); });
     this.focus = initial;
     this.camX = this.targetX = this.stationX[initial];

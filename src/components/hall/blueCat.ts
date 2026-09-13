@@ -154,13 +154,39 @@ export class BlueCat {
    * bounding-box centre, not the eye's: the lid is rotated rigidly about the eyeball's rest position instead.
    */
   private lids: { node: THREE.Object3D; rest: THREE.Quaternion; restPos: THREE.Vector3; centre: THREE.Vector3; close: number }[] = [];
-  /** v4: the blink swaps the coat's base colour for a copy with the lids painted shut while the lid morph squashes the eye. */
+  /** v4/v5: the blink swaps the coat's base colour for a copy with the lids painted shut while the lid morph squashes the eye. */
   private coat?: THREE.MeshPhysicalMaterial;
   private openMap: THREE.Texture | null = null;
   private closedMap: THREE.Texture | null = null;
-  /** v6: the painted eye polygons' material (shares the atlas, tinted amber); swapped and untinted on a blink. */
+  /** v6: the painted eye polygons' material (tinted amber) with its own texture; on a blink it shows the closed-eye
+   * texture, untinted, while the coat keeps its atlas (the eye sockets there are painted with fur). */
   private eyesMaterial: THREE.MeshPhysicalMaterial | null = null;
   private eyesTint: THREE.Color | null = null;
+  private eyesOpenMap: THREE.Texture | null = null;
+  /** Resolves once the closed-eye texture and the coat's mip sheet are in (or have failed); the hall waits for it. */
+  readonly ready: Promise<void>;
+  /**
+   * Uploads a pre-built mip chain as the texture's mip levels: the sheet stacks the levels from half the base size
+   * down to 1×1 in one column. The v6 atlas is 1,469 small Meshy islands; the GPU's box filter mixes them at every
+   * coarser level and the face shimmered with bright specks at hall size. scripts/models/blue-v6-atlas.mjs builds
+   * the chain island by island instead.
+   */
+  private static async attachMipSheet(texture: THREE.Texture, url: string): Promise<void> {
+    try {
+      if (typeof createImageBitmap !== 'function') return;
+      const blob = await (await fetch(url)).blob();
+      const options: ImageBitmapOptions = { colorSpaceConversion: 'none', premultiplyAlpha: 'none' };
+      const sheet = await createImageBitmap(blob, options);
+      const base = texture.image as { width?: number } | null;
+      if (!base?.width || sheet.width * 2 !== base.width) { sheet.close(); return; }
+      const levels: ImageBitmap[] = [];
+      for (let w = sheet.width, top = 0; w >= 1; top += w, w >>= 1) levels.push(await createImageBitmap(sheet, 0, top, w, w, options));
+      sheet.close();
+      texture.mipmaps = [texture.image, ...levels] as unknown as typeof texture.mipmaps;
+      texture.generateMipmaps = false;
+      texture.needsUpdate = true;
+    } catch { /* the GPU's own chain stays */ }
+  }
   private showingClosed = false;
   private blink = 0;
   private blinkAge = 0;
@@ -286,15 +312,20 @@ export class BlueCat {
         for (const value of Object.values(m)) if (value instanceof THREE.Texture) { value.anisotropy = 8; this.textures.add(value); }
       }
     });
+    const loads: Promise<unknown>[] = [];
     if (this.coat && this.openMap) {
-      // The closed-eye base colour is the same atlas with the lids painted shut; it shares the glTF UV convention and
-      // is versioned with the material (`Blue coat v5` → `blue-v5-closed.webp`).
+      // The closed-eye texture has the lids painted shut and shares the glTF UV convention; it is versioned with the
+      // material (`Blue coat v6` → `blue-v6-closed.webp`). v4/v5: a copy of the whole coat atlas; v6: the eye
+      // polygons' own texture, so nothing bright ever sits in the coat atlas.
       const version = this.coat.name.match(/v\d+/)?.[0] ?? 'v4';
-      new THREE.TextureLoader().load(`/models/blue-${version}-closed.webp`, texture => {
+      this.eyesOpenMap = this.eyesMaterial?.map && this.eyesMaterial.map !== this.openMap ? this.eyesMaterial.map : null;
+      loads.push(new Promise<void>(resolve => new THREE.TextureLoader().load(`/models/blue-${version}-closed.webp`, texture => {
         texture.colorSpace = THREE.SRGBColorSpace; texture.flipY = false; texture.anisotropy = 8;
-        this.closedMap = texture; this.textures.add(texture);
-      });
+        this.closedMap = texture; this.textures.add(texture); resolve();
+      }, undefined, () => resolve())));
+      if (original) loads.push(BlueCat.attachMipSheet(this.openMap, `/models/blue-${version}-mips.webp`));
     }
+    this.ready = Promise.all(loads).then(() => undefined);
     // GLTFLoader sanitizes node names (dots are dropped), so Blender's `Eye.L` arrives as `EyeL`; look for both.
     const named = (name: string) => gltf.scene.getObjectByName(name) ?? gltf.scene.getObjectByName(name.replace(/\./g, ''));
     for (const name of ['Eye.L', 'Eye.R']) {
@@ -1137,8 +1168,14 @@ export class BlueCat {
     if (this.coat && this.closedMap && this.openMap) {
       const closed = this.blink > .5;
       if (closed !== this.showingClosed) {
-        this.showingClosed = closed; this.coat.map = closed ? this.closedMap : this.openMap;
-        if (this.eyesMaterial && this.eyesTint) { this.eyesMaterial.map = closed ? this.closedMap : this.openMap; this.eyesMaterial.color.copy(closed ? WHITE : this.eyesTint); }
+        this.showingClosed = closed;
+        if (this.eyesOpenMap && this.eyesMaterial && this.eyesTint) {
+          // v6: only the eye polygons change; the coat keeps its atlas and its mip chain
+          this.eyesMaterial.map = closed ? this.closedMap : this.eyesOpenMap; this.eyesMaterial.color.copy(closed ? WHITE : this.eyesTint);
+        } else {
+          this.coat.map = closed ? this.closedMap : this.openMap;
+          if (this.eyesMaterial && this.eyesTint) { this.eyesMaterial.map = closed ? this.closedMap : this.openMap; this.eyesMaterial.color.copy(closed ? WHITE : this.eyesTint); }
+        }
       }
     }
     for (const eye of this.eyeballs) eye.node.position.copy(eye.rest).addScaledVector(eye.axis, -this.blink * .006);
@@ -1191,6 +1228,9 @@ export class BlueCat {
     this.button.remove();
     this.mixer.stopAllAction();
     this.mixer.uncacheRoot(this.mixer.getRoot());
-    this.textures.forEach(texture => texture.dispose());
+    this.textures.forEach(texture => {
+      for (const level of texture.mipmaps ?? []) (level as { close?: () => void }).close?.();   // the uploaded ImageBitmaps
+      texture.dispose();
+    });
   }
 }

@@ -85,7 +85,10 @@ test('morph targets keep their names and order, the materials and eyeballs exist
     assert.deepEqual(materials, [`Blue coat v${VERSION}`, 'Blue amber eyes']);
     const [coat, eyes] = root.listMaterials();
     assert.ok(coat.getBaseColorTexture() && !coat.getNormalTexture(), 'the coat keeps the original atlas and no normal map');
-    assert.equal(eyes.getBaseColorTexture(), coat.getBaseColorTexture(), 'the eye polygons share the atlas');
+    assert.deepEqual(coat.getBaseColorTexture().getSize(), [1024, 1024], 'the coat atlas is the 1024² base of the island-aware chain (blue-v6-atlas.mjs)');
+    const eyeTexture = eyes.getBaseColorTexture();
+    assert.ok(eyeTexture && eyeTexture !== coat.getBaseColorTexture(), 'the eye polygons have their own texture');
+    assert.deepEqual(eyeTexture.getSize(), [1024, 1024], 'the open-eye texture');
     assert.ok(eyes.getBaseColorFactor()[1] < .7 && eyes.getBaseColorFactor()[2] < .3, 'the eye polygons keep their amber tint');
     assert.ok(nodes.length >= 27);
   } else if (V4) {
@@ -102,6 +105,15 @@ test('morph targets keep their names and order, the materials and eyeballs exist
     }
     assert.ok(nodes.length >= 32);
   }
+});
+
+test('the v6 companion textures are in place', async () => {
+  if (!ORIGINAL) return;
+  const sharp = (await import('sharp')).default;
+  const closed = await sharp('public/models/blue-v6-closed.webp').metadata();
+  assert.deepEqual([closed.width, closed.height], [512, 512], 'closed-eye texture');
+  const mips = await sharp('public/models/blue-v6-mips.webp').metadata();
+  assert.deepEqual([mips.width, mips.height], [512, 1023], 'coat mip sheet: the levels 512..1 stacked in one column');
 });
 
 test('the file stays within its budget', async () => {
