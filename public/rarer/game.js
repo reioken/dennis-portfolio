@@ -1,3 +1,4 @@
+import {visualGuide} from './how-to.js';
 import {categories,tier,sum,score,assess,missed,shareText} from './core.js';
 import {MineScene} from './scene.js';
 import {BurrowView} from './burrow-view.js';
@@ -8,6 +9,7 @@ import * as dailyProgress from './daily-progress.js';
 import {edition,loadDaily,useDay,utcDay} from './edition.js';
 import {pointsLeft,takePenalty,dailyShare} from './risk.js';
 const $=id=>document.getElementById(id),escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const helpGuide=$('help-guide');if(helpGuide)helpGuide.innerHTML=visualGuide({help:true});
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const scene=new MineScene($('mine'),reduced);scene.slow=()=>$('slow').checked;
 const burrow=new BurrowView($('burrow'),scene);
@@ -85,7 +87,7 @@ function render(){
 
   if(scene.hillside){
     $('category-steps').innerHTML='<ol class="dig-steps">'+categories.map((c,i)=>'<li'+(stage!=='result'&&i===ci?' aria-current="step"':'')+(results[i]?' class="done"':'')+'><strong><span class="dig-icon">'+c.icon+'</span>'+escape(c.name)+'</strong><small>'+(results[i]?'✓ Complete':'Dig '+(i+1))+'</small></li>').join('')+'</ol>';
-    if(stage==='home')$('panel').innerHTML='<p class="eyebrow">Three digs. New categories every day.</p><h1>Build the longest chain.</h1><p class="rule">Start common. Make each answer rarer.<br><strong>Small jumps leave room for more gems.</strong></p><div class="strategy-example" aria-label="Example rarity scores: 12, then 31, then 64"><span>12</span><i>→</i><span>31</span><i>→</i><span>64</span><i>→</i><span>?</span></div><p class="strategy-note">Every link adds treasure and grows your multiplier.</p><p class="risk-rule">'+(wantsDaily?'Wrong step: lose 25%. Three mistakes: lose this haul.<br>Climb out to save what’s in your cart.':'Climb out whenever you like.')+'</p>';
+    if(stage==='home')$('panel').innerHTML='<p class="eyebrow">Three new digs every day</p><h1>Go rarer. Go longer.</h1><p class="guide-intro">Each answer must be rarer than your last.</p>'+visualGuide({risk:wantsDaily});
     if(stage==='play')$('controls').insertAdjacentHTML('afterbegin','<h2 class="answer-prompt">'+(chain.length?'Find '+escape(categories[ci].name.replace(/^A /,'a '))+' rarer than '+chain.at(-1)[1]+'.':'Name '+escape(categories[ci].name.replace(/^A /,'a '))+'.')+'</h2>');
     if(stage==='result'&&!wantsDaily){$('controls').insertAdjacentHTML('beforeend','<button class="quiet-button" id="play-again">Play another sample</button>');$('play-again').onclick=reset;}
   }
@@ -94,8 +96,8 @@ function render(){
       const risk=document.createElement('div');risk.className='riskline';risk.innerHTML='<span class="mistake-dots" aria-hidden="true">'+[0,1,2].map(i=>'<i class="'+(i<mistakes?'used':'')+'">'+(i<mistakes?'×':'·')+'</i>').join('')+'</span><span>'+mistakes+'/3 mistakes</span><small>'+(mistakes===2?'Next mistake loses this haul':'Wrong step: −25%')+'</small>';
       $('controls').insertBefore(risk,$('answer-form'));
       document.querySelector('.scoreline small').textContent=sum(chain)+' × '+chain.length+' links'+(lost?' − '+lost+' lost':'');
-      $('message').textContent='Higher score = rarer. Equal or lower costs a mistake.';
-      if(!chain.length)$('message').textContent='Start with a common answer. Unknown answers are free.';
+      $('message').textContent='Rarity '+(chain.at(-1)?.[1]??0)+' → higher next. Small jumps leave more room.';
+      if(!chain.length)$('message').textContent='Start common. Leave room to go rarer.';
     }
     if(stage!=='result'){
       const c=categories[ci];$('panel').insertAdjacentHTML('beforeend','<button class="category-scope" id="scope-open">'+c.entries.length+' answers · What counts?</button>');$('scope-open').onclick=()=>{$('scope-name').textContent=c.name;$('scope-text').textContent=c.scope;$('scope-source').href=c.source;$('scope-data').textContent='Rarity uses '+edition.catalog.month+' English Wikipedia pageviews. Higher scores mean fewer views within this category. Article attention is a proxy for obscurity.';$('scope').showModal();};
