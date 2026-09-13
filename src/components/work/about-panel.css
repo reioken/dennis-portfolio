@@ -1,34 +1,36 @@
 /* About: a photographic poster followed by the complete editorial profile.
    The outer hall geometry and its navigation stay owned by hall-panel.css. */
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 600; font-display: swap; src: url('../../assets/fonts/barlow-condensed-latin-600.woff2') format('woff2'); }
 :root .hall-panel--about .about-poster-body { display: block; padding: 0; background: #101216; scroll-padding-top: 76px; }
-.hall-panel--about { --about-ink: #f0f0f3; --about-muted: #b3b6c1; --about-line: #ffffff17; }
+.hall-panel--about { --about-ink: #f0f0f3; --about-muted: #b3b6c1; --about-line: #ffffff17; --about-display: 'Barlow Condensed', 'Arial Narrow', sans-serif; }
 .hall-panel--about .about-poster { position: relative; isolation: isolate; min-height: clamp(440px, 48cqw, 590px); display: flex; align-items: center; background: radial-gradient(ellipse at 74% 45%, #b498e90a, transparent 57%), #101216; overflow: hidden; max-width: 1440px; margin-inline: auto; }
 .about-poster__image { position: absolute; inset: 24px 3% 0 auto; width: min(54%, 640px); z-index: -1; display: flex; justify-content: center; align-items: flex-end; }
 
 .about-poster__image img { display: block; width: auto; max-width: 100%; height: 100%; object-fit: contain; object-position: center bottom; mask-image: linear-gradient(180deg,#000 0%,#000 83%,transparent 100%); }
-.about-poster__copy { padding: clamp(24px, 4cqw, 52px); width: 62%; position: relative; }
-.about-poster__eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 32px; font-size: 12px; line-height: 1.5; color: var(--about-muted); }
+.about-poster__copy { padding: clamp(24px, 4cqw, 52px); width: 65%; position: relative; }
+.about-poster__eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 26px; font-size: 12px; line-height: 1.5; color: var(--about-muted); }
 .about-panel__open { display: inline-flex; gap: 7px; align-items: center; color: #91d8b7; }
 .about-panel__open::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-.hall-panel--about .about-poster__name { margin: 0; font-weight: 600; font-size: clamp(72px, 12.6cqw, 164px); line-height: .9; letter-spacing: -.065em; color: var(--about-ink); }
+.hall-panel--about .about-poster__name { margin: 0; font-family: var(--about-display); font-weight: 600; font-size: clamp(96px, 16cqw, 200px); line-height: .86; letter-spacing: -.025em; text-transform: uppercase; color: var(--about-ink); }
 .about-poster__name > span { display: block; }
-.hall-panel--about .about-poster__surname { font-size: clamp(23px, 3.5cqw, 47px); font-weight: 450; line-height: 1.14; letter-spacing: -.045em; margin-top: 12px; overflow-wrap: normal; }
+.hall-panel--about .about-poster__surname { font-size: clamp(31px, 4.5cqw, 59px); font-weight: 600; line-height: 1; letter-spacing: -.015em; margin-top: 14px; overflow-wrap: normal; }
 .hall-panel--about .about-poster__role { font-size: clamp(13px, 1.45cqw, 17px); line-height: 1.55; color: #c5c8d1; margin: 18px 0 0; max-width: 38ch; }
-.hall-panel--about .about-poster__statement { font-size: clamp(18px, 2.2cqw, 27px); line-height: 1.35; letter-spacing: -.025em; max-width: 26ch; margin: 30px 0 24px; text-wrap: pretty; color: #e0e1e7; }
-.about-poster__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.hall-panel--about .about-poster__statement { font-size: clamp(18px, 2.2cqw, 27px); line-height: 1.35; letter-spacing: -.025em; max-width: 29ch; margin: 26px 0 24px; text-wrap: pretty; color: #e0e1e7; }
+.about-poster__actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; max-width: 440px; }
 .hall-panel--about .about-poster__button { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 46px; padding: 10px 16px; border: 1px solid #ffffff35; border-radius: 4px; text-decoration: none; font-size: 14px; font-weight: 550; background: #10121680; transition: background .15s, border-color .15s; }
 .hall-panel--about .about-poster__button--primary { background: #e3e4ed; color: #13151c; border-color: #e3e4ed; }
 .hall-panel--about .about-poster__button:hover { border-color: #c8daf4; background: #282c36; }
 .hall-panel--about .about-poster__button--primary:hover { background: #fff; }
 .about-index { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 0 clamp(16px,4cqw,52px); background: #121419; border-bottom: 1px solid var(--about-line); }
 .about-index::before { content: ''; position: absolute; inset: 0 0 auto; height: 1px; background: var(--ui-iridescence); }
-.hall-panel--about .about-index a { display: flex; align-items: center; gap: 10px; min-height: 62px; padding: 12px 8px; font-size: 14px; text-decoration: none; color: #c9cbd5; border-bottom: 2px solid transparent; }
+.hall-panel--about .about-index a { position: relative; display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 62px; padding: 12px 28px; font-size: 14px; text-align: center; text-decoration: none; color: #c9cbd5; border-bottom: 2px solid transparent; }
+.about-index__number { position: absolute; left: 12px; }
 .hall-panel--about .about-index a:hover, .hall-panel--about .about-index a:focus-visible { color: #fff; background: #ffffff05; border-bottom-color: #bfc9e0; }
 .about-index__number, .about-section__number { font-family: var(--font-mono); font-size: 12px; color: #9299ad; }
 .about-editorial { max-width: 1440px; margin-inline: auto; padding: 0 clamp(24px,4cqw,52px); }
 .about-section { padding: 38px 0; border-bottom: 1px solid var(--about-line); scroll-margin-top: 8px; }
 .about-section__heading { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-.hall-panel--about .about-section__heading h2 { margin: 0; font-size: clamp(25px,3cqw,36px); font-weight: 500; letter-spacing: -.035em; line-height: 1.15; color: var(--about-ink); }
+.hall-panel--about .about-section__heading h2 { margin: 0; font-family: var(--about-display); font-size: clamp(30px,3.7cqw,44px); font-weight: 600; letter-spacing: -.015em; line-height: 1.05; color: var(--about-ink); }
 .about-section__heading > svg { margin-left: auto; color: #b7b8cd; }
 .hall-panel--about .about-story__lead { font-size: clamp(20px,2.8cqw,30px); line-height: 1.4; letter-spacing: -.025em; max-width: 38ch; color: #e4e5eb; margin: 0 0 12px; }
 .hall-panel--about .about-story__copy > p:not(.about-story__lead) { color: var(--about-muted); font-size: 16px; line-height: 1.65; margin: 0; }
@@ -55,40 +57,35 @@
 .about-signoff { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 32px 0 40px; }
 .hall-panel--about .about-signoff a { display: inline-flex; gap: 16px; align-items: center; min-height: 44px; font-size: 28px; letter-spacing: -.025em; text-decoration: none; }
 .hall-panel--about .about-signoff .about-signoff__top { font-size: 14px; color: var(--about-muted); }
+/* Compact poster: portrait and identity share the first view. */
 @container hall-panel (max-width: 599px) {
  .hall-panel--about .about-poster { display: block; min-height: 0; }
- .about-poster__image { position: relative; width: 100%; height: clamp(250px,70cqw,390px); mask-image: none; }
- .about-poster__image img { object-position: 50% 29%; }
- .about-poster__image::after { background: linear-gradient(0deg,#101216,transparent 32%); }
- .about-poster__copy { width: auto; padding: 0 24px 28px; margin-top: -24px; }
- .about-poster__eyebrow { margin-bottom: 18px; }
- .hall-panel--about .about-poster__name { font-size: clamp(64px,20cqw,108px); }
- .hall-panel--about .about-poster__surname { font-size: clamp(23px,6.3cqw,34px); }
- .hall-panel--about .about-poster__role { font-size: 14px; margin-top: 12px; }
- .hall-panel--about .about-poster__statement { font-size: 20px; max-width: 28ch; margin: 20px 0; }
+ .about-poster__image { inset: 12px 3% auto auto; width: 53%; height: auto; }
+ .about-poster__image img { width: 100%; height: auto; object-position: center bottom; }
+ .about-poster__copy { width: auto; padding: 24px 24px 26px; }
+ .about-poster__eyebrow { display: block; width: 46%; min-height: 42px; margin-bottom: 30px; }
+ .about-poster__eyebrow > .about-panel__open { margin-top: 5px; font-size: 11px; }
+ .hall-panel--about .about-poster__name { font-size: clamp(72px,22cqw,118px); }
+ .hall-panel--about .about-poster__surname { max-width: 100%; font-size: clamp(25px,6.9cqw,39px); margin-top: 10px; }
+ .hall-panel--about .about-poster__role { max-width: none; font-size: 13px; margin-top: 14px; }
+ .hall-panel--about .about-poster__statement { font-size: 18px; margin: 22px 0 20px; }
+ .hall-panel--about .about-poster__button { padding-inline: 10px; }
  .about-index { padding-inline: 8px; }
- .hall-panel--about .about-index a { flex-direction: column; justify-content: center; gap: 2px; padding: 8px 2px; font-size: 13px; min-height: 60px; }
- .about-index__number { font-size: 11px; }
+ .hall-panel--about .about-index a { flex-direction: column; gap: 2px; padding: 8px 2px; font-size: 13px; min-height: 60px; }
+ .about-index__number { position: static; font-size: 11px; }
  .about-career__entry, .about-expertise__group { grid-template-columns: 1fr; gap: 7px; }
  .about-education { grid-template-columns: 1fr; gap: 24px; }
  .about-facts { grid-template-columns: 1fr; gap: 20px; }
  .about-section { padding-block: 30px; }
  .about-section__heading { gap: 10px; }
 }
+@container hall-panel (min-width: 820px) {
+ .about-story { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 clamp(24px,3cqw,44px); }
+ .about-story .about-section__heading { grid-column: 1/-1; }
+ .about-story .about-facts { grid-template-columns: repeat(2,minmax(0,1fr)); align-content: start; gap: 22px 16px; margin: 0; padding-left: 24px; border-left: 1px solid var(--about-line); }
+}
 @media (prefers-reduced-motion: reduce) {
  .hall-panel--about .about-poster__button { transition: none; }
-}
-/* Compact poster for the mobile sheet: portrait and identity share the first view. */
-@container hall-panel (max-width: 599px) {
- .about-poster__image { position: absolute; inset: 12px 3% auto auto; width: 53%; height: auto; mask-image: none; }
- .about-poster__image img { object-fit: contain; object-position: center bottom; }
- .about-poster__copy { margin: 0; padding: 24px 24px 26px; }
- .about-poster__eyebrow { display: block; width: 46%; min-height: 42px; margin-bottom: 34px; }
- .about-poster__eyebrow > .about-panel__open { margin-top: 5px; font-size: 11px; }
- .hall-panel--about .about-poster__name { font-size: clamp(58px,17cqw,90px); }
- .hall-panel--about .about-poster__surname { max-width: 56%; font-size: clamp(21px,5.6cqw,29px); margin-top: 8px; }
- .hall-panel--about .about-poster__role { max-width: 53%; font-size: 13px; margin-top: 10px; }
- .hall-panel--about .about-poster__statement { font-size: 18px; margin: 23px 0 18px; }
 }
 
 /* The mockup's illuminated specialty band, kept separate from the full CV. */
@@ -118,8 +115,7 @@
 .about-education__entry { border-top-color: #b49bd12b; }
 .about-expertise__group { padding-top: 20px; border-top: 1px solid #b49bd121; }
 @container hall-panel (min-width: 1100px) {
- .about-poster__image { right: 10%; width: 520px; }
- .about-poster__copy { width: 63%; }
+ .about-poster__image { right: 2%; width: min(51%,640px); }
 }
 @container hall-panel (max-width: 799px) {
  .about-highlights__inner { grid-template-columns: repeat(3,minmax(0,1fr)); padding-block: 25px; }

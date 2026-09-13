@@ -38,7 +38,7 @@ const brand = '#c8daf4';
 const brand2 = '#4a82fe';
 const counter = `${String(index + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}`;
 
-/* Der Nachname bleibt zusammen, wenn der Titel umbricht */
+/* Auf schmalen Flächen darf der Nachname nur am Bindestrich umbrechen. */
 const [firstName, ...rest] = site.name.split(' ');
 const surname = rest.join(' ');
 
@@ -116,7 +116,7 @@ const nextLabel = labelOf(next);
         <a href="#about-story"><span class="about-index__number">01</span><span data-lang="de">Über mich</span><span data-lang="en">About</span></a>
         <a href="#about-experience"><span class="about-index__number">02</span><span data-lang="de">Erfahrung</span><span data-lang="en">Experience</span></a>
         <a href="#about-training"><span class="about-index__number">03</span><span data-lang="de">Ausbildung</span><span data-lang="en">Education</span></a>
-        <a href="#about-expertise"><span class="about-index__number">04</span>Skills</a>
+        <a href="#about-expertise"><span class="about-index__number">04</span><span>Skills</span></a>
       </nav>
       <div class="about-editorial">
         <section class="about-story about-section" id="about-story" aria-labelledby="about-story-title">
