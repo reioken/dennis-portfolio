@@ -12,6 +12,7 @@ import CaseDocument from './CaseDocument';
 import MinaStudyEn from './MinaStudyEn.astro';
 import CertificateCard from './CertificateCard.astro';
 import CaseAdjacent from './CaseAdjacent.astro';
+import { toAvif } from '../../lib/img';
 import { p } from '../../lib/paths';
 
 type WorkLite = { id: string; data: { title: string; role: string; cover: string; titleEn?: string; roleEn?: string } };
@@ -93,7 +94,10 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
       {
         logoSrc && (
           <div class="case-page__brand">
-            <img class="case-page__logo" src={logoSrc} alt={`${data.title} logo`} width={520} height={120} decoding="async" />
+            <picture>
+              {toAvif(logoSrc) && <source type="image/avif" srcset={toAvif(logoSrc)} />}
+              <img class="case-page__logo" src={logoSrc} alt={`${data.title} logo`} width={520} height={120} decoding="async" />
+            </picture>
           </div>
         )
       }
@@ -154,7 +158,7 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
       {
         data.externalUrl && (
           <div class="mt-7 flex flex-wrap gap-3">
-            <a class="btn btn--primary" href={data.externalUrl} target="_blank" rel="noreferrer">
+            <a class="btn btn--primary" href={data.externalUrl} target="_blank" rel="noopener noreferrer">
               <span data-lang="de">Live-App öffnen</span>
               <span data-lang="en">Open live app</span>
               <span aria-hidden="true">↗</span>

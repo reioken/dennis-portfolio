@@ -53,13 +53,13 @@ const formEn = {
         <p class="hall-panel__kind"><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span></p>
         <h1 id="contact-title" class="hall-panel__title"><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span></h1>
         <p class="hall-panel__summary"><span data-lang="de">{copy.de.contact.body}</span><span data-lang="en">{copy.en.contact.body}</span></p>
-        <p class="contact-direct"><a href={`mailto:${site.email}`}>{site.email}</a></p>
+        <p class="contact-direct"><!--email_off--><a href={`mailto:${site.email}`}>{site.email}</a><!--/email_off--></p>
         <ContactForm client:load de={formDe} en={formEn} privacyHref={p('privacy')} privacyHrefEn={p('en/privacy')} />
         <div class="contact-profile"><AvailabilityStatus /><p><span data-lang="de">{site.location}</span><span data-lang="en">Mannheim/Heidelberg area</span></p></div>
       </div>
       <div class="hall-panel__foot contact-links">
-        <a href={site.links.linkedin} target="_blank" rel="noreferrer">LinkedIn <Icon name="arrow-up-right" size={14} /></a>
-        <a href={site.links.github} target="_blank" rel="noreferrer">GitHub <Icon name="arrow-up-right" size={14} /></a>
+        <a href={site.links.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn <Icon name="arrow-up-right" size={14} /></a>
+        <a href={site.links.github} target="_blank" rel="noopener noreferrer">GitHub <Icon name="arrow-up-right" size={14} /></a>
         <a href={p('impressum')}><span data-lang="de">Impressum</span><span data-lang="en">Legal notice</span></a>
       </div>
     </div>

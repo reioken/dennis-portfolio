@@ -1,14 +1,20 @@
 # Domain-level redirects are not supported here.
 # Apex → www is handled by functions/_middleware.js
 
-# Ashwake wurde am 2026-07-29 in Carillon umbenannt
+# Ashwake wurde am 2026-07-29 in Carillon umbenannt (exact rules first: the splats only match with the slash)
+/work/ashwake /work/carillon/ 301
+/en/work/ashwake /en/work/carillon/ 301
 /work/ashwake/* /work/carillon/:splat 301
 /en/work/ashwake/* /en/work/carillon/:splat 301
 
 # CEILING ist als Produkt Hookline
+/work/ceiling /work/hookline/ 301
+/en/work/ceiling /en/work/hookline/ 301
 /work/ceiling/* /work/hookline/:splat 301
 /en/work/ceiling/* /en/work/hookline/:splat 301
 
 # Lowlight replaces Nocturne
+/work/nocturne /work/lowlight/ 301
+/en/work/nocturne /en/work/lowlight/ 301
 /work/nocturne/* /work/lowlight/:splat 301
 /en/work/nocturne/* /en/work/lowlight/:splat 301

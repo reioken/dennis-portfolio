@@ -1,31 +1,168 @@
 {
-  "generatedAt": "2026-09-11T00:32:37.387Z",
+  "generatedAt": "2026-09-13T01:48:51.487Z",
   "machine": true,
   "products": [
     {
-      "slug": "lowlight",
-      "public": false,
-      "git": false,
-      "version": "0.3.2",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-09-11",
-      "lastActivity": "2026-09-11",
-      "commits": null,
-      "commitsLast90Days": 0,
+      "slug": "portfolio",
+      "public": true,
+      "git": true,
+      "version": "1.0.0",
+      "lastCommit": {
+        "date": "2026-09-13",
+        "subject": "Analyse the site for the performance pass and write the checklist"
+      },
+      "recent": [
+        {
+          "date": "2026-09-13",
+          "subject": "Analyse the site for the performance pass and write the checklist"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Hand over the curled sleep and bed path: verdict 15, bed probe, deployment 19e4d586"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Give Blue a curled sleep and an authored step out of and into the bed over its front lip"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Hand over Blue v6: the first cat is back, verdicts 13-14, deployment 13214868"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Bring back the first cat as Blue v6: v1 mesh and original atlas on the current pipeline"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Hand over Blue v5: verdicts 9-12, pipeline map for the Meshy path, deployment 89dd8cfc"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Replace Blue with a stylised v5 mesh: fur retexture, re-measured tail, round pupils, matte coat"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Record the Blue v4 deployment 80129228 and Dennis's mesh decisions in the handovers"
+        }
+      ],
+      "lastTouched": null,
+      "lastActivity": "2026-09-13",
+      "commits": {
+        "2026-07-18": 34,
+        "2026-07-19": 22,
+        "2026-07-20": 80,
+        "2026-07-21": 1,
+        "2026-09-11": 14,
+        "2026-09-12": 35,
+        "2026-09-13": 11
+      },
+      "commitsLast90Days": 197,
       "source": "scan"
     },
     {
       "slug": "saute-survivors",
       "public": false,
-      "git": false,
+      "git": true,
       "version": "1.0",
-      "lastCommit": null,
+      "lastCommit": {
+        "date": "2026-09-13",
+        "subject": null
+      },
       "recent": [],
-      "lastTouched": "2026-09-11",
+      "lastTouched": null,
+      "lastActivity": "2026-09-13",
+      "commits": {
+        "2026-09-09": 6,
+        "2026-09-10": 29,
+        "2026-09-11": 15,
+        "2026-09-12": 25,
+        "2026-09-13": 12
+      },
+      "commitsLast90Days": 87,
+      "source": "scan"
+    },
+    {
+      "slug": "lowlight",
+      "public": false,
+      "git": true,
+      "version": "0.3.3",
+      "lastCommit": {
+        "date": "2026-09-11",
+        "subject": null
+      },
+      "recent": [],
+      "lastTouched": null,
       "lastActivity": "2026-09-11",
-      "commits": null,
-      "commitsLast90Days": 0,
+      "commits": {
+        "2026-09-10": 3,
+        "2026-09-11": 9
+      },
+      "commitsLast90Days": 12,
+      "source": "scan"
+    },
+    {
+      "slug": "nexus",
+      "public": true,
+      "git": true,
+      "version": "1.1.1",
+      "lastCommit": {
+        "date": "2026-09-11",
+        "subject": "Auto-Update 2026-09-11 20:00"
+      },
+      "recent": [
+        {
+          "date": "2026-09-11",
+          "subject": "Auto-Update 2026-09-11 20:00"
+        },
+        {
+          "date": "2026-08-08",
+          "subject": "Auto-Update 2026-08-08 20:00"
+        },
+        {
+          "date": "2026-08-07",
+          "subject": "Auto-Update 2026-08-07 20:00"
+        },
+        {
+          "date": "2026-08-06",
+          "subject": "Auto-Update 2026-08-06 20:00"
+        },
+        {
+          "date": "2026-08-02",
+          "subject": "Auto-Update 2026-08-02 20:00"
+        },
+        {
+          "date": "2026-07-26",
+          "subject": "Auto-Update 2026-07-26 20:00"
+        },
+        {
+          "date": "2026-07-24",
+          "subject": "Auto-Update 2026-07-24 20:00"
+        },
+        {
+          "date": "2026-07-23",
+          "subject": "Auto-Update 2026-07-23 20:00"
+        }
+      ],
+      "lastTouched": null,
+      "lastActivity": "2026-09-11",
+      "commits": {
+        "2026-07-14": 20,
+        "2026-07-15": 51,
+        "2026-07-16": 10,
+        "2026-07-17": 19,
+        "2026-07-18": 2,
+        "2026-07-19": 34,
+        "2026-07-20": 1,
+        "2026-07-23": 1,
+        "2026-07-24": 1,
+        "2026-07-26": 1,
+        "2026-08-02": 1,
+        "2026-08-06": 1,
+        "2026-08-07": 1,
+        "2026-08-08": 1,
+        "2026-09-11": 1
+      },
+      "commitsLast90Days": 145,
       "source": "scan"
     },
     {
@@ -42,55 +179,60 @@
       "source": "scan"
     },
     {
-      "slug": "nexus",
-      "public": true,
-      "git": false,
-      "version": "1.1.0",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-09-10",
-      "lastActivity": "2026-09-10",
-      "commits": null,
-      "commitsLast90Days": 0,
-      "source": "scan"
-    },
-    {
-      "slug": "echo-frequency",
-      "public": false,
-      "git": false,
-      "version": "0.17.0",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-09-09",
-      "lastActivity": "2026-09-09",
-      "commits": null,
-      "commitsLast90Days": 0,
-      "source": "scan"
-    },
-    {
-      "slug": "riftcast",
-      "public": true,
-      "git": false,
-      "version": "1.0.0",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-09-09",
-      "lastActivity": "2026-09-09",
-      "commits": null,
-      "commitsLast90Days": 0,
-      "source": "scan"
-    },
-    {
       "slug": "berry",
       "public": true,
-      "git": false,
+      "git": true,
       "version": "3.4.1",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-09-08",
+      "lastCommit": {
+        "date": "2026-09-08",
+        "subject": "merge: Wave 1 D — TCG+ Timeout/Fehlerzustand/Kopfzeile, eine Kalender-Aktion je Termin, Anmeldeblock mit Status-Chip, Emoji raus aus Benachr"
+      },
+      "recent": [
+        {
+          "date": "2026-09-08",
+          "subject": "merge: Wave 1 D — TCG+ Timeout/Fehlerzustand/Kopfzeile, eine Kalender-Aktion je Termin, Anmeldeblock mit Status-Chip, Emoji raus aus Benachr"
+        },
+        {
+          "date": "2026-09-08",
+          "subject": "kalender: B6 — fetch-Abbruch als Timeout benennen; TCG+-Kopfzeile ohne hängenden Trennpunkt"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "kalender: Emoji aus Benachrichtigungs-Titeln und ICS-SUMMARY entfernt"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "kalender: Anmeldung als Zwei-Zeilen-Block mit Status-Chip statt Sechs-Fakten-Zeile (Top-20 #10)"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "merge: Wave 1 A — Push-Navigation/Back-Fallback, Backup-Zeile statt Toast, Erfolgs-Toast, Grid-Freiraum, Sheet über Dock, Insights EN"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "insights: B13 — Portfolio-Wert und Zeitraum-Segment untereinander"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "kartendetail: B16 — Scrollbereich des Sheets lässt den Dock frei"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "suche/sammlung: Ergebnis-Zähler in die Kopfzeile, Grid-Freiraum über FABs/Dock (Top-20 #3)"
+        }
+      ],
+      "lastTouched": null,
       "lastActivity": "2026-09-08",
-      "commits": null,
-      "commitsLast90Days": 0,
+      "commits": {
+        "2026-07-16": 48,
+        "2026-07-17": 20,
+        "2026-07-18": 50,
+        "2026-07-19": 73,
+        "2026-07-20": 1,
+        "2026-09-07": 106,
+        "2026-09-08": 2
+      },
+      "commitsLast90Days": 300,
       "source": "scan"
     },
     {
@@ -107,174 +249,458 @@
       "source": "scan"
     },
     {
+      "slug": "echo-frequency",
+      "public": false,
+      "git": true,
+      "version": "0.17.0",
+      "lastCommit": {
+        "date": "2026-09-07",
+        "subject": null
+      },
+      "recent": [],
+      "lastTouched": null,
+      "lastActivity": "2026-09-07",
+      "commits": {
+        "2026-08-08": 139,
+        "2026-08-09": 120,
+        "2026-08-10": 45,
+        "2026-08-11": 136,
+        "2026-08-12": 16,
+        "2026-08-13": 58,
+        "2026-08-14": 95,
+        "2026-08-15": 33,
+        "2026-08-16": 101,
+        "2026-08-17": 63,
+        "2026-08-18": 69,
+        "2026-08-19": 50,
+        "2026-08-20": 36,
+        "2026-08-21": 23,
+        "2026-08-22": 194,
+        "2026-09-01": 29,
+        "2026-09-02": 126,
+        "2026-09-03": 39,
+        "2026-09-07": 50
+      },
+      "commitsLast90Days": 1422,
+      "source": "scan"
+    },
+    {
       "slug": "riftback",
       "public": true,
-      "git": false,
+      "git": true,
       "version": "0.1.0",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-09-07",
+      "lastCommit": {
+        "date": "2026-09-07",
+        "subject": "Redirect retired mode URLs and await community availability in tests"
+      },
+      "recent": [
+        {
+          "date": "2026-09-07",
+          "subject": "Redirect retired mode URLs and await community availability in tests"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "Retire ARAM Mayhem Classic-ish from the public site"
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "Sync Classic patch previews."
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "Re-read tier boards (2026-09-07): 11 letter(s) moved."
+        },
+        {
+          "date": "2026-09-07",
+          "subject": "Sync Classic changelog."
+        },
+        {
+          "date": "2026-09-06",
+          "subject": "Sync Classic patch previews."
+        },
+        {
+          "date": "2026-09-06",
+          "subject": "Sync Classic changelog."
+        },
+        {
+          "date": "2026-09-05",
+          "subject": "Sync Classic patch previews."
+        }
+      ],
+      "lastTouched": null,
       "lastActivity": "2026-09-07",
-      "commits": null,
-      "commitsLast90Days": 0,
-      "source": "scan"
-    },
-    {
-      "slug": "safeplate",
-      "public": true,
-      "git": false,
-      "version": "0.79.0",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-09-03",
-      "lastActivity": "2026-09-03",
-      "commits": null,
-      "commitsLast90Days": 0,
-      "source": "scan"
-    },
-    {
-      "slug": "carillon",
-      "public": true,
-      "git": false,
-      "version": "0.9.0",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-08-30",
-      "lastActivity": "2026-08-30",
-      "commits": null,
-      "commitsLast90Days": 0,
+      "commits": {
+        "2026-07-29": 1,
+        "2026-07-30": 32,
+        "2026-07-31": 17,
+        "2026-08-01": 30,
+        "2026-08-02": 41,
+        "2026-08-03": 43,
+        "2026-08-04": 6,
+        "2026-08-05": 24,
+        "2026-08-06": 23,
+        "2026-08-07": 42,
+        "2026-08-08": 24,
+        "2026-08-09": 10,
+        "2026-08-10": 10,
+        "2026-08-11": 2,
+        "2026-08-12": 15,
+        "2026-08-13": 13,
+        "2026-08-14": 24,
+        "2026-08-15": 13,
+        "2026-08-16": 12,
+        "2026-08-17": 12,
+        "2026-08-18": 6,
+        "2026-08-19": 7,
+        "2026-08-20": 3,
+        "2026-08-21": 2,
+        "2026-08-22": 21,
+        "2026-08-23": 4,
+        "2026-08-24": 8,
+        "2026-08-25": 3,
+        "2026-08-26": 11,
+        "2026-08-27": 16,
+        "2026-08-28": 5,
+        "2026-08-30": 22,
+        "2026-08-31": 9,
+        "2026-09-01": 15,
+        "2026-09-02": 10,
+        "2026-09-03": 6,
+        "2026-09-04": 2,
+        "2026-09-05": 2,
+        "2026-09-06": 2,
+        "2026-09-07": 5
+      },
+      "commitsLast90Days": 553,
       "source": "scan"
     },
     {
       "slug": "briefly",
       "public": false,
-      "git": false,
+      "git": true,
       "version": "0.1.0",
-      "lastCommit": null,
+      "lastCommit": {
+        "date": "2026-08-27",
+        "subject": null
+      },
       "recent": [],
-      "lastTouched": "2026-08-27",
+      "lastTouched": null,
       "lastActivity": "2026-08-27",
-      "commits": null,
-      "commitsLast90Days": 0,
+      "commits": {
+        "2026-08-26": 6,
+        "2026-08-27": 6
+      },
+      "commitsLast90Days": 12,
+      "source": "scan"
+    },
+    {
+      "slug": "safeplate",
+      "public": true,
+      "git": true,
+      "version": "0.79.0",
+      "lastCommit": {
+        "date": "2026-08-26",
+        "subject": "feat: redraw food catalog in field guide style"
+      },
+      "recent": [
+        {
+          "date": "2026-08-26",
+          "subject": "feat: redraw food catalog in field guide style"
+        },
+        {
+          "date": "2026-08-26",
+          "subject": "Update 0.59.0 release notes for Field Guide"
+        },
+        {
+          "date": "2026-08-26",
+          "subject": "Fix Field Guide detail title wrapping"
+        },
+        {
+          "date": "2026-08-26",
+          "subject": "Integrate Fable Field Guide recipe art"
+        },
+        {
+          "date": "2026-08-26",
+          "subject": "Integrate Opus Field Guide recipe art"
+        },
+        {
+          "date": "2026-08-26",
+          "subject": "Integrate GPT-Sol Field Guide recipe art"
+        },
+        {
+          "date": "2026-08-26",
+          "subject": "Checkpoint Field Guide redesign and recipe art batch"
+        },
+        {
+          "date": "2026-08-22",
+          "subject": "Harden Essfreude discovery QA"
+        }
+      ],
+      "lastTouched": null,
+      "lastActivity": "2026-08-26",
+      "commits": {
+        "2026-07-29": 6,
+        "2026-07-30": 17,
+        "2026-07-31": 3,
+        "2026-08-01": 29,
+        "2026-08-02": 68,
+        "2026-08-03": 24,
+        "2026-08-04": 8,
+        "2026-08-09": 20,
+        "2026-08-20": 3,
+        "2026-08-21": 2,
+        "2026-08-22": 4,
+        "2026-08-26": 7
+      },
+      "commitsLast90Days": 191,
       "source": "scan"
     },
     {
       "slug": "angry",
       "public": false,
-      "git": false,
+      "git": true,
       "version": "0.1.4",
-      "lastCommit": null,
+      "lastCommit": {
+        "date": "2026-08-22",
+        "subject": null
+      },
       "recent": [],
-      "lastTouched": "2026-08-22",
+      "lastTouched": null,
       "lastActivity": "2026-08-22",
-      "commits": null,
-      "commitsLast90Days": 0,
+      "commits": {
+        "2026-08-18": 12,
+        "2026-08-19": 3,
+        "2026-08-20": 7,
+        "2026-08-21": 2,
+        "2026-08-22": 15
+      },
+      "commitsLast90Days": 39,
+      "source": "scan"
+    },
+    {
+      "slug": "carillon",
+      "public": true,
+      "git": true,
+      "version": "0.9.0",
+      "lastCommit": {
+        "date": "2026-08-13",
+        "subject": "chore: Sicherungsstand 13.08. — Kamera, Riten-Slice, Icons, Specs"
+      },
+      "recent": [
+        {
+          "date": "2026-08-13",
+          "subject": "chore: Sicherungsstand 13.08. — Kamera, Riten-Slice, Icons, Specs"
+        },
+        {
+          "date": "2026-08-11",
+          "subject": "feat(ui): redesign Ember Kindled phase gate"
+        },
+        {
+          "date": "2026-08-11",
+          "subject": "chore: track Carillon UI probe image sources"
+        },
+        {
+          "date": "2026-08-11",
+          "subject": "chore: secure Carillon UI and world art work"
+        },
+        {
+          "date": "2026-08-04",
+          "subject": "docs: vollstaendige Pipeline- und Uebergabedokumentation"
+        },
+        {
+          "date": "2026-08-04",
+          "subject": "feat: UI vereinheitlicht - eine Tafelfamilie, eine Kopf- und Fussgeometrie"
+        },
+        {
+          "date": "2026-08-04",
+          "subject": "feat: Hallen-Hintergrund fuer alle Bildschirme"
+        },
+        {
+          "date": "2026-08-03",
+          "subject": "feat: UI-Neuguss - zwoelf Icons, Bauteile und fuenf geprueft saubere Bildschirme"
+        }
+      ],
+      "lastTouched": null,
+      "lastActivity": "2026-08-13",
+      "commits": {
+        "2026-07-18": 3,
+        "2026-07-19": 13,
+        "2026-07-20": 4,
+        "2026-07-23": 3,
+        "2026-07-24": 16,
+        "2026-07-25": 4,
+        "2026-07-26": 3,
+        "2026-07-27": 29,
+        "2026-07-28": 10,
+        "2026-07-29": 50,
+        "2026-07-30": 33,
+        "2026-07-31": 22,
+        "2026-08-01": 51,
+        "2026-08-02": 25,
+        "2026-08-03": 9,
+        "2026-08-04": 3,
+        "2026-08-11": 3,
+        "2026-08-13": 1
+      },
+      "commitsLast90Days": 282,
       "source": "scan"
     },
     {
       "slug": "design-library",
       "public": false,
-      "git": false,
+      "git": true,
       "version": "0.1.0",
-      "lastCommit": null,
+      "lastCommit": {
+        "date": "2026-07-31",
+        "subject": null
+      },
       "recent": [],
-      "lastTouched": "2026-07-31",
+      "lastTouched": null,
       "lastActivity": "2026-07-31",
-      "commits": null,
-      "commitsLast90Days": 0,
-      "source": "scan"
-    },
-    {
-      "slug": "project-manager",
-      "public": false,
-      "git": false,
-      "version": "0.1.0",
-      "lastCommit": null,
-      "recent": [],
-      "lastTouched": "2026-07-30",
-      "lastActivity": "2026-07-30",
-      "commits": null,
-      "commitsLast90Days": 0,
+      "commits": {
+        "2026-07-31": 5
+      },
+      "commitsLast90Days": 5,
       "source": "scan"
     },
     {
       "slug": "image-gen",
       "public": false,
-      "git": false,
+      "git": true,
       "version": "0.1.0",
-      "lastCommit": null,
+      "lastCommit": {
+        "date": "2026-07-23",
+        "subject": null
+      },
       "recent": [],
-      "lastTouched": "2026-07-24",
-      "lastActivity": "2026-07-24",
-      "commits": null,
-      "commitsLast90Days": 0,
+      "lastTouched": null,
+      "lastActivity": "2026-07-23",
+      "commits": {
+        "2026-07-23": 11
+      },
+      "commitsLast90Days": 11,
       "source": "scan"
     },
     {
-      "slug": "portfolio",
+      "slug": "project-manager",
+      "public": false,
+      "git": true,
+      "version": "0.1.0",
+      "lastCommit": {
+        "date": "2026-07-19",
+        "subject": null
+      },
+      "recent": [],
+      "lastTouched": null,
+      "lastActivity": "2026-07-19",
+      "commits": {
+        "2026-07-19": 29
+      },
+      "commitsLast90Days": 29,
+      "source": "scan"
+    },
+    {
+      "slug": "riftcast",
       "public": true,
       "git": true,
       "version": "1.0.0",
       "lastCommit": {
-        "date": "2026-07-21",
-        "subject": "Harden contact emails so long messages are not truncated in transit."
+        "date": "2026-07-17",
+        "subject": "NEXUS landing: Setup-Groesse 100 -> 89 MB (Size-Opt M1+M2, neues Release-Asset)"
       },
       "recent": [
         {
-          "date": "2026-07-21",
-          "subject": "Harden contact emails so long messages are not truncated in transit."
+          "date": "2026-07-17",
+          "subject": "NEXUS landing: Setup-Groesse 100 -> 89 MB (Size-Opt M1+M2, neues Release-Asset)"
         },
         {
-          "date": "2026-07-20",
-          "subject": "studio: QA-Grenze im Tooltip, keine Entwarnung bei bestandener Pruefung"
+          "date": "2026-07-17",
+          "subject": "Add NEXUS product landing at /nexus/."
         },
         {
-          "date": "2026-07-20",
-          "subject": "studio: Produkttreue-Pruefung uebernommen, API-Endpunkte in den Sync"
+          "date": "2026-07-17",
+          "subject": "Add Berry download landing at /berry with APK and coverflow gallery."
         },
         {
-          "date": "2026-07-20",
-          "subject": "studio: Marken-Korrekturen aus fd-pipeline uebernommen"
-        },
-        {
-          "date": "2026-07-20",
-          "subject": "studio: aus fd-pipeline uebernommen, Passwort fail closed, sechs Marken"
-        },
-        {
-          "date": "2026-07-20",
-          "subject": "Remake process icons to clearly depict each step's meaning."
-        },
-        {
-          "date": "2026-07-20",
-          "subject": "Make process icons match Research, Concept, and Validate meaning."
-        },
-        {
-          "date": "2026-07-20",
-          "subject": "Replace process rail icons with flat NEXUS-style facet SVGs."
+          "date": "2026-07-16",
+          "subject": "Add paired-device revoke UI in the launcher (SEC-2)."
         }
       ],
       "lastTouched": null,
-      "lastActivity": "2026-07-21",
+      "lastActivity": "2026-07-17",
       "commits": {
-        "2026-07-18": 34,
-        "2026-07-19": 22,
-        "2026-07-20": 80,
-        "2026-07-21": 1
+        "2026-07-16": 1,
+        "2026-07-17": 3
       },
-      "commitsLast90Days": 137,
+      "commitsLast90Days": 4,
       "source": "scan"
     }
   ],
   "heatmap": {
-    "2026-07-18": 34,
-    "2026-07-19": 22,
-    "2026-07-20": 80,
-    "2026-07-21": 1
+    "2026-07-14": 20,
+    "2026-07-15": 51,
+    "2026-07-16": 59,
+    "2026-07-17": 42,
+    "2026-07-18": 89,
+    "2026-07-19": 171,
+    "2026-07-20": 86,
+    "2026-07-21": 1,
+    "2026-07-23": 15,
+    "2026-07-24": 17,
+    "2026-07-25": 4,
+    "2026-07-26": 4,
+    "2026-07-27": 29,
+    "2026-07-28": 10,
+    "2026-07-29": 57,
+    "2026-07-30": 82,
+    "2026-07-31": 47,
+    "2026-08-01": 110,
+    "2026-08-02": 135,
+    "2026-08-03": 76,
+    "2026-08-04": 17,
+    "2026-08-05": 24,
+    "2026-08-06": 24,
+    "2026-08-07": 43,
+    "2026-08-08": 164,
+    "2026-08-09": 150,
+    "2026-08-10": 55,
+    "2026-08-11": 141,
+    "2026-08-12": 31,
+    "2026-08-13": 72,
+    "2026-08-14": 119,
+    "2026-08-15": 46,
+    "2026-08-16": 113,
+    "2026-08-17": 75,
+    "2026-08-18": 87,
+    "2026-08-19": 60,
+    "2026-08-20": 49,
+    "2026-08-21": 29,
+    "2026-08-22": 234,
+    "2026-08-23": 4,
+    "2026-08-24": 8,
+    "2026-08-25": 3,
+    "2026-08-26": 24,
+    "2026-08-27": 22,
+    "2026-08-28": 5,
+    "2026-08-30": 22,
+    "2026-08-31": 9,
+    "2026-09-01": 44,
+    "2026-09-02": 136,
+    "2026-09-03": 45,
+    "2026-09-04": 2,
+    "2026-09-05": 2,
+    "2026-09-06": 2,
+    "2026-09-07": 161,
+    "2026-09-08": 2,
+    "2026-09-09": 6,
+    "2026-09-10": 32,
+    "2026-09-11": 39,
+    "2026-09-12": 60,
+    "2026-09-13": 23
   },
   "totals": {
     "products": 17,
-    "commitsLast90Days": 137,
-    "activeProjectsLast30Days": 13
+    "commitsLast90Days": 3289,
+    "activeProjectsLast30Days": 12
   }
 }
-

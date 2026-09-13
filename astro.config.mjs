@@ -34,10 +34,6 @@ const cspHashes = () => ({
 export default defineConfig({
   site: 'https://www.dennisbf.design',
   base: '/',
-  redirects: {
-    '/work/nocturne/': { status: 301, destination: '/work/lowlight/' },
-    '/en/work/nocturne/': { status: 301, destination: '/en/work/lowlight/' },
-  },
   integrations: [
     react(),
     mdx(),

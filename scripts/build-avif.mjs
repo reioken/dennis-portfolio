@@ -18,7 +18,7 @@ async function walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const abs = path.join(dir, entry.name);
     if (entry.isDirectory()) out.push(...(await walk(abs)));
-    else if (/\.(webp|jpe?g)$/i.test(entry.name)) out.push(abs);
+    else if (/\.(webp|jpe?g)$/i.test(entry.name) && !/@sm\.webp$/i.test(entry.name)) out.push(abs);   // hall thumbs stay webp (the runtime never picks an avif)
   }
   return out;
 }

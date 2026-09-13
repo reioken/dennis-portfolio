@@ -71,9 +71,9 @@ const META_EN = {
     title: 'Lowlight — Dennis Bierreth-Fernandez',
     desc: 'Resizable Windows companion for Spotify — Obsidian and Frosted Glass themes.',
   },
-  'work/angry/': {
-    title: 'Angry — Dennis Bierreth-Fernandez',
-    desc: 'ADHD-friendly anger-regulation companion app with the mascot Mo.',
+  'work/riftback/': {
+    title: 'Riftback — Dennis Bierreth-Fernandez',
+    desc: 'Fan reference for League Classic: builds, champions, items, runes, jungle and tier lists — without invented win rates.',
   },
   'work/briefly/': {
     title: 'Briefly — Dennis Bierreth-Fernandez',
@@ -114,10 +114,6 @@ const META_EN = {
   'work/web-clients/': {
     title: 'Website Designs — Dennis Bierreth-Fernandez',
     desc: 'Client websites and shop/campaign work — clear hero hierarchy and retail UI.',
-  },
-  'work/ashwake/': {
-    title: 'Ashwake — Dennis Bierreth-Fernandez',
-    desc: 'Survivor-roguelite — forge your lantern, hold the ember, endure the nightwatch.',
   },
   'impressum/': {
     title: 'Legal notice — Dennis Bierreth-Fernandez',

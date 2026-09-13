@@ -96,7 +96,7 @@ const nextLabel = labelOf(next);
           <p class="about-poster__statement"><span data-lang="de">{A.posterLead}</span><span data-lang="en">{AE.posterLead}</span></p>
           <div class="about-poster__actions">
             <a class="about-poster__button about-poster__button--primary" href={p('contact')}><Icon name="contact" size={19} /><span data-lang="de">{A.contact}</span><span data-lang="en">{AE.contact}</span></a>
-            <a class="about-poster__button" href={site.links.linkedin} target="_blank" rel="noreferrer">LinkedIn<Icon name="external" size={18} /></a>
+            <a class="about-poster__button" href={site.links.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn<Icon name="external" size={18} /></a>
           </div>
         </div>
       </header>
@@ -129,7 +129,7 @@ const nextLabel = labelOf(next);
             <div><dt><Icon name="work" size={18} /><span data-lang="de">{P.role}</span><span data-lang="en">{PE.role}</span></dt><dd><span data-lang="de">{avail.de.role} bei {avail.de.employer}</span><span data-lang="en">{avail.en.role} at {avail.en.employer}</span></dd></div>
             <div><dt><span data-lang="de">{D.contact.location}</span><span data-lang="en">{E.contact.location}</span></dt><dd><span data-lang="de">{site.location}</span><span data-lang="en">Mannheim/Heidelberg area</span></dd></div>
             <div><dt><span data-lang="de">{A.languagesLabel}</span><span data-lang="en">{AE.languagesLabel}</span></dt><dd>{languages.map(l => <span class="about-facts__language"><span data-lang="de">{l.name.de} · {l.level.de}</span><span data-lang="en">{l.name.en} · {l.level.en}</span></span>)}</dd></div>
-            <div><dt><Icon name="contact" size={18} />E-Mail</dt><dd><a href={`mailto:${site.email}`}>{site.email}</a></dd></div>
+            <div><dt><Icon name="contact" size={18} />E-Mail</dt><dd><!--email_off--><a href={`mailto:${site.email}`}>{site.email}</a><!--/email_off--></dd></div>
           </dl>
         </section>
         <section class="about-section" id="about-experience" aria-labelledby="about-timeline">

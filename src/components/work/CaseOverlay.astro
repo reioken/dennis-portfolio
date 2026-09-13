@@ -229,7 +229,7 @@ const nextLabel = labelOf(next);
             </a>
           )}
           {externalUrl && (
-            <a class={`hall-panel__btn${livePrimary ? ' hall-panel__btn--coin' : ''}`} href={externalUrl} target="_blank" rel="noreferrer">
+            <a class={`hall-panel__btn${livePrimary ? ' hall-panel__btn--coin' : ''}`} href={externalUrl} target="_blank" rel="noopener noreferrer">
               <span data-lang="de">{P.liveApp}</span>
               <span data-lang="en">{PE.liveApp}</span>
               <Icon name="external" size={17} />

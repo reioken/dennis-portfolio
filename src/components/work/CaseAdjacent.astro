@@ -1,6 +1,7 @@
 ---
 import { p } from '../../lib/paths';
 import { toAvif } from '../../lib/img';
+import { imageSize } from '../../lib/image-size';
 
 type WorkLite = {
   id: string;
@@ -22,6 +23,8 @@ type Props = {
 
 const { prev, next, index, total } = Astro.props;
 const asset = (src: string) => p(src.replace(/^\//, ''));
+const prevSize = await imageSize(prev.data.cover);
+const nextSize = await imageSize(next.data.cover);
 const label = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
 ---
 
@@ -30,7 +33,7 @@ const label = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(
     <span class="case-adjacent__rail" aria-hidden="true">
       <picture>
         {toAvif(asset(prev.data.cover)) && <source type="image/avif" srcset={toAvif(asset(prev.data.cover))} />}
-        <img src={asset(prev.data.cover)} alt="" loading="lazy" decoding="async" />
+        <img src={asset(prev.data.cover)} alt="" loading="lazy" decoding="async" width={prevSize?.width} height={prevSize?.height} />
       </picture>
     </span>
     <span class="case-adjacent__body">
@@ -72,7 +75,7 @@ const label = `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(
     <span class="case-adjacent__rail" aria-hidden="true">
       <picture>
         {toAvif(asset(next.data.cover)) && <source type="image/avif" srcset={toAvif(asset(next.data.cover))} />}
-        <img src={asset(next.data.cover)} alt="" loading="lazy" decoding="async" />
+        <img src={asset(next.data.cover)} alt="" loading="lazy" decoding="async" width={nextSize?.width} height={nextSize?.height} />
       </picture>
     </span>
   </a>

@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { imageSize } from '../lib/image-size';
 import '../styles/arcade-interface.css';
 import { ClientRouter } from 'astro:transitions';
 import HallSession from '../components/hall/HallSession.astro';
@@ -30,6 +31,8 @@ interface Props {
   mode?: 'page' | 'hall' | 'case' | 'arcade';
   /** Station der Halle für die Leiste: Zähler, Name, Version (Seiten ohne Halle: weglassen) */
   station?: { index: number; total: number; title: string; titleEn?: string; version?: string };
+  /** Error and utility pages: robots noindex, no canonical (the 404 page is served at /404 with status 200 by Pages) */
+  noindex?: boolean;
 }
 
 const {
@@ -39,6 +42,7 @@ const {
   mode = 'page',
   bare = mode !== 'page',
   station,
+  noindex = false,
 } = Astro.props;
 
 const path = Astro.url.pathname;
@@ -47,8 +51,9 @@ const canonical = new URL(path, Astro.site ?? site.url).toString();
 const favicon = p('favicon.svg');
 const appleIcon = p('apple-touch-icon.png');
 const og = new URL(p(ogImage.replace(/^\//, '')), Astro.site ?? site.url).toString();
-/** Only the default OG asset is a true 1200×630 card — don't claim that for case covers. */
+/** Only the default OG asset is a true 1200×630 card; case covers get their real pixel size read at build time. */
 const ogIsDefault = ogImage.replace(/^\//, '') === 'og/default.png';
+const ogDims = ogIsDefault ? { width: 1200, height: 630 } : await imageSize(ogImage);
 const gateOn = GATE.editor;
 const personLd = {
   '@context': 'https://schema.org',
@@ -81,7 +86,7 @@ const personLd = {
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#07080c" />
-    <link rel="canonical" href={canonical} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <link rel="preload" as="font" type="font/woff2" href={outfitWoff2} crossorigin />
     {gateOn && <link rel="stylesheet" href={gateEditorCss} />}
     <link rel="icon" type="image/svg+xml" href={`${favicon}?v=3`} />
@@ -95,8 +100,8 @@ const personLd = {
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={og} />
-    {ogIsDefault && <meta property="og:image:width" content="1200" />}
-    {ogIsDefault && <meta property="og:image:height" content="630" />}
+    {ogDims && <meta property="og:image:width" content={String(ogDims.width)} />}
+    {ogDims && <meta property="og:image:height" content={String(ogDims.height)} />}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
