@@ -94,6 +94,10 @@ export class BlueCat {
   private age = 0;
   private clock = 0;
   private frame = 0;
+  private containerWidth = 0;
+  private buttonLeft = '';
+  private buttonTop = '';
+  private buttonEn: boolean | null = null;
   private dwell = 4;
   private speed = 0;
   private travelSpeed = ROAM_SPEED;
@@ -1037,8 +1041,16 @@ export class BlueCat {
 
   /* ---------- per frame ---------- */
 
+  /** Asleep, sitting or on the ledge with nothing to look at: only breathing; the mirror pass may idle. */
+  get calm() {
+    const resting = this.mood === 'sleep' || this.mood === 'sitidle' || this.mood === 'perchidle';
+    return resting && this.gazeWeight < .05 && this.perk < .05 && this.purr <= 0 && !this.hover;
+  }
+
   update(dt: number, camera: THREE.Camera, active: boolean, reduce: boolean, scene?: BlueScene) {
-    const compact = this.container.clientWidth < 600;
+    // Layout reads once a second, not per frame (a forced layout under the overlay button's own writes).
+    if (this.frame % 60 === 0 || !this.containerWidth) this.containerWidth = this.container.clientWidth;
+    const compact = this.containerWidth < 600;
     this.scale = compact ? .75 : 1;
     this.root.scale.setScalar(this.scale);
     this.shift.set(compact ? .4 : 0, 0, compact ? .05 : 0);
@@ -1147,10 +1159,7 @@ export class BlueCat {
       if (dict.BluePerch !== undefined) influences[dict.BluePerch] = this.perchGround;
     }
     // Blend the last few centimetres onto the cushion, including after petting there.
-    if (this.mood !== 'jump') {
-      const homeDistance = flat(this.body.position, HOME);
-      this.body.position.y = this.elevation;
-    }
+    if (this.mood !== 'jump') this.body.position.y = this.elevation;
     const groundY = this.mood === 'jump' ? (this.jumpAir < .5 ? this.jumpFrom.y : this.jumpTo.y) : this.elevation;
     this.shadow.position.set(this.body.position.x, groundY + .003, this.body.position.z);
     this.shadow.rotation.z = -this.yaw;
@@ -1161,11 +1170,14 @@ export class BlueCat {
     const sitting = this.mood === 'sit' || this.mood === 'sitidle' || this.mood === 'sitarch';
     this.projection.set(0, lying ? .15 : sitting ? .22 : .25, 0).applyMatrix4(this.body.matrixWorld).project(camera);
     const inView = Math.abs(this.projection.x) < .94 && Math.abs(this.projection.y) < .94 && this.projection.z > -1 && this.projection.z < 1;
-    this.button.hidden = !inView;
+    // DOM writes only when something changed: a style write per frame kept the layout dirty for the hall's reads.
+    if (this.button.hidden !== !inView) this.button.hidden = !inView;
     if (inView) {
-      this.button.style.left = `${(this.projection.x * .5 + .5) * 100}%`;
-      this.button.style.top = `${(-this.projection.y * .5 + .5) * 100}%`;
-      this.button.setAttribute('aria-label', document.documentElement.dataset.lang === 'en' ? 'Pet Blue the cat' : 'Blue streicheln');
+      const left = ((this.projection.x * .5 + .5) * 100).toFixed(2), top = ((-this.projection.y * .5 + .5) * 100).toFixed(2);
+      if (left !== this.buttonLeft) { this.buttonLeft = left; this.button.style.left = `${left}%`; }
+      if (top !== this.buttonTop) { this.buttonTop = top; this.button.style.top = `${top}%`; }
+      const en = document.documentElement.dataset.lang === 'en';
+      if (en !== this.buttonEn) { this.buttonEn = en; this.button.setAttribute('aria-label', en ? 'Pet Blue the cat' : 'Blue streicheln'); }
     }
     if (reduce) return this.mood === 'happy' || this.gazeWeight > .001 || this.perk > .001;
     // Beside an open panel only calm moods are throttled, so reading stays smooth while Blue keeps breathing.

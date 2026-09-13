@@ -521,11 +521,11 @@
   background: color-mix(in srgb, var(--t) 55%, #0b0c12);
   transition: transform 0.2s ease, background 0.2s ease;
 }
-/* großzügige Trefferfläche, unsichtbar */
+/* großzügige Trefferfläche, unsichtbar: 44 px hoch, so breit wie der Punktabstand erlaubt */
 .hall-panel__dot-link::before {
   content: '';
   position: absolute;
-  inset: -8px -3px;
+  inset: -19px -3px;
 }
 .hall-panel__dot-link:hover {
   transform: scale(1.4);

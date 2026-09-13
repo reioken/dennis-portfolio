@@ -7,6 +7,18 @@ import sitemap from '@astrojs/sitemap';
 import { fileURLToPath } from 'node:url';
 import { buildEnRoutes } from './scripts/en-routes.mjs';
 import { hardenCsp } from './scripts/csp-hashes.mjs';
+import { addModulePreloads } from './scripts/modulepreload.mjs';
+
+/** modulepreload for the hall's chunk chain on every page that mounts it (siehe scripts/modulepreload.mjs) */
+/** @type {() => import('astro').AstroIntegration} */
+const modulePreloads = () => ({
+  name: 'module-preloads',
+  hooks: {
+    'astro:build:done': async ({ dir }) => {
+      await addModulePreloads(fileURLToPath(dir));
+    },
+  },
+});
 
 /** Erzeugt nach dem Build crawlbare /en/-Routen + hreflang (siehe scripts/en-routes.mjs) */
 /** @type {() => import('astro').AstroIntegration} */
@@ -35,6 +47,7 @@ export default defineConfig({
   site: 'https://www.dennisbf.design',
   base: '/',
   integrations: [
+    modulePreloads(),
     react(),
     mdx(),
     sitemap({ filter: (page) => !page.includes('/work/nocturne') }),

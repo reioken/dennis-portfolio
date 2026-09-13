@@ -40,6 +40,8 @@ type Props = {
   roleEn?: string;
   /** Fallback / legacy card image when no logo is set */
   cover: string;
+  /** 720 px sibling of the cover (scripts/build-thumbs.mjs); the card renders at ≤ 600 px, the cover itself is 1200+ */
+  coverSm?: string;
   /** Project logo shown on the card */
   logo?: string;
   /**
@@ -75,6 +77,7 @@ export default function ProjectCard({
   yearEn,
   roleEn,
   cover,
+  coverSm,
   logo,
   logoLive,
   tags,
@@ -211,9 +214,11 @@ export default function ProjectCard({
           </>
         ) : (
           <picture>
-            {toAvif(cover) && <source type="image/avif" srcSet={toAvif(cover)} />}
+            {toAvif(cover) && <source type="image/avif" srcSet={coverSm && toAvif(coverSm) ? `${toAvif(coverSm)} 720w, ${toAvif(cover)} 1400w` : toAvif(cover)} sizes={coverSm ? '(min-width: 768px) 40vw, 100vw' : undefined} />}
             <img
               src={cover}
+              srcSet={coverSm ? `${coverSm} 720w, ${cover} 1400w` : undefined}
+              sizes={coverSm ? '(min-width: 768px) 40vw, 100vw' : undefined}
               fetchPriority={priority ? 'high' : undefined}
               alt={coverAlt ?? `${title} cover`}
               width={1200}

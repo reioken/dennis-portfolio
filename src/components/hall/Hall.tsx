@@ -224,18 +224,22 @@ export function measureFrame(kind: 'hall' | 'case' | 'arcade' | 'center' | 'scre
     // Über mich: der Automat steht links am Rand (gleicher Abstand wie rechts vom Panel), das Panel folgt seiner Kante
     if (about) {
       // Match the bounded About group on ultrawide screens before and after navigation.
+      // Headroom above the cabinet: Blue lies on the marquee, and with the frame starting at the nav's lower edge
+      // his head and ears projected into the nav bar (2026-09-13 QA pass, all three viewports).
+      const headroom = (H - nh) * 0.14;
       if (W >= 2200) {
         const margin = (W - 2100) / 2;
         const available = Math.max(240, left - panelGap(W) - margin);
-        return { cx: (margin + available / 2) / W, cy: (nh + (H - nh) / 2) / H, fw: available / W, fh: (H - nh) / H, al: margin / W };
+        return { cx: (margin + available / 2) / W, cy: (nh + headroom + (H - nh - headroom) / 2) / H, fw: available / W, fh: (H - nh - headroom) / H, al: margin / W };
       }
       const margin = W >= 1440 ? 40 : 32;
-      return { cx: ax / 2, cy: (nh + (H - nh) / 2) / H, fw: ax, fh: (H - nh) / H, al: margin / W };
+      return { cx: ax / 2, cy: (nh + headroom + (H - nh - headroom) / 2) / H, fw: ax, fh: (H - nh - headroom) / H, al: margin / W };
     }
     return { cx: ax / 2, cy: (nh + (H - nh) / 2) / H, fw: ax, fh: (H - nh) / H, ax };
   }
-  // Sheet: über dem Hero liegen die Chrome-Pills (8 + 32 px) — der Automat beginnt darunter
-  const t0 = nh + 44;
+  // Sheet: über dem Hero liegen die Chrome-Pills (8 + 32 px) — der Automat beginnt darunter; on About the cat on
+  // the marquee needs headroom as well, otherwise only his legs show above the sheet
+  const t0 = nh + 44 + (about ? (top - nh) * 0.14 : 0);
   return { cx: 0.5, cy: (t0 + (top - t0) / 2) / H, fw: 1, fh: Math.max(0.2, (top - t0) / H) };
 }
 
@@ -316,6 +320,9 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
   }, [focus, mode, items]);
 
   const go = useCallback((href: string) => {
+    // Offline, the ClientRouter's fetch fails and Astro falls back to a full navigation onto the browser's error
+    // page, which destroys the hall; stay where we are until the connection is back.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
     const target = langHref(href);
     const route = routeState(new URL(target, location.href).pathname, items);
     performance.mark('hall:click');
@@ -788,7 +795,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
         // A touch swipe may still synthesize a click on the canvas. Do not
         // open whichever machine happens to be under the release position.
-        suppressClickUntil = performance.now() + 500;
+        suppressClickUntil = performance.now() + 280;   // the browser already drops taps during a fling; 500 ms stacked a second dead window on top
         if (modeRef.current === 'case') walk(dx < 0 ? 1 : -1);
         else if (modeRef.current === 'hall') move(dx < 0 ? 1 : -1);
       }
@@ -1112,7 +1119,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
                         style={{ ['--k' as string]: k }}
                         src={src}
                         alt=""
-                        loading={k === 0 && near ? 'eager' : 'lazy'}
+                        loading="lazy"
                         decoding="async"
                       />
                     ))}

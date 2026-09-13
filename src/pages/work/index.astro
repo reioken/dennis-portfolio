@@ -1,4 +1,6 @@
 ---
+import fs from 'node:fs';
+import path from 'node:path';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import WorkFilter from '../../components/work/WorkFilter';
 import { getCollection } from 'astro:content';
@@ -7,6 +9,8 @@ import { copy } from '../../lib/i18n';
 import { base, p, resolveLogoLive } from '../../lib/paths';
 
 const asset = (path: string) => p(path.replace(/^\//, ''));
+/** 720 px sibling written by scripts/build-thumbs.mjs, if it exists */
+const smOf = (src: string) => { const sm = src.replace(/\.(webp|jpe?g)$/i, '@sm.webp'); return sm !== src && fs.existsSync(path.join(process.cwd(), 'public', sm.replace(/^\//, ''))) ? sm : undefined; };
 const works = (await getCollection('work'))
   .sort((a, b) => a.data.order - b.data.order)
   .map((w) => ({
@@ -20,6 +24,7 @@ const works = (await getCollection('work'))
     yearEn: w.data.yearEn,
     roleEn: w.data.roleEn,
     cover: asset(w.data.cover),
+    coverSm: smOf(w.data.cover) ? asset(smOf(w.data.cover)!) : undefined,
     logo: w.data.logo ? asset(w.data.logo) : undefined,
     logoLive: resolveLogoLive(w.data.logoLive),
     tags: w.data.tags,
@@ -28,7 +33,7 @@ const works = (await getCollection('work'))
     platform: w.data.platform,
     coverAlt: w.data.coverAlt,
     coverAltEn: w.data.coverAltEn ?? w.data.galleryAltsEn?.[0],
-    previews: w.data.platform.includes('mobile') && !w.data.platform.includes('desktop') && !w.data.document ? w.data.gallery.slice(0, 3).map(asset) : [],
+    previews: w.data.platform.includes('mobile') && !w.data.platform.includes('desktop') && !w.data.document ? w.data.gallery.slice(0, 3).map((g) => asset(smOf(g) ?? g)) : [],
   }));
 ---
 

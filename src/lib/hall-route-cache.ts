@@ -29,7 +29,9 @@ function warmStyle(href: string): Promise<boolean> {
   if (existing) return existing;
   const pending = new Promise<boolean>((resolve) => {
     const link = document.createElement('link');
-    link.rel = 'preload';
+    // prefetch, not preload: the sheet is for a document that may never be swapped in, and a preload that is not
+    // applied within a few seconds logs a console warning on every hall page.
+    link.rel = 'prefetch';
     link.as = 'style';
     link.href = url.href;
     let timer = 0;

@@ -1,4 +1,6 @@
 ---
+import fs from 'node:fs';
+import path from 'node:path';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ProjectCard from '../components/work/ProjectCard';
 import { getCollection } from 'astro:content';
@@ -10,6 +12,8 @@ const asset = (path: string) => p(path.replace(/^\//, ''));
 const lab = (await getCollection('work'))
   .filter((w) => w.data.tags.includes('lab'))
   .sort((a, b) => a.data.order - b.data.order);
+/** 720 px sibling written by scripts/build-thumbs.mjs, if it exists */
+const smOf = (src: string) => { const sm = src.replace(/\.(webp|jpe?g)$/i, '@sm.webp'); return sm !== src && fs.existsSync(path.join(process.cwd(), 'public', sm.replace(/^\//, ''))) ? sm : undefined; };
 ---
 
 <BaseLayout
@@ -46,6 +50,7 @@ const lab = (await getCollection('work'))
               yearEn={w.data.yearEn}
               roleEn={w.data.roleEn}
               cover={asset(w.data.cover)}
+              coverSm={smOf(w.data.cover) ? asset(smOf(w.data.cover)!) : undefined}
               logo={w.data.logo ? asset(w.data.logo) : undefined}
               logoLive={resolveLogoLive(w.data.logoLive)}
               tags={w.data.tags}

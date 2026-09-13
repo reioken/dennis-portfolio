@@ -98,3 +98,36 @@ Rules for the pass: nothing writes into the project (not even `docs/`) while a P
 Order: A1–A6 baseline first (about an hour of machine time), agents A–D in parallel, then fixes in the order: bugs → per-frame waste → delivery → housekeeping, each batch through the gate and a deploy.
 
 Decisions for Dennis before the go: E5 (delete the orphan files, including the old Blue rollback GLBs), F2 (devDependencies), F3 (CI gate), and whether a Lighthouse score target matters or only the felt smoothness.
+
+## Execution record (2026-09-13, after the go)
+
+Four agents measured an unmodified checkout (`dennis-portfolio-measure`, dev on 4323 with `window.__hall`, preview on 4324) while the fixes went into the main checkout; their reports and raw data are in the session scratchpad under `pass/A..D/` and copied to `.source-assets/qa/performance-pass-2026-09-13/`.
+
+### What the agents found (short)
+
+- **Links / SEO / i18n (A):** 9,169 internal references on 55 pages, 422 of 423 targets resolve; all 50 DE/EN pairs, hreflang, canonicals, sitemap and robots correct. Defects: Cloudflare's e-mail obfuscation rewrote the contact and About `mailto` links and the decoder only ran on hard loads under the ClientRouter, so the primary contact link was dead after any in-site navigation; slash-less legacy URLs (`/work/ashwake`, `/work/ceiling`, `/work/nocturne` and EN) 404ed; the nocturne redirect was declared twice; EN `/work/riftback/` carried the German description; the 404 page had a redirecting canonical and no `noindex`; nexus lacked og tags; case covers had no og:image dimensions; adjacent-case thumbs no width/height; 76 unreferenced media files; `rel="noreferrer"` without `noopener`.
+- **Hall states (B):** every transition and state reached its end state (station change, zoom, close-up, back/forward, reload while zoomed, About with the cat, panels, visibility, resize, reduced motion, model 404, no WebGL, compact). Anomalies: the first visit spends 9–11 s compiling shaders behind the loader; offline, opening a station destroyed the hall (full navigation onto Chrome's error page); the cat on the About ledge was cut by the nav bar at all three viewports; taps shortly after a swipe were swallowed (browser fling handling plus the app's 500 ms window); the dot-link targets were 6×6 px; after `End` the cat walks 33 m to the phone (by design, no teleporting); the CSS fallback is the heaviest moment (16 machines with images hydrating).
+- **Runtime (C):** steady state healthy (hall idle 2–3 ms CPU, 4 ms GPU, 212 draw calls, 61 programs, no heap growth over 5 minutes and full station cycling). Causes ranked: the calm cat kept the floor reflection re-rendering 16 times a second; the hall pose renders every gated tick; the quality ladder judged the interval between *rendered* ticks, quantised to the gate on 144 Hz panels (never recovers) and above the degrade threshold on 75 Hz panels; the taxi's transparent double-sided glass re-resolved its program twice a frame; the cat's pet button wrote styles and read layout every frame; zoom-in uploads/decodes 60–80 ms on the main thread (300 ms at 4× CPU throttle).
+- **Delivery (D):** time to a visible hall 11.4 s local / 16.9 s live fast / 24.6 s live 4G, of which shader compile 8.8 s constant; 16 MB per cold hall load (8.3 MB images, 7.2 MB models); the hidden CSS fallback row fetched all 73 thumbnails on 3D clients (4.3 MB, competing with the models); `/models/*` uncached at the edge (`max-age=0`, DYNAMIC); no modulepreload for the 5-hop chain to the three.js bundle; three lowlight captures loaded full-size (430–455 KB each); the route cache's stylesheet preloads warned on every hall page; CLS 0 everywhere, CSP hashes in place, 0 console errors on 12 page types; Lighthouse on hall pages meaningless for LCP (its trace ends before the hall reveals).
+
+### What was changed (three batches, each through typecheck, review tests, build and audit)
+
+1. Housekeeping (`ca4f9c8`): landing scripts scoped to their pages; `Cache-Control` for `/models/*` and `/textures/*`; gamepad polling only with a pad; TV snow at 25 Hz; dead idle-timer code; ~15 MB of orphaned assets removed; QA deps declared, scripts import `playwright`; CI runs `npm run check`.
+2. Crawl findings (`bef50c3`): `<!--email_off-->` around the mail links; exact slash-less redirects; single nocturne redirect; EN riftback description from the case's `summaryEn`; 404 `noindex`; og:image sizes from the real files (sharp at build); nexus og tags; adjacent-thumb sizes; case logo via avif; `@sm.avif` no longer generated; dead media removed; `noopener`.
+3. Startup and runtime (this commit): shader compile only for the render path in use (composer at perfLevel 2), the other variant set compiled in small batches before the ladder switches paths; the fallback row leaves the render tree while WebGL is pending and its images are lazy; modulepreload links for the hall chain on every page that mounts it (build hook); `@sm` thumbnails for the lowlight screens and the case covers, cards serve a 720 px source with `srcset`/`sizes`; route-cache stylesheets prefetched instead of preloaded; About frame with headroom for the cat; offline navigation guarded; post-swipe tap window 280 ms; dot-link hit areas 44 px tall; calm-cat mirror cadence 350 ms; quality ladder on the real rAF interval and the frame's CPU cost; single-pass transparent double-sided materials; pet-button DOM writes deduplicated and layout reads cached.
+
+### Measured on the same probe (dev server, 1440×900, cold, real GPU)
+
+| | before | after |
+| --- | --- | --- |
+| ready after navigation | 10.9 s | 6.4 s |
+| shader compile | 8.4 s | 4.1 s |
+| programs compiled before reveal | 61 | 35 |
+| `/media/` image requests before ready | 80 | 28 |
+| requests before ready | 292 | 238 |
+
+The About cat clears the nav at 1440×900, 768×1024 and 390×844 (pet-button top 221 / 117 / 117 px, nav bottom 56).
+
+### Left open (with reasons)
+
+Hall pose still renders every gated tick (the room is meant to look alive; the saving is battery, not smoothness); zoom-in upload burst (60–80 ms) and the About panel's first-paint raster (140 ms GPU) need a decode/upload scheduler and are worth a round of their own; station-change slide pipeline (per-slide canvas + DataTexture) likewise; the compact raycast per pointer move (6 ms) only matters with a mouse on a phone-width window; splitting the hall CSS out of the base sheet and code-splitting the three.js bundle for lite clients are larger refactors; the far-station walk after `End` is by design (Dennis: no teleporting); the loading overlay gives no progress on slow networks (copy and UI are Dennis's call); Meshopt is already on every GLB.

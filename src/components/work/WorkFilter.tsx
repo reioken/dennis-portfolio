@@ -13,6 +13,7 @@ export type WorkItem = {
   yearEn?: string;
   roleEn?: string;
   cover: string;
+  coverSm?: string;
   logo?: string;
   logoLive?: string;
   tags: string[];
@@ -144,6 +145,7 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
               yearEn={item.yearEn}
               roleEn={item.roleEn}
               cover={item.cover}
+              coverSm={item.coverSm}
               coverAlt={lang === 'en' ? item.coverAltEn ?? item.coverAlt : item.coverAlt}
               previews={item.previews}
               preview

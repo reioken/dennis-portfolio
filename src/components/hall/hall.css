@@ -44,11 +44,15 @@ main.is-bare {
 }
 
 /* ---------- Kein Flackern: mit WebGL bleibt die CSS-Kulisse unsichtbar, bis die Bühne steht ---------- */
-html.gl-pending .hall__row,
 html.gl-pending .hall__wall,
 html.gl-pending .hall__floor,
 html.gl-pending .hall__lamps {
   visibility: hidden;
+}
+/* The row itself leaves the render tree while WebGL is pending: visibility:hidden still let the parser fetch
+   all 73 lazy thumbnails, which then competed with the models for bandwidth on every 3D visit. */
+html.gl-pending .hall__row {
+  display: none;
 }
 /* Schild, Leiste, Pfeile und Hinweis kommen erst mit der Bühne — nichts baut sich sichtbar auf */
 .hall__plaque,

@@ -231,7 +231,11 @@ THREE.Cache.enabled = true;
  */
 function simplifyMaterial(mesh: THREE.Mesh) {
   const mat = mesh.material as THREE.MeshPhysicalMaterial;
-  if (!mat || !mat.isMeshPhysicalMaterial) return;
+  if (!mat) return;
+  // Transparent double-sided materials render in two passes (back faces, then front) and re-resolve their program
+  // each time; one pass is fine for the thin glass of the props.
+  if (mat.transparent && mat.side === THREE.DoubleSide) mat.forceSinglePass = true;
+  if (!mat.isMeshPhysicalMaterial) return;
   if (mat.clearcoat >= 0.05 || mat.transmission > 0 || mat.sheen > 0 || mat.iridescence > 0) return;
   const std = new THREE.MeshStandardMaterial();
   std.copy(mat);
@@ -563,8 +567,11 @@ export class HallScene {
   private items: HallItem[] = [];
   private disposed = false;
   /** Leistungswächter: Frame-Zeiten sammeln und bei Bedarf runterschalten */
-  private frameTimes: number[] = [];
   private perfLevel = 2; // 2 = voll, 1 = ohne Bloom/Spiegel, 0 = zusätzlich Pixelratio 1
+  private mirrorAt = 0;
+  private lastRaf = 0;
+  private rafTimes: number[] = [];
+  private costTimes: number[] = [];
   private perfGood = 0;
   private mirror?: Reflector;
   /** Spiegel neu rendern, obwohl die Kamera steht (Bildschirm gewechselt, Fernseher, Figur bewegt) */
@@ -768,7 +775,7 @@ export class HallScene {
       return { map: load('basecolor', true), normalMap: load('normal'), aoMap: orm, roughnessMap: orm, metalnessMap: orm };
     };
     const floorTex = pbr('marble', [45, 12]);
-    const floor = createHallFloor(floorTex,this.roomLighting,this.lite,this.container.clientWidth/this.container.clientHeight,()=>({dirty:this.mirrorDirty,ready:this.readyDone,quality:this.perfLevel}),()=>{this.mirrorDirty=false;});
+    const floor = createHallFloor(floorTex,this.roomLighting,this.lite,this.container.clientWidth/this.container.clientHeight,()=>({dirty:this.mirrorDirty,ready:this.readyDone,quality:this.perfLevel}),()=>{this.mirrorDirty=false;this.mirrorAt=performance.now();});
     s.add(floor.mesh);this.reflectionResources.push(floor);
     if(floor.mesh instanceof Reflector)this.mirror=floor.mesh;
     // Rückwand aus Ziegel (Quaternius, CC0), Decke dunkel
@@ -1207,6 +1214,56 @@ export class HallScene {
     void this.prepareStartup().catch(error => this.failStartup(error instanceof Error ? error : new Error(String(error))));
   }
 
+  /** Everything drawable, kept from the startup pass so a deferred render path can be compiled later. */
+  private compileRenderables: THREE.Object3D[] = [];
+  private compiledTargets = new Set<THREE.WebGLRenderTarget | null>();
+  private compiling: Promise<void> | null = null;
+
+  /**
+   * compileAsync every renderable for one render target in batches (its synchronous setup and readiness polling
+   * both iterate the supplied materials). Returns the longest batch in ms. compile() traverses invisible meshes
+   * too: no visibility or camera mutations. Canvas uses display-space tone mapping; composer and reflector
+   * targets use linear output without tone mapping, so the two are distinct Three shader variants.
+   */
+  private async compileFor(target: THREE.WebGLRenderTarget | null, batchSize: number): Promise<number> {
+    let maxBatch = 0;
+    const renderables = this.compileRenderables;
+    for (let i = 0; i < renderables.length; i += batchSize) {
+      if (this.disposed || this.startupFailed) return maxBatch;
+      const batch = new THREE.Group();
+      // A traversal view only; do not reparent live scene objects with add().
+      batch.children = renderables.slice(i, i + batchSize);
+      const batchAt = performance.now();
+      const previousTarget = this.renderer.getRenderTarget();
+      try {
+        this.renderer.setRenderTarget(target);
+        this.warmupPromise = this.renderer.compileAsync(batch, this.camera, this.scene);
+      } finally {
+        // Compilation captures these parameters synchronously. Never retain an
+        // offscreen framebuffer across an asynchronous navigation/disposal turn.
+        this.renderer.setRenderTarget(previousTarget);
+      }
+      try {
+        await this.warmupPromise;
+      } finally {
+        this.warmupPromise = null;
+      }
+      maxBatch = Math.max(maxBatch, performance.now() - batchAt);
+      await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+    }
+    this.compiledTargets.add(target);
+    return maxBatch;
+  }
+
+  /** Compile the shader variants of a render path that has not been used yet (small batches: the room is live). */
+  private ensureCompiled(target: THREE.WebGLRenderTarget | null): Promise<void> {
+    if (this.compiledTargets.has(target)) return Promise.resolve();
+    if (!this.compiling) {
+      this.compiling = this.compileFor(target, 3).then(() => { this.compiling = null; });
+    }
+    return this.compiling;
+  }
+
   private async prepareStartup() {
     const warmAt = performance.now();
     this.updateGoal();
@@ -1258,33 +1315,13 @@ export class HallScene {
     // compile() traverses invisible meshes too: no visibility or camera mutations.
     // Canvas uses display-space tone mapping; composer and reflector targets use
     // linear output without tone mapping. Both are distinct Three shader variants.
-    const compileTargets: (THREE.WebGLRenderTarget | null)[] = this.composer
-      ? [null, this.composer.readBuffer] : [null];
-    for (const target of compileTargets) {
-      for (let i = 0; i < renderables.length; i += 12) {
-        if (this.disposed || this.startupFailed) return;
-        const batch = new THREE.Group();
-        // A traversal view only; do not reparent live scene objects with add().
-        batch.children = renderables.slice(i, i + 12);
-        const batchAt = performance.now();
-        const previousTarget = this.renderer.getRenderTarget();
-        try {
-          this.renderer.setRenderTarget(target);
-          this.warmupPromise = this.renderer.compileAsync(batch, this.camera, this.scene);
-        } finally {
-          // Compilation captures these parameters synchronously. Never retain an
-          // offscreen framebuffer across an asynchronous navigation/disposal turn.
-          this.renderer.setRenderTarget(previousTarget);
-        }
-        try {
-          await this.warmupPromise;
-        } finally {
-          this.warmupPromise = null;
-        }
-        maxCompileBatch = Math.max(maxCompileBatch, performance.now() - batchAt);
-        await new Promise<void>(resolve => window.setTimeout(resolve, 0));
-      }
-    }
+    // Only the render path that is about to be used is compiled before the reveal: the composer's target at
+    // perfLevel 2, the canvas otherwise. Compiling both cost a constant 8–11 s on a cold driver cache (2026-09-13
+    // measurements: 52 % of the time to a visible hall); the other variant set is compiled in small batches by
+    // ensureCompiled() before the performance watchdog switches the render path, so no program is built on first sight.
+    const startupTarget = this.composer && this.perfLevel === 2 ? this.composer.readBuffer : null;
+    this.compileRenderables = renderables;
+    maxCompileBatch = await this.compileFor(startupTarget, 12);
     this.container.dataset.compileMs = String(Math.round(performance.now() - compileAt));
     this.container.dataset.compileBatchMaxMs = String(Math.round(maxCompileBatch));
     performance.mark('hall:compile-end');
@@ -2709,6 +2746,12 @@ export class HallScene {
   }
   private tick = (now: number) => {
     if (!this.running) return;
+    // The real frame interval, before the 60 fps gate: the quality ladder judges this and the frame's CPU cost.
+    // (Judging the interval between *rendered* ticks quantised it to the gate on 144 Hz panels, so the ladder
+    // never recovered there and would have degraded healthy 75 Hz machines.)
+    const rafDt = this.lastRaf ? (now - this.lastRaf) / 1000 : 0;
+    this.lastRaf = now;
+    const startedAt = performance.now();
     // Höchstens ~60 Bilder pro Sekunde: auf 120/144-Hz-Schirmen bleibt so mehr als die Hälfte des Hauptthreads
     // für DOM-Übergänge und Eingabe frei; die Animationen sind zeitbasiert und bleiben gleich schnell
     if (now - this.last < 15.2) {
@@ -2931,7 +2974,10 @@ export class HallScene {
     for (const m of this.machines) if (m.dissolve?.tick(now)) brightMoving = true;
     // Blue accompanies every station and climbs the claw cabinet while the About panel is open.
     if (this.blue?.update(dt, this.camera, inHall || this.pose !== 'hall', this.reduce, { focus: this.focus, pose: this.pose, stationX: this.stationX, inHall })) {
-      this.dirty = this.mirrorDirty = true;
+      this.dirty = true;
+      // A calm cat (asleep, sitting, on the ledge) only breathes: his floor reflection refreshes a few times a
+      // second instead of on every tick (the mirror pass cost 3-5x the bloom while nothing moved).
+      if (!this.blue.calm || now - this.mirrorAt > 350) this.mirrorDirty = true;
     }
     if (this.tvDissolve?.tick(now)) wallMoving = true;
 
@@ -2940,7 +2986,7 @@ export class HallScene {
       if (brightMoving || wallMoving || ctlMoving || this.dirty) this.mirrorDirty = true;
       this.dirty = false;
       this.renderFrame();
-      this.watchPerformance(frameDt);
+      this.watchPerformance(rafDt, performance.now() - startedAt);
       // Erst wenn alles Nahe geladen und gezeichnet ist, darf die Bühne erscheinen
       if (!this.readyDone && this.pending === 0 && now - this.bornAt > 120) this.finishReady();
     }
@@ -2986,15 +3032,18 @@ export class HallScene {
   }
 
   /** Sustained frames above 24ms reduce GPU cost; isolated stalls do not lower quality. */
-  private watchPerformance(dt: number) {
+  private watchPerformance(rafDt: number, costMs: number) {
     // Ausreißer (Shader-Bau, GC, Tab-Wechsel) sagen nichts über die Bildrate
-    if (dt <= 0 || dt > 0.1) return;
-    this.frameTimes.push(dt);
-    if (this.frameTimes.length < 90) return;
-    const avg = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
-    this.frameTimes = [];
-    // Wieder hochschalten, wenn es länger locker läuft (Bloom/Spiegel zurück)
-    if (avg < 0.017 && this.perfLevel < 2) {
+    if (rafDt <= 0 || rafDt > 0.1 || costMs > 100) return;
+    this.rafTimes.push(rafDt);
+    this.costTimes.push(costMs);
+    if (this.rafTimes.length < 90) return;
+    const avg = this.rafTimes.reduce((a, b) => a + b, 0) / this.rafTimes.length;
+    const cost = this.costTimes.reduce((a, b) => a + b, 0) / this.costTimes.length;
+    this.rafTimes = []; this.costTimes = [];
+    // Wieder hochschalten, wenn es länger locker läuft (Bloom/Spiegel zurück): the display keeps its rate and a
+    // frame costs well under half of a 60 Hz budget on the main thread
+    if (avg < 0.0175 && cost < 6 && this.perfLevel < 2) {
       this.perfGood += 1;
       if (this.perfGood >= 4) {
         this.perfGood = 0;
@@ -3008,7 +3057,14 @@ export class HallScene {
       return;
     }
     this.perfGood = 0;
-    if (avg > 0.024 && this.perfLevel > 0) {
+    // Herunterschalten, wenn der Schirm Bilder auslässt oder ein Bild mehr als zwei Drittel des Budgets kostet
+    if ((avg > 0.024 || cost > 11) && this.perfLevel > 0) {
+      if (this.perfLevel === 2 && this.composer && !this.compiledTargets.has(null)) {
+        // Leaving the composer means drawing straight to the canvas with programs that were never built;
+        // compile them in the background first (a few frames of small batches), then re-evaluate.
+        void this.ensureCompiled(null);
+        return;
+      }
       this.perfLevel -= 1;
       if (this.perfLevel === 1) {
         this.mirrorDirty = true;
