@@ -6,10 +6,12 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
-const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6.glb';
+const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6b.glb';
 /** v4 and later (Meshy multi-view mesh, one PBR material, eyes painted into the coat) have no eyeball or lid nodes;
- * v6 is the v1 mesh with its original atlas: the coat plus the tinted `Blue amber eyes` polygons, no normal map. */
-const VERSION = FILE.match(/v(\d+)\.glb$/)?.[1];
+ * v6 is the v1 mesh with its original atlas: the coat plus the tinted `Blue amber eyes` polygons, no normal map.
+ * The file-name suffix (`v6b`) is the asset build (BLUE_ASSET_BUILD in blueCat.ts); the version is its digits. */
+const BUILD = FILE.match(/blue-rigged-(v\d+[a-z]?)\.glb$/)?.[1];
+const VERSION = BUILD?.match(/\d+/)?.[0];
 const V4 = Number(VERSION) >= 4;
 const ORIGINAL = VERSION === '6';
 const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear.R',
@@ -110,9 +112,9 @@ test('morph targets keep their names and order, the materials and eyeballs exist
 test('the v6 companion textures are in place', async () => {
   if (!ORIGINAL) return;
   const sharp = (await import('sharp')).default;
-  const closed = await sharp('public/models/blue-v6-closed.webp').metadata();
+  const closed = await sharp(`public/models/blue-${BUILD}-closed.webp`).metadata();
   assert.deepEqual([closed.width, closed.height], [512, 512], 'closed-eye texture');
-  const mips = await sharp('public/models/blue-v6-mips.webp').metadata();
+  const mips = await sharp(`public/models/blue-${BUILD}-mips.webp`).metadata();
   assert.deepEqual([mips.width, mips.height], [512, 1023], 'coat mip sheet: the levels 512..1 stacked in one column');
 });
 

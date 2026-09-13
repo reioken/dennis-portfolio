@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13T01:48:51.487Z",
+  "generatedAt": "2026-09-13T11:06:24.040Z",
   "machine": true,
   "products": [
     {
@@ -9,9 +9,29 @@
       "version": "1.0.0",
       "lastCommit": {
         "date": "2026-09-13",
-        "subject": "Analyse the site for the performance pass and write the checklist"
+        "subject": "Blue Phase 18: side-lying curl, island-aware atlas mips, eyes on their own textures, dark ear rims"
       },
       "recent": [
+        {
+          "date": "2026-09-13",
+          "subject": "Blue Phase 18: side-lying curl, island-aware atlas mips, eyes on their own textures, dark ear rims"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Hand over the performance pass: deployment 3f14487f, probes, open items, the route-cache flake"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Performance pass, batch 3: startup, runtime and delivery fixes from the measurements"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Performance pass, batch 2: links, redirects, i18n and SEO findings from the crawl"
+        },
+        {
+          "date": "2026-09-13",
+          "subject": "Performance pass, batch 1: housekeeping the inventory turned up"
+        },
         {
           "date": "2026-09-13",
           "subject": "Analyse the site for the performance pass and write the checklist"
@@ -23,26 +43,6 @@
         {
           "date": "2026-09-13",
           "subject": "Give Blue a curled sleep and an authored step out of and into the bed over its front lip"
-        },
-        {
-          "date": "2026-09-13",
-          "subject": "Hand over Blue v6: the first cat is back, verdicts 13-14, deployment 13214868"
-        },
-        {
-          "date": "2026-09-13",
-          "subject": "Bring back the first cat as Blue v6: v1 mesh and original atlas on the current pipeline"
-        },
-        {
-          "date": "2026-09-13",
-          "subject": "Hand over Blue v5: verdicts 9-12, pipeline map for the Meshy path, deployment 89dd8cfc"
-        },
-        {
-          "date": "2026-09-13",
-          "subject": "Replace Blue with a stylised v5 mesh: fur retexture, re-measured tail, round pupils, matte coat"
-        },
-        {
-          "date": "2026-09-13",
-          "subject": "Record the Blue v4 deployment 80129228 and Dennis's mesh decisions in the handovers"
         }
       ],
       "lastTouched": null,
@@ -54,9 +54,9 @@
         "2026-07-21": 1,
         "2026-09-11": 14,
         "2026-09-12": 35,
-        "2026-09-13": 11
+        "2026-09-13": 16
       },
-      "commitsLast90Days": 197,
+      "commitsLast90Days": 202,
       "source": "scan"
     },
     {
@@ -76,9 +76,9 @@
         "2026-09-10": 29,
         "2026-09-11": 15,
         "2026-09-12": 25,
-        "2026-09-13": 12
+        "2026-09-13": 13
       },
-      "commitsLast90Days": 87,
+      "commitsLast90Days": 88,
       "source": "scan"
     },
     {
@@ -696,11 +696,11 @@
     "2026-09-10": 32,
     "2026-09-11": 39,
     "2026-09-12": 60,
-    "2026-09-13": 23
+    "2026-09-13": 29
   },
   "totals": {
     "products": 17,
-    "commitsLast90Days": 3289,
+    "commitsLast90Days": 3295,
     "activeProjectsLast30Days": 12
   }
 }

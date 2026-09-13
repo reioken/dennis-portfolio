@@ -9,6 +9,9 @@ type Plan = { kind: 'home' } | { kind: 'station'; index: number } | { kind: 'per
 /** What the hall tells Blue every frame so he can accompany the visitor. */
 export interface BlueScene { focus: number; pose: 'hall' | 'zoom' | 'play' | 'screen'; stationX: number[]; inHall: boolean; }
 
+/** Name suffix of the shipped Blue files (`blue-rigged-<build>.glb`, `blue-<build>-closed.webp`, `blue-<build>-mips.webp`).
+ * Bump it whenever any of them changes: `/models/*` is edge-cached for a day and the three must come from one build. */
+export const BLUE_ASSET_BUILD = 'v6b';
 const HOME = new THREE.Vector3(-1.65, 0, .18);
 /** Cat bed: inner half-extents across and along Blue, bolster tube radius, superellipse exponent, plinth and cushion heights, centre offset behind the body origin. */
 const BED = { x: .20, z: .30, tube: .07, n: 2.7, base: .03, cushion: .06, back: .06 };   // z .30: the front lip sits 31 cm ahead of the resting origin, clear of the standing forepaws
@@ -314,16 +317,19 @@ export class BlueCat {
     });
     const loads: Promise<unknown>[] = [];
     if (this.coat && this.openMap) {
-      // The closed-eye texture has the lids painted shut and shares the glTF UV convention; it is versioned with the
-      // material (`Blue coat v6` → `blue-v6-closed.webp`). v4/v5: a copy of the whole coat atlas; v6: the eye
-      // polygons' own texture, so nothing bright ever sits in the coat atlas.
-      const version = this.coat.name.match(/v\d+/)?.[0] ?? 'v4';
+      // The closed-eye texture has the lids painted shut and shares the glTF UV convention. v4/v5: a copy of the whole
+      // coat atlas, named after the material version; v6: the eye polygons' own texture (nothing bright ever sits in
+      // the coat atlas), named after the asset build.
+      // Older builds derived the file names from the material version; every file that changes content now gets a
+      // new name (BLUE_ASSET_BUILD), because /models/* is cached at the edge for a day and a stale GLB with a fresh
+      // texture (or the reverse) must never meet.
+      const build = original ? BLUE_ASSET_BUILD : this.coat.name.match(/v\d+/)?.[0] ?? 'v4';
       this.eyesOpenMap = this.eyesMaterial?.map && this.eyesMaterial.map !== this.openMap ? this.eyesMaterial.map : null;
-      loads.push(new Promise<void>(resolve => new THREE.TextureLoader().load(`/models/blue-${version}-closed.webp`, texture => {
+      loads.push(new Promise<void>(resolve => new THREE.TextureLoader().load(`/models/blue-${build}-closed.webp`, texture => {
         texture.colorSpace = THREE.SRGBColorSpace; texture.flipY = false; texture.anisotropy = 8;
         this.closedMap = texture; this.textures.add(texture); resolve();
       }, undefined, () => resolve())));
-      if (original) loads.push(BlueCat.attachMipSheet(this.openMap, `/models/blue-${version}-mips.webp`));
+      if (original) loads.push(BlueCat.attachMipSheet(this.openMap, `/models/blue-${build}-mips.webp`));
     }
     this.ready = Promise.all(loads).then(() => undefined);
     // GLTFLoader sanitizes node names (dots are dropped), so Blender's `Eye.L` arrives as `EyeL`; look for both.

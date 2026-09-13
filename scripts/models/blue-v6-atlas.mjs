@@ -12,14 +12,18 @@
 //      owns it; at 128² and below the inner-ear islands go to the coat colour and at 64² and below nothing brighter
 //      than the fur survives (a 60 px cat has no pink ears),
 //   4. the 1024² base goes into a copy of the GLB and the 512²..1² levels into one sheet
-//      (public/models/blue-v6-mips.webp) that the runtime uploads as the texture's mip levels.
-// node scripts/models/blue-v6-atlas.mjs [source glb] [out glb]
+//      (public/models/blue-<build>-mips.webp) that the runtime uploads as the texture's mip levels.
+// node scripts/models/blue-v6-atlas.mjs [source glb] [out glb] [build suffix, default v6b]
+// Then: node scripts/models/blue-pack.mjs <out glb> public/models/blue-rigged-<build>.glb
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import sharp from 'sharp';
 import fs from 'node:fs';
 const SRC = process.argv[2] || '.source-assets/blue/v3/blue-rigged-v6.glb';
 const OUT = process.argv[3] || '.source-assets/blue/v3/blue-rigged-v6-atlas.glb';
+// File-name suffix of the shipped set (see BLUE_ASSET_BUILD in blueCat.ts): every content change gets a new name,
+// because /models/* is edge-cached for a day and the GLB, the sheet and the closed texture must come from one build.
+const BUILD = process.argv[4] || 'v6b';
 const PUB = 'public/models', INSPECT = '.source-assets/blue/v6';
 fs.mkdirSync(INSPECT, { recursive: true });
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
@@ -161,7 +165,7 @@ tex.setImage(new Uint8Array(baseWebp)).setMimeType('image/webp').setName('Blue c
   // levels 512..1 stacked in a 512-wide column (height 1023); the runtime slices it back into mip levels 1..10
   const rows = levels.filter(l => l.w <= 512); let top = 0; const composite = [];
   for (const l of rows) { composite.push({ input: toBuf(l.rgb, l.w), raw: { width: l.w, height: l.w, channels: 3 }, left: 0, top }); top += l.w; }
-  await sharp({ create: { width: 512, height: top, channels: 3, background: '#000' } }).composite(composite).webp({ quality: 90 }).toFile(`${PUB}/blue-v6-mips.webp`);
+  await sharp({ create: { width: 512, height: top, channels: 3, background: '#000' } }).composite(composite).webp({ quality: 90 }).toFile(`${PUB}/blue-${BUILD}-mips.webp`);
 }
 
 // ---------------------------------------------------------------- the eyes: their own textures
@@ -183,8 +187,7 @@ for (let i = 0; i < W * H; i++) {
   eyeClosed[3 * i] = rgb[0]; eyeClosed[3 * i + 1] = rgb[1]; eyeClosed[3 * i + 2] = rgb[2];
 }
 const eyeClosed512 = box(eyeClosed, W, 4);
-await sharp(toBuf(eyeClosed512, 512), { raw: { width: 512, height: 512, channels: 3 } }).webp({ quality: 88 }).toFile(`${PUB}/blue-v6-closed.webp`);
-for (const stale of ['blue-v6-closed-mips.webp']) if (fs.existsSync(`${PUB}/${stale}`)) fs.unlinkSync(`${PUB}/${stale}`);
+await sharp(toBuf(eyeClosed512, 512), { raw: { width: 512, height: 512, channels: 3 } }).webp({ quality: 88 }).toFile(`${PUB}/blue-${BUILD}-closed.webp`);
 await io.write(OUT, doc);
 // inspection copies
 await sharp(toBuf(img, W), { raw: { width: W, height: H, channels: 3 } }).png().toFile(`${INSPECT}/atlas-coat-2048.png`);
@@ -192,4 +195,4 @@ await sharp(toBuf(eyeOpen1024, 1024), { raw: { width: 1024, height: 1024, channe
 await sharp(toBuf(eyeClosed512, 512), { raw: { width: 512, height: 512, channels: 3 } }).png().toFile(`${INSPECT}/eyes-closed-512.png`);
 for (const l of levels) if (l.w <= 256 && l.w >= 16) await sharp(toBuf(l.rgb, l.w), { raw: { width: l.w, height: l.w, channels: 3 } }).png().toFile(`${INSPECT}/mip-coat-${l.w}.png`);
 const size = f => fs.statSync(f).size;
-console.log(`BLUE_ATLAS ${OUT}: coat 1024² ${baseWebp.length} B + eyes 1024² ${eyeWebp.length} B; sheet ${size(`${PUB}/blue-v6-mips.webp`)} B; closed eyes 512² ${size(`${PUB}/blue-v6-closed.webp`)} B; eye texels ${eyeIdx.length}, eye mean ${eyeMean.map(v => v.toFixed(0)).join(',')}`);
+console.log(`BLUE_ATLAS ${OUT}: coat 1024² ${baseWebp.length} B + eyes 1024² ${eyeWebp.length} B; sheet ${size(`${PUB}/blue-${BUILD}-mips.webp`)} B; closed eyes 512² ${size(`${PUB}/blue-${BUILD}-closed.webp`)} B; eye texels ${eyeIdx.length}, eye mean ${eyeMean.map(v => v.toFixed(0)).join(',')}`);

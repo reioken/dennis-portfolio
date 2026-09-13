@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { createHallFloor } from './floorReflectionShader';
 import { HallLighting } from './hallLighting';
-import { BlueCat } from './blueCat';
+import { BlueCat, BLUE_ASSET_BUILD } from './blueCat';
 import { ScreenDissolve } from './screenDissolve';
 import { textTexture } from './marqueeTexture';
 import { tvPresentation } from './presentation.mjs';
@@ -667,7 +667,7 @@ export class HallScene {
     this.initialFocus = initial;
     items.forEach((it, i) => this.addMachine(it, i));
     const blueDone = this.track(initial);
-    this.gltf.load('/models/blue-rigged-v6.glb', gltf => {
+    this.gltf.load(`/models/blue-rigged-${BLUE_ASSET_BUILD}.glb`, gltf => {
       if (!this.disposed) {
         this.blue = new BlueCat(gltf, container, this.stationX[0]);
         this.scene.add(this.blue.root);
