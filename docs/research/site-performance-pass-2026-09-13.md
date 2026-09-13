@@ -130,4 +130,7 @@ The About cat clears the nav at 1440×900, 768×1024 and 390×844 (pet-button to
 
 ### Left open (with reasons)
 
+A pre-existing race, not from this pass: `scripts/qa/hall-route-cache.mjs` (warm scenario: /en/about/ → /en/ → /en/about/ → /en/contact/ → /en/about/ → /en/work/ through the route cache) intermittently logs React error 424 ("this root received an early update, before anything was able to hydrate; switched the entire root to client rendering") on the swap to `/en/work/`. The pre-pass build fails it one run in two as well; the cold scenario and every other production-build QA script pass. Worth its own look: an island on the incoming document gets a state update before it hydrates.
+
+
 Hall pose still renders every gated tick (the room is meant to look alive; the saving is battery, not smoothness); zoom-in upload burst (60–80 ms) and the About panel's first-paint raster (140 ms GPU) need a decode/upload scheduler and are worth a round of their own; station-change slide pipeline (per-slide canvas + DataTexture) likewise; the compact raycast per pointer move (6 ms) only matters with a mouse on a phone-width window; splitting the hall CSS out of the base sheet and code-splitting the three.js bundle for lite clients are larger refactors; the far-station walk after `End` is by design (Dennis: no teleporting); the loading overlay gives no progress on slow networks (copy and UI are Dennis's call); Meshopt is already on every GLB.
