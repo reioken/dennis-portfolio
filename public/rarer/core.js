@@ -3,8 +3,8 @@ export const categories = [
   {name:'A Beatles song',label:'Beatles',icon:'♫',answers:[['Help!',17],['Something',34],['Rain',56]],missed:[['You know my name',94],['Revolution 9',99]],extra:[['Yesterday',8]]},
   {name:'A chemical element',label:'Elements',icon:'⚗',answers:[['Iron',20],['Tungsten',55]],missed:[['Astatine',96],['Tennessine',99]],extra:[['Hydrogen',10]]}
 ];
-export const tiers=[{label:'Common',className:'common',mark:'■',color:'#a5a0b6',square:'⬜'},{label:'Uncommon',className:'uncommon',mark:'◆',color:'#80bac9',square:'🟦'},{label:'Rare',className:'rare',mark:'✦',color:'#b78acc',square:'🟪'},{label:'Legendary',className:'legendary',mark:'⬟',color:'#edbd57',square:'🟨'}];
-export const tier = n => tiers[n<25?0:n<50?1:n<80?2:3];
+export const tiers=[{label:'Common',className:'common',mark:'■',color:'#a5a0b6',square:'⬜'},{label:'Uncommon',className:'uncommon',mark:'◆',color:'#75bd8b',square:'🟩'},{label:'Unusual',className:'unusual',mark:'◇',color:'#74bce7',square:'🟦'},{label:'Rare',className:'rare',mark:'✦',color:'#b78acc',square:'🟪'},{label:'Very rare',className:'very-rare',mark:'✹',color:'#f4a465',square:'🟧'},{label:'Legendary',className:'legendary',mark:'⬟',color:'#edbd57',square:'🟨'}];
+export const tier = n => tiers[n<20?0:n<40?1:n<60?2:n<80?3:n<95?4:5];
 export const sum = chain => chain.reduce((n,a)=>n+a[1],0);
 export const score = chain => sum(chain)*chain.length;
 export const normalize = text => text.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]/g,'');

@@ -1,8 +1,10 @@
-import {tier} from './core.js?v=34cffeeb0050';
+import {tier} from './core.js?v=859643e99d5c';
 const finds={
   common:{asset:'rocks',name:'Stone',chips:7,color:'#d5a18a',level:0},
-  uncommon:{asset:'ore',name:'Blue ore',chips:10,color:'#7bcedc',level:1},
+  uncommon:{asset:'ore',name:'Ore',chips:9,color:'#75bd8b',level:1},
+  unusual:{asset:'ore',name:'Blue ore',chips:12,color:'#74bce7',level:1},
   rare:{asset:'amethyst',name:'Amethyst',chips:15,color:'#cd9cef',level:2},
+  'very-rare':{asset:'amethyst',name:'Crystal',chips:18,color:'#f4a465',level:2},
   legendary:{asset:'diamond',name:'Diamond',chips:21,color:'#ffe6a1',level:3}
 };
 export function findFor(rarity){const t=tier(rarity);return {...finds[t.className],tier:t.label,className:t.className};}
