@@ -48,6 +48,8 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const step = (x: number, a: number, b: number) => THREE.MathUtils.smoothstep(x, a, b);
 const flat = (a: THREE.Vector3, b: THREE.Vector3) => Math.hypot(a.x - b.x, a.z - b.z);
 const wrap = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
+/** Pet angles ease towards the hand, with a hard angular-speed ceiling even if the target changes every frame. */
+const followTouch = (current: number, target: number, dt: number) => current + THREE.MathUtils.clamp(THREE.MathUtils.damp(current, target, 8, dt) - current, -1.2 * dt, 1.2 * dt);
 /** Rotation vector (axis × angle, shortest arc) of a unit quaternion, and back. */
 const toRotVec = (q: THREE.Quaternion, out: THREE.Vector3) => {
   let { x, y, z, w } = q;
@@ -146,7 +148,11 @@ export class BlueCat {
   private touchRegion: Region = 'head';
   private touchAmount = 0;
   private touchSide = 1;
-  private lastTouch = -Infinity;
+  private touchPush = 0;
+  private touchTilt = 0;
+  private touchCurve = 0;
+  private touchEar = 0;
+  private lastFlick = -Infinity;
   private pickMeshes: THREE.SkinnedMesh[] = [];
   private pickInverse = new THREE.Matrix4();
   private forward = new THREE.Vector3();
@@ -714,7 +720,7 @@ export class BlueCat {
    * Touch reactions by body part: the head gets the purr (lean in, slow blink), the back an arched stretch when he
    * is standing or a lean when he sits or lies, the tail a lash with the ears back on top of any pose.
    */
-  readonly pet = (arg?: Event | THREE.Intersection, stroke = false) => {
+  readonly pet = (arg?: Event | THREE.Intersection, _stroke = false) => {
     const hit = arg && 'point' in arg ? arg : null;
     if (arg && !hit) (arg as Event).stopPropagation();
     // Pointer input is handled on pointerdown by the hall, with a real ray even on
@@ -722,7 +728,6 @@ export class BlueCat {
     if (arg instanceof MouseEvent && arg.detail > 0) return;
     if (!this.root.visible) return;
     const region = this.region(hit);
-    const changed = region !== this.touchRegion;
     this.touchRegion = region;
     if (hit) {
       this.tmpV.copy(hit.point); this.body.worldToLocal(this.tmpV);
@@ -730,29 +735,34 @@ export class BlueCat {
     }
     this.undisturbed = false;
     this.purr = region === 'tail' ? .65 : 1.15;
-    // A held stroke refreshes the response, never resets its rising envelope.
-    const repeat = !stroke || changed || this.clock - this.lastTouch > .45;
-    this.lastTouch = this.clock;
-    if (this.mood === 'jump' || this.mood === 'stand' || this.mood === 'unperch') {
+    // Every touch feeds the soft response. Whole-body clips have their own cadence:
+    // rapid input must neither restart them nor cancel a planted step or landing.
+    if (this.mood === 'jump' || this.mood === 'turn' || this.mood === 'walk' || this.mood === 'stand' || this.mood === 'unperch' || this.mood === 'sit' || this.mood === 'perch') {
       // Acknowledge the hand with head/ears without interrupting a mapped path.
     } else if (this.mood === 'settle' || this.mood === 'sleep') {
       this.dwell = 0; this.enter('wake'); this.pendingHappy = true; this.pendingPet = region;
     } else if (this.mood === 'wake') {
       this.pendingHappy = true; this.pendingPet = region;
     } else if (region === 'tail') {
-      if (this.flick && repeat) this.flick.reset().setEffectiveTimeScale(1.6).play();
+      this.flickTail();
       this.slowBlink = 0;
-    } else if (region === 'back' && (this.mood === 'sit' || this.mood === 'sitidle')) {
+    } else if (region === 'back' && this.mood === 'sitidle') {
       // A stroke along the back while seated: the back rounds up into the hand.
       this.enter('sitarch');
-    } else if (this.mood === 'perch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'sitidle' || this.mood === 'sitarch') {
+    } else if (this.mood === 'perchidle' || this.mood === 'sitidle' || this.mood === 'sitarch') {
       // Seated or on the ledge Blue answers with closed eyes and a head push instead of standing up.
       this.slowBlink = 1;
-    } else if (region === 'back' && (this.mood === 'idle' || this.mood === 'walk' || this.mood === 'happy')) this.enter('arch');
-    else if (region === 'head' && this.mood !== 'happy') this.enter('happy');
-    if (this.mood === 'happy' || this.mood === 'arch' || this.mood === 'sitarch') this.layer?.setEffectiveTimeScale(1.5);
+    } else if (region === 'back' && (this.mood === 'idle' || (this.mood === 'happy' && this.age >= 1.4))) this.enter('arch');
+    else if (region === 'head' && (this.mood === 'idle' || (this.mood === 'arch' && this.age >= this.length('arch')))) this.enter('happy');
     this.container.dispatchEvent(new CustomEvent('hall:blue-petted', { bubbles: true }));
   };
+
+  /** A new touch may ask for another flick only after the tail has returned and rested. */
+  private flickTail() {
+    if (!this.flick || this.flick.isRunning() || this.clock - this.lastFlick < this.length('flick') + .35) return;
+    this.lastFlick = this.clock;
+    this.flick.reset().setEffectiveTimeScale(1).play();
+  }
 
   hit(ray: THREE.Raycaster) {
     if (!this.root.visible) return null;
@@ -940,8 +950,7 @@ export class BlueCat {
         if (this.pendingHappy) {
           this.enter(region === 'back' ? 'arch' : region === 'tail' ? 'idle' : 'happy');
           this.touchRegion = region ?? 'head'; this.purr = region === 'tail' ? .65 : 1.15;
-          if (region === 'tail') this.flick?.reset().setEffectiveTimeScale(1.6).play();
-          else this.layer?.setEffectiveTimeScale(1.5);
+          if (region === 'tail') this.flickTail();
         } else { this.enter('idle'); this.resume(stationX); }
         break;
       }
@@ -1039,18 +1048,22 @@ export class BlueCat {
     const headTouch = this.touchRegion === 'head';
     const backTouch = this.touchRegion === 'back';
     const safePose = this.mood !== 'wake' && this.mood !== 'sleep' && this.mood !== 'settle' && this.mood !== 'jump';
-    const push = (headTouch ? .24 : backTouch ? .07 : 0) * petted * (safePose ? 1 : .2);
-    const tilt = (headTouch ? .20 : backTouch ? .05 : -.10) * petted * this.touchSide * (safePose ? 1 : .2);
+    // Smooth the actual angles, including side/region changes while already fully
+    // petted. Smoothing only touchAmount left a one-frame 23° head flip at x = 0.
+    const push = this.touchPush = followTouch(this.touchPush, (headTouch ? .24 : backTouch ? .07 : 0) * petted * (safePose ? 1 : .2), dt);
+    const tilt = this.touchTilt = followTouch(this.touchTilt, (headTouch ? .20 : backTouch ? .05 : -.10) * petted * this.touchSide * (safePose ? 1 : .2), dt);
+    this.touchCurve = followTouch(this.touchCurve, backTouch && safePose ? petted * .08 : 0, dt);
+    this.touchEar = followTouch(this.touchEar, petted * (this.touchRegion === 'tail' ? .40 : .20), dt);
     // From the ledge the camera sits only a few degrees below him; tuck the chin so the look-down reads.
     const ledgeBias = this.mood === 'perchidle' ? .22 * this.gazeWeight : 0;
     // Curving while walking: the chest rolls into the turn and the head looks along the path ahead of the body.
     const curve = reduce || this.mood !== 'walk' ? 0 : THREE.MathUtils.clamp(this.yawRate, -1.2, 1.2);
     const lead = curve * .22;
     const yaw = this.gazeYaw * this.gazeWeight + lead, pitch = this.gazePitch * this.gazeWeight - push - ledgeBias;
-    this.overlay(this.chest, curve * .04, -push * .25 - (backTouch && safePose ? petted * .08 : 0), -curve * .05 + tilt * .3);
+    this.overlay(this.chest, curve * .04, -push * .25 - this.touchCurve, -curve * .05 + tilt * .3);
     this.overlay(this.neck, yaw * .38, -pitch * .35, tilt * .3);
     this.overlay(this.head, yaw * .62, -pitch * .65, tilt);
-    const earBack = petted * (this.touchRegion === 'tail' ? .40 : .20);
+    const earBack = this.touchEar;
     for (const ear of this.ears) this.overlay(ear, 0, -this.perk * .22 + earBack, ear === this.ears[0] ? this.perk * .06 : -this.perk * .06);
   }
 
@@ -1081,12 +1094,14 @@ export class BlueCat {
       this.inertialize(step);
       this.secondary(step);
     }
-    this.attend(dt, camera, reduce);
+    // Inertialize the animation pose, not the attention overlay. Carrying gaze and
+    // pet angles into the next clip and then adding them again made transitions jerk.
     for (const bone of this.bones) {
       const state = this.inertia.get(bone)!;
       state.before.copy(state.last); state.last.copy(bone.quaternion);
-      this.baseQuat.get(bone)![1].copy(bone.quaternion);
     }
+    this.attend(dt, camera, reduce);
+    for (const bone of this.bones) this.baseQuat.get(bone)![1].copy(bone.quaternion);
     this.lastDt = Math.max(dt, 1e-4);
   }
 
@@ -1096,7 +1111,7 @@ export class BlueCat {
       this.pendingInertia = false; this.inertiaActive = true;
       for (const bone of this.bones) {
         const state = this.inertia.get(bone)!;
-        // offset: rotation from the mixer's new pose to the pose we last showed; velocity: how that shown pose was moving.
+        // Offset and velocity of the previous animation pose, before gaze/petting overlays.
         this.tmpQ.copy(state.last).multiply(this.tmpQ2.copy(bone.quaternion).invert());
         toRotVec(this.tmpQ, state.offset);
         this.tmpQ.copy(state.last).multiply(this.tmpQ2.copy(state.before).invert());
@@ -1181,12 +1196,12 @@ export class BlueCat {
         case 'walk': this.locomote(dt, stationX); break;
         case 'settle': if (this.age > this.length('settle')) this.advance(stationX); break;
         case 'turn': if (this.age * this.turnRate > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
-        case 'sitarch': if (this.age > this.length('sitarch') / 1.5 && this.purr <= .2) this.advance(stationX); break;
+        case 'sitarch': if (this.age > this.length('sitarch') && this.purr <= .2) this.advance(stationX); break;
         case 'sleep':
           if (this.undisturbed && this.hover && this.clock - this.hoverSince > .35) this.disturb();
           else if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
           break;
-        case 'arch': if (this.age > this.length('arch') / 1.5 && this.purr <= .2) this.advance(stationX); break;
+        case 'arch': if (this.age > this.length('arch') && this.purr <= .2) this.advance(stationX); break;
         case 'wake': if (this.age > this.length('wake')) this.advance(stationX); break;
         case 'sit': if (this.age > this.length('sit')) this.advance(stationX); break;
         case 'sitidle': if (this.age > this.dwell) this.enter('sleep'); break;
