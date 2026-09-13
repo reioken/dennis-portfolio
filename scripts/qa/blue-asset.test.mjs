@@ -16,7 +16,7 @@ const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear
   'FrontUpper.L', 'FrontLower.L', 'FrontPaw.L', 'FrontUpper.R', 'FrontLower.R', 'FrontPaw.R',
   'HindUpper.L', 'HindLower.L', 'HindPaw.L', 'HindUpper.R', 'HindLower.R', 'HindPaw.R',
   'Tail0', 'Tail1', 'Tail2', 'Tail3', 'Tail4', 'Tail5'];
-const CLIPS = ['arch', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'settle', 'sit', 'sitarch', 'sitidle', 'sleep', 'stand', 'trot',
+const CLIPS = ['arch', 'bedin', 'bedout', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'settle', 'sit', 'sitarch', 'sitidle', 'sleep', 'stand', 'trot',
   'turnL45', 'turnL90', 'turnR45', 'turnR90', 'unperch', 'wake', 'walk'];
 const MORPHS = ['BlueBlink', 'BlueGround', 'BlueSit', 'BluePerch'];
 
@@ -40,7 +40,7 @@ test('turn clips carry their yaw and jump clips their trajectory on the Root bon
     const name = animation.getName();
     const rootChannels = animation.listChannels().filter(c => c.getTargetNode()?.getName() === 'Root').map(c => c.getTargetPath());
     if (name.startsWith('turn')) assert.ok(rootChannels.includes('rotation'), `${name} has a Root rotation channel`);
-    else if (name.startsWith('jump')) assert.ok(rootChannels.includes('translation'), `${name} has a Root translation channel`);
+    else if (name.startsWith('jump') || name.startsWith('bed')) assert.ok(rootChannels.includes('translation'), `${name} has a Root translation channel`);
     else assert.equal(rootChannels.length, 0, `${name} has no Root channel`);
   }
 });
@@ -62,6 +62,10 @@ test('turn clips end at their nominal angle and jumps at their authored displace
         last[3] * inv[3] - last[0] * inv[0] - last[1] * inv[1] - last[2] * inv[2]];
       const degrees = Math.abs(quatYaw(q)) * 180 / Math.PI;
       assert.ok(Math.abs(degrees - (name.endsWith('90') ? 90 : 45)) < 1.5, `${name} ends at ${degrees.toFixed(1)}°`);
+    } else if (name.startsWith('bed')) {
+      const dy = last[1] - first[1], dz = last[2] - first[2];
+      assert.ok(Math.abs(dy - (name === 'bedin' ? .085 : -.085)) < .01, `${name} climbs/drops the cushion height (got ${dy.toFixed(3)})`);
+      assert.ok(Math.abs(dz - .55) < .02, `${name} travels .55 m forward (got ${dz.toFixed(3)})`);
     } else {
       const dy = last[1] - first[1], dz = last[2] - first[2];
       assert.ok(Math.abs(Math.abs(dy) - 1.95) < .02, `${name} rises/drops 1.95 m (got ${dy.toFixed(3)})`);

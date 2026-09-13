@@ -103,6 +103,9 @@ TAIL_REST = [heads[n] - heads['Tail0'] for n in TAIL]
 TAIL_UP = [V(v) for v in [(0, 0, 0), (0, .038, .06), (0, .044, .136), (0, .025, .192), (0, -.021, .213), (0, -.055, .188)]]
 TAIL_FLOOR = [V(v) for v in [(0, 0, 0), (0, .07, -.08), (.045, .11, -.135), (.10, .07, -.138), (.115, -.02, -.138), (.115, -.09, -.138)]]
 TAIL_BACK = [V(v) for v in [(0, 0, 0), (0, .075, -.02), (0, .15, -.03), (0, .225, -.035), (0, .30, -.04), (0, .375, -.045)]]
+# Curled sleep: the tail leaves Tail0 around the outside of the curl (the side away from the head) and lies along
+# the flank towards the nose (offsets from Tail0, x mirrored by the curl side).
+TAIL_CURL = [V(v) for v in [(0, 0, 0), (-.05, .045, -.10), (-.105, .02, -.155), (-.13, -.05, -.175), (-.125, -.135, -.185), (-.10, -.215, -.19)]]
 # Torso drops (metres) for the sphinx rest and the upright sit.
 DROP = {'Pelvis': .10, 'Spine': .095, 'Chest': .085, 'Neck': .06, 'Head': .05}
 SIT_DROP = {'Pelvis': .115, 'Spine': .085, 'Chest': .03, 'Neck': 0., 'Head': 0.}
@@ -134,7 +137,7 @@ def base():
         'legs': {(leg, side): {'dx': 0., 'dy': 0., 'dz': 0., 'pitch': 0., 'root_dz': 0.} for leg in ('Front', 'Hind') for side in 'LR'},
         'bend': {n: 0. for n in TORSO},  # yaw curvature per segment: the spine bends into turns and sways in the walk
         'front_side': {'L': 1., 'R': 1.},  # per-side multiplier of the front-leg pose amount (one paw at a time)
-        'tail_lift': 0., 'tail_wave': [0.] * 6, 'tail_lift_wave': [0.] * 6,
+        'tail_lift': 0., 'tail_wave': [0.] * 6, 'tail_lift_wave': [0.] * 6, 'tail_curl': 0., 'curl_side': 1,
         'root_yaw': 0.,  # carried by the Root bone; the runtime strips it from the clip and turns the body instead
         'root_move': V((0, 0, 0)),  # likewise for translation: the jump clips carry their own trajectory
         'body_pitch': 0.,  # whole-body pitch about the chest (negative = nose up); stays on the skeleton, not the Root
@@ -186,6 +189,7 @@ def solve(P):
     t0 = p['Pelvis'] + rot['Pelvis'] @ (heads['Tail0'] - heads['Pelvis'])
     for i, n in enumerate(TAIL):
         off = TAIL_REST[i].lerp(TAIL_UP[i], P['tail_lift']).lerp(TAIL_FLOOR[i], P['tail_rest']).lerp(TAIL_BACK[i], P['tail_back'])
+        if P['tail_curl']: off = off.lerp(V((TAIL_CURL[i].x * P['curl_side'], TAIL_CURL[i].y, TAIL_CURL[i].z)), P['tail_curl'])
         off = off + V((P['tail_wave'][i], 0, P['tail_lift_wave'][i]))
         p[n] = t0 + off
     for i in range(1, len(TAIL)):
@@ -308,34 +312,124 @@ def apply_rest(P, front, torso, hind, tail, head):
     P['hind'] = {'amount': hind, 'target': HIND_TUCK[0], 'bend': HIND_TUCK[1]}
     P['tail_rest'] = tail
 
+# ---------------------------------------------------------------- curled sleep
+# Dennis (2026-09-13): "he needs a proper curled up sleeping position". On top of the sphinx rest the spine curls
+# sideways (head to the cat's left), the body rolls a little onto the inside of the curl, the head comes down onto
+# the drawn-in forepaws with the cheek turned in, and the tail wraps around the outside to the nose.
+CURL_SIDE = -1   # head to the cat's right: towards the hall camera from the resting heading
+CURL_BEND = {'Spine': .38, 'Chest': .52, 'Neck': .60, 'Head': .55}
+CURL_ROLL = {'Pelvis': -.12, 'Spine': -.22, 'Chest': -.28, 'Neck': -.18}
+CURL_DROP = {'Neck': .08, 'Head': .13}
+FRONT_CURL = ((.04, -.23, .023), (0, .35, -1))
+
+def apply_curl(P, amount, side=CURL_SIDE):
+    for n, b in CURL_BEND.items(): P['bend'][n] += b * side * amount
+    for n, r in CURL_ROLL.items(): P['roll'][n] += r * side * amount
+    for n, d in CURL_DROP.items(): P['drop'][n] += d * amount
+    P['head']['pitch'] += .40 * amount; P['head']['roll'] += .22 * side * amount; P['head']['yaw'] += .30 * side * amount
+    tx = V(FRONT_SPHINX[0]).lerp(V(FRONT_CURL[0]), amount)
+    P['front'] = {'amount': P['front']['amount'], 'target': (tx.x, tx.y, tx.z), 'bend': FRONT_SPHINX[1]}
+    P['tail_rest'] *= 1 - amount
+    P['tail_curl'] = amount; P['curl_side'] = side
+
 def settle(t, D):
     """Lying down takes a cat about a second and a half: front folds, the torso arrives with a small overshoot, the
-    hindquarters tuck, the tail lies down last."""
+    hindquarters tuck, the tail lies down; then he curls up over the last second, head last."""
     P = base()
     apply_rest(P, ease(t, .12, 1.0), min(1, ease_back(t, .3, 1.25, 1.1)), ease(t, .5, 1.45), ease(t, .65, 1.6), ease_out(t, .4, 1.3))
     P['head']['pitch'] = .10 * ease_out(t, .4, 1.3)
     P['bob'] += -.006 * pulse(t, .25, .8)  # a quick dip as the front end folds
+    apply_curl(P, ease(t, 1.05, 2.15))
     return P
 
 def sleep(t, D):
-    P = base(); apply_rest(P, 1, 1, 1, 1, 1)
+    P = base(); apply_rest(P, 1, 1, 1, 1, 1); apply_curl(P, 1)
     droop = (1 - math.cos(math.tau * t / D)) / 2
-    P['bob'] = .002 * math.sin(math.tau * t / (D / 2))
-    P['head']['pitch'] = .10 + .06 * droop; P['head']['roll'] = .03 * droop
+    P['bob'] = .002 * math.sin(math.tau * t / (D / 2))   # breathing
+    P['head']['pitch'] += .03 * droop; P['head']['roll'] += .02 * CURL_SIDE * droop
     for side in 'LR': P['ears'][side][0] = .08 * droop
     P['tail_wave'][5] = .004 * math.sin(math.tau * t / D); P['tail_wave'][4] = .002 * math.sin(math.tau * t / D)
     return P
 
 def wake(t, D):
-    """Quick wake: the head comes up first with a small shake, the front pushes up, the hindquarters follow."""
+    """Quick wake: the head comes up and the body uncurls first, with a small shake, then the front pushes up and
+    the hindquarters follow."""
     P = base()
     apply_rest(P, 1 - ease_out(t, .3, 1.1), 1 - ease(t, .35, 1.2), 1 - ease(t, .5, 1.4), 1 - ease(t, .6, 1.5), 1 - ease_out(t, 0, .45))
     P['head']['pitch'] = .10 * (1 - ease_out(t, 0, .45)) - .06 * pulse(t, .15, .5)
+    apply_curl(P, 1 - ease_out(t, 0, .6))
     shake = pulse(t, .45, .5)
     P['head']['yaw'] += .14 * math.sin(math.tau * (t - .45) / .25) * shake; P['head']['roll'] += .06 * math.sin(math.tau * (t - .45) / .25) * shake
     for side in 'LR': P['ears'][side][0] += .3 * shake
     P['bob'] += .004 * pulse(t, .6, .6)
     return P
+
+# ---------------------------------------------------------------- in and out of the bed
+# The bed's bolster is lowered at the front; Blue leaves and enters only across that lip, with every paw placed:
+# the cushion is 8.5 cm above the floor, the lip's top 1.5 cm above the cushion, 31 cm ahead of the body origin at
+# rest (the bed centre sits 6 cm behind him, the bolster centreline 37 cm from it). The Root carries the body 55 cm forward and 8.5 cm down (or up); the
+# runtime warps that onto the actual waypoint like the jump clips. Paw world targets are expressed as offsets from
+# the paw's rest position under the moved root, so planted paws stay where they are while the body travels.
+BED_DROP = .085; BED_OUT = .55; LIP_BAND = .05
+STRIDE = .23; SWING = .32   # the walk clip's stride at 0.34 m/s; a paw is in the air for about a third of a second
+
+def paw_step(L, t, t0, t1, a, b, height, rest, root):
+    """Hold world point a, lift over an arc to world point b between t0 and t1, hold b; expressed as offsets from
+    the paw's rest position under the moved root."""
+    u = clamp((t - t0) / (t1 - t0))
+    reach = 1 - (1 - u) ** 2.2
+    w = a.lerp(b, reach); w.z += math.sin(math.pi * u ** .9) * height
+    d = w - root - rest
+    L['dx'] = d.x; L['dy'] = d.y; L['dz'] = d.z
+    L['pitch'] = .5 * math.sin(math.pi * u)
+
+def root_forward(t): return BED_OUT * curve(t, [(.20, 0), (1.80, 1, 'smooth')])
+
+def footfalls(first_swing):
+    """Swing windows for one paw walking with the root: it swings for SWING seconds and lands half a stride ahead
+    of its neutral position (rest under the moved root), stands until the body has travelled a stride, swings
+    again; the last swing lands at neutral so the clip ends in the rest stance. Returns (t0, t1, y_rel_to_rest)."""
+    steps = []; t0 = first_swing
+    while True:
+        t1 = t0 + SWING
+        steps.append([t0, t1, -root_forward(t1) - STRIDE / 2])
+        target = root_forward(t1) + STRIDE; tl = t1
+        while tl < 2.2 and root_forward(tl) < target - 1e-6: tl += 1 / 60
+        if tl + SWING > 2.15: break
+        t0 = tl
+    steps[-1][2] = -BED_OUT
+    return steps
+
+FIRST_SWING = {('Hind', 'L'): .15, ('Front', 'L'): .42, ('Hind', 'R'): .70, ('Front', 'R'): .97}   # lateral sequence
+BED_SCHEDULE = {leg: footfalls(first) for leg, first in FIRST_SWING.items()}
+
+def bed_clip(t, out):
+    P = base()
+    lip = -.31 if out else -.24   # lip centreline ahead of the start: bed centre 6 cm behind HOME, bolster at 37 cm (BED.z .30 + tube); BED_EXIT 55 cm out
+    move = V((0, -root_forward(t), (-BED_DROP if out else BED_DROP) * curve(t, [((.30, 0) if out else (.80, 0)), ((1.00, 1, 'smooth') if out else (1.50, 1, 'smooth'))])))
+    P['root_move'] = move
+    # nose down while the front is already on the floor (out), nose up while it is already on the cushion (in)
+    P['body_pitch'] = curve(t, [(.3, 0), (.75, .15 if out else -.12, 'smooth'), (1.3, 0, 'smooth')])
+    P['head']['pitch'] = curve(t, [(0, .10), (.45, .30 if out else .05), (1.1, .10), (2.1, 0)])
+    P['tail_lift'] = .35
+    near_z = 0.; far_z = -BED_DROP if out else BED_DROP
+    level = lambda y: far_z if y < lip else near_z
+    for (leg, side), schedule in BED_SCHEDULE.items():
+        rest = heads[f'{leg}Paw.{side}']; L = P['legs'][(leg, side)]
+        pos = V((rest.x, rest.y, near_z))
+        for i, (t0, t1, y) in enumerate(schedule):
+            yw = rest.y + y
+            if abs(yw - lip) < LIP_BAND: yw = lip - LIP_BAND - .01   # never stand on the lip itself
+            target = V((rest.x, yw, level(yw)))
+            if t <= t1 or i == len(schedule) - 1:
+                crosses = (pos.y > lip) != (target.y > lip)
+                paw_step(L, t, t0, t1, pos, target, (.12 if leg == 'Front' else .13) if crosses else .045, rest, move)
+                break
+            pos = target
+    return P
+
+def bedout(t, D): return bed_clip(t, True)
+def bedin(t, D): return bed_clip(t, False)
 
 def happy(t, D):
     P = base(); w = math.tau * t / D
@@ -640,7 +734,7 @@ for degrees in (45, 90):
         theta = math.radians(degrees); plan, D = turn_plan(theta, sign)
         TURNS.append((f'turn{side}{degrees}', round(D, 2), (lambda th, sg, pl: lambda t, D: turn(t, D, th, sg, pl))(theta, sign, plan)))
 
-CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 1.6, settle), ('sleep', 6.0, sleep), ('wake', 1.5, wake), ('happy', 4.0, happy),
+CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 2.2, settle), ('sleep', 6.0, sleep), ('wake', 1.5, wake), ('happy', 4.0, happy), ('bedout', 2.2, bedout), ('bedin', 2.2, bedin),
          ('sit', .9, sit), ('sitidle', 6.0, sitidle), ('sitarch', 1.6, sitarch), ('stand', .9, stand), ('jumpup', 1.7, jumpup), ('jumpdown', 1.5, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
          ('unperch', 1.6, unperch)] + TURNS
 

@@ -48,8 +48,9 @@ try {
   const home = await page.evaluate(() => {
     const h = window.__hall, b = h.blue;
     const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
-    b.body.position.set(-1.65, 0, .6); b.body.rotation.set(0, -1.6, 0); b.enter('idle'); b.visits = 9; b.plannedVisits = 2;
-    b.goal.set(-1.65, 0, .18); b.arrival = 'home'; b.travelSpeed = .21; b.enter('walk');
+    // Teleported out of the bed: the way home ends at the waypoint in front of the lip, then bedin and settle.
+    b.body.position.set(-1.65, 0, .6); b.body.rotation.set(0, -1.6, 0); b.inBed = false; b.elevation = 0; b.enter('idle'); b.visits = 9; b.plannedVisits = 2;
+    b.goal.set(-1.65 + .55 * Math.sin(.95), 0, .18 + .55 * Math.cos(.95)); b.arrival = 'home'; b.travelSpeed = .21; b.enter('walk');
     const frames = []; let lastYaw = b.yaw;
     for (let i = 0; i < 60 * 14; i++) {
       b.update(1 / 60, h.camera, true, false);

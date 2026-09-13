@@ -33,11 +33,13 @@ bpy.ops.mesh.primitive_cube_add(size=1, location=(0, EDGE_Y + .35, -.201)); ledg
 lm = bpy.data.materials.new('Ledge'); lm.diffuse_color = (.16, .17, .2, 1); ledge.data.materials.append(lm)
 VIEWS = {'three-quarter': (1.4, -2, 1), 'side': (2.4, 0, .5), 'front': (0, -2.4, .6),
          # The hall camera sees the cabinet top from below; these two views reproduce that angle.
-         'low-front': (0, -2.4, -.55), 'low-quarter': (1.3, -2.1, -.5)}
+         'low-front': (0, -2.4, -.55), 'low-quarter': (1.3, -2.1, -.5), 'top': (0, -.3, 3.0)}
 LEDGE_SHOTS = {'perch', 'perchidle', 'unperch'}
 lengths = [(mesh.data.vertices[e.vertices[0]].co - mesh.data.vertices[e.vertices[1]].co).length for e in mesh.data.edges]
 SHOTS = [('idle', 0, 'three-quarter'), ('idle', 66, 'front'), ('walk', 9, 'side'), ('walk', 27, 'three-quarter'), ('trot', 4, 'side'), ('trot', 11, 'three-quarter'), ('wake', 15, 'three-quarter'), ('settle', 36, 'three-quarter'),
-         ('sleep', 0, 'three-quarter'), ('sleep', 90, 'side'), ('sleep', 0, 'front'), ('happy', 30, 'three-quarter'), ('happy', 90, 'front'),
+         ('sleep', 0, 'three-quarter'), ('sleep', 90, 'side'), ('sleep', 0, 'front'), ('sleep', 45, 'top'), ('settle', 66, 'three-quarter'), ('settle', 50, 'side'), ('wake', 6, 'side'),
+         ('bedout', 9, 'side'), ('bedout', 18, 'side'), ('bedout', 27, 'side'), ('bedout', 36, 'side'), ('bedout', 45, 'side'), ('bedout', 54, 'side'), ('bedin', 9, 'side'), ('bedin', 18, 'side'), ('bedin', 27, 'side'), ('bedin', 36, 'side'), ('bedin', 45, 'side'), ('bedin', 54, 'side'),
+         ('happy', 30, 'three-quarter'), ('happy', 90, 'front'),
          ('sit', 14, 'three-quarter'), ('sitidle', 60, 'side'), ('sitidle', 30, 'front'), ('sitarch', 24, 'side'), ('jumpup', 11, 'side'), ('jumpup', 15, 'side'), ('jumpup', 22, 'side'), ('jumpup', 29, 'side'), ('jumpup', 36, 'side'), ('jumpup', 44, 'side'), ('jumpdown', 10, 'side'), ('jumpdown', 20, 'side'), ('jumpdown', 30, 'side'), ('jumpdown', 36, 'side'), ('arch', 30, 'side'), ('arch', 30, 'three-quarter'), ('flick', 12, 'three-quarter'), ('flick', 22, 'front'),
          ('perch', 60, 'three-quarter'), ('perch', 60, 'side'), ('perchidle', 45, 'front'), ('perchidle', 45, 'low-front'), ('perchidle', 100, 'low-quarter'), ('perch', 30, 'side'),
          ('stand', 12, 'side'), ('unperch', 15, 'side'), ('unperch', 33, 'low-quarter'), ('turnL90', 6, 'three-quarter'), ('turnL90', 12, 'front'), ('turnL90', 20, 'three-quarter'), ('turnR45', 8, 'front')]
