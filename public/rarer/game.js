@@ -1,3 +1,4 @@
+import {mountWelcome} from './welcome.js';
 import {visualGuide} from './how-to.js';
 import {categories,tier,sum,score,assess,missed,shareText} from './core.js';
 import {MineScene} from './scene.js';
@@ -13,6 +14,12 @@ const helpGuide=$('help-guide');if(helpGuide)helpGuide.innerHTML=visualGuide({he
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const scene=new MineScene($('mine'),reduced);scene.slow=()=>$('slow').checked;
 const burrow=new BurrowView($('burrow'),scene);
+if($('help-open')){
+  const openHelp=()=>{if(!$('help').open)$('help').showModal();};
+  $('help-open').onclick=openHelp;
+  $('help-close').onclick=$('help-done').onclick=()=>$('help').close();
+}
+if(scene.hillside)mountWelcome();
 const wantsDaily=scene.hillside;
 if(wantsDaily){try{await loadDaily();}catch(error){$('panel').innerHTML='<h1>Couldn’t load today’s digs.</h1><p>Please reload to try again.</p>';throw error;}}
 const {newRun,loadProgress,saveProgress,recordDiscovery,settleRound,homeProfile}=wantsDaily?dailyProgress:legacyProgress;
@@ -202,7 +209,6 @@ if(preview)new IntersectionObserver(entries=>{previewVisible=entries[0].isInters
 document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(previewFrame);if(!document.hidden&&previewVisible&&ready)previewFrame=requestAnimationFrame(previewLoop);});
 
 
-if($('help-open')){$('help-open').onclick=()=>$('help').showModal();$('help-close').onclick=$('help-done').onclick=()=>$('help').close();}
 if($('dev-controls'))$('dev-controls').hidden=true;
 
 if(wantsDaily){
