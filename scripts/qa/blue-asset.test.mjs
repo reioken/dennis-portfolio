@@ -6,7 +6,7 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
-const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6d.glb';
+const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6e.glb';
 /** v4 and later (Meshy multi-view mesh, one PBR material, eyes painted into the coat) have no eyeball or lid nodes;
  * v6 is the v1 mesh with its original atlas: the coat plus the tinted `Blue amber eyes` polygons, no normal map.
  * The file-name suffix is the asset build (BLUE_ASSET_BUILD in blueCat.ts); the version is its digits. */
@@ -18,7 +18,7 @@ const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear
   'FrontUpper.L', 'FrontLower.L', 'FrontPaw.L', 'FrontUpper.R', 'FrontLower.R', 'FrontPaw.R',
   'HindUpper.L', 'HindLower.L', 'HindPaw.L', 'HindUpper.R', 'HindLower.R', 'HindPaw.R',
   'Tail0', 'Tail1', 'Tail2', 'Tail3', 'Tail4', 'Tail5'];
-const CLIPS = ['arch', 'bedin', 'bedout', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'settle', 'sit', 'sitarch', 'sitidle', 'sleep', 'stand', 'trot',
+const CLIPS = ['arch', 'bedin', 'bedout', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'settle', 'sit', 'sitarch', 'sitidle', 'sleep', 'stand', 'swat', 'trot',
   'turnL45', 'turnL90', 'turnR45', 'turnR90', 'unperch', 'wake', 'walk'];
 const MORPHS = ['BlueBlink', 'BlueGround', 'BlueSit', 'BluePerch'];
 

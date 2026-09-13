@@ -163,9 +163,16 @@ def solve(P):
     # Explicit torso positions (the curled sleep) are blended in, breathing on top, then the segment lengths are
     # restored from the pelvis outwards.
     if P['torso_curve'] and P['curl_amount'] > 0:
-        for n in TORSO: p[n] = p[n].lerp(V(P['torso_curve'][n]) + V((0, 0, P['bob'])), P['curl_amount'])
+        straight = {n: p[n].copy() for n in TORSO}
+        p['Pelvis'] = p['Pelvis'].lerp(V(P['torso_curve']['Pelvis']) + V((0, 0, P['bob'])), P['curl_amount'])
         for a, b in zip(TORSO, TORSO[1:]):
-            d = p[b] - p[a]; p[b] = p[a] + d.normalized() * (heads[b] - heads[a]).length
+            # Turn each segment along an arc. Interpolating joint positions first
+            # collapsed the chain halfway through the curl, then length repair
+            # snapped the chest and neck outwards.
+            d = straight[b] - straight[a]
+            target = V(P['torso_curve'][b]) - V(P['torso_curve'][a])
+            turn = Quaternion().slerp(d.rotation_difference(target), P['curl_amount'])
+            p[b] = p[a] + (turn @ d).normalized() * (heads[b] - heads[a]).length
     for n, nxt in [('Pelvis', 'Spine'), ('Spine', 'Chest'), ('Chest', 'Neck'), ('Neck', 'Head')]:
         r0 = heads[nxt] - heads[n]; r1 = p[nxt] - p[n]
         rot[n] = q((0, 0, 1), P['yaw'][n]) @ q(r1.normalized(), P['roll'][n]) @ r0.rotation_difference(r1)
@@ -377,13 +384,10 @@ def apply_curl(P, amount, side=CURL_SIDE):
     P['tail_rest'] *= 1 - amount
 
 def settle(t, D):
-    """Lying down takes a cat about a second and a half: front folds, the torso arrives with a small overshoot, the
-    hindquarters tuck, the tail lies down; then he curls up over the last second, head last."""
+    """Forelegs fold, weight lands, then a supported side curl; no airborne twist."""
     P = base()
-    apply_rest(P, ease(t, .12, 1.0), min(1, ease_back(t, .3, 1.25, 1.1)), ease(t, .5, 1.45), ease(t, .65, 1.6), ease_out(t, .4, 1.3))
-    P['head']['pitch'] = .10 * ease_out(t, .4, 1.3)
-    P['bob'] += -.006 * pulse(t, .25, .8)  # a quick dip as the front end folds
-    apply_curl(P, ease(t, 1.05, 2.15))
+    apply_rest(P, ease(t, .1, 1.3), ease(t, .25, 1.55), ease(t, .45, 1.7), ease(t, .8, 2.0), ease(t, .5, 1.6))
+    apply_curl(P, ease(t, 1.75, 4.4))
     return P
 
 def sleep(t, D):
@@ -396,16 +400,11 @@ def sleep(t, D):
     return P
 
 def wake(t, D):
-    """Quick wake: the head comes up and the body uncurls first, with a small shake, then the front pushes up and
+    """Wake: the body uncurls while supported, then the front pushes up and
     the hindquarters follow."""
     P = base()
-    apply_rest(P, 1 - ease_out(t, .3, 1.1), 1 - ease(t, .35, 1.2), 1 - ease(t, .5, 1.4), 1 - ease(t, .6, 1.5), 1 - ease_out(t, 0, .45))
-    P['head']['pitch'] = .10 * (1 - ease_out(t, 0, .45)) - .06 * pulse(t, .15, .5)
-    apply_curl(P, 1 - ease_out(t, 0, .6))
-    shake = pulse(t, .45, .5)
-    P['head']['yaw'] += .14 * math.sin(math.tau * (t - .45) / .25) * shake; P['head']['roll'] += .06 * math.sin(math.tau * (t - .45) / .25) * shake
-    for side in 'LR': P['ears'][side][0] += .3 * shake
-    P['bob'] += .004 * pulse(t, .6, .6)
+    apply_rest(P, 1 - ease(t, 1.4, 2.5), 1 - ease(t, 1.35, 2.55), 1 - ease(t, 1.6, 2.75), 1 - ease(t, 1.5, 2.8), 1 - ease(t, 1.0, 2.2))
+    apply_curl(P, 1 - ease(t, 0, 1.4))
     return P
 
 # ---------------------------------------------------------------- in and out of the bed
@@ -772,15 +771,29 @@ def turn(t, D, theta, sign, plan):
             L['root_dz'] = (.012 if leg == 'Front' else .008) * lift
     return P
 
+def swat(t, D):
+    """Weight on three paws, right paw lifts, reaches, taps and returns."""
+    P = base()
+    weight = pulse(t, .02, 1.08)
+    P['sway'] = .018 * weight
+    P['head']['pitch'] = .16 * weight
+    P['head']['yaw'] = -.08 * weight
+    L = P['legs'][('Front', 'R')]
+    L['dz'] = curve(t, [(0, 0), (.22, .065), (.43, .015), (.64, .045), (1.05, 0)])
+    L['dy'] = curve(t, [(0, 0), (.22, .018), (.43, -.07), (.64, -.025), (1.05, 0)])
+    L['dx'] = -.015 * weight; L['pitch'] = .35 * weight
+    P['tail_lift'] = .12 * weight
+    return P
+
 TURNS = []
 for degrees in (45, 90):
     for side, sign in (('L', 1), ('R', -1)):
         theta = math.radians(degrees); plan, D = turn_plan(theta, sign)
         TURNS.append((f'turn{side}{degrees}', round(D, 2), (lambda th, sg, pl: lambda t, D: turn(t, D, th, sg, pl))(theta, sign, plan)))
 
-CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 2.2, settle), ('sleep', 6.0, sleep), ('wake', 1.5, wake), ('happy', 4.0, happy), ('bedout', 2.2, bedout), ('bedin', 2.2, bedin),
+CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 4.6, settle), ('sleep', 6.0, sleep), ('wake', 2.8, wake), ('happy', 4.0, happy), ('bedout', 2.2, bedout), ('bedin', 2.2, bedin),
          ('sit', .9, sit), ('sitidle', 6.0, sitidle), ('sitarch', 1.6, sitarch), ('stand', .9, stand), ('jumpup', 1.7, jumpup), ('jumpdown', 1.5, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
-         ('unperch', 1.6, unperch)] + TURNS
+         ('unperch', 1.6, unperch), ('swat', 1.15, swat)] + TURNS
 
 # ---------------------------------------------------------------- floor contact correctives
 # Pose-space morphs lift whatever the folded pose pushes below the surface: the sphinx rest,

@@ -11,7 +11,7 @@ for(const engine of (process.argv[2]?[process.argv[2]]:['chromium','firefox'])){
   const page=await browser.newPage({viewport:{width:1920,height:1080}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   await page.goto((process.env.QA_BASE_URL||'http://localhost:4321')+'/about/');
-  await page.waitForFunction(()=>window.__hall?.readyDone&&window.__hall.blue?.mood==='perchidle',{timeout:120000});
+  await page.waitForFunction(()=>window.__hall?.readyDone&&window.__hall.blue?.mood==='perchidle',null,{timeout:120000});
   await page.waitForTimeout(1500);
   await page.evaluate(()=>{const h=window.__hall;h.stop();h.renderFrame();});
   const clip=await page.evaluate(()=>{const b=window.__hall.blue.button;return{x:Math.max(0,parseFloat(b.style.left)/100*innerWidth-260),y:Math.max(0,parseFloat(b.style.top)/100*innerHeight-280),width:520,height:550};});

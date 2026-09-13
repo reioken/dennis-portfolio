@@ -71,7 +71,7 @@ try {
    // touched surface is retained until the wake clip finishes.
    await pose('sleep');const sleepPt=await target('back');assert.ok(sleepPt,'curled back is hittable');
    await page.mouse.click(sleepPt.x,sleepPt.y);const waking=await tick(3);assert.equal(waking.mood,'wake');assert.equal(waking.pending,'back');
-   assert.equal((await tick(100)).mood,'arch','a back touch is still a back touch after waking');
+   const wakeFrames=await page.evaluate(()=>Math.ceil(window.__hall.blue.actions.get('wake').getClip().duration*60)+6);assert.equal((await tick(wakeFrames)).mood,'arch','a back touch is still a back touch after waking');
   }
   assert.deepEqual(errors,[]);await page.close();
  }

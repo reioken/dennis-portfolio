@@ -1,17 +1,18 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { BlueToys, type CatToy } from './blueToys';
 
-type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'arch' | 'sit' | 'sitidle' | 'sitarch' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn';
+type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'arch' | 'sit' | 'sitidle' | 'sitarch' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn' | 'swat';
 type Region = 'head' | 'back' | 'tail';
 type AfterTurn = 'walk' | 'arrive' | 'jump';
-type Arrival = 'idle' | 'home' | 'sit' | 'jump' | 'perch' | 'settle';
+type Arrival = 'idle' | 'home' | 'sit' | 'jump' | 'perch' | 'settle' | 'toy';
 type Plan = { kind: 'home' } | { kind: 'station'; index: number } | { kind: 'perch' };
 /** What the hall tells Blue every frame so he can accompany the visitor. */
 export interface BlueScene { focus: number; pose: 'hall' | 'zoom' | 'play' | 'screen'; stationX: number[]; inHall: boolean; }
 
 /** Name suffix of the shipped Blue files (`blue-rigged-<build>.glb`, `blue-<build>-closed.webp`, `blue-<build>-mips.webp`).
  * Bump it whenever any of them changes: `/models/*` is edge-cached for a day and the three must come from one build. */
-export const BLUE_ASSET_BUILD = 'v6d';
+export const BLUE_ASSET_BUILD = 'v6e';
 const HOME = new THREE.Vector3(-1.65, 0, .18);
 /** Cat bed: inner half-extents across and along Blue, bolster tube radius, superellipse exponent, plinth and cushion heights, centre offset behind the body origin. */
 const BED = { x: .20, z: .30, tube: .07, n: 2.7, base: .03, cushion: .06, back: .06 };   // z .30: the front lip sits 31 cm ahead of the resting origin, clear of the standing forepaws
@@ -81,6 +82,11 @@ const EAR_SPRING = { k: 520, zeta: .5 };
 
 /** Blue has his own clock: navigation and tab pauses never advance his route. */
 export class BlueCat {
+  toys?: BlueToys;
+  private toy: CatToy | null = null;
+  private playUntil = 0;
+  private nextPlay = 0;
+  private swatted = false;
   readonly root = new THREE.Group();
   readonly body = new THREE.Group();
   private model: THREE.Object3D;
@@ -665,7 +671,7 @@ export class BlueCat {
       else this.layer.fadeOut(this.fade);
     }
     if (next) {
-      next.reset();
+      next.reset().setEffectiveWeight(1);
       const once = mood !== 'sleep' && mood !== 'sitidle' && mood !== 'perchidle' && mood !== 'happy';
       next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
       next.clampWhenFinished = true;
@@ -844,7 +850,7 @@ export class BlueCat {
     const plan = this.plan, at = this.body.position;
     const takeoff = this.local(LEDGE.takeoff), spot = this.local(LEDGE.spot);
     // In the bed: the home routine stays (idle, then startWalk steps out); other plans step out first.
-    if (this.inBed) { if (plan.kind === 'home') return this.enter('idle'); return this.leaveBed(() => this.resume(stationX)); }
+    if (this.inBed) { if (plan.kind === 'home' && !this.toy) return this.enter('idle'); return this.leaveBed(() => this.resume(stationX)); }
     if (this.elevation > 0) {
       if (plan.kind !== 'perch') return this.startJump(at, takeoff, false);
       if (flat(at, spot) < .03) { this.goal.copy(spot); this.arrival = 'perch'; return this.arrive(stationX); }
@@ -859,6 +865,7 @@ export class BlueCat {
       if (flat(at, spot) < .05) return this.enter('sit');
       return this.travelTo(spot, TRAVEL_SPEED, 'sit');
     }
+    if (this.toy && this.clock < this.playUntil) return this.chaseToy();
     if (flat(at, HOME) > 1.4) { this.visits = this.plannedVisits; return this.travelTo(BED_EXIT, TRAVEL_SPEED, 'home'); }
     this.enter('idle');
   }
@@ -884,6 +891,7 @@ export class BlueCat {
   }
 
   private startWalk() {
+    if (this.toy && this.clock < this.playUntil) { this.resume([this.stationX]); return; }
     if (this.inBed) return this.leaveBed(() => this.startWalk());
     if (this.visits >= this.plannedVisits) { this.goal.copy(BED_EXIT); this.arrival = 'home'; }
     else {
@@ -893,6 +901,38 @@ export class BlueCat {
     }
     this.travelSpeed = ROAM_SPEED;
     this.enter('walk');
+  }
+
+  addToy(gltf: GLTF, ball: boolean) {
+    if (!this.toys) {
+      this.toys = new BlueToys(this.container, toy => {
+        if (this.plan.kind !== 'home') return;
+        this.toy = toy; this.playUntil = this.clock + 18;
+        this.disturb();
+        // Travel, turns and the current paw stroke finish before a new target.
+        if (this.mood === 'idle') this.nextPlay = this.clock;
+      });
+      this.root.add(this.toys.root);
+    }
+    this.toys.add(gltf, ball);
+  }
+
+  private chaseToy() {
+    if (!this.toy) return;
+    // Stand behind the toy, keeping the forepaw within reach. A new goal is
+    // chosen only between approaches, so rapid clicks cannot jerk the route.
+    this.forward.subVectors(this.toy.position, this.body.position); this.forward.y = 0;
+    if (this.forward.lengthSq() < .001) this.forward.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+    this.forward.normalize();
+    this.goal.copy(this.toy.position).addScaledVector(this.forward, -.29); this.goal.y = 0;
+    this.goal.x = THREE.MathUtils.clamp(this.goal.x, -2, -.72); this.goal.z = THREE.MathUtils.clamp(this.goal.z, .58, 1.3);
+    if (flat(this.body.position, this.toy.position) < .38) {
+      this.goal.copy(this.body.position); this.arrival = 'toy';
+      const error = this.headingError(this.toy.position.x - this.body.position.x, this.toy.position.z - this.body.position.z);
+      if (Math.abs(error) > .12) { this.startTurn(error, 'arrive'); return; }
+      this.swatted = false; this.enter('swat'); return;
+    }
+    this.travelTo(this.goal, .34, 'toy');
   }
 
   /** Step out of the bed over the front lip (`bedout`, root motion to BED_EXIT), then carry on with `next`. */
@@ -927,6 +967,14 @@ export class BlueCat {
       this.faceYaw = facing;
     }
     switch (this.arrival) {
+      case 'toy':
+        if (this.toy && flat(this.body.position, this.toy.position) < .39) {
+          const error = this.headingError(this.toy.position.x - this.body.position.x, this.toy.position.z - this.body.position.z);
+          if (Math.abs(error) > .12) { this.startTurn(error, 'arrive'); return; }
+          this.swatted = false; this.enter('swat');
+        }
+        else { this.enter('idle'); this.nextPlay = this.clock + .3; }
+        break;
       case 'home': this.enterBed(); break;
       case 'settle': this.enter('settle'); break;
       case 'sit': this.enter('sit'); break;
@@ -943,6 +991,7 @@ export class BlueCat {
   /** A layered once-clip has finished: continue the plan. */
   private advance(stationX: number[]) {
     switch (this.mood) {
+      case 'swat': this.enter('idle'); this.nextPlay = this.clock + .9; break;
       case 'settle': this.enter('sleep'); break;
       case 'wake': {
         const region = this.pendingPet;
@@ -1021,7 +1070,11 @@ export class BlueCat {
 
   private attend(dt: number, camera: THREE.Camera, reduce: boolean) {
     if (!this.head) return;
-    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'sitarch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'arch';
+    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'sitarch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'arch' || this.mood === 'swat';
+    if (this.toy && !reduce) {
+      this.gazePoint.copy(this.toy.position); this.root.localToWorld(this.gazePoint);
+      this.gazeValid = true; this.gazeAt = this.clock;
+    }
     let wanted = 0;
     if (!reduce && awake) {
       if (this.hover || this.purr > 0) wanted = 1;
@@ -1183,16 +1236,27 @@ export class BlueCat {
     this.root.position.set(this.stationX + this.shift.x, 0, this.shift.z);
     this.root.visible = active;
     this.button.hidden = !active;
+    this.toys?.update(active ? dt : 0, camera, active && (!scene || (scene.inHall && scene.pose === 'hall' && scene.focus === 0)), reduce, compact);
     if (!active) return false;
     this.age += dt;
     this.clock += dt;
     this.frame++;
     const stationX = scene?.stationX ?? [this.stationX];
     const plan = this.wanted(scene);
+    if (plan.kind !== 'home' || reduce || this.clock > this.playUntil) this.toy = null;
     if (plan.kind !== this.plan.kind || (plan.kind === 'station' && this.plan.kind === 'station' && plan.index !== this.plan.index)) this.replan(plan, stationX, reduce);
     if (!reduce) {
       switch (this.mood) {
-        case 'idle': if (this.plan.kind === 'home' && this.age > this.dwell) this.startWalk(); break;
+        case 'idle': if (this.toy && this.clock > this.nextPlay) this.resume(stationX); else if (this.plan.kind === 'home' && this.age > this.dwell) this.startWalk(); break;
+        case 'swat':
+          if (!this.swatted && this.age >= .43) {
+            this.swatted = true;
+            if (this.toy && flat(this.body.position, this.toy.position) < .42) {
+              this.forward.set(Math.sin(this.yaw + .25), 0, Math.cos(this.yaw + .25)); this.toy.bat(this.forward);
+            }
+          }
+          if (this.age > this.length('swat')) this.advance(stationX);
+          break;
         case 'walk': this.locomote(dt, stationX); break;
         case 'settle': if (this.age > this.length('settle')) this.advance(stationX); break;
         case 'turn': if (this.age * this.turnRate > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
@@ -1254,7 +1318,7 @@ export class BlueCat {
     const eyeGoal = this.mood === 'wake' ? 1 - step(this.age, .02, .26) : resting ? 1 : this.mood === 'happy' || (this.purr > .2 && this.touchRegion !== 'tail') ? .94 : !reduce && (this.blinkAge > this.blinkPeriod - .24 || this.slowBlink > .45) ? 1 : 0;
     this.blink = THREE.MathUtils.damp(this.blink, eyeGoal, this.mood === 'wake' ? 12 : resting || this.slowBlink > 0 || this.purr > 0 ? 7 : 20, dt);
     // Pose-space floor correctives: sphinx rest, upright sit and the ledge perch each keep their underside above the surface.
-    const settled = this.mood === 'sleep' ? 1 : this.mood === 'settle' ? step(this.age, .35, 2.0) : this.mood === 'wake' ? 1 - step(this.age, .4, 1.4) : 0;
+    const settled = this.mood === 'sleep' ? 1 : this.mood === 'settle' ? step(this.age, 1.75, 4.4) : this.mood === 'wake' ? 1 - step(this.age, 0, 1.4) : 0;
     const seated = this.mood === 'sitidle' || this.mood === 'sitarch' ? 1 : this.mood === 'sit' ? step(this.age, .15, .75) : this.mood === 'stand' ? 1 - step(this.age, .1, .8) : 0;
     const perched = this.mood === 'perchidle' ? 1 : this.mood === 'perch' ? step(this.age, .4, 1.8) : this.mood === 'unperch' ? 1 - step(this.age, .2, 1.6) : 0;
     this.ground = THREE.MathUtils.damp(this.ground, settled, 14, dt);
@@ -1319,6 +1383,7 @@ export class BlueCat {
   }
 
   dispose() {
+    this.toys?.dispose();
     this.button.removeEventListener('click', this.pet);
     this.button.remove();
     this.mixer.stopAllAction();

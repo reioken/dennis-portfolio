@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { createHallFloor } from './floorReflectionShader';
 import { HallLighting } from './hallLighting';
 import { BlueCat, BLUE_ASSET_BUILD } from './blueCat';
+import { BLUE_TOY_BUILD } from './blueToys';
 import { ScreenDissolve } from './screenDissolve';
 import { textTexture } from './marqueeTexture';
 import { tvPresentation } from './presentation.mjs';
@@ -673,7 +674,13 @@ export class HallScene {
         this.scene.add(this.blue.root);
         this.dirty = this.mirrorDirty = true;
         // The closed-eye texture and the coat's mip sheet belong to the cat: no reveal with the GPU's own mip chain.
-        this.blue.ready.then(() => { this.dirty = this.mirrorDirty = true; blueDone(); });
+        this.blue.ready.then(() => {
+          this.dirty = this.mirrorDirty = true; blueDone();
+          // Small optional props do not delay Blue or the hall reveal.
+          for (const name of ['ball', 'mouse']) this.gltf.load(`/models/blue-toy-${name}-${BLUE_TOY_BUILD}.glb`, toy => {
+            if (!this.disposed) { this.blue?.addToy(toy, name === 'ball'); this.dirty = this.mirrorDirty = true; }
+          }, undefined, () => { /* Keep the hall usable if an optional prop fails. */ });
+        });
       } else blueDone();
     }, undefined, error => { console.error('Blue failed to load', error); blueDone(); });
     this.focus = initial;
