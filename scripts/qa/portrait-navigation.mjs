@@ -1,4 +1,4 @@
-import { chromium } from 'file:///C:/Users/denni/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 import fs from 'node:fs/promises';import assert from 'node:assert/strict';
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});const results=[];await fs.mkdir('.source-assets/portrait-navigation-qa',{recursive:true});
 try{for(const [width,height] of [[1440,900],[3789,1896],[390,844]]){

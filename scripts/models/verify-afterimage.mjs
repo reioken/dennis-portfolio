@@ -8,7 +8,7 @@ const glb=p=>{const b=fs.readFileSync(p);assert.equal(b.toString('ascii',0,4),'g
 const names=fs.readdirSync(current).filter(n=>/^(cab-|mach-).*\.glb$/.test(n)||n==='claw.glb'||n==='payphone.glb');
 // Expected slots follow the current physical layouts, not whichever art nodes
 // happen to survive an export. Kiosks, claw and telephone have no flat deck.
-const terminals=new Set(['mach-nexus.glb','mach-nocturne.glb','mach-riftback.glb','mach-riftcast.glb']);
+const terminals=new Set(['mach-nexus.glb','mach-riftback.glb','mach-riftcast.glb']);
 const requiredArt=name=>[
  'front_art',
  'side_art_l','side_art_r',

@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { chromium } from 'file:///C:/Users/denni/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});
 try{
  const page=await browser.newPage({viewport:{width:844,height:390},reducedMotion:'reduce'});

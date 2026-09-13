@@ -77,6 +77,8 @@ type Tv = {
   noiseTex: THREE.Texture;
   staticUntil: number;
   staticMix: number;
+  /** Last time the snow texture was re-jittered: 25 Hz reads as static and lets the dirty flag rest between steps */
+  noiseAt: number;
   /** Fahrt auf der Schiene als Tween (zeitbasiert, nicht bildratenabhängig) */
   from: number;
   to: number;
@@ -1542,7 +1544,7 @@ export class HallScene {
     logo.renderOrder = 4;
     logo.visible = false;
     hang.add(logo);
-    this.tv = { rig, hang, wheels, screen, light, glow, noise, noiseTex, staticUntil: -1e9, staticMix: 0, from: 0, to: NaN, t0: -1e9, dur: 0, phase: 'logo', phaseAt: -1, led, geoN, geoF, canvas, tex, key: '', logo, logoCanvas, logoTex, logoKey: '', range, lastX: 0, swing: 0, vel: 0 };
+    this.tv = { rig, hang, wheels, screen, light, glow, noise, noiseTex, staticUntil: -1e9, staticMix: 0, noiseAt: -1e9, from: 0, to: NaN, t0: -1e9, dur: 0, phase: 'logo', phaseAt: -1, led, geoN, geoF, canvas, tex, key: '', logo, logoCanvas, logoTex, logoKey: '', range, lastX: 0, swing: 0, vel: 0 };
     this.tvBlank.needsUpdate = true;
     this.tvDissolve = new ScreenDissolve(screen.material, true);
     this.tvDissolve.set(this.tvBlank, 0, 0);
@@ -2838,9 +2840,14 @@ export class HallScene {
       wallMoving = true;
     }
     if (tv.staticMix > 0.02) {
-      wallMoving = true;
-      tv.noiseTex.offset.set(Math.random(), Math.random());
-      tv.noise.material.opacity = tv.screen.material.opacity * tv.staticMix * (0.82 + Math.random() * 0.18);
+      // Snow: re-jitter the noise texture 25 times a second, not every frame (a 60 fps random offset forced a
+      // full render each frame for the whole static phase and defeated the dirty flag).
+      if (now - tv.noiseAt >= 40) {
+        tv.noiseAt = now;
+        wallMoving = true;
+        tv.noiseTex.offset.set(Math.random(), Math.random());
+        tv.noise.material.opacity = tv.screen.material.opacity * tv.staticMix * (0.82 + Math.random() * 0.18);
+      }
       tv.noise.visible = true;
     } else tv.noise.visible = false;
     const glowLevel = tv.screen.material.opacity * (1 - tv.staticMix * 0.55);

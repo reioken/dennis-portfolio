@@ -88,7 +88,6 @@ type Props = {
   heading?: string;
 };
 
-const IDLE_MS = 28_000;
 const ATTRACT_STEP_MS = 4_500;
 const PAD_REPEAT_MS = 240;
 const SPACING = 360;
@@ -294,7 +293,6 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
   const rowRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HallScene | null>(null);
   const frameRef = useRef<Frame>({ cx: 0.5, cy: 0.5, fw: 1, fh: 1 });
-  const idleTimer = useRef<number | null>(null);
   const attractTimer = useRef<number | null>(null);
   const focusRef = useRef(focus);
   focusRef.current = focus;
@@ -370,11 +368,6 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       attractTimer.current = null;
     }
   }, []);
-  const armIdle = useCallback(() => {
-    if (idleTimer.current) window.clearTimeout(idleTimer.current);
-    idleTimer.current = null;
-    // A chosen station stays selected. Touring starts only through its control.
-  }, []);
   useEffect(() => {
     if (!attract) return;
     attractTimer.current = window.setInterval(() => {
@@ -386,25 +379,22 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
     };
   }, [attract, n]);
   useEffect(() => {
+    // A chosen station stays selected: any input only ends a running tour. Touring starts only through its control.
     const wake = () => {
       if (attract) stopAttract();
-      armIdle();
     };
     const o: AddEventListenerOptions = { passive: true };
     for (const ev of ['pointermove', 'pointerdown', 'keydown', 'touchstart', 'wheel'] as const) window.addEventListener(ev, wake, o);
-    const vis = () => (document.hidden ? stopAttract() : armIdle());
+    const vis = () => { if (document.hidden) stopAttract(); };
     document.addEventListener('visibilitychange', vis);
-    armIdle();
     return () => {
       for (const ev of ['pointermove', 'pointerdown', 'keydown', 'touchstart', 'wheel'] as const) window.removeEventListener(ev, wake);
       document.removeEventListener('visibilitychange', vis);
-      if (idleTimer.current) window.clearTimeout(idleTimer.current);
     };
-  }, [attract, armIdle, stopAttract]);
+  }, [attract, stopAttract]);
   useEffect(() => {
     if (mode !== 'hall') stopAttract();
-    else armIdle();
-  }, [mode, stopAttract, armIdle]);
+  }, [mode, stopAttract]);
 
   /* ---------- WebGL erkennen (einmal pro Sitzung), dann die 3D-Bühne nachladen ---------- */
   useEffect(() => {
@@ -839,7 +829,8 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       }
       const gp = Array.from(navigator.getGamepads?.() ?? []).find((g) => g && g.connected);
       if (!gp) {
-        raf = requestAnimationFrame(poll);
+        // No pad: stop polling; `gamepadconnected` (or a pad found on mount) starts it again.
+        raf = 0;
         return;
       }
       const m = modeRef.current;
@@ -878,7 +869,6 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
         if (m === 'hall') move(left ? -1 : 1);
         else walk(left ? -1 : 1);
         stopAttract();
-        armIdle();
       }
       if (rising(0)) {
         if (m === 'hall') open();
@@ -891,7 +881,6 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       if (rising(3) && m === 'hall') {
         random();
         stopAttract();
-        armIdle();
       }
       prev = pressed;
       raf = requestAnimationFrame(poll);
@@ -915,7 +904,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       window.removeEventListener('gamepaddisconnected', onDisconnect);
       cancelAnimationFrame(raf);
     };
-  }, [move, open, random, stopAttract, armIdle, walk, back, go, items]);
+  }, [move, open, random, stopAttract, walk, back, go, items]);
 
   /* ---------- Kompakt (schmale Screens): Fokus folgt dem Scrollen ---------- */
   useEffect(() => {

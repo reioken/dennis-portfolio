@@ -31,6 +31,12 @@
 /media/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=3600
 
+# Models and textures are not content-hashed; a day at the edge with revalidation keeps a replaced GLB from sticking.
+/models/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=3600
+/textures/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=3600
+
 # Exported games are isolated from the portfolio's /arcade/ pages.
 /game-builds/*
   ! X-Frame-Options

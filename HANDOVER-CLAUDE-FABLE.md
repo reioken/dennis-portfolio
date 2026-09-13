@@ -22,7 +22,7 @@ Dennis's verdict on v2 (2026-09-12): eyes bulge when Blue jumps onto the machine
 | Cloudflare Pages project | `dennis-portfolio` |
 | Pages production branch argument | `main` |
 | Local development | `http://localhost:4321/` |
-| Latest delivered assets | `portrait-wide-v2-{1200,640}.webp`, `blue-rigged-v6.glb` (the v1 Meshy mesh with its original atlas, 29.7k faces, `Blue coat v6` + `Blue amber eyes`, 24 clips, four morphs, Meshopt, 1710728 bytes) + `blue-v6-closed.webp` (closed-eye atlas for the blink); `blue-rigged-v5.glb`, `v4` and `v2` retained for rollback (switch the path in `hallScene.ts`) |
+| Latest delivered assets | `portrait-wide-v2-{1200,640}.webp`, `blue-rigged-v6.glb` (the v1 Meshy mesh with its original atlas, 29.7k faces, `Blue coat v6` + `Blue amber eyes`, 24 clips, four morphs, Meshopt, 1710728 bytes) + `blue-v6-closed.webp` (closed-eye atlas for the blink); the older Blue GLBs were removed from `public/` in the performance pass and live in git history only |
 
 **Git branch and deployment branch are different.** Production was uploaded directly from the tested `feat/werkstatt` build with `--branch=main`; this did not merge the Git branch into `main`. Do not assume Git main contains this work. At inspection, local main was behind origin/main, whose tip was `3ad8ae9`; those refs have not been freshly fetched for this documentation pass. Reconcile intentionally if a main-branch merge is requested. Do not overwrite or force-push main.
 

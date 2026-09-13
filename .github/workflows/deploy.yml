@@ -18,7 +18,8 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - run: npm run build
+      # typecheck + review tests + build + link/metadata audit; a failing gate never deploys
+      - run: npm run check
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:

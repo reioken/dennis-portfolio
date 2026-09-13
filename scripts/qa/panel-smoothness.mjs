@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { chromium } from 'file:///C:/Users/denni/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 const out='.source-assets/smoothness-2026-09-11';
 await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});

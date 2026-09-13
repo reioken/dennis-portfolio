@@ -1,4 +1,4 @@
-import { chromium } from 'file:///C:/Users/denni/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});const rows=[];
 try{

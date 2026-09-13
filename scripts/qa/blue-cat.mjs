@@ -1,4 +1,4 @@
-import { chromium } from 'file:///C:/Users/denni/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 const out='.source-assets/blue/qa';await fs.mkdir(out,{recursive:true});

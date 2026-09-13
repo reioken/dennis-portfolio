@@ -44,7 +44,12 @@
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.5.0",
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
     "@types/three": "^0.181.0",
+    "meshoptimizer": "^0.22.0",
+    "playwright": "^1.62.1",
     "sharp": "^0.34.2",
     "typescript": "^5.9.3",
     "wrangler": "^4.112.0"

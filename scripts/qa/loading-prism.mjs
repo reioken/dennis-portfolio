@@ -1,4 +1,4 @@
-import {chromium} from 'file:///C:/Users/denni/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import {chromium} from 'playwright';
 import fs from 'node:fs/promises';import assert from 'node:assert/strict';import sharp from 'sharp';import {createHash} from 'node:crypto';
 const css=await fs.readFile('src/components/hall/hall-loading.css','utf8');const guard=await fs.readFile('src/components/hall/HallGuard.astro','utf8');const markup=guard.slice(guard.indexOf('<div class="hall-startup"'),guard.indexOf('<script is:inline'));
 const out='.source-assets/cube-compositor-qa';await fs.mkdir(out,{recursive:true});
