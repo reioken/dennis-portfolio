@@ -20,6 +20,7 @@ const BOUNDS = { minX: -2.05, maxX: 40, minZ: .12, maxZ: 1.5 };
 /** The lying spot keeps the marquee's front face (z .42) .25 m ahead of the body origin, which is where the perch clip puts the elbows and wrists. */
 const LEDGE = { top: 1.95, takeoff: new THREE.Vector3(0, 0, .80), landing: new THREE.Vector3(0, 1.95, .17), spot: new THREE.Vector3(0, 1.95, .17) };
 /** Sitting spot at a cabinet: on the lane in front of it, a hand's width off centre towards the side Blue arrives from. */
+const WHITE = new THREE.Color(1, 1, 1);
 const STATION_LANE_Z = .8, STATION_SIDE_X = .12;
 /** Metres per second the in-place walk clip covers at time scale 1 (37 cm stride over a 1.1 s cycle; the roam plays it at 0.62 as a slow prowl). */
 const STRIDE_SPEED = .34;
@@ -146,6 +147,9 @@ export class BlueCat {
   private coat?: THREE.MeshPhysicalMaterial;
   private openMap: THREE.Texture | null = null;
   private closedMap: THREE.Texture | null = null;
+  /** v6: the painted eye polygons' material (shares the atlas, tinted amber); swapped and untinted on a blink. */
+  private eyesMaterial: THREE.MeshPhysicalMaterial | null = null;
+  private eyesTint: THREE.Color | null = null;
   private showingClosed = false;
   private blink = 0;
   private blinkAge = 0;
@@ -212,6 +216,11 @@ export class BlueCat {
     this.shadow.rotation.x = -Math.PI / 2;
     this.root.add(this.shadow);
     const fur = this.furGrain();
+    // The asset version comes from the coat material's name (`Blue coat v6`). v6 is the first cat again: the v1 mesh
+    // with its original Meshy atlas and painted amber eye polygons, lit the way it was on 2026-09-11.
+    const materialNames: string[] = [];
+    gltf.scene.traverse(node => { const mesh = node as THREE.Mesh; if (mesh.isMesh) for (const mat of (Array.isArray(mesh.material) ? mesh.material : [mesh.material])) materialNames.push(mat.name); });
+    const original = materialNames.some(name => /coat v6/i.test(name));
     gltf.scene.traverse(node => {
       const mesh = node as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -225,7 +234,16 @@ export class BlueCat {
         m.metalness = 0;
         m.roughness = eyes ? .2 : face ? .8 : .82;
         m.envMapIntensity = eyes ? 1.0 : .9;
-        if (v4) {
+        if (original) {
+          // v1's runtime treated every material the same: roughness .88, environment .7, no sheen, the atlas as it
+          // came from Meshy. The eye polygons carry the amber tint in their material colour; on a blink they show
+          // the closed atlas too, with the tint lifted so the painted lids stay fur-coloured.
+          if (v4) { this.coat = m; this.openMap = m.map; }
+          if (eyes) { this.eyesMaterial = m; this.eyesTint = m.color.clone(); }
+          m.roughness = .88;
+          m.envMapIntensity = .7;
+          m.normalMap = null;
+        } else if (v4) {
           // Fur, not plastic: fully matte, the painted fur normal map at full strength, a soft velvet rim, almost no
           // specular and a dim environment reflection.
           this.coat = m; this.openMap = m.map;
@@ -248,10 +266,10 @@ export class BlueCat {
           m.normalScale.set(.32, .32);
         }
         if (m.isMeshPhysicalMaterial) {
-          m.sheen = eyes ? 0 : v4 ? .55 : face ? .55 : .7;
-          m.sheenRoughness = v4 ? .85 : .62;
+          m.sheen = original ? .25 : eyes ? 0 : v4 ? .55 : face ? .55 : .7;
+          m.sheenRoughness = original ? .8 : v4 ? .85 : .62;
           m.sheenColor.setRGB(.40, .37, .48);
-          m.specularIntensity = eyes ? 1 : v4 ? .08 : .32;
+          m.specularIntensity = original ? .3 : eyes ? 1 : v4 ? .08 : .32;
         }
         m.needsUpdate = true;
         for (const value of Object.values(m)) if (value instanceof THREE.Texture) { value.anisotropy = 8; this.textures.add(value); }
@@ -1069,7 +1087,10 @@ export class BlueCat {
     this.perchGround = THREE.MathUtils.damp(this.perchGround, perched, 14, dt);
     if (this.coat && this.closedMap && this.openMap) {
       const closed = this.blink > .5;
-      if (closed !== this.showingClosed) { this.showingClosed = closed; this.coat.map = closed ? this.closedMap : this.openMap; }
+      if (closed !== this.showingClosed) {
+        this.showingClosed = closed; this.coat.map = closed ? this.closedMap : this.openMap;
+        if (this.eyesMaterial && this.eyesTint) { this.eyesMaterial.map = closed ? this.closedMap : this.openMap; this.eyesMaterial.color.copy(closed ? WHITE : this.eyesTint); }
+      }
     }
     for (const eye of this.eyeballs) eye.node.position.copy(eye.rest).addScaledVector(eye.axis, -this.blink * .006);
     for (const lid of this.lids) {

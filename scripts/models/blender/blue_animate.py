@@ -23,10 +23,14 @@ ROOT = Path(__file__).resolve().parents[3]
 WORK = ROOT / '.source-assets/blue/v3'
 import os as _os
 V4 = _os.environ.get('BLUE_V4') == '1'
-VERSION = _os.environ.get('BLUE_VERSION', 'v4')  # asset/material version for the Meshy-mesh pipeline
+# BLUE_ORIGINAL=1: the v1 mesh and rig from blue-rigged-master.blend with its original Meshy coat and painted eyes
+# (Dennis, 2026-09-13: "the one at the top was our best attempt"), no coat cleanup, face material, eyeballs or lids;
+# the blink is a texture swap like the Meshy-mesh versions. Exports blue-rigged-v6.glb by default.
+ORIGINAL = _os.environ.get('BLUE_ORIGINAL') == '1'
+VERSION = _os.environ.get('BLUE_VERSION', 'v6' if ORIGINAL else 'v4')  # asset/material version for the Meshy-mesh pipeline
 MASTER = Path(_os.environ['BLUE_MASTER']) if V4 else WORK / 'blue-rigged-master.blend'
-OUT_BLEND = WORK / (f'blue-animated-{VERSION}.blend' if V4 else 'blue-animated-v2.blend')
-OUT_GLB = WORK / (f'blue-rigged-{VERSION}.glb' if V4 else 'blue-rigged-v2.glb')
+OUT_BLEND = WORK / (f'blue-animated-{VERSION}.blend' if V4 or ORIGINAL else 'blue-animated-v2.blend')
+OUT_GLB = WORK / (f'blue-rigged-{VERSION}.glb' if V4 or ORIGINAL else 'blue-rigged-v2.glb')
 FPS = 30
 
 bpy.ops.wm.open_mainfile(filepath=str(MASTER))
@@ -695,7 +699,21 @@ for pb in arm.pose.bones: pb.matrix_basis = Matrix.Identity(4)
 import os
 V4 = os.environ.get("BLUE_V4") == "1"
 eye_objects = []
-if not V4:
+if ORIGINAL:
+    # ---------------------------------------------------------------- original v1 coat, as shipped on 2026-09-11
+    # Material_0 keeps the Meshy atlas (2048², the runtime shows him at ~110 px) and becomes `Blue coat v6`; the amber
+    # eye polygons keep their own tinted material (`Blue amber eyes`, the baseColorFactor is restored below). The
+    # flat Meshy normal map goes, as in every version since v2. The closed-eye atlas is painted afterwards by
+    # scripts/models/blue-v6-closed-eyes.mjs from the exported eye polygons.
+    for mat in mesh.data.materials:
+        if mat.name == 'Material_0': mat.name = f'Blue coat {VERSION}'
+        for link in list(mat.node_tree.links):
+            if link.to_socket.name == 'Normal' and link.to_node.type == 'BSDF_PRINCIPLED': mat.node_tree.links.remove(link)
+        for node in [n for n in mat.node_tree.nodes if n.type == 'NORMAL_MAP' or (n.type == 'TEX_IMAGE' and n.image and n.image.name == 'Image_2')]:
+            mat.node_tree.nodes.remove(node)
+    for img in bpy.data.images:
+        if img.size[0] > 2048: img.scale(2048, 2048)
+elif not V4:
     # ---------------------------------------------------------------- coat cleanup
     # The Meshy atlas carries streaky fur highlights and warm specks. Replace the dark coat
     # with a smoothed, neutral satin black while keeping the eyes and the inner ears.
@@ -981,5 +999,5 @@ encoded = json.dumps(document, separators=(',', ':')).encode(); encoded += b' ' 
 body = struct.pack('<II', len(encoded), 0x4e4f534a) + encoded + struct.pack('<II', len(packed), 0x004e4942) + bytes(packed)
 OUT_GLB.write_bytes(struct.pack('<III', 0x46546c67, 2, 12 + len(body)) + body)
 (WORK / 'rig-report-v2.json').write_text(json.dumps({'clips': [{'name': a.name, 'frames': list(a.frame_range)} for a in actions],
-    'ground_lifted_vertices': lifted, 'dropped_static_channels': dropped, 'glb_bytes': OUT_GLB.stat().st_size, 'coat_texture': None if V4 else S}, indent=2))
+    'ground_lifted_vertices': lifted, 'dropped_static_channels': dropped, 'glb_bytes': OUT_GLB.stat().st_size, 'coat_texture': None if V4 or ORIGINAL else S}, indent=2))
 print('BLUE_ANIMATE_EXPORTED', OUT_GLB.stat().st_size, flush=True)

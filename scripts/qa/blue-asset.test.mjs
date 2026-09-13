@@ -6,10 +6,12 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
-const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v5.glb';
-/** v4 and later (Meshy multi-view mesh, one PBR material, eyes painted into the coat) have no eyeball or lid nodes. */
+const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6.glb';
+/** v4 and later (Meshy multi-view mesh, one PBR material, eyes painted into the coat) have no eyeball or lid nodes;
+ * v6 is the v1 mesh with its original atlas: the coat plus the tinted `Blue amber eyes` polygons, no normal map. */
 const VERSION = FILE.match(/v(\d+)\.glb$/)?.[1];
 const V4 = Number(VERSION) >= 4;
+const ORIGINAL = VERSION === '6';
 const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear.R',
   'FrontUpper.L', 'FrontLower.L', 'FrontPaw.L', 'FrontUpper.R', 'FrontLower.R', 'FrontPaw.R',
   'HindUpper.L', 'HindLower.L', 'HindPaw.L', 'HindUpper.R', 'HindLower.R', 'HindPaw.R',
@@ -75,7 +77,14 @@ test('morph targets keep their names and order, the materials and eyeballs exist
   for (const primitive of mesh.listPrimitives()) assert.equal(primitive.listTargets().length, MORPHS.length);
   const materials = root.listMaterials().map(m => m.getName());
   const nodes = root.listNodes().map(n => n.getName());
-  if (V4) {
+  if (ORIGINAL) {
+    assert.deepEqual(materials, [`Blue coat v${VERSION}`, 'Blue amber eyes']);
+    const [coat, eyes] = root.listMaterials();
+    assert.ok(coat.getBaseColorTexture() && !coat.getNormalTexture(), 'the coat keeps the original atlas and no normal map');
+    assert.equal(eyes.getBaseColorTexture(), coat.getBaseColorTexture(), 'the eye polygons share the atlas');
+    assert.ok(eyes.getBaseColorFactor()[1] < .7 && eyes.getBaseColorFactor()[2] < .3, 'the eye polygons keep their amber tint');
+    assert.ok(nodes.length >= 27);
+  } else if (V4) {
     assert.deepEqual(materials, [`Blue coat v${VERSION}`]);
     const coat = root.listMaterials()[0];
     assert.ok(coat.getBaseColorTexture() && coat.getNormalTexture(), 'the coat keeps its base colour and normal maps');
