@@ -1,6 +1,6 @@
-import {categories,assess,score} from './core.js';
-import {edition,utcDay} from './edition.js';
-import {findFor} from './feedback.js';
+import {categories,assess,score} from './core.js?v=34cffeeb0050';
+import {edition,utcDay} from './edition.js?v=34cffeeb0050';
+import {findFor} from './feedback.js?v=34cffeeb0050';
 export const SAVE_KEY='rarer.daily.v2';
 export const BACKUP_KEY='rarer.reset-backup.v1';
 const clone=x=>JSON.parse(JSON.stringify(x));

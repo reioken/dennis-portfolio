@@ -1,4 +1,4 @@
-import {score} from './core.js';
+import {score} from './core.js?v=34cffeeb0050';
 export const pointsLeft=(chain,lost=0)=>Math.max(0,score(chain)-lost);
 export function takePenalty(chain,lost,mistakes,cargo){
  const count=mistakes+1,points=pointsLeft(chain,lost),amount=count>=3?points:Math.ceil(points*.25);

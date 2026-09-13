@@ -1,5 +1,5 @@
-import {drawBurrow,heapMetrics,pileHeight} from './burrow.js';
-import {drawMaterial} from './terrain.js';
+import {drawBurrow,heapMetrics,pileHeight} from './burrow.js?v=34cffeeb0050';
+import {drawMaterial} from './terrain.js?v=34cffeeb0050';
 const clamp=n=>Math.max(0,Math.min(1,n));
 export class BurrowView{
   constructor(dialog,scene){
