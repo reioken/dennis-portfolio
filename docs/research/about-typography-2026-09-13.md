@@ -51,4 +51,34 @@ The first Firefox probe incorrectly required a new Resource Timing entry for the
 
 Firefox retains the previously recorded WebGL capability/extension/upload warnings and Outfit preload warning; they are included in the JSON reports. No new page or console errors. The earlier production home-to-About soft-navigation hall issue remains open and was not claimed fixed by this typography pass.
 
-Live evidence and the final script: .source-assets/qa/about-type-2026-09-13/live/ and live.mjs. The script writes to %TEMP%/blue-about-type-qa/live and its completed reports were copied back after execution. Dennis has not yet judged this deployment.
+Live evidence and the final script: .source-assets/qa/about-type-2026-09-13/live/ and live.mjs. The script writes to %TEMP%/blue-about-type-qa/live and its completed reports were copied back after execution. Dennis judged this initial pass in the consistency follow-up below.
+
+## Consistency follow-up — 2026-09-13
+
+Current application: `107f117`; deployment `a1c29b93`, https://a1c29b93.dennis-portfolio-87g.pages.dev. This supersedes the initial pass above, which Dennis judged: numbers must sit beside labels, DENNIS must visually align left, the introductory sentence felt too large, the work icon was far right, and education/skills had no icons.
+
+The dev probes in `.source-assets/qa/about-consistency-2026-09-13/` measured the actual font ink bounds with Canvas TextMetrics alongside DOM geometry. The first D's side bearing put visible ink 8 px right of body text at 1920 px; `translateX(-.045em)` on the first-name span corrects it across font sizes. The heading's auto margin pushed the work icon 564 px away. Number positioning was absolute and therefore excluded from centering.
+
+Numbers and labels now share a centered flex row with an 8 px gap (6 px compact). Below a 360 px panel width the four links occupy a 2×2 grid and scroll-padding increases to accommodate its 88 px height. The introductory paragraph shares the body's 16 px size and 1.65 line height, with normal tracking and weight 400; the profile lead is 18 px and the desktop role 14 px. The four section headings use the existing about, work, education and pen-nib icons, each 24 px, directly after the heading with the normal row gap. Icons remain decorative and hidden from assistive technology. No UI wording or Blue asset/runtime changes.
+
+| Measurement | Before | After |
+| --- | ---: | ---: |
+| Number-to-label gap, 1920 px | 75–94 px | 8 px |
+| First-name ink vs body left edge, 1920 px | 8 px | 0.55 px |
+| Intro type, 1920 px | 26.11 px | 16 px |
+| Intro/body line height | different | both 26.4 px |
+| Work icon gap, 1440 px | 564.09 px | 14 px |
+| Heading icons | 1 of 4 | 4 of 4 |
+
+All four anchors, centered number-label groups, same-row alignment and absence of overflow were checked at 1920, 1440, 390 and 320 px (English on compact views). After adding icons, all four headings and anchors were checked again at 1440 and 320 px; every captured heading view was inspected. Three Blue regressions ran from `%TEMP%/blue-about-consistency-qa` and passed; typecheck, all 35 review tests, build and 52-page audit passed. The prebuild scanner's sibling-repository downgrade was restored again, and the committed application was rebuilt/audited before upload.
+
+Both live hosts passed in Chromium and Firefox. On each host, `/`, `/about/`, `/en/about/`, `/work/` and `/en/` return 200 and carry the CSP `wasm-unsafe-eval` directive. All three Blue v6d files, Barlow font and About CSS match the built dist SHA-256. Headless home and direct About loads complete with no page/console errors or failed requests. Desktop German (1440 px) and mobile English (320 px) confirm loaded Barlow, uppercase name, 16 px intro, centered number-label groups, four adjacent 24 px icons and all four working section anchors without overflow. Live screenshots were inspected.
+
+| Host | Chromium | Firefox |
+| --- | --- | --- |
+| a1c29b93.dennis-portfolio-87g.pages.dev | Pass | Pass |
+| www.dennisbf.design | Pass | Pass |
+
+Firefox retains the previously recorded capability-probe context-loss, shader-extension, texture-upload and Outfit-preload warnings. Reports preserve these warnings; no new errors occurred. The earlier production home-to-About soft-navigation hall issue remains separate and is not claimed fixed or fully reverified here.
+
+Evidence: `.source-assets/qa/about-consistency-2026-09-13/live/` and `live.mjs`. Completed reports/screenshots were copied from `%TEMP%/blue-about-consistency-qa/live` after browser execution. This follow-up and Blue Phase 21 still await Dennis's visual verdict.
