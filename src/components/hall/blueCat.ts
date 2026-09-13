@@ -11,7 +11,7 @@ export interface BlueScene { focus: number; pose: 'hall' | 'zoom' | 'play' | 'sc
 
 /** Name suffix of the shipped Blue files (`blue-rigged-<build>.glb`, `blue-<build>-closed.webp`, `blue-<build>-mips.webp`).
  * Bump it whenever any of them changes: `/models/*` is edge-cached for a day and the three must come from one build. */
-export const BLUE_ASSET_BUILD = 'v6c';
+export const BLUE_ASSET_BUILD = 'v6d';
 const HOME = new THREE.Vector3(-1.65, 0, .18);
 /** Cat bed: inner half-extents across and along Blue, bolster tube radius, superellipse exponent, plinth and cushion heights, centre offset behind the body origin. */
 const BED = { x: .20, z: .30, tube: .07, n: 2.7, base: .03, cushion: .06, back: .06 };   // z .30: the front lip sits 31 cm ahead of the resting origin, clear of the standing forepaws
@@ -187,12 +187,23 @@ export class BlueCat {
       const blob = await (await fetch(url)).blob();
       const options: ImageBitmapOptions = { colorSpaceConversion: 'none', premultiplyAlpha: 'none' };
       const sheet = await createImageBitmap(blob, options);
-      const base = texture.image as { width?: number } | null;
+      const base = texture.image as (CanvasImageSource & { width: number; height: number }) | null;
       if (!base?.width || sheet.width * 2 !== base.width) { sheet.close(); return; }
-      const levels: ImageBitmap[] = [];
-      for (let w = sheet.width, top = 0; w >= 1; top += w, w >>= 1) levels.push(await createImageBitmap(sheet, 0, top, w, w, options));
+      // Firefox's direct ImageBitmap -> WebGL upload blackened whole UV islands.
+      // Copy the decoded pixels, including level 0, to independent canvas surfaces.
+      // blue-coat.mjs compares the real About frame against this upload reference.
+      const copy = (image: CanvasImageSource, width: number, height: number, top = 0) => {
+        const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Blue texture canvas unavailable');
+        context.drawImage(image, 0, top, width, height, 0, 0, width, height);
+        return canvas;
+      };
+      const levels = [copy(base, base.width, base.height)];
+      for (let w = sheet.width, top = 0; w >= 1; top += w, w >>= 1) levels.push(copy(sheet, w, w, top));
       sheet.close();
-      texture.mipmaps = [texture.image, ...levels] as unknown as typeof texture.mipmaps;
+      texture.source = new THREE.Source(levels[0]);
+      texture.mipmaps = levels as unknown as typeof texture.mipmaps;
       texture.generateMipmaps = false;
       texture.needsUpdate = true;
     } catch { /* the GPU's own chain stays */ }

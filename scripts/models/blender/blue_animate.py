@@ -140,7 +140,7 @@ def base():
         'body_pitch': 0.,  # whole-body pitch about the chest (negative = nose up); stays on the skeleton, not the Root
         # The curled sleep: explicit torso and tail positions, head rotations in the head's own frame and world paw
         # targets, all blended in by curl_amount (see apply_curl).
-        'curl_amount': 0., 'torso_curve': None, 'tail_world': None, 'head_local': {'yaw': 0., 'pitch': 0., 'roll': 0.}, 'paw_world': {},
+        'curl_amount': 0., 'curl_side': -1, 'torso_curve': None, 'tail_world': None, 'head_local': {'yaw': 0., 'pitch': 0., 'roll': 0.}, 'paw_world': {},
     }
 
 def solve(P):
@@ -169,8 +169,23 @@ def solve(P):
     for n, nxt in [('Pelvis', 'Spine'), ('Spine', 'Chest'), ('Chest', 'Neck'), ('Neck', 'Head')]:
         r0 = heads[nxt] - heads[n]; r1 = p[nxt] - p[n]
         rot[n] = q((0, 0, 1), P['yaw'][n]) @ q(r1.normalized(), P['roll'][n]) @ r0.rotation_difference(r1)
+        if P['curl_amount'] > 0:
+            # A consistent lateral frame avoids twisting the shoulder against the pelvis
+            # when the spine bends past the rest direction in the sleeping curl.
+            yaw = math.atan2(r1.y, r1.x) - math.atan2(r0.y, r0.x)
+            pitch = math.atan2(r0.z, math.hypot(r0.x, r0.y)) - math.atan2(r1.z, math.hypot(r1.x, r1.y))
+            rz = q((0, 0, 1), yaw)
+            frame = q(r1.normalized(), P['roll'][n]) @ q(rz @ V((1, 0, 0)), pitch) @ rz
+            rot[n] = rot[n].slerp(frame, P['curl_amount'])
     h = P['head']
     rot['Head'] = q((0, 0, 1), h['yaw']) @ q((1, 0, 0), h['pitch']) @ q((0, 1, 0), h['roll']) @ rot['Neck'].slerp(Quaternion(), .5)
+    if P['curl_amount'] > 0:
+        # Cheek on the cushion; the skull follows the curl instead of looking at the
+        # camera or inheriting the neck's steep downward pitch.
+        direction = p['Head'] - p['Neck']
+        yaw = math.atan2(direction.x, -direction.y)
+        resting = q((0, 0, 1), yaw) @ q((0, 1, 0), -P['curl_side'] * 1.1) @ q((1, 0, 0), .05)
+        rot['Head'] = rot['Head'].slerp(resting, P['curl_amount'])
     hl = P['head_local']
     if hl['roll'] or hl['pitch'] or hl['yaw']:
         # about the head's own axes (rest frame: y along the skull, x lateral, z up), for poses where the world axes
@@ -194,11 +209,12 @@ def solve(P):
             w = P['paw_world'].get((leg, side))
             if w is not None: c = c.lerp(V(w), P['curl_amount'])
             bend = V((0, 1, 0)).lerp(V(spec['bend']), amount)
+            bend = bend.lerp(rot[parent] @ V((0, 1, 0)), P['curl_amount'])
             b = ik(a, c, (heads[low] - heads[up]).length, (heads[paw] - heads[low]).length, bend)
             p[up], p[low], p[paw] = a, b, c
             rot[up] = (heads[low] - heads[up]).rotation_difference(b - a)
             rot[low] = (heads[paw] - heads[low]).rotation_difference(c - b)
-            rot[paw] = q((1, 0, 0), L['pitch'])
+            rot[paw] = q((1, 0, 0), L['pitch']).slerp(rot[parent], P['curl_amount'])
     t0 = p['Pelvis'] + rot['Pelvis'] @ (heads['Tail0'] - heads['Pelvis'])
     for i, n in enumerate(TAIL):
         off = TAIL_REST[i].lerp(TAIL_UP[i], P['tail_lift']).lerp(TAIL_FLOOR[i], P['tail_rest']).lerp(TAIL_BACK[i], P['tail_back'])
@@ -327,19 +343,19 @@ def apply_rest(P, front, torso, hind, tail, head):
 
 # ---------------------------------------------------------------- curled sleep
 # Dennis (2026-09-13, twice): "a proper curled up sleeping position", then "he doesn't lay down naturally like a cat
-# would". Authored positions-first like everything else: the torso joints lie on an arc on the cushion (radius 13.5 cm
-# over 187°, so the nose reaches the hind legs), the body rolls onto the inside of the curl (his right side, towards
-# the hall camera), the head lies level on the forepaws with the face towards the camera, the hind legs fold into the
-# curl and the tail lies along the ground across the opening of the C, hugging the belly, to under the chin. Everything
+# would". Real sleeping-cat references (Phase 20) show a side-supported curl, cheek down and relaxed folded paws.
+# The torso follows an arc, with a consistent roll frame; the skull follows its own horizontal heading instead of
+# half-following the neck toward the camera. Paws and elbow/knee bend directions turn with the resting body.
+# The hind legs tuck into the curl and the tail lies along its inner edge. Everything
 # is blended in by curl_amount, so settle and wake pass through it. Numbers are for CURL_SIDE -1; x is mirrored and
 # the leg sides swapped for the other side.
 CURL_SIDE = -1   # head to the cat's right: towards the hall camera from the resting heading
-CURL_R = .135; CURL_CENTRE = (-.03, .04); CURL_START = math.radians(118)
-CURL_Z = {'Pelvis': .10, 'Spine': .10, 'Chest': .10, 'Neck': .085, 'Head': .07}
-CURL_ROLL = {'Pelvis': 1.35, 'Spine': 1.35, 'Chest': 1.05, 'Neck': .8}
-CURL_HEAD = {'roll': -.4, 'pitch': -.4, 'yaw': 0.}
-CURL_PAWS = {('Front', 'R'): (-.02, -.11, .02), ('Front', 'L'): (.02, -.07, .05), ('Hind', 'R'): (-.07, .14, .02), ('Hind', 'L'): (-.04, .09, .05)}
-CURL_TAIL = [None, (-.117, .063, .02), (-.117, .017, .015), (-.094, -.024, .015), (-.053, -.047, .015), (-.007, -.047, .015)]   # Tail0 stays on the pelvis
+CURL_R = .12; CURL_CENTRE = (-.055, .035); CURL_START = math.radians(130)
+CURL_Z = {'Pelvis': .105, 'Spine': .105, 'Chest': .10, 'Neck': .09, 'Head': .10}
+CURL_ROLL = {'Pelvis': 1.05, 'Spine': 1.05, 'Chest': 1.05, 'Neck': 1.05}
+CURL_HEAD = {'roll': 0., 'pitch': 0., 'yaw': 0.}
+CURL_PAWS = {('Front', 'R'): (.005, -.095, .025), ('Front', 'L'): (-.015, -.07, .055), ('Hind', 'R'): (-.06, .075, .03), ('Hind', 'L'): (-.04, .045, .06)}
+CURL_TAIL = [None, (-.10, .10, .04), (-.075, .025, .025), (-.045, -.05, .023), (.01, -.11, .025), (.055, -.15, .025)]   # Tail0 stays on the pelvis
 ARC = [0.]
 for _a, _b in zip(TORSO, TORSO[1:]): ARC.append(ARC[-1] + (heads[_b] - heads[_a]).length)
 
@@ -351,7 +367,7 @@ def curl_points(side):
     return pts
 
 def apply_curl(P, amount, side=CURL_SIDE):
-    P['curl_amount'] = amount; P['torso_curve'] = curl_points(side)
+    P['curl_amount'] = amount; P['curl_side'] = side; P['torso_curve'] = curl_points(side)
     for n, r in CURL_ROLL.items(): P['roll'][n] += r * side * amount
     P['head_local'] = {'roll': CURL_HEAD['roll'] * side * amount, 'pitch': CURL_HEAD['pitch'] * amount, 'yaw': CURL_HEAD['yaw'] * side * amount}
     swap = {'L': 'R', 'R': 'L'}
@@ -773,7 +789,7 @@ for key in ('BlueGround', 'BlueSit', 'BluePerch'):
     if key in mesh.data.shape_keys.key_blocks: mesh.shape_key_remove(mesh.data.shape_keys.key_blocks[key])
 groups = {g.index: g.name for g in mesh.vertex_groups}
 FRONT_LEG = {f'Front{part}.{side}' for part in ('Upper', 'Lower', 'Paw') for side in 'LR'}
-# The face never touches the surface in these poses; excluding it guarantees a corrective can never move the eyes.
+# Keep the face out of floor morphs so they never move the eyes; the sleeping skull's placement supplies cheek contact.
 FACE = {'Head', 'Neck', 'Ear.L', 'Ear.R'}
 lifted = {}
 # shape_key_add copies the current mix unless told otherwise; v2 correctives silently carried the full blink

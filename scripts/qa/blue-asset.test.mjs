@@ -6,7 +6,7 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
-const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6c.glb';
+const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6d.glb';
 /** v4 and later (Meshy multi-view mesh, one PBR material, eyes painted into the coat) have no eyeball or lid nodes;
  * v6 is the v1 mesh with its original atlas: the coat plus the tinted `Blue amber eyes` polygons, no normal map.
  * The file-name suffix is the asset build (BLUE_ASSET_BUILD in blueCat.ts); the version is its digits. */

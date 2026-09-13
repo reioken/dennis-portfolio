@@ -12,7 +12,7 @@
 //      in linear light. No majority-island selection or hard brightness caps: those broke the coat in Phase 18.
 //   4. the 1024² base goes into a copy of the GLB and the 512²..1² levels into one sheet
 //      (public/models/blue-<build>-mips.webp) that the runtime uploads as the texture's mip levels.
-// node scripts/models/blue-v6-atlas.mjs [source glb] [out glb] [build suffix, default v6c]
+// node scripts/models/blue-v6-atlas.mjs [source glb] [out glb] [build suffix, default v6d]
 // Then: node scripts/models/blue-pack.mjs <out glb> public/models/blue-rigged-<build>.glb
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -22,7 +22,7 @@ const SRC = process.argv[2] || '.source-assets/blue/v3/blue-rigged-v6.glb';
 const OUT = process.argv[3] || '.source-assets/blue/v3/blue-rigged-v6-atlas.glb';
 // File-name suffix of the shipped set (see BLUE_ASSET_BUILD in blueCat.ts): every content change gets a new name,
 // because /models/* is edge-cached for a day and the GLB, the sheet and the closed texture must come from one build.
-const BUILD = process.argv[4] || 'v6c';
+const BUILD = process.argv[4] || 'v6d';
 const PUB = 'public/models', INSPECT = '.source-assets/blue/v6';
 fs.mkdirSync(INSPECT, { recursive: true });
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
