@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { BlueToys, type CatToy } from './blueToys';
+import { BlueToys, TOY_GRAVITY, type CatToy } from './blueToys';
 
-type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'arch' | 'sit' | 'sitidle' | 'sitarch' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn' | 'swat';
+type Mood = 'idle' | 'walk' | 'settle' | 'sleep' | 'wake' | 'happy' | 'arch' | 'sit' | 'sitidle' | 'sitarch' | 'stand' | 'jump' | 'perch' | 'perchidle' | 'unperch' | 'turn' | 'swat' | 'playready' | 'playjump';
 type Region = 'head' | 'back' | 'tail';
 type AfterTurn = 'walk' | 'arrive' | 'jump';
 type Arrival = 'idle' | 'home' | 'sit' | 'jump' | 'perch' | 'settle' | 'toy';
@@ -12,7 +12,7 @@ export interface BlueScene { focus: number; pose: 'hall' | 'zoom' | 'play' | 'sc
 
 /** Name suffix of the shipped Blue files (`blue-rigged-<build>.glb`, `blue-<build>-closed.webp`, `blue-<build>-mips.webp`).
  * Bump it whenever any of them changes: `/models/*` is edge-cached for a day and the three must come from one build. */
-export const BLUE_ASSET_BUILD = 'v6e';
+export const BLUE_ASSET_BUILD = 'v6f';
 const HOME = new THREE.Vector3(-1.65, 0, .18);
 /** Cat bed: inner half-extents across and along Blue, bolster tube radius, superellipse exponent, plinth and cushion heights, centre offset behind the body origin. */
 const BED = { x: .20, z: .30, tube: .07, n: 2.7, base: .03, cushion: .06, back: .06 };   // z .30: the front lip sits 31 cm ahead of the resting origin, clear of the standing forepaws
@@ -87,6 +87,18 @@ export class BlueCat {
   private playUntil = 0;
   private nextPlay = 0;
   private swatted = false;
+  private playBeat = 0;
+  private playEnergy = 0;
+  private playAim = new THREE.Vector3();
+  private playFrom = new THREE.Vector3();
+  private playTo = new THREE.Vector3();
+  private playHeight = 0;
+  private playClip = 'pounce';
+  private pawSide = 'R';
+  private nextLeap = 0;
+  private toyContacts = 0;
+  private toyCatches = 0;
+  private compactPlay = false;
   readonly root = new THREE.Group();
   readonly body = new THREE.Group();
   private model: THREE.Object3D;
@@ -660,7 +672,7 @@ export class BlueCat {
     const resting = (m: Mood) => m === 'sit' || m === 'sitidle' || m === 'sleep' || m === 'settle';
     this.fade = mood === 'happy' ? .35 : mood === 'jump' ? .25 : mood === 'turn' || previous === 'turn' ? .2 : previous === 'settle' && mood === 'sleep' ? .3
       : resting(previous) && resting(mood) ? 1.2 : mood === 'stand' || mood === 'unperch' ? .3 : .5;
-    const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(mood === 'turn' ? this.turnClip : mood === 'jump' ? this.jumpClip : mood);
+    const next = mood === 'idle' || mood === 'walk' ? undefined : this.actions.get(mood === 'turn' ? this.turnClip : mood === 'jump' ? this.jumpClip : mood === 'playjump' ? this.playClip : mood === 'swat' && this.pawSide === 'L' ? 'swatL' : mood);
     if (next === this.layer) return;
     // Interrupts switch in one frame and carry the outgoing pose and velocity over as a decaying offset (the
     // inertializer needs the whole jump at once); the slow rest transitions keep their crossfades.
@@ -743,7 +755,7 @@ export class BlueCat {
     this.purr = region === 'tail' ? .65 : 1.15;
     // Every touch feeds the soft response. Whole-body clips have their own cadence:
     // rapid input must neither restart them nor cancel a planted step or landing.
-    if (this.mood === 'jump' || this.mood === 'turn' || this.mood === 'walk' || this.mood === 'stand' || this.mood === 'unperch' || this.mood === 'sit' || this.mood === 'perch') {
+    if (this.mood === 'jump' || this.mood === 'playjump' || this.mood === 'playready' || this.mood === 'swat' || this.mood === 'turn' || this.mood === 'walk' || this.mood === 'stand' || this.mood === 'unperch' || this.mood === 'sit' || this.mood === 'perch') {
       // Acknowledge the hand with head/ears without interrupting a mapped path.
     } else if (this.mood === 'settle' || this.mood === 'sleep') {
       this.dwell = 0; this.enter('wake'); this.pendingHappy = true; this.pendingPet = region;
@@ -823,7 +835,7 @@ export class BlueCat {
     if (plan.kind === 'station') this.spotSide = this.body.position.x > stationX[plan.index] - stationX[0] ? 1 : -1;
     if (reduce) { this.snap(stationX); return; }
     switch (this.mood) {
-      case 'happy': case 'arch': case 'jump': case 'stand': case 'unperch': case 'wake': return; // finish, then resume
+      case 'happy': case 'arch': case 'jump': case 'playjump': case 'swat': case 'playready': case 'stand': case 'unperch': case 'wake': return; // finish, then resume
       case 'turn': this.planChanged = true; return;
       case 'perch': case 'perchidle': if (plan.kind !== 'perch') this.enter('unperch'); return;
       case 'sit': case 'sitidle': case 'sitarch': if (plan.kind !== 'station' || flat(this.body.position, this.stationSpot(plan.index, stationX)) > .04) this.enter('stand'); return;
@@ -907,8 +919,10 @@ export class BlueCat {
     if (!this.toys) {
       this.toys = new BlueToys(this.container, toy => {
         if (this.plan.kind !== 'home') return;
-        this.toy = toy; this.playUntil = this.clock + 18;
+        this.toy = toy; this.playUntil = this.clock + 28;
         this.disturb();
+        // A new toy can redirect the walk home without restarting its gait.
+        if (!this.inBed && this.elevation === 0 && (this.mood === 'walk' || this.mood === 'turn' && this.afterTurn === 'walk')) this.arrival = 'toy';
         // Travel, turns and the current paw stroke finish before a new target.
         if (this.mood === 'idle') this.nextPlay = this.clock;
       });
@@ -919,20 +933,79 @@ export class BlueCat {
 
   private chaseToy() {
     if (!this.toy) return;
-    // Stand behind the toy, keeping the forepaw within reach. A new goal is
-    // chosen only between approaches, so rapid clicks cannot jerk the route.
-    this.forward.subVectors(this.toy.position, this.body.position); this.forward.y = 0;
-    if (this.forward.lengthSq() < .001) this.forward.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
-    this.forward.normalize();
-    this.goal.copy(this.toy.position).addScaledVector(this.forward, -.29); this.goal.y = 0;
-    this.goal.x = THREE.MathUtils.clamp(this.goal.x, -2, -.72); this.goal.z = THREE.MathUtils.clamp(this.goal.z, .58, 1.3);
-    if (flat(this.body.position, this.toy.position) < .38) {
+    if (this.tryPlayJump()) return;
+    this.aimToy();
+    this.goal.copy(this.playAim);
+    if (flat(this.body.position, this.toy.position) < .35 && this.toy.position.y < .18 && !this.toy.held) {
       this.goal.copy(this.body.position); this.arrival = 'toy';
       const error = this.headingError(this.toy.position.x - this.body.position.x, this.toy.position.z - this.body.position.z);
       if (Math.abs(error) > .12) { this.startTurn(error, 'arrive'); return; }
-      this.swatted = false; this.enter('swat'); return;
+      this.enter('playready'); return;
     }
-    this.travelTo(this.goal, .34, 'toy');
+    this.travelTo(this.goal, flat(this.body.position, this.goal) > .65 ? RUN_SPEED : .42, 'toy');
+  }
+
+  /** Lead moving toys, then steer the existing walk/trot without resetting its clip. */
+  private aimToy() {
+    const toy = this.toy!;
+    const lead = toy.held ? 0 : Math.min(.45, flat(this.body.position, toy.position) / 1.8);
+    this.playAim.copy(toy.position).addScaledVector(toy.velocity, lead);
+    this.forward.subVectors(this.playAim, this.body.position); this.forward.y = 0;
+    if (this.forward.lengthSq() < .001) this.forward.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+    this.forward.normalize();
+    this.playAim.addScaledVector(this.forward, -.29); this.playAim.y = 0;
+    this.playAim.x = THREE.MathUtils.clamp(this.playAim.x, -2.05, this.compactPlay ? .25 : 1.6);
+    // Always approach through the open floor in front of the bolster/cabinets.
+    this.playAim.z = THREE.MathUtils.clamp(this.playAim.z, .64, .90);
+  }
+
+  private tryPlayJump() {
+    const toy = this.toy;
+    if (!toy || toy.held || this.inBed || this.elevation > 0 || this.clock < this.nextLeap || toy.position.y < .2) return false;
+    const time = .45;
+    this.playAim.copy(toy.position).addScaledVector(toy.velocity, time);
+    this.playAim.y -= .5 * TOY_GRAVITY * time * time;
+    const distance = flat(this.playAim, this.body.position);
+    const angle = this.headingError(this.playAim.x - this.body.position.x, this.playAim.z - this.body.position.z);
+    if (this.playAim.y < .2 || this.playAim.y > 1.12 || distance > .95 || Math.abs(angle) > .5) return false;
+    this.beginPlayJump(true); return true;
+  }
+
+  private beginPlayJump(high: boolean) {
+    if (!this.toy) return;
+    if (!high) this.playAim.copy(this.toy.position);
+    this.playFrom.copy(this.body.position); this.playFrom.y = 0;
+    this.forward.subVectors(this.playAim, this.playFrom); this.forward.y = 0; this.forward.normalize();
+    this.playTo.copy(this.playAim).addScaledVector(this.forward, -.26); this.playTo.y = 0;
+    this.playTo.x = THREE.MathUtils.clamp(this.playTo.x, -2.05, this.compactPlay ? .25 : 1.6);
+    this.playTo.z = THREE.MathUtils.clamp(this.playTo.z, .64, .90);
+    this.playHeight = high ? THREE.MathUtils.clamp(this.playAim.y - .18, .16, .72) : .09;
+    this.playClip = high ? 'catch' : 'pounce'; this.nextLeap = this.clock + 2.0;
+    this.swatted = false; this.speed = 0; this.enter('playjump');
+  }
+
+  /** Only a paw intersecting the toy imparts an impulse; a miss stays a miss. */
+  private touchToy() {
+    const toy = this.toy;
+    if (!toy || toy.held || this.swatted) return;
+    const airborne = this.mood === 'playjump';
+    if (!(airborne ? this.age > .19 && this.age < .87 : this.mood === 'swat' && this.age > .2 && this.age < .85)) return;
+    this.body.updateWorldMatrix(true, true);
+    for (const bone of this.bones) {
+      if (!bone.name.startsWith('FrontPaw') || (!airborne && !bone.name.endsWith(this.pawSide))) continue;
+      this.root.worldToLocal(bone.getWorldPosition(this.tmpV));
+      if (this.tmpV.distanceTo(toy.position) > toy.radius + .045) continue;
+      this.swatted = true; this.toyContacts++;
+      const side = this.pawSide === 'L' ? -.45 : .45;
+      // Send it back across the play area at the edge, so the game keeps moving.
+      const turnBack = toy.position.x < -1.95 || toy.position.x > (this.compactPlay ? .15 : 1.4);
+      this.forward.set(Math.sin(this.yaw + side), 0, Math.cos(this.yaw + side));
+      if (turnBack) this.forward.set(-.65 - toy.position.x, 0, .64 - toy.position.z).normalize();
+      toy.bat(this.forward, airborne ? .62 : .95);
+      if (airborne && this.playClip === 'catch') { toy.velocity.multiplyScalar(.2); toy.velocity.y = -.4; this.toyCatches++; }
+      this.playUntil = Math.max(this.playUntil, this.clock + 7);
+      break;
+    }
   }
 
   /** Step out of the bed over the front lip (`bedout`, root motion to BED_EXIT), then carry on with `next`. */
@@ -955,8 +1028,10 @@ export class BlueCat {
   }
 
   private arrive(stationX: number[]) {
-    this.body.position.x = this.goal.x;
-    this.body.position.z = this.goal.z;
+    // A moving toy can come within paw reach before its pursuit goal is reached.
+    // Keep that planted position instead of snapping to the latest prediction.
+    if (this.arrival === 'toy') this.goal.copy(this.body.position);
+    else { this.body.position.x = this.goal.x; this.body.position.z = this.goal.z; }
     this.speed = 0;
     // 'home' ends at BED_EXIT facing into the bed (the lip is behind him once he lies down); 'settle' is on the cushion after `bedin`, facing the lip again.
     const facing = this.arrival === 'home' ? wrap(REST_YAW + Math.PI) : this.arrival === 'settle' ? REST_YAW : this.arrival === 'sit' ? -this.spotSide * .55 : this.arrival === 'perch' ? 0 : null;
@@ -968,10 +1043,10 @@ export class BlueCat {
     }
     switch (this.arrival) {
       case 'toy':
-        if (this.toy && flat(this.body.position, this.toy.position) < .39) {
+        if (this.toy && !this.toy.held && this.toy.position.y < .18 && flat(this.body.position, this.toy.position) < .36) {
           const error = this.headingError(this.toy.position.x - this.body.position.x, this.toy.position.z - this.body.position.z);
           if (Math.abs(error) > .12) { this.startTurn(error, 'arrive'); return; }
-          this.swatted = false; this.enter('swat');
+          this.enter('playready');
         }
         else { this.enter('idle'); this.nextPlay = this.clock + .3; }
         break;
@@ -991,8 +1066,15 @@ export class BlueCat {
   /** A layered once-clip has finished: continue the plan. */
   private advance(stationX: number[]) {
     switch (this.mood) {
-      case 'swat': this.enter('idle'); this.nextPlay = this.clock + .9; break;
-      case 'settle': this.enter('sleep'); break;
+      case 'playready':
+        if (!this.toy || this.toy.held || flat(this.body.position, this.toy.position) > .46) { this.resume(stationX); break; }
+        this.playBeat++; this.pawSide = this.playBeat % 2 ? 'R' : 'L';
+        if (this.playBeat % 3 === 0 && this.clock > this.nextLeap) this.beginPlayJump(false);
+        else { this.swatted = false; this.enter('swat'); }
+        break;
+      case 'playjump': this.body.position.y = this.elevation = 0; this.enter('idle'); this.nextPlay = this.clock + .12; if (this.plan.kind !== 'home') this.resume(stationX); break;
+      case 'swat': this.enter('idle'); this.nextPlay = this.clock + .18; if (this.plan.kind !== 'home') this.resume(stationX); break;
+      case 'settle': this.enter(this.toy ? 'wake' : 'sleep'); break;
       case 'wake': {
         const region = this.pendingPet;
         this.pendingPet = null;
@@ -1027,6 +1109,12 @@ export class BlueCat {
   }
 
   private locomote(dt: number, stationX: number[]) {
+    if (this.toy && this.arrival === 'toy') {
+      if (this.tryPlayJump()) return;
+      this.aimToy(); this.goal.lerp(this.playAim, 1 - Math.exp(-8 * dt));
+      this.travelSpeed = flat(this.body.position, this.toy.position) > .65 || this.toy.velocity.length() > .65 ? RUN_SPEED : .42;
+      if (!this.toy.held && this.toy.position.y < .18 && flat(this.body.position, this.toy.position) < .34 && this.speed < .16) { this.arrive(stationX); return; }
+    }
     this.forward.subVectors(this.goal, this.body.position);
     this.forward.y = 0;
     const distance = this.forward.length();
@@ -1039,7 +1127,7 @@ export class BlueCat {
     this.body.quaternion.rotateTowards(this.targetRotation, Math.min(angle * 4, THREE.MathUtils.clamp(this.speed / TURN_RADIUS, .3, 1)) * dt);
     const aligned = 1 - step(angle, .45, 1.1);
     const running = this.travelSpeed >= RUN_SPEED;
-    const accel = running ? .9 : this.travelSpeed > ROAM_SPEED ? .42 : .28, decel = running ? 1.0 : this.travelSpeed > ROAM_SPEED ? .5 : .36;
+    const accel = running ? (this.toy ? 1.4 : .9) : this.travelSpeed > ROAM_SPEED ? .42 : .28, decel = running ? (this.toy ? 1.5 : 1.0) : this.travelSpeed > ROAM_SPEED ? .5 : .36;
     const wanted = Math.min(this.travelSpeed, Math.sqrt(2 * decel * Math.max(0, distance - .01))) * aligned;
     this.speed = this.speed < wanted ? Math.min(wanted, this.speed + accel * dt) : Math.max(wanted, this.speed - decel * dt);
     this.heading.copy(FORWARD).applyQuaternion(this.body.quaternion);
@@ -1070,28 +1158,30 @@ export class BlueCat {
 
   private attend(dt: number, camera: THREE.Camera, reduce: boolean) {
     if (!this.head) return;
-    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'sitarch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'arch' || this.mood === 'swat';
+    const playing = !!this.toy && !this.inBed && this.elevation === 0 && !reduce;
+    const awake = this.mood === 'idle' || this.mood === 'walk' || this.mood === 'sitidle' || this.mood === 'sitarch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'arch' || this.mood === 'swat' || this.mood === 'playready' || this.mood === 'playjump';
     if (this.toy && !reduce) {
       this.gazePoint.copy(this.toy.position); this.root.localToWorld(this.gazePoint);
       this.gazeValid = true; this.gazeAt = this.clock;
     }
     let wanted = 0;
     if (!reduce && awake) {
-      if (this.hover || this.purr > 0) wanted = 1;
+      if (playing || this.hover || this.purr > 0) wanted = 1;
       else if (this.gazeValid && this.clock - this.gazeAt < 6) wanted = this.mood === 'walk' ? .55 : 1;
       else if (this.mood === 'perchidle') wanted = .75; // looks down at the visitor from the ledge
       else if (this.mood !== 'walk' && !this.gazeValid) wanted = .3;
     }
     this.gazeWeight = THREE.MathUtils.damp(this.gazeWeight, wanted, 4, dt);
-    this.perk = THREE.MathUtils.damp(this.perk, !reduce && this.hover && awake ? 1 : 0, 6, dt);
+    this.perk = THREE.MathUtils.damp(this.perk, !reduce && awake ? (playing ? .75 : this.hover ? 1 : 0) : 0, 6, dt);
+    this.playEnergy = THREE.MathUtils.damp(this.playEnergy, playing && awake ? 1 : 0, 5, dt);
     if (wanted > 0) {
-      const target = this.hover || !this.gazeValid || this.purr > 0 ? camera.position : this.gazePoint;
+      const target = playing ? this.gazePoint : this.hover || !this.gazeValid || this.purr > 0 ? camera.position : this.gazePoint;
       this.head.getWorldPosition(this.tmpV);
       this.tmpV.subVectors(target, this.tmpV);
       this.body.getWorldQuaternion(this.tmpQ).invert();
       this.tmpV.applyQuaternion(this.tmpQ);
       const yaw = THREE.MathUtils.clamp(Math.atan2(this.tmpV.x, this.tmpV.z), -.75, .75);
-      const pitch = THREE.MathUtils.clamp(Math.atan2(this.tmpV.y, Math.hypot(this.tmpV.x, this.tmpV.z)), this.elevation > 0 ? -.55 : -.3, .42);
+      const pitch = THREE.MathUtils.clamp(Math.atan2(this.tmpV.y, Math.hypot(this.tmpV.x, this.tmpV.z)), playing ? -.85 : this.elevation > 0 ? -.55 : -.3, playing ? .7 : .42);
       this.gazeYaw = THREE.MathUtils.damp(this.gazeYaw, yaw, 7, dt);
       this.gazePitch = THREE.MathUtils.damp(this.gazePitch, pitch, 7, dt);
     }
@@ -1100,7 +1190,7 @@ export class BlueCat {
     const petted = this.touchAmount * (reduce ? .35 : 1);
     const headTouch = this.touchRegion === 'head';
     const backTouch = this.touchRegion === 'back';
-    const safePose = this.mood !== 'wake' && this.mood !== 'sleep' && this.mood !== 'settle' && this.mood !== 'jump';
+    const safePose = this.mood !== 'wake' && this.mood !== 'sleep' && this.mood !== 'settle' && this.mood !== 'jump' && this.mood !== 'playjump';
     // Smooth the actual angles, including side/region changes while already fully
     // petted. Smoothing only touchAmount left a one-frame 23° head flip at x = 0.
     const push = this.touchPush = followTouch(this.touchPush, (headTouch ? .24 : backTouch ? .07 : 0) * petted * (safePose ? 1 : .2), dt);
@@ -1118,6 +1208,12 @@ export class BlueCat {
     this.overlay(this.head, yaw * .62, -pitch * .65, tilt);
     const earBack = this.touchEar;
     for (const ear of this.ears) this.overlay(ear, 0, -this.perk * .22 + earBack, ear === this.ears[0] ? this.perk * .06 : -this.perk * .06);
+    // Loose carrying sway with a smaller, quicker tip twitch during focused play.
+    // Keep this outside the inertia history, just like gaze, so it cannot accumulate.
+    for (let i = 0; i < this.tail.length; i++) {
+      const tip = (i + 1) / this.tail.length;
+      this.overlay(this.tail[i], this.playEnergy * (.065 * Math.sin(this.clock * 3.8 - i * .45) + tip * tip * .07 * Math.sin(this.clock * 8.2 - i * .3)), 0, 0);
+    }
   }
 
   /** Additive rotation in bone space (X pitch, Y yaw, Z roll) on the working pose. */
@@ -1231,6 +1327,7 @@ export class BlueCat {
     if (this.frame % 60 === 0 || !this.containerWidth) this.containerWidth = this.container.clientWidth;
     const compact = this.containerWidth < 600;
     this.scale = compact ? .75 : 1;
+    this.compactPlay = compact;
     this.root.scale.setScalar(this.scale);
     this.shift.set(compact ? .4 : 0, 0, compact ? .05 : 0);
     this.root.position.set(this.stationX + this.shift.x, 0, this.shift.z);
@@ -1243,20 +1340,23 @@ export class BlueCat {
     this.frame++;
     const stationX = scene?.stationX ?? [this.stationX];
     const plan = this.wanted(scene);
+    if (this.toy?.held) this.playUntil = this.clock + 28;
     if (plan.kind !== 'home' || reduce || this.clock > this.playUntil) this.toy = null;
     if (plan.kind !== this.plan.kind || (plan.kind === 'station' && this.plan.kind === 'station' && plan.index !== this.plan.index)) this.replan(plan, stationX, reduce);
     if (!reduce) {
       switch (this.mood) {
         case 'idle': if (this.toy && this.clock > this.nextPlay) this.resume(stationX); else if (this.plan.kind === 'home' && this.age > this.dwell) this.startWalk(); break;
         case 'swat':
-          if (!this.swatted && this.age >= .43) {
-            this.swatted = true;
-            if (this.toy && flat(this.body.position, this.toy.position) < .42) {
-              this.forward.set(Math.sin(this.yaw + .25), 0, Math.cos(this.yaw + .25)); this.toy.bat(this.forward);
-            }
-          }
           if (this.age > this.length('swat')) this.advance(stationX);
           break;
+        case 'playready': if (this.age > this.length('playready')) this.advance(stationX); break;
+        case 'playjump': {
+          const flight = step(this.age, .14, .76);
+          this.body.position.lerpVectors(this.playFrom, this.playTo, flight);
+          this.body.position.y = Math.sin(Math.PI * flight) * this.playHeight;
+          if (this.age > this.length(this.playClip)) this.advance(stationX);
+          break;
+        }
         case 'walk': this.locomote(dt, stationX); break;
         case 'settle': if (this.age > this.length('settle')) this.advance(stationX); break;
         case 'turn': if (this.age * this.turnRate > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
@@ -1355,12 +1455,13 @@ export class BlueCat {
       if (dict.BluePerch !== undefined) influences[dict.BluePerch] = this.perchGround;
     }
     // Blend the last few centimetres onto the cushion, including after petting there.
-    if (this.mood !== 'jump') this.body.position.y = this.elevation;
-    const groundY = this.mood === 'jump' ? (this.jumpAir < .5 ? this.jumpFrom.y : this.jumpTo.y) : this.elevation;
+    if (this.mood !== 'jump' && this.mood !== 'playjump') this.body.position.y = this.elevation;
+    const groundY = this.mood === 'playjump' ? 0 : this.mood === 'jump' ? (this.jumpAir < .5 ? this.jumpFrom.y : this.jumpTo.y) : this.elevation;
     this.shadow.position.set(this.body.position.x, groundY + .003, this.body.position.z);
     this.shadow.rotation.z = -this.yaw;
     (this.shadow.material as THREE.MeshBasicMaterial).opacity = 1 - step(this.body.position.y - groundY, .05, .6) * .7;
     this.body.updateWorldMatrix(true, true);
+    if (!reduce) this.touchToy();
     // The click target sits on the body: lower when he lies or sits, so a pointer resting on it also hits the mesh.
     const lying = this.mood === 'sleep' || this.mood === 'settle' || this.mood === 'wake' || this.mood === 'perch' || this.mood === 'perchidle';
     const sitting = this.mood === 'sit' || this.mood === 'sitidle' || this.mood === 'sitarch';

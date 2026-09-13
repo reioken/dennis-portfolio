@@ -771,18 +771,51 @@ def turn(t, D, theta, sign, plan):
             L['root_dz'] = (.012 if leg == 'Front' else .008) * lift
     return P
 
-def swat(t, D):
-    """Weight on three paws, right paw lifts, reaches, taps and returns."""
+def playready(t, D):
+    """A short, loose stalking crouch with forefeet planted and a small hindquarter wiggle."""
+    P = base(); a = pulse(t, 0, D)
+    P['drop']['Chest'] = .035 * a; P['drop']['Spine'] = .022 * a
+    P['drop']['Neck'] = .025 * a; P['drop']['Head'] = .025 * a
+    P['sway'] = .006 * math.sin(t * 17) * a
+    P['bend']['Spine'] = .035 * math.sin(t * 17) * a
+    P['head']['pitch'] = .12 * a; P['tail_lift'] = .25 * a
+    for i in range(6): P['tail_wave'][i] = .012 * (i / 5) ** 2 * math.sin(t * 10 - i * .5) * a
+    return P
+
+def swat(t, D, side='R'):
+    """Shift onto three planted feet, scoop inward with one paw, follow through, replace it."""
     P = base()
-    weight = pulse(t, .02, 1.08)
-    P['sway'] = .018 * weight
-    P['head']['pitch'] = .16 * weight
-    P['head']['yaw'] = -.08 * weight
-    L = P['legs'][('Front', 'R')]
-    L['dz'] = curve(t, [(0, 0), (.22, .065), (.43, .015), (.64, .045), (1.05, 0)])
-    L['dy'] = curve(t, [(0, 0), (.22, .018), (.43, -.07), (.64, -.025), (1.05, 0)])
-    L['dx'] = -.015 * weight; L['pitch'] = .35 * weight
-    P['tail_lift'] = .12 * weight
+    weight = pulse(t, .01, D - .02); sign = 1 if side == 'R' else -1
+    P['sway'] = .022 * sign * weight
+    P['drop']['Chest'] = .025 * weight; P['drop']['Head'] = .015 * weight
+    P['head']['pitch'] = .17 * weight; P['head']['yaw'] = -.08 * sign * weight
+    P['bend']['Chest'] = .045 * sign * weight
+    L = P['legs'][('Front', side)]
+    L['dz'] = curve(t, [(0, 0), (.2, .11), (.42, .034), (.58, .075), (.92, 0)])
+    L['dy'] = curve(t, [(0, 0), (.2, .018), (.42, -.075), (.58, -.015), (.92, 0)])
+    L['dx'] = sign * curve(t, [(0, 0), (.2, -.018), (.42, .05), (.58, .065), (.92, 0)])
+    L['pitch'] = curve(t, [(0, 0), (.2, .65), (.42, .18), (.58, .45), (.92, 0)])
+    P['tail_lift'] = .24 * weight
+    for i in range(6): P['tail_wave'][i] = .016 * (i / 5) ** 2 * math.sin(t * 8 - i * .4) * weight
+    return P
+
+def playjump(t, D, high=False):
+    """Loaded hind legs, airborne paw reach, forefoot landing, then the hindquarters absorb it."""
+    P = base()
+    crouch = pulse(t, 0, .25); air = pulse(t, .14, .77); land = pulse(t, .64, 1.08)
+    for n in ('Pelvis', 'Spine', 'Chest'): P['drop'][n] = .035 * crouch + (.035 if n == 'Chest' else .023) * land
+    P['head_lift'] = .018 * air if high else -.018 * air
+    P['head']['pitch'] = (-.13 if high else .18) * air
+    P['body_pitch'] = -.12 * air if high else .06 * air
+    for side in 'LR':
+        L = P['legs'][('Front', side)]
+        L['dz'] = (.16 if high else .055) * air
+        L['dy'] = (-.075 if high else -.055) * air
+        L['dx'] = (.025 if side == 'R' else -.025) * air
+        L['pitch'] = .45 * air
+        H = P['legs'][('Hind', side)]
+        H['dz'] = .055 * pulse(t, .2, .84); H['dy'] = -.035 * air; H['pitch'] = .3 * air
+    P['tail_back'] = .3 * air; P['tail_lift'] = .2 * (1 - air)
     return P
 
 TURNS = []
@@ -793,7 +826,8 @@ for degrees in (45, 90):
 
 CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 4.6, settle), ('sleep', 6.0, sleep), ('wake', 2.8, wake), ('happy', 4.0, happy), ('bedout', 2.2, bedout), ('bedin', 2.2, bedin),
          ('sit', .9, sit), ('sitidle', 6.0, sitidle), ('sitarch', 1.6, sitarch), ('stand', .9, stand), ('jumpup', 1.7, jumpup), ('jumpdown', 1.5, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
-         ('unperch', 1.6, unperch), ('swat', 1.15, swat)] + TURNS
+         ('unperch', 1.6, unperch), ('swat', 1.0, swat), ('swatL', 1.0, lambda t, D: swat(t, D, 'L')),
+         ('playready', .65, playready), ('pounce', 1.15, playjump), ('catch', 1.15, lambda t, D: playjump(t, D, True))] + TURNS
 
 # ---------------------------------------------------------------- floor contact correctives
 # Pose-space morphs lift whatever the folded pose pushes below the surface: the sphinx rest,
