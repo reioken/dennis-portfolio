@@ -1456,6 +1456,7 @@ body[data-mode='case'] .hall-panel__btn--coin {
 
 /* Keyboard/touch target follows Blue; ordinary pointer hits use his actual mesh. */
 .hall__blue-pet {
+  touch-action: none;
   transition: none !important;
   animation: none !important;
   position: absolute;

@@ -11,7 +11,7 @@ export interface BlueScene { focus: number; pose: 'hall' | 'zoom' | 'play' | 'sc
 
 /** Name suffix of the shipped Blue files (`blue-rigged-<build>.glb`, `blue-<build>-closed.webp`, `blue-<build>-mips.webp`).
  * Bump it whenever any of them changes: `/models/*` is edge-cached for a day and the three must come from one build. */
-export const BLUE_ASSET_BUILD = 'v6b';
+export const BLUE_ASSET_BUILD = 'v6c';
 const HOME = new THREE.Vector3(-1.65, 0, .18);
 /** Cat bed: inner half-extents across and along Blue, bolster tube radius, superellipse exponent, plinth and cushion heights, centre offset behind the body origin. */
 const BED = { x: .20, z: .30, tube: .07, n: 2.7, base: .03, cushion: .06, back: .06 };   // z .30: the front lip sits 31 cm ahead of the resting origin, clear of the standing forepaws
@@ -109,6 +109,7 @@ export class BlueCat {
   private visits = 0;
   private plannedVisits = 2;
   private pendingHappy = false;
+  private pendingPet: Region | null = null;
   private plan: Plan = { kind: 'home' };
   private spotSide = -1;
   private faceYaw: number | null = null;
@@ -142,6 +143,12 @@ export class BlueCat {
   private flick?: THREE.AnimationAction;
   private regions: [THREE.Object3D, Region][] = [];
   private purr = 0;
+  private touchRegion: Region = 'head';
+  private touchAmount = 0;
+  private touchSide = 1;
+  private lastTouch = -Infinity;
+  private pickMeshes: THREE.SkinnedMesh[] = [];
+  private pickInverse = new THREE.Matrix4();
   private forward = new THREE.Vector3();
   private heading = new THREE.Vector3();
   private targetRotation = new THREE.Quaternion();
@@ -170,9 +177,9 @@ export class BlueCat {
   readonly ready: Promise<void>;
   /**
    * Uploads a pre-built mip chain as the texture's mip levels: the sheet stacks the levels from half the base size
-   * down to 1×1 in one column. The v6 atlas is 1,469 small Meshy islands; the GPU's box filter mixes them at every
-   * coarser level and the face shimmered with bright specks at hall size. scripts/models/blue-v6-atlas.mjs builds
-   * the chain island by island instead.
+   * down to 1×1 in one column. scripts/models/blue-v6-atlas.mjs separates the eye colours, pads the coat's
+   * fragmented UV islands and filters in linear light. The tent filter softens subpixel hair highlights
+   * without the majority-island selection and brightness caps that darkened the Phase 18 coat.
    */
   private static async attachMipSheet(texture: THREE.Texture, url: string): Promise<void> {
     try {
@@ -264,6 +271,7 @@ export class BlueCat {
     gltf.scene.traverse(node => {
       const mesh = node as THREE.Mesh;
       if (!mesh.isMesh) return;
+      if ((mesh as THREE.SkinnedMesh).isSkinnedMesh) this.pickMeshes.push(mesh as THREE.SkinnedMesh);
       if (mesh.morphTargetDictionary?.BlueBlink !== undefined) this.eyelids.push(mesh);
       mesh.frustumCulled = false; // Rest-pose bounds exclude the moving tail and paws.
       for (const mat of (Array.isArray(mesh.material) ? mesh.material : [mesh.material])) {
@@ -444,9 +452,23 @@ export class BlueCat {
     if (this.mood === 'sleep') { this.dwell = 0; this.enter('wake'); }
   }
 
-  /** Which part of Blue a pointer hit landed on, by the nearest of a few bones. */
+  /** Use the skin weights of the actual surface hit. In a curl the head and tail bones
+   * are neighbours in space; nearest-bone classification confuses their surfaces. */
   private region(hit: THREE.Intersection | null): Region {
     if (!hit) return 'head';
+    const mesh = hit.object as THREE.SkinnedMesh;
+    const joints = mesh.geometry?.getAttribute('skinIndex'), weights = mesh.geometry?.getAttribute('skinWeight');
+    if (mesh.isSkinnedMesh && hit.face && joints && weights) {
+      const scores = { head: 0, back: 0, tail: 0 };
+      const vertices = [hit.face.a, hit.face.b, hit.face.c];
+      const bary = hit.barycoord;
+      for (let v = 0; v < 3; v++) for (let k = 0; k < 4; k++) {
+        const name = mesh.skeleton.bones[joints.getComponent(vertices[v], k)]?.name ?? '';
+        const part: Region = /^(Head|Neck|Ear)/.test(name) ? 'head' : /^Tail/.test(name) ? 'tail' : 'back';
+        scores[part] += weights.getComponent(vertices[v], k) * (bary ? bary.getComponent(v) : 1 / 3);
+      }
+      return scores.head >= scores.back && scores.head >= scores.tail ? 'head' : scores.tail > scores.back ? 'tail' : 'back';
+    }
     let best: Region = 'back', bestDistance = Infinity;
     for (const [bone, region] of this.regions) {
       bone.getWorldPosition(this.tmpV);
@@ -681,35 +703,61 @@ export class BlueCat {
    * Touch reactions by body part: the head gets the purr (lean in, slow blink), the back an arched stretch when he
    * is standing or a lean when he sits or lies, the tail a lash with the ears back on top of any pose.
    */
-  readonly pet = (arg?: Event | THREE.Intersection) => {
+  readonly pet = (arg?: Event | THREE.Intersection, stroke = false) => {
     const hit = arg && 'point' in arg ? arg : null;
     if (arg && !hit) (arg as Event).stopPropagation();
+    // Pointer input is handled on pointerdown by the hall, with a real ray even on
+    // the enlarged touch target. A keyboard click still comes straight here.
+    if (arg instanceof MouseEvent && arg.detail > 0) return;
     if (!this.root.visible) return;
-    if (this.mood === 'jump' || this.mood === 'stand' || this.mood === 'unperch') return;
     const region = this.region(hit);
+    const changed = region !== this.touchRegion;
+    this.touchRegion = region;
+    if (hit) {
+      this.tmpV.copy(hit.point); this.body.worldToLocal(this.tmpV);
+      if (Math.abs(this.tmpV.x) > .008) this.touchSide = Math.sign(this.tmpV.x);
+    }
     this.undisturbed = false;
-    if (region === 'tail') {
-      if (this.flick) this.flick.reset().play();
+    this.purr = region === 'tail' ? .65 : 1.15;
+    // A held stroke refreshes the response, never resets its rising envelope.
+    const repeat = !stroke || changed || this.clock - this.lastTouch > .45;
+    this.lastTouch = this.clock;
+    if (this.mood === 'jump' || this.mood === 'stand' || this.mood === 'unperch') {
+      // Acknowledge the hand with head/ears without interrupting a mapped path.
+    } else if (this.mood === 'settle' || this.mood === 'sleep') {
+      this.dwell = 0; this.enter('wake'); this.pendingHappy = true; this.pendingPet = region;
+    } else if (this.mood === 'wake') {
+      this.pendingHappy = true; this.pendingPet = region;
+    } else if (region === 'tail') {
+      if (this.flick && repeat) this.flick.reset().setEffectiveTimeScale(1.6).play();
       this.slowBlink = 0;
     } else if (region === 'back' && (this.mood === 'sit' || this.mood === 'sitidle')) {
       // A stroke along the back while seated: the back rounds up into the hand.
       this.enter('sitarch');
     } else if (this.mood === 'perch' || this.mood === 'perchidle' || this.mood === 'sit' || this.mood === 'sitidle' || this.mood === 'sitarch') {
       // Seated or on the ledge Blue answers with closed eyes and a head push instead of standing up.
-      this.purr = 2.6;
       this.slowBlink = 1;
-    } else if (this.mood === 'settle' || this.mood === 'sleep') { this.dwell = 0; this.enter('wake'); this.pendingHappy = true; }
-    else if (this.mood === 'wake') this.pendingHappy = true;
-    else if (region === 'back' && (this.mood === 'idle' || this.mood === 'walk' || this.mood === 'happy')) this.enter('arch');
-    else if (this.mood !== 'arch') this.enter('happy');
+    } else if (region === 'back' && (this.mood === 'idle' || this.mood === 'walk' || this.mood === 'happy')) this.enter('arch');
+    else if (region === 'head' && this.mood !== 'happy') this.enter('happy');
+    if (this.mood === 'happy' || this.mood === 'arch' || this.mood === 'sitarch') this.layer?.setEffectiveTimeScale(1.5);
     this.container.dispatchEvent(new CustomEvent('hall:blue-petted', { bubbles: true }));
   };
 
   hit(ray: THREE.Raycaster) {
     if (!this.root.visible) return null;
     this.root.updateWorldMatrix(true, true);
-    this.bounds.setFromObject(this.body);
+    // SkinnedMesh caches its first box/sphere (often the sleeping pose). Build a
+    // conservative broad phase from the animated bones, then intersect the skin.
+    // This is 26 points, rather than re-skinning every vertex just for the bounds.
+    this.bounds.makeEmpty();
+    for (const bone of this.bones) this.bounds.expandByPoint(bone.getWorldPosition(this.tmpV));
+    this.bounds.expandByScalar(.20 * this.scale);
     if (!ray.ray.intersectsBox(this.bounds)) return null;
+    for (const mesh of this.pickMeshes) {
+      this.pickInverse.copy(mesh.matrixWorld).invert();
+      (mesh.boundingBox ??= new THREE.Box3()).copy(this.bounds).applyMatrix4(this.pickInverse);
+      mesh.boundingBox.getBoundingSphere(mesh.boundingSphere ??= new THREE.Sphere());
+    }
     return ray.intersectObject(this.body, true)[0] ?? null;
   }
 
@@ -875,7 +923,17 @@ export class BlueCat {
   private advance(stationX: number[]) {
     switch (this.mood) {
       case 'settle': this.enter('sleep'); break;
-      case 'wake': if (this.pendingHappy) this.enter('happy'); else { this.enter('idle'); this.resume(stationX); } break;
+      case 'wake': {
+        const region = this.pendingPet;
+        this.pendingPet = null;
+        if (this.pendingHappy) {
+          this.enter(region === 'back' ? 'arch' : region === 'tail' ? 'idle' : 'happy');
+          this.touchRegion = region ?? 'head'; this.purr = region === 'tail' ? .65 : 1.15;
+          if (region === 'tail') this.flick?.reset().setEffectiveTimeScale(1.6).play();
+          else this.layer?.setEffectiveTimeScale(1.5);
+        } else { this.enter('idle'); this.resume(stationX); }
+        break;
+      }
       case 'sit': case 'sitarch': this.enter('sitidle'); break;
       case 'stand': this.enter('idle'); this.resume(stationX); break;
       case 'perch': this.enter('perchidle'); break;
@@ -965,18 +1023,23 @@ export class BlueCat {
       this.gazePitch = THREE.MathUtils.damp(this.gazePitch, pitch, 7, dt);
     }
     // Being petted: the head pushes up into the hand and rolls into it, the chest leans along; big enough to read at hall size.
-    const petted = this.purr > 0 ? Math.sin(Math.min(1, this.purr / 2.6) * Math.PI) : 0;
-    const push = .28 * petted, tilt = .18 * petted;
+    this.touchAmount = THREE.MathUtils.damp(this.touchAmount, this.purr > .2 ? 1 : 0, this.purr > .2 ? 18 : 7, dt);
+    const petted = this.touchAmount * (reduce ? .35 : 1);
+    const headTouch = this.touchRegion === 'head';
+    const backTouch = this.touchRegion === 'back';
+    const safePose = this.mood !== 'wake' && this.mood !== 'sleep' && this.mood !== 'settle' && this.mood !== 'jump';
+    const push = (headTouch ? .24 : backTouch ? .07 : 0) * petted * (safePose ? 1 : .2);
+    const tilt = (headTouch ? .20 : backTouch ? .05 : -.10) * petted * this.touchSide * (safePose ? 1 : .2);
     // From the ledge the camera sits only a few degrees below him; tuck the chin so the look-down reads.
     const ledgeBias = this.mood === 'perchidle' ? .22 * this.gazeWeight : 0;
     // Curving while walking: the chest rolls into the turn and the head looks along the path ahead of the body.
     const curve = reduce || this.mood !== 'walk' ? 0 : THREE.MathUtils.clamp(this.yawRate, -1.2, 1.2);
     const lead = curve * .22;
     const yaw = this.gazeYaw * this.gazeWeight + lead, pitch = this.gazePitch * this.gazeWeight - push - ledgeBias;
-    this.overlay(this.chest, curve * .04, -push * .25, -curve * .05 + tilt * .3);
+    this.overlay(this.chest, curve * .04, -push * .25 - (backTouch && safePose ? petted * .08 : 0), -curve * .05 + tilt * .3);
     this.overlay(this.neck, yaw * .38, -pitch * .35, tilt * .3);
     this.overlay(this.head, yaw * .62, -pitch * .65, tilt);
-    const earBack = this.purr > 0 ? .28 : 0;
+    const earBack = petted * (this.touchRegion === 'tail' ? .40 : .20);
     for (const ear of this.ears) this.overlay(ear, 0, -this.perk * .22 + earBack, ear === this.ears[0] ? this.perk * .06 : -this.perk * .06);
   }
 
@@ -1107,12 +1170,12 @@ export class BlueCat {
         case 'walk': this.locomote(dt, stationX); break;
         case 'settle': if (this.age > this.length('settle')) this.advance(stationX); break;
         case 'turn': if (this.age * this.turnRate > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
-        case 'sitarch': if (this.age > this.length('sitarch')) this.advance(stationX); break;
+        case 'sitarch': if (this.age > this.length('sitarch') / 1.5 && this.purr <= .2) this.advance(stationX); break;
         case 'sleep':
           if (this.undisturbed && this.hover && this.clock - this.hoverSince > .35) this.disturb();
           else if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
           break;
-        case 'arch': if (this.age > this.length('arch')) this.advance(stationX); break;
+        case 'arch': if (this.age > this.length('arch') / 1.5 && this.purr <= .2) this.advance(stationX); break;
         case 'wake': if (this.age > this.length('wake')) this.advance(stationX); break;
         case 'sit': if (this.age > this.length('sit')) this.advance(stationX); break;
         case 'sitidle': if (this.age > this.dwell) this.enter('sleep'); break;
@@ -1123,7 +1186,7 @@ export class BlueCat {
       }
     }
     // A petted cat never spins towards the visitor: the head overlay does the looking.
-    if (this.mood === 'happy' && this.age > 5) this.advance(stationX);
+    if (this.mood === 'happy' && this.age > 2.2 && this.purr <= .2) this.advance(stationX);
     // Settling clips absorb the small remainder the turn clip left: onto the cushion, towards the cabinet, or facing the viewer on the ledge.
     if (this.faceYaw !== null && !reduce && (this.mood === 'settle' || this.mood === 'sit' || this.mood === 'perch')) {
       this.targetRotation.setFromAxisAngle(UP, this.faceYaw);
@@ -1162,7 +1225,7 @@ export class BlueCat {
     this.slowBlink = Math.max(0, this.slowBlink - dt / .9);
     const resting = this.mood === 'sleep' || this.mood === 'settle' || this.mood === 'wake';
     // Eyes open in the first half second of waking, well before the body is up.
-    const eyeGoal = this.mood === 'wake' ? 1 - step(this.age, .05, .4) : resting ? 1 : this.mood === 'happy' || this.purr > .4 ? .94 : !reduce && (this.blinkAge > this.blinkPeriod - .24 || this.slowBlink > .45) ? 1 : 0;
+    const eyeGoal = this.mood === 'wake' ? 1 - step(this.age, .02, .26) : resting ? 1 : this.mood === 'happy' || (this.purr > .2 && this.touchRegion !== 'tail') ? .94 : !reduce && (this.blinkAge > this.blinkPeriod - .24 || this.slowBlink > .45) ? 1 : 0;
     this.blink = THREE.MathUtils.damp(this.blink, eyeGoal, this.mood === 'wake' ? 12 : resting || this.slowBlink > 0 || this.purr > 0 ? 7 : 20, dt);
     // Pose-space floor correctives: sphinx rest, upright sit and the ledge perch each keep their underside above the surface.
     const settled = this.mood === 'sleep' ? 1 : this.mood === 'settle' ? step(this.age, .35, 2.0) : this.mood === 'wake' ? 1 - step(this.age, .4, 1.4) : 0;

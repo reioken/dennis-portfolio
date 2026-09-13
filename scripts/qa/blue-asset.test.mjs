@@ -6,10 +6,10 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
-const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6b.glb';
+const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6c.glb';
 /** v4 and later (Meshy multi-view mesh, one PBR material, eyes painted into the coat) have no eyeball or lid nodes;
  * v6 is the v1 mesh with its original atlas: the coat plus the tinted `Blue amber eyes` polygons, no normal map.
- * The file-name suffix (`v6b`) is the asset build (BLUE_ASSET_BUILD in blueCat.ts); the version is its digits. */
+ * The file-name suffix is the asset build (BLUE_ASSET_BUILD in blueCat.ts); the version is its digits. */
 const BUILD = FILE.match(/blue-rigged-(v\d+[a-z]?)\.glb$/)?.[1];
 const VERSION = BUILD?.match(/\d+/)?.[0];
 const V4 = Number(VERSION) >= 4;
@@ -87,7 +87,7 @@ test('morph targets keep their names and order, the materials and eyeballs exist
     assert.deepEqual(materials, [`Blue coat v${VERSION}`, 'Blue amber eyes']);
     const [coat, eyes] = root.listMaterials();
     assert.ok(coat.getBaseColorTexture() && !coat.getNormalTexture(), 'the coat keeps the original atlas and no normal map');
-    assert.deepEqual(coat.getBaseColorTexture().getSize(), [1024, 1024], 'the coat atlas is the 1024² base of the island-aware chain (blue-v6-atlas.mjs)');
+    assert.deepEqual(coat.getBaseColorTexture().getSize(), [1024, 1024], 'the coat atlas is the 1024² base of the colour-preserving chain (blue-v6-atlas.mjs)');
     const eyeTexture = eyes.getBaseColorTexture();
     assert.ok(eyeTexture && eyeTexture !== coat.getBaseColorTexture(), 'the eye polygons have their own texture');
     assert.deepEqual(eyeTexture.getSize(), [1024, 1024], 'the open-eye texture');
@@ -122,4 +122,23 @@ test('the file stays within its budget', async () => {
   const { stat } = await import('node:fs/promises');
   const bytes = (await stat(FILE)).size;
   assert.ok(bytes < (V4 ? 3_400_000 : 1_600_000), `${bytes} bytes`);
+});
+
+test('coat mip levels preserve average light instead of darkening with distance', async () => {
+  if (!ORIGINAL) return;
+  const sharp = (await import('sharp')).default;
+  const energy = async image => {
+    const {data,info}=await image.removeAlpha().raw().toBuffer({resolveWithObject:true});
+    let sum=0;
+    for(let i=0;i<data.length;i++){const s=data[i]/255;sum+=s<=.04045?s/12.92:((s+.055)/1.055)**2.4;}
+    return sum/(info.width*info.height*info.channels);
+  };
+  const coat=root.listMaterials().find(m=>/coat/.test(m.getName())).getBaseColorTexture();
+  const reference=await energy(sharp(Buffer.from(coat.getImage())));
+  let top=0;
+  for(let w=512;w>=4;w>>=1){
+    const level=await energy(sharp(`public/models/blue-${BUILD}-mips.webp`).extract({left:0,top,width:w,height:w}));
+    assert.ok(Math.abs(level/reference-1)<.12,`${w}px mip preserves average light: ${(level/reference).toFixed(3)}`);
+    top+=w;
+  }
 });

@@ -719,6 +719,10 @@ export class HallScene {
     }).finally(fontDone);
 
     r.domElement.addEventListener('pointermove', this.onPointerMove);
+    r.domElement.addEventListener('pointerdown', this.onBluePointerDown);
+    r.domElement.addEventListener('pointerup', this.onBluePointerUp);
+    r.domElement.addEventListener('pointercancel', this.onBluePointerUp);
+    this.container.addEventListener('pointerdown', this.onBlueButtonDown);
     r.domElement.addEventListener('pointerleave', this.onPointerLeave);
     r.domElement.addEventListener('click', this.onClick);
     window.addEventListener('resize', this.onResize);
@@ -2647,7 +2651,55 @@ export class HallScene {
   }
 
   /* ---------- Eingabe ---------- */
+  private bluePointer: number | null = null;
+  private blueStrokeAt = 0;
+  private blueStrokeX = 0;
+  private blueStrokeY = 0;
+  private blueClickUntil = 0;
+
+  private blueAt(clientX: number, clientY: number) {
+    const r = this.renderer.domElement.getBoundingClientRect();
+    this.pointer.set((clientX - r.left) / r.width * 2 - 1, 1 - (clientY - r.top) / r.height * 2);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = this.blue?.hit(this.raycaster);
+    if (!hit) return null;
+    const objects = this.raycaster.intersectObjects(this.rayCandidates(), true);
+    return !objects.length || hit.distance < objects[0].distance ? hit : null;
+  }
+  private onBlueButtonDown = (e: PointerEvent) => {
+    if ((e.target as HTMLElement).closest('.hall__blue-pet')) this.onBluePointerDown(e);
+  };
+  private onBluePointerDown = (e: PointerEvent) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    this.blueClickUntil = 0;
+    const hit = this.blueAt(e.clientX, e.clientY);
+    const touchTarget = (e.target as HTMLElement).closest('.hall__blue-pet');
+    if (!hit && !touchTarget) return;
+    this.bluePointer = e.pointerId;
+    this.blueStrokeAt = performance.now(); this.blueStrokeX = e.clientX; this.blueStrokeY = e.clientY;
+    e.preventDefault(); e.stopPropagation();
+    this.renderer.domElement.setPointerCapture(e.pointerId);
+    this.blue?.pet(hit ?? undefined);
+    this.dirty = this.mirrorDirty = true;
+  };
+  private onBluePointerUp = (e: PointerEvent) => {
+    if (this.bluePointer !== e.pointerId) return;
+    this.bluePointer = null;
+    this.blueClickUntil = performance.now() + 350;
+    if (this.renderer.domElement.hasPointerCapture(e.pointerId)) this.renderer.domElement.releasePointerCapture(e.pointerId);
+    e.preventDefault(); e.stopPropagation();
+  };
   private onPointerMove = (e: PointerEvent) => {
+    if (this.bluePointer === e.pointerId) {
+      e.preventDefault(); e.stopPropagation();
+      const now = performance.now();
+      if (now - this.blueStrokeAt >= 70 && Math.hypot(e.clientX - this.blueStrokeX, e.clientY - this.blueStrokeY) >= 3) {
+        const hit = this.blueAt(e.clientX, e.clientY);
+        if (hit) { this.blue?.pet(hit, true); this.dirty = this.mirrorDirty = true; }
+        this.blueStrokeAt = now; this.blueStrokeX = e.clientX; this.blueStrokeY = e.clientY;
+      }
+      return;
+    }
     const r = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
     const now = performance.now();
@@ -2689,6 +2741,7 @@ export class HallScene {
     if (this.renderer.domElement.style.cursor !== cursor) this.renderer.domElement.style.cursor = cursor;
   }
   private onClick = (e: MouseEvent) => {
+    if (performance.now() < this.blueClickUntil) { e.preventDefault(); e.stopPropagation(); return; }
     const r = this.renderer.domElement.getBoundingClientRect();
     const p = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
     this.raycaster.setFromCamera(p, this.camera);
@@ -3090,6 +3143,10 @@ export class HallScene {
     this.deferredScreens.clear();
     this.stop();
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.removeEventListener('pointerdown', this.onBluePointerDown);
+    this.renderer.domElement.removeEventListener('pointerup', this.onBluePointerUp);
+    this.renderer.domElement.removeEventListener('pointercancel', this.onBluePointerUp);
+    this.container.removeEventListener('pointerdown', this.onBlueButtonDown);
     this.renderer.domElement.removeEventListener('pointerleave', this.onPointerLeave);
     this.renderer.domElement.removeEventListener('click', this.onClick);
     window.removeEventListener('resize', this.onResize);
@@ -3140,4 +3197,3 @@ export class HallScene {
     this.renderer.forceContextLoss();
   }
 }
-

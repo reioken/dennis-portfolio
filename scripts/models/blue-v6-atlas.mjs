@@ -2,18 +2,17 @@
 // the outside). The Meshy atlas is 1,469 small UV islands; at hall size the head samples mip levels where every
 // texel averages several islands, so eye whites, pink ear skin and whisker strokes bleed into the face and shimmer
 // as the sampling shifts (the probe measured ~130 single-frame bright pixels on a 240×180 crop; with the atlas
-// replaced by a flat colour: 0). This script rebuilds the textures so that cannot happen:
+// replaced by a flat colour: 0). This script reduces that bleed while preserving the fur's light and detail:
 //   1. the eyes get their own texture (the eye polygons are a separate primitive): 1024² open, 512² closed with the
 //      lids painted shut; outside the eye islands both are filled with a flat colour, so their mip chains stay clean
-//      and nothing bright is left in the coat atlas,
+//      and no eye colours are left in the coat atlas,
 //   2. the coat atlas gets the eye polygons and a 3 px rim painted with fur, the ear rims and backs darkened to the
 //      coat colour (they were skin-coloured), and the gutters between islands padded with the nearest island,
-//   3. an island-aware mip chain is built for the coat: each coarser texel averages only the texels of the island that
-//      owns it; at 128² and below the inner-ear islands go to the coat colour and at 64² and below nothing brighter
-//      than the fur survives (a 60 px cat has no pink ears),
+//   3. gently lift baked-in dark fur patches, keeping the existing hair detail, then average every mip level
+//      in linear light. No majority-island selection or hard brightness caps: those broke the coat in Phase 18.
 //   4. the 1024² base goes into a copy of the GLB and the 512²..1² levels into one sheet
 //      (public/models/blue-<build>-mips.webp) that the runtime uploads as the texture's mip levels.
-// node scripts/models/blue-v6-atlas.mjs [source glb] [out glb] [build suffix, default v6b]
+// node scripts/models/blue-v6-atlas.mjs [source glb] [out glb] [build suffix, default v6c]
 // Then: node scripts/models/blue-pack.mjs <out glb> public/models/blue-rigged-<build>.glb
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -23,7 +22,7 @@ const SRC = process.argv[2] || '.source-assets/blue/v3/blue-rigged-v6.glb';
 const OUT = process.argv[3] || '.source-assets/blue/v3/blue-rigged-v6-atlas.glb';
 // File-name suffix of the shipped set (see BLUE_ASSET_BUILD in blueCat.ts): every content change gets a new name,
 // because /models/* is edge-cached for a day and the GLB, the sheet and the closed texture must come from one build.
-const BUILD = process.argv[4] || 'v6b';
+const BUILD = process.argv[4] || 'v6c';
 const PUB = 'public/models', INSPECT = '.source-assets/blue/v6';
 fs.mkdirSync(INSPECT, { recursive: true });
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
@@ -94,6 +93,28 @@ console.log(`islands ${islands}, owned texels ${owned} of ${W * H} (${(100 * own
 // ---------------------------------------------------------------- coat: ears, eye sockets, gutters
 const coatSamples = []; for (let i = 0; i < W * H; i += 7) if (owner[i] >= 0 && !earClass[i] && !eyeRim[i] && lum(orig, i) < 70) coatSamples.push(i);
 const coat = medianOf(coatSamples, orig);
+// Lift only the low-frequency baked shadow on the fur. The gain comes from nearby
+// texels of the same island, so fine hair contrast and the original hues survive.
+// Eye/ear colours are handled separately below; exact black remains black.
+let lifted = 0;
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  const i = y * W + x;
+  if (owner[i] < 0 || earClass[i] || eyeRim[i]) continue;
+  let sum = 0, count = 0;
+  for (let dy = -4; dy <= 4; dy += 2) for (let dx = -4; dx <= 4; dx += 2) {
+    const xx = x + dx, yy = y + dy;
+    if (xx < 0 || xx >= W || yy < 0 || yy >= H) continue;
+    const j = yy * W + xx;
+    if (owner[j] !== owner[i] || eyeRim[j] || earClass[j]) continue;
+    sum += lum(orig, j); count++;
+  }
+  const low = count ? sum / count : lum(orig, i);
+  const lift = 15 * (1 - Math.exp(-low / 6)) * Math.exp(-low / 70);
+  const gain = Math.min(2.5, (low + lift) / Math.max(low, .001));
+  for (let c = 0; c < 3; c++) img[3 * i + c] = Math.min(255, orig[3 * i + c] * gain);
+  lifted++;
+}
+console.log(`fur shadow gain on ${lifted} texels; original hair detail retained`);
 let earDark = 0;
 for (let i = 0; i < W * H; i++) {
   if (earClass[i] !== 2) continue;
@@ -128,31 +149,34 @@ console.log(`coat colour ${coat.map(v => v.toFixed(0)).join(',')}, ear rim/back 
   }
   console.log(`gutter texels padded ${W * H - owned}`);
 }
-// which islands are the inside of an ear (most of their texels)
-const islandTexels = new Int32Array(islands), islandInner = new Int32Array(islands);
-for (let i = 0; i < W * H; i++) { islandTexels[owner[i]]++; if (earClass[i] === 1) islandInner[owner[i]]++; }
-const innerEarIsland = new Uint8Array(islands); let innerIslands = 0;
-for (let k = 0; k < islands; k++) if (islandInner[k] > islandTexels[k] * .5) { innerEarIsland[k] = 1; innerIslands++; }
-console.log(`inner-ear islands ${innerIslands}`);
-
-// ---------------------------------------------------------------- island-aware mip chain for the coat
+// ---------------------------------------------------------------- colour-preserving mip chain for the coat
+// Average light, not sRGB bytes. Selecting a majority island at every level discarded fur
+// detail and biased ties towards unrelated dark islands; hard luminance caps made this worse.
+// The padded, eye-free atlas can now be filtered continuously without either operation.
+const linear = v => { const s = v / 255; return s <= .04045 ? s / 12.92 : ((s + .055) / 1.055) ** 2.4; };
+const srgb = v => 255 * (v <= .0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - .055);
 function downsample(level) {
-  const { w, own, rgb } = level, hw = w >> 1;
-  const nown = new Int32Array(hw * hw), nrgb = new Float32Array(hw * hw * 3);
+  const { w, rgb } = level, hw = w >> 1;
+  const nrgb = new Float32Array(hw * hw * 3);
   for (let y = 0; y < hw; y++) for (let x = 0; x < hw; x++) {
     const at = [(2 * y) * w + 2 * x, (2 * y) * w + 2 * x + 1, (2 * y + 1) * w + 2 * x, (2 * y + 1) * w + 2 * x + 1];
-    const ids = at.map(i => own[i]);
-    let best = ids[0], bestN = 0;   // majority island; ties go to the lowest id so the choice is stable
-    for (const id of ids) { let n = 0; for (const o of ids) if (o === id) n++; if (n > bestN || (n === bestN && id < best)) { best = id; bestN = n; } }
-    let r = 0, g = 0, b = 0, n = 0;
-    for (let k = 0; k < 4; k++) { if (ids[k] !== best) continue; const i = at[k]; r += rgb[3 * i]; g += rgb[3 * i + 1]; b += rgb[3 * i + 2]; n++; }
-    const j = y * hw + x; nown[j] = best; nrgb[3 * j] = r / n; nrgb[3 * j + 1] = g / n; nrgb[3 * j + 2] = b / n;
+    const j = y * hw + x;
+    for (let c = 0; c < 3; c++) {
+      if (hw >= 1024) nrgb[3 * j + c] = srgb(at.reduce((sum, i) => sum + linear(rgb[3 * i + c]), 0) / 4);
+      else {
+        // A tent low-pass suppresses subpixel sparkle from the baked bright hairs
+        // without clipping their light away. Padding keeps island-edge samples valid.
+        let sum = 0;
+        const weights = [1, 3, 3, 1];
+        for (let dy = 0; dy < 4; dy++) for (let dx = 0; dx < 4; dx++) {
+          const xx = Math.max(0, Math.min(w - 1, x * 2 + dx - 1)), yy = Math.max(0, Math.min(w - 1, y * 2 + dy - 1));
+          sum += linear(rgb[3 * (yy * w + xx) + c]) * weights[dx] * weights[dy];
+        }
+        nrgb[3 * j + c] = srgb(sum / 64);
+      }
+    }
   }
-  const out = { w: hw, own: nown, rgb: nrgb };
-  if (hw <= 128) for (let j = 0; j < hw * hw; j++) if (innerEarIsland[nown[j]]) for (let c = 0; c < 3; c++) nrgb[3 * j + c] = coat[c];
-  // a cat this small (128²: about 100 px on screen) has no whisker strokes or highlights brighter than this
-  const cap = hw <= 128 ? 70 : hw <= 256 ? 110 : 0;
-  if (cap) for (let j = 0; j < hw * hw; j++) { const l = lum(nrgb, j); if (l > cap) for (let c = 0; c < 3; c++) nrgb[3 * j + c] *= cap / l; }
+  const out = { w: hw, rgb: nrgb };
   return out;
 }
 const levels = [{ w: W, own: owner, rgb: img }];
