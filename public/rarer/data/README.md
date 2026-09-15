@@ -1,37 +1,67 @@
 # Answer catalog
 
-`catalog.json` contains 2,165 canonical answers, plus aliases, in nine categories. Each entry retains its Wikipedia article, August 2026 human pageview count and integer rarity score. The browser makes no Wikipedia requests.
+`catalog.json` (version `wiki-12m-2026-08-v2`) holds the answers for Rarer's daily categories. Each entry keeps its display name, accepted aliases, canonical English Wikipedia article, median monthly pageviews (`views`), `rank` within its category and a 0–100 `rarity`. The browser makes no Wikipedia requests.
 
-| Category | Answers | Source and scope |
-| --- | ---: | --- |
-| Countries | 205 | [Sovereign states](https://en.wikipedia.org/wiki/List_of_sovereign_states), including disputed states, Cook Islands and Niue; excludes dependencies and constituent countries |
-| Beatles songs | 355 | [Recorded songs](https://en.wikipedia.org/wiki/List_of_songs_recorded_by_the_Beatles), including covers, archive material and recorded/filmed performances |
-| Chemical elements | 118 | [All named elements](https://en.wikipedia.org/wiki/List_of_chemical_elements), with symbols and spelling variants |
-| US states | 50 | [US states](https://en.wikipedia.org/wiki/List_of_states_and_territories_of_the_United_States), with postal abbreviations |
-| Constellations | 88 | [IAU constellations](https://en.wikipedia.org/wiki/IAU_designated_constellations), with IAU abbreviations |
-| Cat breeds | 92 | [Cat breeds](https://en.wikipedia.org/wiki/List_of_cat_breeds), including experimental breeds and landraces |
-| Dog breeds | 607 | [Dog breeds](https://en.wikipedia.org/wiki/List_of_dog_breeds), including landraces and extinct breeds |
-| Best Picture nominees | 612 | [Academy Award nominees](https://en.wikipedia.org/wiki/Academy_Award_for_Best_Picture), including winners; ambiguous titles require a year |
-| Shakespeare plays | 38 | [Traditionally attributed plays](https://en.wikipedia.org/wiki/Shakespeare%27s_plays), including The Two Noble Kinsmen |
+2,656 answers in 30 categories, listed in daily order:
 
-Counts merge titles which redirect to the same article. Unlinked song/breed entries without a resolvable article are outside this initial scoring snapshot. These broad lists are not a promise to recognize every conceivable valid answer; unknown answers are free and the game exposes each category's scope.
+| Day | Everyday | Pop culture | Geography / sport |
+| ---: | --- | --- | --- |
+| 1 | Fruits (74) | Pixar films (31) | Countries (150) |
+| 2 | Cat breeds (52) | Fast food (56) | European cities (144) |
+| 3 | Cheeses (48) | Video games (101) | Football clubs (125) |
+| 4 | Wild mammals (126) | Beatles songs (128) | Capitals (150) |
+| 5 | Desserts (89) | Board games (54) | Landmarks (140) |
+| 6 | Dog breeds (150) | Marvel characters (35) | Sports (105) |
+| 7 | Vegetables (72) | Car brands (74) | Islands (141) |
+| 8 | Birds (103) | Apps (95) | Tennis champions (99) |
+| 9 | Cocktails (58) | Ghibli films (25) | Mountains (101) |
+| 10 | Dinosaurs (62) | Bond films (25) | Olympic hosts (43) |
 
-Sources: Wikipedia contributors, retrieved September 13, 2026. Source list material is available under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). This adapted catalog retains source links, canonical titles, aliases, scoring transformations and provenance for attribution. Pageviews are numerical measurements from the [Wikimedia Analytics API](https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html).
+Each category in `catalog.json` carries its Wikipedia list `source` and one-sentence `scope`.
 
-## Rarity
+## Category order
 
-For each category, sort canonical articles by August 2026 pageviews, greatest first. Map rank to 0–100, using mean rank for equal pageviews and rounding to an integer. Higher means less viewed within that category. Equal rounded scores cannot extend the chain. The top of a large category can therefore contain more than one answer at 100.
+`edition.js` takes three consecutive categories per UTC day, stepping three each day. The pool is arranged in repeating triples: an everyday category (food, animals, objects), a pop-culture category (films, games, music, brands) and a geography or sport category. The pool length must stay a multiple of three. The order is set in `.rarer-tools/curated-categories.mjs` (`order`).
 
-Views measure article attention, not direct player knowledge. Covers share their song article's traffic with other performers, and news can increase a country's traffic. Denmark and Netherlands explicitly use their main country articles rather than the broader Danish Realm and Kingdom of the Netherlands articles. Alias traffic is not added to canonical traffic.
+## Sources
 
-## Daily editions
+- Countries, Beatles songs, cat breeds and dog breeds are parsed from cached Wikipedia list tables by `.rarer-tools/build-answer-seeds.py`. Beatles songs are the core catalogue, including covers, plus original songs from archive releases. Film-only performances are excluded because those articles mostly cover other artists' songs.
+- Every other category is hand-curated in `.rarer-tools/curated-categories.mjs` as `Display name|Wikipedia article|alias;alias` lines. Aliases include common short names and very common German names (Emmentaler, München, Kölner Dom).
+- Each category links a Wikipedia list page as its `source` and describes its `scope` in one sentence.
 
-`edition.js` selects three categories from the nine-category pool by UTC date. Everyone gets the same set. Consecutive days use different categories; the initial pool repeats after three days. Add complete sourced categories to expand that rotation. Daily progress is stored by date and receipts prevent duplicate banking. An unfinished old edition can be completed without a timer before today's set is opened. Finishing three digs counts toward the local streak.
+## Views, filters and rarity
 
-Keep this published score snapshot unchanged during an edition. A future data refresh should be released with an explicit version/archive strategy before replacing scores used by active games.
+For each canonical article (after redirects), `fetch-yearly-pageviews.mjs` fetches monthly English Wikipedia user pageviews, all access, for September 2025 to August 2026. `views` is the median month, so one-off news spikes do not decide rank. Titles that redirect to the same article are merged, and their names become aliases.
+
+Filters, applied per category after merging:
+
+1. Drop missing articles, disambiguation pages and entries that redirect to a "List of …" page. When titles merge, the entry whose own title is the article supplies the display name.
+2. Drop articles with no German Wikipedia version, as a well-known test for a European audience. `GERMAN_ELSEWHERE` in the script exempts a short, checked list of everyday topics whose German article is linked to a broader item (Banana → Bananen, Snowboarding → Snowboard, Thanos).
+3. Drop entries with median views below 3,000.
+4. Keep the 150 most viewed.
+5. Drop aliases that match another entry's display name, so every name is accepted unambiguously.
+
+A category needs at least 20 entries after filtering, or the build stops.
+
+Entries are sorted by `views`, highest first. `rank` 1 is the most viewed. Equal views share the lower rank number. `rarity = round(100 × (rank − 1) / (n − 1))`, where `n` is the category size, so rarity always rises with rank.
+
+Views measure article attention, not direct player knowledge. Cover songs share their article's traffic with other performers, and city articles in the Olympic category count all interest in the city. Alias traffic is not added to canonical traffic. Because of the cap, the least-viewed valid answers in large categories (for example small countries) are unknown to the game. Unknown answers are free.
 
 ## Rebuild
 
-The retained HTML and parsed tables are in `.rarer-tools/wiki-cache`. Run `parse-wiki.py`, then `build-answer-seeds.py`, then `node .rarer-tools/fetch-answer-pageviews.mjs 2026-08` from the project root. The downloader resolves redirects, caches results, respects Retry-After and uses at most three concurrent requests. `publish-cached-catalog.mjs` rebuilds from an already complete cache. It can also publish development snapshots of fully scored categories; never release one with `building: true`.
+From the project root:
 
-Run `node .rarer-tools/test-answer-catalog.mjs` to check recognition, aliases, counts, disambiguation and score ordering. No build step is needed to serve the resulting JSON and game.
+```
+python .rarer-tools/build-answer-seeds.py
+node .rarer-tools/curated-categories.mjs
+node .rarer-tools/fetch-yearly-pageviews.mjs --report
+node .rarer-tools/test-answer-catalog.mjs
+```
+
+The fetch script caches redirects (`canonical.json`), German links (`dewiki.json`), disambiguation flags (`disambiguation.json`) and 12-month views (`pageviews-12m.json`) in `.rarer-tools/wiki-cache`. It writes them as it goes, so a rerun resumes. It sends a descriptive User-Agent, makes at most three pageview requests at once, waits about six seconds between MediaWiki batches and honours Retry-After. `--report` prints each category's top and bottom five. `--dropped` lists what each filter removed.
+
+The older single-month script `fetch-answer-pageviews.mjs` is kept for reference only.
+
+Keep a published score snapshot unchanged during an edition. Release a data refresh with a new `version`.
+
+Sources: Wikipedia contributors, retrieved September 2026, under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Pageviews come from the [Wikimedia Analytics API](https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html).

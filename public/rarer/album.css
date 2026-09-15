@@ -1,0 +1,51 @@
+/* Collection album (album.js). Every rule is scoped under #album. */
+#album{box-sizing:border-box;width:calc(100vw - 24px);max-width:460px;max-height:calc(100dvh - 24px);padding:0;overflow:hidden;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:6px;box-shadow:4px 4px 0 #0000002e;font-family:'DM Sans',system-ui,sans-serif}
+#album[open]{display:flex;flex-direction:column}
+#album::backdrop{background:#18142099}
+#album *,#album *::before,#album *::after{box-sizing:border-box}
+#album h2,#album p,#album ul,#album ol,#album li{margin:0}
+#album button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#album button:focus-visible{outline:2px solid var(--legendary);outline-offset:2px}
+#album .album-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+#album .album-bar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 8px 8px 14px;background:var(--soft);border-bottom:2px dashed var(--line)}
+#album h2{flex:1;min-width:0;font-size:17px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#album .album-close,#album .album-back{height:40px;background:var(--paper);border:1px solid var(--line);border-radius:4px;box-shadow:2px 2px 0 var(--line)}
+#album .album-close{flex:0 0 40px;padding:0;font-size:24px;line-height:1}
+#album .album-back{flex:0 0 auto;padding:0 10px;font-size:13px;font-weight:600;white-space:nowrap}
+#album .album-close:active,#album .album-back:active,#album .album-category:active,#album .album-order:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--line)}
+#album .album-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 14px 18px}
+
+#album .album-total{margin-bottom:8px;font-size:13px;color:var(--muted)}
+#album .album-total strong{margin-right:3px;font:36px/1 VT323,ui-monospace,monospace;color:var(--ink)}
+#album .album-progress{display:block;height:12px;padding:2px;background:var(--soft);border:1px solid var(--ink);border-radius:2px}
+#album .album-progress>span{display:block;width:var(--p);height:100%;background:repeating-linear-gradient(90deg,var(--gold) 0 5px,transparent 5px 7px)}
+
+#album .album-categories{list-style:none;padding:0;margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#album .album-category{position:relative;width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"icon name name" "bar bar count";align-items:center;gap:7px 6px;padding:9px 8px 8px;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:4px;box-shadow:2px 2px 0 var(--line)}
+#album .album-category.complete{border-color:var(--gold);box-shadow:2px 2px 0 var(--gold)}
+#album .album-icon{grid-area:icon;width:20px;font-size:16px;line-height:1;text-align:center}
+#album .album-name{grid-area:name;padding-right:20px;font-size:12.5px;line-height:1.2;font-weight:600;overflow:hidden;overflow-wrap:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
+#album .album-gem{position:absolute;top:8px;right:8px;display:block;width:16px;height:16px;image-rendering:pixelated}
+#album .album-gem.empty{border:1px dashed var(--line);border-radius:3px}
+#album .album-category .album-progress{grid-area:bar;height:9px;padding:1px}
+#album .album-count{grid-area:count;font:18px/1 VT323,ui-monospace,monospace;color:var(--muted);text-align:right;white-space:nowrap}
+
+#album .album-scope{margin-bottom:10px;font-size:12px;line-height:1.4;color:var(--muted)}
+#album .album-head{display:flex;align-items:center;gap:10px}
+#album .album-head .album-progress{flex:1}
+#album .album-head .album-count{font-size:24px;color:var(--ink)}
+#album .album-order{display:inline-flex;align-items:center;gap:7px;min-height:36px;margin:12px 0 10px;padding:0 10px;background:var(--paper);border:1px solid var(--line);border-radius:4px;box-shadow:2px 2px 0 var(--line);font-size:12px;font-weight:600}
+#album .album-order::before{content:'';width:12px;height:12px;background:var(--paper);border:2px solid var(--ink);border-radius:1px}
+#album .album-order[aria-pressed=true]::before{background:var(--ink);box-shadow:inset 0 0 0 2px var(--paper)}
+
+#album .album-tiles{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:6px}
+#album .album-tile{position:relative;min-width:0;min-height:70px;padding:5px 5px 7px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;border-radius:3px}
+#album .album-tile.found{background:var(--paper);background:color-mix(in srgb,var(--tier) 18%,var(--paper));border:2px solid var(--tier)}
+#album .album-tile.missing{background:var(--soft);border:1px dashed var(--line);color:var(--muted)}
+#album .album-rank{align-self:flex-start;font:17px/1 VT323,ui-monospace,monospace;color:var(--muted)}
+#album .album-tile img{position:absolute;top:4px;right:4px;width:16px;height:16px;image-rendering:pixelated}
+#album .album-answer{max-width:100%;font-size:11px;line-height:1.2;font-weight:600;overflow-wrap:anywhere}
+#album .album-mystery{display:grid;place-items:center;width:28px;height:28px;background:var(--line);color:var(--paper);font:24px/1 VT323,ui-monospace,monospace;clip-path:polygon(4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px),0 4px,4px 4px)}
+@media (min-width:480px){#album .album-body{padding:16px 18px 20px}}
+@media (prefers-reduced-motion:reduce){#album button:active{transform:none}}

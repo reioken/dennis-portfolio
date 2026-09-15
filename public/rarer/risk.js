@@ -1,11 +1,15 @@
-import {tier} from './core.js?v=b9fe4fa5c055';
-import {baseScore as score} from './rewards.js?v=b9fe4fa5c055';
-export const pointsLeft=(chain,lost=0)=>Math.max(0,score(chain)-lost);
-export function takePenalty(chain,lost,mistakes,cargo){
- const count=mistakes+1,points=pointsLeft(chain,lost),amount=count>=3?points:Math.ceil(points*.25);
- const spill=count>=3?cargo.length:Math.min(cargo.length,Math.ceil(cargo.length*.25));
- return {mistakes:count,amount,lost:lost+amount,cargo:cargo.slice(0,cargo.length-spill),spill,ended:count>=3};
+import {tier} from './core.js?v=8b851d4060c4';
+import {baseScore as score} from './rewards.js?v=8b851d4060c4';
+import {comboIcon} from './rewards-view.js?v=8b851d4060c4';
+import {dailyNumber} from './edition.js?v=8b851d4060c4';
+export const pointsLeft=(chain,lost=0,reverse=false)=>Math.max(0,score(chain,reverse)-lost);
+// The first slip is a free warning. The second caves in: half the haul spills and the dig ends.
+export function takePenalty(chain,lost,mistakes,cargo,reverse=false){
+ const count=mistakes+1;
+ if(count<2)return {mistakes:count,amount:0,lost,cargo,spill:0,ended:false,warning:true};
+ const amount=Math.ceil(pointsLeft(chain,lost,reverse)/2),spill=Math.ceil(cargo.length/2);
+ return {mistakes:count,amount,lost:lost+amount,cargo:cargo.slice(0,cargo.length-spill),spill,ended:true,warning:false};
 }
 export function dailyShare(results,date){
- return 'Rarer · '+date+'\n'+results.map(r=>r.name+' '+r.chain.map(a=>tier(a[1]).square).join('')+(r.bust?' ×':'')+' · '+r.points+' · ×'+r.chain.length+(r.reward?.bonuses?.length?' · bonus ×'+r.reward.multiplier:'')+(r.mistakes?' · '+r.mistakes+'/3 mistakes':'')).join('\n')+'\nTotal '+results.reduce((n,r)=>n+r.points,0).toLocaleString('en-US');
+ return 'Rarer #'+dailyNumber(date)+' · '+date+'\n'+results.map(r=>r.name+' '+r.chain.map(a=>tier(a[1]).square).join('')+(r.bust?' 🕳️':'')+' · '+r.points.toLocaleString('en-US')+(r.reward?.bonuses?.length?' · '+r.reward.bonuses.map(b=>comboIcon(b.id)).join(''):'')).join('\n')+'\nTotal '+results.reduce((n,r)=>n+r.points,0).toLocaleString('en-US');
 }
