@@ -1,4 +1,4 @@
-import {categories} from './core.js?v=a55994f72823';
+import {categories} from './core.js?v=b9fe4fa5c055';
 export const utcDay=(now=new Date())=>now.toISOString().slice(0,10);
 export function selectCategories(catalog,day){
  const offset=Math.floor((Date.parse(day+'T00:00:00Z')-Date.parse('2026-09-13T00:00:00Z'))/86400000);

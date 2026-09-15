@@ -9,6 +9,8 @@ export const leftWallAt=(y,surface,floor)=>{
 };
 export const ceilingAt=(x,y)=>y+Math.round(noise(x,19,17)*6);
 export const wallAt=(y,edge,floor)=>y>floor-3?edge:edge+Math.round(noise(y,13,29)*8-4);
-export const railGround=floor=>floor+14;
+// The rails are the tunnel's walking surface. Keep their top edge on the
+// miner's foot baseline so the cart wheels and mole feet share one plane.
+export const railGround=floor=>floor;
 export const minerFoot=41;
 export const cartFoot=30;

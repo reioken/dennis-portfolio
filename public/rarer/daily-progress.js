@@ -1,7 +1,8 @@
-import {categories,score as oldScore} from './core.js?v=a55994f72823';
-import {baseScore as score,settlement} from './rewards.js?v=a55994f72823';
-import {edition,utcDay} from './edition.js?v=a55994f72823';
-import {findFor} from './feedback.js?v=a55994f72823';
+import {categories,score as oldScore} from './core.js?v=b9fe4fa5c055';
+import {maxMultiplier} from './rewards.js?v=b9fe4fa5c055';
+import {baseScore as score,settlement} from './rewards.js?v=b9fe4fa5c055';
+import {edition,utcDay} from './edition.js?v=b9fe4fa5c055';
+import {findFor} from './feedback.js?v=b9fe4fa5c055';
 export const SAVE_KEY='rarer.daily.v2';
 export const BACKUP_KEY='rarer.reset-backup.v1';
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -16,7 +17,7 @@ function validRun(r){
  if(!Number.isInteger(r.mistakes)||r.mistakes<0||r.mistakes>3||!Number.isInteger(r.lost)||r.lost<0||r.lost>score(r.chain))return false;
  if(!Array.isArray(r.cargo)||!r.cargo.every(a=>validAnswer(a)&&r.chain.some(b=>b[0]===a[0]&&b[1]===a[1])))return false;
  const n=r.stage==='home'?0:r.stage==='play'?r.ci:r.stage==='result'?3:r.ci+1;
- return Array.isArray(r.results)&&r.results.length===n&&r.results.every(v=>v&&validChain(v.chain)&&Number.isInteger(v.points)&&v.points>=0&&v.points<=Math.floor(score(v.chain)*1.5));
+ return Array.isArray(r.results)&&r.results.length===n&&r.results.every(v=>v&&validChain(v.chain)&&Number.isInteger(v.points)&&v.points>=0&&v.points<=Math.floor(score(v.chain)*maxMultiplier));
 }
 export function decodeProgress(raw,day=edition.date){
  const fresh=emptyProgress(day);
@@ -31,7 +32,7 @@ export function decodeProgress(raw,day=edition.date){
    data.days=Object.fromEntries(Object.entries(data.days||{}).map(([day,r])=>[day,migrate(r)]));
   }
   fresh.resetId=typeof data.resetId==='string'?data.resetId:fresh.resetId;
-  fresh.rounds=unique((data.rounds||[]).filter(r=>r&&typeof r.id==='string'&&typeof r.categoryId==='string'&&validChain(r.chain)&&Array.isArray(r.cargo)&&r.cargo.every(validAnswer)&&Number.isInteger(r.points)&&r.points>=0&&r.points<=Math.floor(score(r.chain)*1.5)),r=>r.id);
+  fresh.rounds=unique((data.rounds||[]).filter(r=>r&&typeof r.id==='string'&&typeof r.categoryId==='string'&&validChain(r.chain)&&Array.isArray(r.cargo)&&r.cargo.every(validAnswer)&&Number.isInteger(r.points)&&r.points>=0&&r.points<=Math.floor(score(r.chain)*maxMultiplier)),r=>r.id);
   fresh.legendary=unique((data.legendary||[]).filter(a=>a&&typeof a.name==='string'&&typeof a.categoryId==='string'&&Number.isInteger(a.rarity)&&a.rarity>=80&&a.rarity<=100),a=>a.categoryId+':'+a.name);
   fresh.days=Object.fromEntries(Object.entries(data.days||{}).filter(([k,r])=>k===r?.day&&validRun(r)));
   if(validRun(data.run))fresh.days[data.run.day]=data.run;

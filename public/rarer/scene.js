@@ -1,8 +1,8 @@
-import {findFor,cargoSlot,lootPosition} from './feedback.js?v=a55994f72823';
-import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=a55994f72823';
-import {pileHeight} from './progress.js?v=a55994f72823';
-import {drawMaterial,rebaseTween} from './terrain.js?v=a55994f72823';
-import {drawBurrow,heapMetrics} from './burrow.js?v=a55994f72823';
+import {findFor,cargoSlot,lootPosition} from './feedback.js?v=b9fe4fa5c055';
+import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=b9fe4fa5c055';
+import {pileHeight} from './progress.js?v=b9fe4fa5c055';
+import {drawMaterial,rebaseTween} from './terrain.js?v=b9fe4fa5c055';
+import {drawBurrow,heapMetrics} from './burrow.js?v=b9fe4fa5c055';
 const assetRoot='./assets/one-more-swing/';
 const loadImage=src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Missing art: '+src));img.src=assetRoot+src;});
 const clamp=n=>Math.max(0,Math.min(1,n));
@@ -159,18 +159,20 @@ export class MineScene {
     this.drawSupports(ctx,now);
     this.drawLadder(ctx);
     this.drawLedge(ctx);
-    this.sprite(ctx,'entrance',mineLayout.shaftX-(this.meta?.props?.entrance.anchorX??28),surface-(this.meta?.props?.entrance.foot??this.meta?.geology.entranceFoot??42));
+    const entrance=this.assets.entrance,ep=this.meta?.props?.entrance;
+    if(entrance){
+      const ew=ep?.width??entrance.width,eh=ep?.height??entrance.height,ea=ep?.anchorX??Math.round(ew/2),ef=ep?.foot??eh;
+      ctx.drawImage(entrance,0,0,entrance.width,entrance.height,Math.round(mineLayout.shaftX-ea),Math.round(surface-ef),ew,eh);
+    }
     this.drawHome(ctx,now);
     if(s.bust){ctx.save();ctx.beginPath();ctx.moveTo(s.edge+21,ceiling);for(let y=ceiling;y<floor;y+=3)ctx.lineTo(wallAt(y,s.edge,floor),y);ctx.lineTo(s.edge+21,floor);ctx.closePath();ctx.fillStyle='#303b4c99';ctx.fill();ctx.restore();}
     if(s.crack){ctx.strokeStyle='#302333';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.edge+8,floor-44);ctx.lineTo(s.edge+2,floor-34);ctx.lineTo(s.edge+7,floor-27);ctx.lineTo(s.edge+3,floor-12);ctx.moveTo(s.edge+7,floor-27);ctx.lineTo(s.edge+13,floor-23);ctx.stroke();}
     if(s.reveal&&s.revealCount){ctx.globalAlpha=s.reveal;for(let i=0;i<s.revealCount;i++){const x=s.edge+13+i*28,y=floor-29-i*5;this.sprite(ctx,'diamond',x,y);this.sparkle(ctx,x+8,y+8,'#ffe6a1',now+i*270,4);}ctx.globalAlpha=1;}
-    if(s.y>surface+6&&s.pose!=='climb')s.cartX=Math.max(mineLayout.cartStart,s.x-48);
-    this.drawMiner(ctx,s.x,s.y,now);this.drawRails(ctx);
-    if(s.y>surface+6&&s.pose!=='climb'&&s.x>s.cartX+25){
-      ctx.strokeStyle='#88735b';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(Math.round(s.cartX+14),floor+2);ctx.lineTo(Math.round(s.x-20),floor+3);ctx.lineTo(Math.round(s.x-8),floor-12);ctx.stroke();
-    }
-    for(const e of this.effects)this.drawImpact(ctx,e,now);
+    if(s.y>surface+6&&s.pose!=='climb')s.cartX=Math.max(mineLayout.cartStart,s.x-26);
+    // The cart occupies the rear depth plane, so the mole walks in front of its handle.
     this.drawCart(ctx,now);
+    this.drawMiner(ctx,s.x,s.y,now);
+    for(const e of this.effects)this.drawImpact(ctx,e,now);
     if(this.flight){
       const f=this.flight,t=f.duration?clamp((now-f.start)/f.duration):1,to=cargoSlot(Math.min(11,this.haul.length),s.cartX,railGround(floor)),p=lootPosition(f.from,to,t,ceiling),size=16*(1+(f.level*.07+.1)*Math.sin(Math.PI*t));
       ctx.drawImage(this.assets[f.asset],Math.round(p.x-size/2),Math.round(p.y-size/2),Math.round(size),Math.round(size));if(f.level>1)this.sparkle(ctx,p.x,p.y,f.color,now,12+f.level*2);
@@ -240,7 +242,7 @@ export class MineScene {
     const img=this.assets.ladder;if(!img)return;
     const p=this.meta?.props?.ladder;
     if(p){
-      const top=this.surface-6,height=this.floor-top+p.paddingBottom;
+      const top=this.surface-6,height=this.floor-top;
       this.drawFittedColumn(ctx,img,p,mineLayout.shaftX-p.width/2,top,height);
       if(this.state.y<=this.surface+1&&this.state.pose!=='climb')this.sprite(ctx,'hatch',mineLayout.shaftLeft,this.surface-1);
       return;
@@ -351,12 +353,16 @@ export class MineScene {
   drawCart(ctx,now){
     const x=this.state.cartX,ground=railGround(this.floor),t=this.landDuration?clamp((now-this.landedAt)/this.landDuration):1;
     const settle=t<1?Math.round(Math.sin(t*Math.PI*3)*(1-t)):0;
+    const roll=this.state.pose==='walk'&&!this.reduced.matches?Math.round(Math.sin(now/92)):0;
     const p=this.meta?.props?.cart??{anchorX:16,foot:cartFoot,frontY:10,width:32,height:32};
-    this.sprite(ctx,'cart',x-p.anchorX,ground-p.foot);
-    for(const [i,item]of this.haul.slice(-12).entries()){const p=cargoSlot(i,x,ground),img=this.assets[item.asset];this.sprite(ctx,item.asset,p.x-img.width/2,p.y-img.height/2+settle);if(item.level===3&&!this.reduced.matches)this.sparkle(ctx,p.x,p.y,item.color,now+i*220,8);}
-    if(this.haul.length>12){ctx.fillStyle='#fff2d9';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText('×'+this.haul.length,x,ground-53);}
+    const cart=this.assets.cart,top=ground-p.foot+roll;
+    // PixelLab's cart keeps a generous transparent margin. Draw it into the
+    // manifest footprint so the visible hopper stays compact behind the mole.
+    if(cart)ctx.drawImage(cart,0,0,cart.width,cart.height,Math.round(x-p.anchorX),Math.round(top),p.width,p.height);
+    for(const [i,item]of this.haul.slice(-12).entries()){const p=cargoSlot(i,x,ground),img=this.assets[item.asset];this.sprite(ctx,item.asset,p.x-img.width/2,p.y-img.height/2+settle+roll);if(item.level===3&&!this.reduced.matches)this.sparkle(ctx,p.x,p.y+roll,item.color,now+i*220,8);}
+    if(this.haul.length>12){ctx.fillStyle='#fff2d9';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText('×'+this.haul.length,x,ground-36);}
     // Repaint the hopper's front over the cargo, with its wheels fixed to the rail.
-    if(this.assets.cart)ctx.drawImage(this.assets.cart,0,p.frontY,p.width,p.height-p.frontY,Math.round(x-p.anchorX),ground-p.foot+p.frontY,p.width,p.height-p.frontY);
+    if(cart){const sourceY=Math.round((p.frontY/p.height)*cart.height),sourceHeight=Math.max(1,cart.height-sourceY),destHeight=p.height-p.frontY;ctx.drawImage(cart,0,sourceY,cart.width,sourceHeight,Math.round(x-p.anchorX),Math.round(top+p.frontY),p.width,destHeight);}
   }
   drawImpact(ctx,e,now){
     if(!e.duration)return;const t=clamp((now-e.start)/e.duration),pixel=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h);};

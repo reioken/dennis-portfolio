@@ -1,10 +1,14 @@
-import {tiers} from './core.js?v=a55994f72823';
-import {challenges} from './rewards.js?v=a55994f72823';
-export function bonusTrackers(chain){
- const [spectrum,triple]=challenges(chain);
- return `<aside class="bonus-trackers" aria-label="Banking bonus challenges"><div class="bonus-heading">Banking bonuses <span>Up to ×1.5</span></div><div class="bonus-grid">
- <div class="bonus-challenge${spectrum.earned?' earned':''}"><div><strong>Full spectrum</strong><b>${spectrum.earned?'✓ ':''}+25%</b></div><div class="spectrum-slots" aria-label="${spectrum.progress} of 6 tiers found">${tiers.map((t,i)=>`<span class="${t.className}${spectrum.counts[i]?' filled':''}" title="${t.label}${spectrum.counts[i]?' found':''}" aria-label="${t.label}${spectrum.counts[i]?' found':''}">${t.mark}</span>`).join('')}</div><small>${spectrum.progress}/6 tiers · One of each</small></div>
- <div class="bonus-challenge${triple.earned?' earned':''}"><div><strong>Three of a kind</strong><b>${triple.earned?'✓ ':''}+25%</b></div><div class="triple-slots ${triple.tier?.className||'common'}" aria-label="${triple.progress} of 3 answers in one tier">${[0,1,2].map(i=>`<span class="${i<triple.progress?'filled':''}">◆</span>`).join('')}</div><small>${triple.progress}/3 ${triple.tier?.label.toLowerCase()||'in one tier'} · Still go higher</small></div>
+import {tiers} from './core.js?v=b9fe4fa5c055';
+import {challenges,maxMultiplier} from './rewards.js?v=b9fe4fa5c055';
+function slots(b){
+ if(b.id==='spectrum')return `<div class="spectrum-slots" aria-label="${b.progress} of 6 tiers found">${tiers.map((t,i)=>`<span class="${t.className}${b.counts[i]?' filled':''}" title="${t.label}${b.counts[i]?' found':''}" aria-label="${t.label}${b.counts[i]?' found':''}">${t.mark}</span>`).join('')}</div>`;
+ if(b.id==='triple')return `<div class="triple-slots ${b.tier?.className||'common'}" aria-label="${b.progress} of 3 answers in one tier">${[0,1,2].map(i=>`<span class="${i<b.progress?'filled':''}">◆</span>`).join('')}</div>`;
+ return `<div class="bonus-pips" aria-label="${b.progress} of ${b.target}">${Array.from({length:b.target},(_,i)=>`<span class="${i<b.progress?'filled':''}"></span>`).join('')}</div>`;
+}
+export function bonusTrackers(chain,lost=0){
+ const list=challenges(chain,lost);
+ return `<aside class="bonus-trackers" aria-label="Banking bonus challenges"><div class="bonus-heading">Banking combos <span>Up to ×${maxMultiplier}</span></div><div class="bonus-grid">
+ ${list.map(b=>`<div class="bonus-challenge${b.earned?' earned':''}"><div><strong>${b.name}</strong><b>${b.earned?'✓ ':''}+${b.percent}%</b></div>${slots(b)}<small>${b.id==='triple'?`${b.progress}/3 ${b.tier?.label.toLowerCase()||'in one tier'}`:b.id==='spectrum'?`${b.progress}/6 tiers`:`${b.progress}/${b.target}`} · ${b.hint}</small></div>`).join('')}
  </div></aside>`;
 }
 export function rewardReceipt(reward){
@@ -14,5 +18,5 @@ export function rewardReceipt(reward){
 export function bonusSummary(results){
  const earned=results.flatMap(r=>r.reward?.bonuses||[]);
  if(!earned.length)return '';
- return `<div class="daily-bonuses"><strong>Bonuses brought home</strong>${['Full spectrum','Three of a kind'].map(name=>{const count=earned.filter(b=>b.name===name).length;return count?`<span>✓ ${name} <b>×${count}</b></span>`:''}).join('')}<small>Already included in your total.</small></div>`;
+ return `<div class="daily-bonuses"><strong>Combos brought home</strong>${challenges([]).map(({name})=>{const count=earned.filter(b=>b.name===name).length;return count?`<span>✓ ${name} <b>×${count}</b></span>`:''}).join('')}<small>Already included in your total.</small></div>`;
 }

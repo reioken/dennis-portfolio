@@ -1,16 +1,16 @@
-import {treasureValue,treasureSum,baseScore,settlement,challenges} from './rewards.js?v=a55994f72823';
-import {bonusTrackers,rewardReceipt,bonusSummary} from './rewards-view.js?v=a55994f72823';
-import {mountWelcome} from './welcome.js?v=a55994f72823';
-import {visualGuide} from './how-to.js?v=a55994f72823';
-import {categories,tier,sum as oldSum,score as oldScore,assess,missed,shareText} from './core.js?v=a55994f72823';
-import {MineScene} from './scene.js?v=a55994f72823';
-import {BurrowView} from './burrow-view.js?v=a55994f72823';
-import {findFor} from './feedback.js?v=a55994f72823';
-import {mineLayout} from './geology.js?v=a55994f72823';
-import * as legacyProgress from './progress.js?v=a55994f72823';
-import * as dailyProgress from './daily-progress.js?v=a55994f72823';
-import {edition,loadDaily,useDay,utcDay} from './edition.js?v=a55994f72823';
-import {pointsLeft,takePenalty,dailyShare} from './risk.js?v=a55994f72823';
+import {treasureValue,treasureSum,baseScore,settlement,challenges} from './rewards.js?v=b9fe4fa5c055';
+import {bonusTrackers,rewardReceipt,bonusSummary} from './rewards-view.js?v=b9fe4fa5c055';
+import {mountWelcome} from './welcome.js?v=b9fe4fa5c055';
+import {visualGuide} from './how-to.js?v=b9fe4fa5c055';
+import {categories,tier,sum as oldSum,score as oldScore,assess,missed,shareText} from './core.js?v=b9fe4fa5c055';
+import {MineScene} from './scene.js?v=b9fe4fa5c055';
+import {BurrowView} from './burrow-view.js?v=b9fe4fa5c055';
+import {findFor} from './feedback.js?v=b9fe4fa5c055';
+import {mineLayout} from './geology.js?v=b9fe4fa5c055';
+import * as legacyProgress from './progress.js?v=b9fe4fa5c055';
+import * as dailyProgress from './daily-progress.js?v=b9fe4fa5c055';
+import {edition,loadDaily,useDay,utcDay} from './edition.js?v=b9fe4fa5c055';
+import {pointsLeft,takePenalty,dailyShare} from './risk.js?v=b9fe4fa5c055';
 const $=id=>document.getElementById(id),escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const helpGuide=$('help-guide');if(helpGuide)helpGuide.innerHTML=visualGuide({help:true});
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -85,6 +85,7 @@ function render(){
     $('panel').innerHTML='<p class="eyebrow">Dig '+(ci+1)+' of 3</p><h1>'+categories[ci].name+'</h1><p class="subtitle">'+(stage==='play'?(chain.length?'Find a rarer answer.':'Name something very common to start.'):stage==='banked'?(busy?'Bringing your haul home…':'Safely back at the surface.'):'That answer was too common.')+'</p>'+(chain.length?chainRows():'<p class="empty">An empty cart. Your first answer.</p>');
     if(stage==='play'){
       $('controls').innerHTML='<div class="scoreline"><strong>'+fmt(haulPoints())+' points</strong><small>'+fmt(sum(chain))+' × '+chain.length+' links</small></div><form class="answer-form" id="answer-form"><label class="sr" for="answer">'+categories[ci].name+'</label><input id="answer" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="go" placeholder="'+(chain.length?'A rarer answer…':'Start with a very common answer…')+'"><button class="submit" aria-label="Submit answer">→</button></form><p class="message" id="message">Unknown answers are free.</p><button class="primary" id="bank">Climb out · '+fmt(potentialBank())+'</button>';
+      if(!chain.length){$('answer').value='';$('answer').removeAttribute('value');}
       $('answer-form').onsubmit=e=>{e.preventDefault();submit($('answer').value);};$('bank').onclick=bank;
       if(focused)$('answer').focus({preventScroll:true});
     }else if(stage==='banked'){
@@ -112,7 +113,7 @@ function render(){
       document.querySelector('.scoreline small').textContent=sum(chain)+' × '+chain.length+' links'+(lost?' − '+lost+' lost':'');
       $('message').textContent='Go a little rarer each time. Build a longer chain.';
       if(!chain.length)$('message').textContent='Start very common. Leave room for a long chain.';
-      $('bank').insertAdjacentHTML('beforebegin',bonusTrackers(chain));
+      $('bank').insertAdjacentHTML('beforebegin',bonusTrackers(chain,lost));
     }
     if(stage==='result')$('controls').insertAdjacentHTML('beforeend','<p class="next-day">'+(utcDay()>edition.date?'<button class="primary" id="new-day">Start today’s digs</button>':'All three digs complete. New categories at 00:00 UTC.')+'</p>');
     if($('new-day'))$('new-day').onclick=()=>{useDay(utcDay());location.reload();};
@@ -134,7 +135,7 @@ async function submit(text){
   if(result.kind==='ambiguous'){$('message').textContent='More than one match. Add the year or use the full name. No penalty.';return;}
   if(result.kind==='unknown'){$('message').textContent=(wantsDaily?'Not recognized for this category. Check the spelling. No penalty.':'Not in this sample’s answer list. No penalty.');$('message').classList.add('error');announce('Answer not recognized. No penalty.');return;}
   if(result.kind==='bust'){if(wantsDaily)await mistake(result.answer);else await bust(result.answer);return;}
-  const beforeBonuses=challenges(chain).filter(b=>b.earned).map(b=>b.id);
+  const beforeBonuses=challenges(chain,lost).filter(b=>b.earned).map(b=>b.id);
   const answer=result.answer;chain.push(answer);if(wantsDaily)cargo.push(answer);progress=recordDiscovery(progress,ci,answer);persist();
   // Commit scoring before the animation. Visual timing never decides game outcomes.
   busy=true;render();scene.pose('swing');status('Swing → crack → discovery → into the cart.');
@@ -143,7 +144,7 @@ async function submit(text){
   await scene.hold(100);scene.pose('walk');await scene.tween({x:scene.standX(),cam:scene.cameraFor(scene.state.edge)},390);
   scene.pose('idle');await scene.hold(170);scene.landFind();
   if(answer[1]>=95){scene.pose('celebrate');await scene.hold(610);}else await scene.hold(150);
-  scene.pose('idle');hideFind();lock(false);status(answer[0]+' '+value(answer[1])+' points · '+fmt(sum(chain))+' × '+chain.length+' = '+fmt(haulPoints())+' points. '+scene.haul.length+' '+(scene.haul.length===1?'find':'finds')+' in your cart.');announce(answer[0]+' accepted. '+fmt(haulPoints())+' points. '+challenges(chain).filter(b=>b.earned&&!beforeBonuses.includes(b.id)).map(b=>b.name+' unlocked. Bank for a 25 percent bonus.').join(' '));
+  scene.pose('idle');hideFind();lock(false);status(answer[0]+' '+value(answer[1])+' points · '+fmt(sum(chain))+' × '+chain.length+' = '+fmt(haulPoints())+' points. '+scene.haul.length+' '+(scene.haul.length===1?'find':'finds')+' in your cart.');announce(answer[0]+' accepted. '+fmt(haulPoints())+' points. '+challenges(chain,lost).filter(b=>b.earned&&!beforeBonuses.includes(b.id)).map(b=>b.name+' unlocked. Bank for a '+b.percent+' percent bonus.').join(' '));
 }
 async function bank(){
   if(busy||stage!=='play')return;lock(true);hideFind();document.activeElement?.blur();settle('banked');render();
@@ -164,22 +165,22 @@ async function mistake(answer){
   render();scene.pose('swing');await scene.hold(scene.meta.animations.swing.impactAt??250);scene.strike(0,true);
   $('scene-caption').textContent=penalty.ended?'Three mistakes. The whole haul is lost.':'Not rarer. −'+penalty.amount+' points.';
   await scene.spillHaul(penalty.spill,penalty.amount,penalty.ended);
-  if(penalty.ended){await scene.hold(300);await bringHome();lock(false);render();announce('Three mistakes. This dig’s treasure and points are lost.');}
+  if(penalty.ended){await scene.hold(300);await bringHome(true);lock(false);render();announce('Three mistakes. This dig’s treasure and points are lost.');}
   else {lock(false);render();$('message').textContent=answer[0]+' isn’t rarer than '+chain.at(-1)[0]+'. −'+penalty.amount+' points. '+(3-mistakes)+' mistakes left.';$('message').classList.add('error');announce($('message').textContent);}
 }
 async function bust(answer){
   lock(true);hideFind();document.activeElement?.blur();failed=answer;settle('bust');scene.pose('swing');await scene.hold(scene.meta.animations.swing.impactAt??250);scene.state.bust=true;scene.strike(0,true);scene.pose('recoil');await scene.hold(420);scene.pose('idle');render();$('scene-caption').textContent='Too common. Your finds are safe.';await scene.hold(450);
   await bringHome();lock(false);status('Chain ended. All '+chain.length+' finds and '+fmt(haulPoints())+' points brought home.');announce('Chain ended. '+fmt(haulPoints())+' points kept and brought home.');
 }
-async function bringHome(){
-  status('Back to the ladder with your cart.');$('scene-caption').textContent='Let’s bring it all home.';
+async function bringHome(lost=false){
+  status(lost?'Back to the ladder with an empty cart.':'Back to the ladder with your cart.');$('scene-caption').textContent=lost?'Nothing left to carry home.':'Let’s bring it all home.';
   scene.pose('walk',-1);await scene.tween({x:mineLayout.shaftX,cam:scene.ladderCamera(),viewY:0},650);
   scene.takeHaul();scene.pose('climb');status('Every find goes in the backpack.');await scene.hold(250);
   scene.homeFocus=true;await scene.tween({y:scene.surface,viewY:scene.homeViewY()},950);
   scene.pose('walk');status('A full backpack. A little walk home.');await scene.tween({x:scene.doorX(),cam:scene.homeCamera(true)},Math.max(650,(scene.doorX()-mineLayout.shaftX)*5));
-  scene.pose('idle');$('scene-caption').textContent=chain.length?'A little more for the pile.':'Home safe.';
-  status('Adding the haul to the outdoor pile.');
-  await scene.depositHaul(homeProfile(progress));scene.pose('celebrate');await scene.hold(550);scene.pose('idle');
+  scene.pose('idle');$('scene-caption').textContent=lost?'Home, empty-handed.':chain.length?'A little more for the pile.':'Home safe.';
+  if(lost){await scene.hold(550);}
+  else {status('Adding the haul to the outdoor pile.');await scene.depositHaul(homeProfile(progress));scene.pose('celebrate');await scene.hold(550);scene.pose('idle');}
   $('scene-caption').textContent=homeCaption();
 }
 async function next(){
