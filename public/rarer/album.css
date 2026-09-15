@@ -24,7 +24,7 @@
 #album .album-categories{list-style:none;padding:0;margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 #album .album-category{position:relative;width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"icon name name" "bar bar count";align-items:center;gap:7px 6px;padding:9px 8px 8px;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:4px;box-shadow:2px 2px 0 var(--line)}
 #album .album-category.complete{border-color:var(--gold);box-shadow:2px 2px 0 var(--gold)}
-#album .album-icon{grid-area:icon;width:20px;font-size:16px;line-height:1;text-align:center}
+#album .album-icon{grid-area:icon;width:24px;font-size:16px;line-height:1;text-align:center;color:var(--ink)}
 #album .album-name{grid-area:name;padding-right:20px;font-size:12.5px;line-height:1.2;font-weight:600;overflow:hidden;overflow-wrap:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
 #album .album-gem{position:absolute;top:8px;right:8px;display:block;width:16px;height:16px;image-rendering:pixelated}
 #album .album-gem.empty{border:1px dashed var(--line);border-radius:3px}

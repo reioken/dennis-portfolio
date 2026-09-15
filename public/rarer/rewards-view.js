@@ -1,4 +1,4 @@
-import {challenges} from './rewards.js?v=8b851d4060c4';
+import {challenges} from './rewards.js?v=804e5dbc4495';
 const icons={rainbow:'🌈',triple:'💎',staircase:'🪜',legendary:'👑',spotless:'✨'};
 export const comboIcon=id=>icons[id]||'✦';
 const fmt=n=>n.toLocaleString('en-US');

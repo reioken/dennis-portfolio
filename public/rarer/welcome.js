@@ -1,5 +1,5 @@
-import {tier,assess,rankOf} from './core.js?v=8b851d4060c4';
-import {baseScore,settlement,findValues} from './rewards.js?v=8b851d4060c4';
+import {tier,assess,rankOf} from './core.js?v=804e5dbc4495';
+import {baseScore,settlement,findValues} from './rewards.js?v=804e5dbc4495';
 const art='./assets/one-more-swing/';
 const escape=text=>String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 

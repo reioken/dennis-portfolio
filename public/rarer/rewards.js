@@ -1,4 +1,4 @@
-import {tiers,tier} from './core.js?v=8b851d4060c4';
+import {tiers,tier} from './core.js?v=804e5dbc4495';
 // Rarer finds are worth more. The catalog rarity (0–100) stays internal.
 export const treasureValue=rarity=>(rarity+1)*10;
 // A bigger leap from the previous answer pays up to double. The first find has no leap.

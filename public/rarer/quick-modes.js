@@ -1,7 +1,7 @@
 // Quick modes: Higher or Lower, Bullseye and Top 10 Blitz, played in one dialog.
 // The pure helpers at the top have no DOM access so they can be tested in Node.
-import {normalize,tier} from './core.js?v=8b851d4060c4';
-import {updateModes,loadModes,recordFinds,recordBest} from './modes-store.js?v=8b851d4060c4';
+import {normalize,tier} from './core.js?v=804e5dbc4495';
+import {updateModes,loadModes,recordFinds,recordBest} from './modes-store.js?v=804e5dbc4495';
 
 // ---------- Pure logic ----------
 export const QUICK_MODES={

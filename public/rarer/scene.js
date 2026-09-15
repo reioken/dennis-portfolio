@@ -1,8 +1,8 @@
-import {findFor,cargoSlot,lootPosition} from './feedback.js?v=8b851d4060c4';
-import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=8b851d4060c4';
-import {pileHeight} from './progress.js?v=8b851d4060c4';
-import {drawMaterial,rebaseTween} from './terrain.js?v=8b851d4060c4';
-import {drawBurrow,heapMetrics} from './burrow.js?v=8b851d4060c4';
+import {findFor,cargoSlot,lootPosition} from './feedback.js?v=804e5dbc4495';
+import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=804e5dbc4495';
+import {pileHeight} from './progress.js?v=804e5dbc4495';
+import {drawMaterial,rebaseTween} from './terrain.js?v=804e5dbc4495';
+import {drawBurrow,heapMetrics} from './burrow.js?v=804e5dbc4495';
 const assetRoot='./assets/one-more-swing/';
 const loadImage=src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Missing art: '+src));img.src=assetRoot+src;});
 const clamp=n=>Math.max(0,Math.min(1,n));

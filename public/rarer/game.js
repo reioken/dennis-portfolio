@@ -1,19 +1,20 @@
-import {treasureValue,findValues,baseScore,settlement,challenges} from './rewards.js?v=8b851d4060c4';
-import {rewardReceipt,bonusSummary,playReveal,clearReveal,showToast,comboIcon} from './rewards-view.js?v=8b851d4060c4';
-import {mountWelcome} from './welcome.js?v=8b851d4060c4';
-import {visualGuide} from './how-to.js?v=8b851d4060c4';
-import {categories,tier,score as oldScore,assess,missed,shareText,rankOf} from './core.js?v=8b851d4060c4';
-import {MineScene} from './scene.js?v=8b851d4060c4';
-import {BurrowView} from './burrow-view.js?v=8b851d4060c4';
-import {findFor} from './feedback.js?v=8b851d4060c4';
-import {mineLayout} from './geology.js?v=8b851d4060c4';
-import * as legacyProgress from './progress.js?v=8b851d4060c4';
-import * as dailyProgress from './daily-progress.js?v=8b851d4060c4';
-import {edition,loadDaily,useDay,utcDay,selectCategories,dailyNumber,dayForNumber,FIRST_DAY} from './edition.js?v=8b851d4060c4';
-import {pointsLeft,takePenalty,dailyShare} from './risk.js?v=8b851d4060c4';
-import {loadModes,updateModes,recordFinds,recordBest} from './modes-store.js?v=8b851d4060c4';
-import {openQuickMode} from './quick-modes.js?v=8b851d4060c4';
-import {openAlbum} from './album.js?v=8b851d4060c4';
+import {treasureValue,findValues,baseScore,settlement,challenges} from './rewards.js?v=804e5dbc4495';
+import {rewardReceipt,bonusSummary,playReveal,clearReveal,showToast,comboIcon} from './rewards-view.js?v=804e5dbc4495';
+import {mountWelcome} from './welcome.js?v=804e5dbc4495';
+import {visualGuide} from './how-to.js?v=804e5dbc4495';
+import {categories,tier,score as oldScore,assess,missed,shareText,rankOf} from './core.js?v=804e5dbc4495';
+import {MineScene} from './scene.js?v=804e5dbc4495';
+import {BurrowView} from './burrow-view.js?v=804e5dbc4495';
+import {findFor} from './feedback.js?v=804e5dbc4495';
+import {mineLayout} from './geology.js?v=804e5dbc4495';
+import * as legacyProgress from './progress.js?v=804e5dbc4495';
+import * as dailyProgress from './daily-progress.js?v=804e5dbc4495';
+import {edition,loadDaily,useDay,utcDay,selectCategories,dailyNumber,dayForNumber,FIRST_DAY} from './edition.js?v=804e5dbc4495';
+import {pointsLeft,takePenalty,dailyShare} from './risk.js?v=804e5dbc4495';
+import {loadModes,updateModes,recordFinds,recordBest} from './modes-store.js?v=804e5dbc4495';
+import {openQuickMode} from './quick-modes.js?v=804e5dbc4495';
+import {openAlbum} from './album.js?v=804e5dbc4495';
+import {modeIcon,categoryIcon} from './icons.js?v=804e5dbc4495';
 const $=id=>document.getElementById(id),escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const params=new URLSearchParams(location.search);
 // Dig modes are URL-driven: ?mode=free|deep|climb (&cat=id). Past dailies use ?day=YYYY-MM-DD.
@@ -70,7 +71,7 @@ function homeCaption(){return 'Your home · '+homeProfile(progress).total.toLoca
 function homeLabel(){
   const home=homeProfile(progress);
   $('home-total').textContent=home.total.toLocaleString('en-US')+' total points';
-  const label=mode?modeNames[mode]+' · Doesn’t count toward the daily':archiveDay?'Archive · Rarer #'+dailyNumber(edition.date)+' · Saved on this device':'Rarer #'+dailyNumber(edition.date)+' · '+(home.streak?home.streak+' day streak · ':'')+'Saved on this device';
+  const label=mode?modeNames[mode]+' · Doesn’t count toward the daily':archiveDay?'Archive · Spelunkle #'+dailyNumber(edition.date)+' · Saved on this device':'Spelunkle #'+dailyNumber(edition.date)+' · '+(home.streak?home.streak+' day streak · ':'')+'Saved on this device';
   $('save-status').textContent=saveOk?(wantsDaily?label:scene.hillside?'Sample edition · Saved on this device':'Saved on this device · Sample answers'):'Saving unavailable · Keep this tab open';
   $('save-status').classList.toggle('error',!saveOk);
   $('collection-count').textContent=progress.legendary.length;
@@ -108,8 +109,8 @@ const modeRule=()=>({free:'Dig any category as often as you like. It doesn’t c
 const quietLink=(href,text)=>'<a class="quiet-button mode-link" href="'+href+'">'+text+'</a>';
 function modesMenu(){
   const items=[['higher-lower','⇅','Higher or Lower','Tap the more looked-up one'],['free','⛏','Free Dig','Any category, any time'],['deep','⤓','Deep Mine','One endless run'],['bullseye','◎','Bullseye','Hit the target rank'],['climb','⤒','Climb Up','Rarest first, then more common'],['blitz','⏱','Top 10 Blitz','The top 10 in 90 seconds'],['archive','▦','Archive','Replay past dailies'],['album','❏','Collection','Every answer you’ve found']];
-  const inner=(icon,name,hint)=>'<span class="mode-icon" aria-hidden="true">'+icon+'</span><strong>'+name+'</strong><small>'+hint+'</small>';
-  return '<section class="modes-menu" aria-labelledby="modes-title"><h2 id="modes-title">More ways to play</h2><div class="modes-grid">'+items.map(([id,icon,name,hint])=>modeNames[id]?'<a class="mode-card" href="?mode='+id+'">'+inner(icon,name,hint)+'</a>':'<button class="mode-card" data-mode="'+id+'">'+inner(icon,name,hint)+'</button>').join('')+'</div></section>';
+  const inner=(id,name,hint)=>'<span class="mode-icon" aria-hidden="true">'+modeIcon(id)+'</span><strong>'+name+'</strong><small>'+hint+'</small>';
+  return '<section class="modes-menu" aria-labelledby="modes-title"><h2 id="modes-title">More ways to play</h2><div class="modes-grid">'+items.map(([id,icon,name,hint])=>modeNames[id]?'<a class="mode-card" href="?mode='+id+'">'+inner(id,name,hint)+'</a>':'<button class="mode-card" data-mode="'+id+'">'+inner(id,name,hint)+'</button>').join('')+'</div></section>';
 }
 function bindModes(){document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{const id=button.dataset.mode;if(id==='archive')openArchive();else if(id==='album')openAlbum({catalog:edition.catalog,storage});else openQuickMode(id,{catalog:edition.catalog,storage});});}
 function openArchive(){
@@ -117,7 +118,7 @@ function openArchive(){
   const rows=[];
   for(let n=dailyNumber(utcDay())-1;n>=1;n--){
     const day=dayForNumber(n),run=progress.days[day],points=(run?.results||[]).reduce((s,r)=>s+(r?.points||0),0);
-    rows.push('<li><a href="?day='+day+'"><strong>Rarer #'+n+'</strong><span>'+selectCategories(edition.catalog,day).map(c=>c.icon+' '+escape(c.label)).join(' · ')+'</span><small>'+(run?.stage==='result'?'✓ '+fmt(points)+' points':run&&run.stage!=='home'?'In progress':'Not played yet')+'</small></a></li>');
+    rows.push('<li><a href="?day='+day+'"><strong>Spelunkle #'+n+'</strong><span>'+selectCategories(edition.catalog,day).map(c=>'<span class="archive-icon" aria-hidden="true">'+categoryIcon(c)+'</span>'+escape(c.label)).join(' · ')+'</span><small>'+(run?.stage==='result'?'✓ '+fmt(points)+' points':run&&run.stage!=='home'?'In progress':'Not played yet')+'</small></a></li>');
   }
   dialog.innerHTML='<div class="dialog-top"><h2 id="archive-title">Archive</h2><button data-close aria-label="Close archive">×</button></div><p class="quiet">Replay any past daily. Points count toward your home; the streak only counts days played on the day.</p>'+(rows.length?'<ol class="archive-list">'+rows.join('')+'</ol>':'<p>No past dailies yet. Come back tomorrow.</p>');
   dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.showModal();
@@ -125,7 +126,7 @@ function openArchive(){
 function renderModeHome(){
   const best=loadModes(storage).best,back=quietLink('./','← Today’s digs');
   if(!practiceCategory){
-    $('panel').innerHTML='<p class="eyebrow">'+modeNames[mode]+'</p><h1>Pick a category</h1><p class="guide-intro">'+modeRule()+'</p><div class="category-picker">'+catalogCategories.map(c=>{const b=best[mode+':'+c.id];return '<a class="picker-item" href="?mode='+mode+'&cat='+encodeURIComponent(c.id)+'"><span class="category-icon" aria-hidden="true">'+c.icon+'</span><strong>'+escape(c.label)+'</strong><small>'+(Number.isFinite(b)?'Best '+fmt(b):c.entries.length+' answers')+'</small></a>';}).join('')+'</div>';
+    $('panel').innerHTML='<p class="eyebrow">'+modeNames[mode]+'</p><h1>Pick a category</h1><p class="guide-intro">'+modeRule()+'</p><div class="category-picker">'+catalogCategories.map(c=>{const b=best[mode+':'+c.id];return '<a class="picker-item" href="?mode='+mode+'&cat='+encodeURIComponent(c.id)+'"><span class="category-icon" aria-hidden="true">'+categoryIcon(c)+'</span><strong>'+escape(c.label)+'</strong><small>'+(Number.isFinite(b)?'Best '+fmt(b):c.entries.length+' answers')+'</small></a>';}).join('')+'</div>';
     $('controls').innerHTML=back;return;
   }
   const b=mode==='deep'?best.deep:best[mode+':'+practiceCategory.id];
@@ -144,13 +145,13 @@ function render(){
   if(stage==='home'){
     if(mode)renderModeHome();
     else{
-      $('panel').innerHTML='<p class="eyebrow">A fresh little adventure</p><h1>Today’s three digs</h1><ul class="categories">'+categories.map(c=>'<li><span class="category-icon">'+c.icon+'</span>'+c.name+'</li>').join('')+'</ul><p class="rule">Name an answer. Then a rarer one.<br>Climb out whenever you like.</p>';
+      $('panel').innerHTML='<p class="eyebrow">A fresh little adventure</p><h1>Today’s three digs</h1><ul class="categories">'+categories.map(c=>'<li><span class="category-icon">'+categoryIcon(c)+'</span>'+c.name+'</li>').join('')+'</ul><p class="rule">Name an answer. Then a rarer one.<br>Climb out whenever you like.</p>';
       $('controls').innerHTML='<button class="primary" id="start">Start digging</button><p class="message">No timer. Unknown answers cost nothing.</p>'+(wantsDaily?(archiveDay?quietLink('./','← Today’s digs'):'')+modesMenu():'');
       $('start').onclick=start;
     }
   }else if(stage==='result'){
     const total=results.reduce((n,r)=>n+(wantsDaily?r.points:score(r.chain)),0);
-    $('panel').innerHTML='<p class="eyebrow">'+(wantsDaily?'Rarer #'+dailyNumber(edition.date)+' complete':'All three digs complete')+'</p><h1>That’s a good day’s digging.</h1><div class="result-score">'+total.toLocaleString('en-US')+'</div><p class="subtitle">Total points</p>'+bonusSummary(results)+'<pre class="share" id="share-text"></pre>';
+    $('panel').innerHTML='<p class="eyebrow">'+(wantsDaily?'Spelunkle #'+dailyNumber(edition.date)+' complete':'All three digs complete')+'</p><h1>That’s a good day’s digging.</h1><div class="result-score">'+total.toLocaleString('en-US')+'</div><p class="subtitle">Total points</p>'+bonusSummary(results)+'<pre class="share" id="share-text"></pre>';
     $('share-text').textContent=wantsDaily?dailyShare(results,edition.date):shareText(results);
     $('controls').innerHTML='<button class="primary" id="copy">Copy result</button><p class="message" id="copy-status">One square for every successful answer.</p>'+(wantsDaily?modesMenu():'');
     $('copy').onclick=copy;
@@ -181,9 +182,9 @@ function render(){
 
   if(scene.hillside){
     $('category-steps').innerHTML=mode
-      ?'<ol class="dig-steps mode-steps"><li aria-current="step"><strong><span class="dig-icon">'+modeIcons[mode]+'</span>'+modeNames[mode]+'</strong><small>'+(mode==='deep'?'Level '+deep.level+' · '+fmt(deep.total)+' points':practiceCategory?escape(practiceCategory.label):'Pick a category')+'</small></li></ol>'
-      :'<ol class="dig-steps">'+categories.map((c,i)=>'<li'+(stage!=='result'&&i===ci?' aria-current="step"':'')+(results[i]?' class="done"':'')+'><strong><span class="dig-icon">'+c.icon+'</span>'+escape(c.name)+'</strong><small>'+(results[i]?'✓ Complete':'Dig '+(i+1))+'</small></li>').join('')+'</ol>';
-    if(stage==='home'&&!mode)$('panel').innerHTML='<p class="eyebrow">'+(wantsDaily?(archiveDay?'Archive · ':'')+'Rarer #'+dailyNumber(edition.date)+(archiveDay?'':' · Three new digs every day'):'Three new digs every day')+'</p><h1>Go rarer. Go longer.</h1><p class="guide-intro">Choose your first answer. Then go a little rarer each time.</p>'+visualGuide({risk:wantsDaily});
+      ?'<ol class="dig-steps mode-steps"><li aria-current="step"><strong><span class="dig-icon">'+modeIcon(mode)+'</span>'+modeNames[mode]+'</strong><small>'+(mode==='deep'?'Level '+deep.level+' · '+fmt(deep.total)+' points':practiceCategory?escape(practiceCategory.label):'Pick a category')+'</small></li></ol>'
+      :'<ol class="dig-steps">'+categories.map((c,i)=>'<li'+(stage!=='result'&&i===ci?' aria-current="step"':'')+(results[i]?' class="done"':'')+'><strong><span class="dig-icon">'+categoryIcon(c)+'</span>'+escape(c.name)+'</strong><small>'+(results[i]?'✓ Complete':'Dig '+(i+1))+'</small></li>').join('')+'</ol>';
+    if(stage==='home'&&!mode)$('panel').innerHTML='<p class="eyebrow">'+(wantsDaily?(archiveDay?'Archive · ':'')+'Spelunkle #'+dailyNumber(edition.date)+(archiveDay?'':' · Three new digs every day'):'Three new digs every day')+'</p><h1>Go rarer. Go longer.</h1><p class="guide-intro">Choose your first answer. Then go a little rarer each time.</p>'+visualGuide({risk:wantsDaily});
     if(stage==='play')$('controls').insertAdjacentHTML('afterbegin','<h2 class="answer-prompt">'+(chain.length?'Find '+escape(categories[ci].name.replace(/^An? /,'a '+rarer+' ')):'Name '+escape(categories[ci].name.replace(/^An? /,'a ')))+'.</h2>');
     if(stage==='result'&&!wantsDaily){$('controls').insertAdjacentHTML('beforeend','<button class="quiet-button" id="play-again">Play another sample</button>');$('play-again').onclick=reset;}
   }

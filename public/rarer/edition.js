@@ -1,6 +1,6 @@
-import {categories} from './core.js?v=8b851d4060c4';
+import {categories} from './core.js?v=804e5dbc4495';
 export const utcDay=(now=new Date())=>now.toISOString().slice(0,10);
-// Daily numbers, like Wordle: Rarer #1 is the first edition.
+// Daily numbers, like Wordle: Spelunkle #1 is the first edition.
 export const FIRST_DAY='2026-09-13';
 export const dailyNumber=day=>Math.floor((Date.parse(day+'T00:00:00Z')-Date.parse(FIRST_DAY+'T00:00:00Z'))/86400000)+1;
 export const dayForNumber=n=>new Date(Date.parse(FIRST_DAY+'T00:00:00Z')+(n-1)*86400000).toISOString().slice(0,10);

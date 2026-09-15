@@ -1,7 +1,8 @@
 // Collection album: every answer found in any mode, per category, with unfound ranks as silhouettes.
 // The helpers at the top are pure (no DOM) so they can be tested in Node.
-import {tier} from './core.js?v=8b851d4060c4';
-import {loadModes} from './modes-store.js?v=8b851d4060c4';
+import {tier} from './core.js?v=804e5dbc4495';
+import {loadModes} from './modes-store.js?v=804e5dbc4495';
+import {categoryIcon} from './icons.js?v=804e5dbc4495';
 
 const art='./assets/one-more-swing/v11/';
 // Same materials as the dig feedback (feedback.js findFor): stone, ore, amethyst, diamond.
@@ -72,7 +73,7 @@ function showOverview(dialog,focusId){
  context.category=null;
  dialog.querySelector('#album-title').textContent='Collection album';
  dialog.querySelector('.album-back').hidden=true;
- body.innerHTML=`<p class="album-total"><strong>${number(summary.found)}</strong> of ${number(summary.total)} answers found</p>${bar(summary.found,summary.total,'All categories')}<ul class="album-categories">${summary.categories.map(c=>`<li><button type="button" class="album-category${c.total&&c.found===c.total?' complete':''}" data-category="${escape(c.id)}"><span class="album-icon" aria-hidden="true">${escape(c.icon||'')}</span><span class="album-name">${escape(c.label)}</span>${gem(c.rarestTier)}${bar(c.found,c.total,c.label)}<span class="album-count">${c.found}/${c.total}</span></button></li>`).join('')}</ul>`;
+ body.innerHTML=`<p class="album-total"><strong>${number(summary.found)}</strong> of ${number(summary.total)} answers found</p>${bar(summary.found,summary.total,'All categories')}<ul class="album-categories">${summary.categories.map(c=>`<li><button type="button" class="album-category${c.total&&c.found===c.total?' complete':''}" data-category="${escape(c.id)}"><span class="album-icon" aria-hidden="true">${categoryIcon(c)}</span><span class="album-name">${escape(c.label)}</span>${gem(c.rarestTier)}${bar(c.found,c.total,c.label)}<span class="album-count">${c.found}/${c.total}</span></button></li>`).join('')}</ul>`;
  const target=focusId&&[...body.querySelectorAll('[data-category]')].find(b=>b.dataset.category===focusId);
  if(target){target.focus();target.scrollIntoView({block:'nearest'});}
  else{body.scrollTop=0;dialog.querySelector('.album-close').focus();}
