@@ -1,5 +1,5 @@
-import {categories,assess,score} from './core.js?v=804e5dbc4495';
-import {findFor} from './feedback.js?v=804e5dbc4495';
+import {categories,assess,score} from './core.js?v=52b81d98bb60';
+import {findFor} from './feedback.js?v=52b81d98bb60';
 export const SAVE_KEY='rarer.home.v1';
 const clone=value=>JSON.parse(JSON.stringify(value));
 export const newRun=id=>({id,ci:0,stage:'home',chain:[],results:[],failed:null});
@@ -64,4 +64,4 @@ export function homeProfile(state){
  }
  return {total,finds,layers,rounds:state.rounds.length,legendary:state.legendary.length};
 }
-export {pileHeight} from './burrow.js?v=804e5dbc4495';
+export {pileHeight} from './burrow.js?v=52b81d98bb60';

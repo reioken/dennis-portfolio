@@ -1,107 +1,155 @@
-/* Quick modes dialog (quick-modes.js). Everything is scoped under #quick-mode. */
-#quick-mode{--qm-bad:#bd3554;--qm-good:var(--uncommon,#38744e);--qm-mole:72px;width:420px;max-width:calc(100% - 24px);max-height:calc(100dvh - 24px);padding:22px 20px 18px;overflow:auto;overscroll-behavior:contain;text-align:center;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif}
-[data-theme=dark] #quick-mode{--qm-bad:#ff8fa4}
-@media(prefers-color-scheme:dark){:root:not([data-theme]) #quick-mode{--qm-bad:#ff8fa4}}
+/* Quick modes dialog (quick-modes.js). Everything is scoped under #quick-mode.
+   The box, head and close button come from .sheet in style.css; colour, type
+   and radii are style.css tokens. Phone sizes are the base; 600px bumps them.
+   Reduced motion is handled centrally in views.css — nothing here needs
+   !important to win, because every override is specific enough on its own. */
+
+#quick-mode{--qm-bad:var(--danger);--qm-good:var(--uncommon);--qm-mole:72px}
 #quick-mode *{box-sizing:border-box}
+#quick-mode .sheet-body{text-align:center}
 #quick-mode h2,#quick-mode h3,#quick-mode p{margin:0}
-#quick-mode button{font:inherit;color:var(--ink);cursor:pointer;border-radius:7px}
-#quick-mode button:focus-visible,#quick-mode input:focus-visible{outline:2px solid var(--qm-good);outline-offset:2px}
+#quick-mode button{font:inherit;color:var(--ink);cursor:pointer;border-radius:var(--radius-md)}
 #quick-mode button:disabled{cursor:default}
-#quick-mode .qm-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-#quick-mode .qm-close{position:absolute;right:8px;top:8px;border:0;background:none;font-size:22px;width:40px;min-height:40px;padding:4px;z-index:2}
-#quick-mode .qm-kicker{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:2px 30px 4px}
-#quick-mode h2{font-size:27px;line-height:1.1;letter-spacing:-.6px}
-#quick-mode h2:focus{outline:none}
-#quick-mode .qm-rule{font-size:13px;color:var(--muted);margin:10px 8px 12px}
-#quick-mode .qm-best{font-size:12px;color:var(--muted);margin:6px 0 14px}
-#quick-mode .qm-best b,#quick-mode .qm-score b,#quick-mode .qm-points{font:22px/1 'VT323',monospace;color:var(--ink)}
-#quick-mode .qm-primary{display:block;width:100%;min-height:47px;background:var(--gold);color:#352731;border:1px solid #aa792c;font-weight:700;font-size:15px}
-#quick-mode .qm-secondary{display:block;width:100%;min-height:42px;background:var(--paper);border:1px solid var(--line);font-size:13px}
-#quick-mode .qm-actions{display:grid;gap:8px;margin-top:14px}
+
+/* ── intro ──────────────────────────────────────────────────────────────── */
+#quick-mode .qm-kicker{margin:2px 0 var(--space-1);font-size:var(--text-xs);color:var(--muted)}
+#quick-mode .qm-kicker{text-transform:uppercase;letter-spacing:.08em}
+#quick-mode .qm-headline{font-size:var(--text-xl);line-height:1.1;letter-spacing:-.6px;font-weight:var(--weight-bold)}
+#quick-mode .qm-rule{margin:var(--space-3) var(--space-2);font-size:var(--text-sm);color:var(--muted)}
+#quick-mode .qm-best{margin:var(--space-2) 0 var(--space-4);font-size:var(--text-xs);color:var(--muted)}
+#quick-mode .qm-best b,#quick-mode .qm-score b,#quick-mode .qm-points{font:22px/1 var(--font-display);color:var(--ink)}
+#quick-mode .qm-primary{display:block;width:100%;min-height:48px}
+#quick-mode .qm-primary{background:var(--gold);border:2px solid var(--gold);color:var(--on-gold)}
+#quick-mode .qm-primary{font-size:var(--text-md);font-weight:var(--weight-bold)}
+#quick-mode .qm-secondary{display:block;width:100%;min-height:var(--tap)}
+#quick-mode .qm-secondary{background:var(--paper);border:2px solid var(--ink);color:var(--ink)}
+#quick-mode .qm-secondary{font-size:var(--text-sm);font-weight:var(--weight-medium)}
+#quick-mode .qm-actions{display:grid;gap:var(--space-2);margin-top:var(--space-4)}
 
 /* Mole sprite: 64px frames in a row, scaled with crisp pixels. */
-#quick-mode .qm-mole{width:var(--qm-mole);height:var(--qm-mole);margin:4px auto;background:url('./assets/one-more-swing/v5/mole-idle.png') 0 0/auto 100% no-repeat;image-rendering:pixelated;animation:qm-frames5 1s steps(5) infinite}
+#quick-mode .qm-mole{width:var(--qm-mole);height:var(--qm-mole);margin:var(--space-1) auto}
+#quick-mode .qm-mole{background:url('./assets/one-more-swing/v5/mole-idle.png') 0 0/auto 100% no-repeat}
+#quick-mode .qm-mole{image-rendering:pixelated;animation:qm-frames5 1s steps(5) infinite}
 #quick-mode .qm-mole[data-pose=celebrate]{background-image:url('./assets/one-more-swing/v5/mole-celebrate.png');animation:qm-once8 .9s steps(8) 1 both}
 #quick-mode .qm-mole[data-pose=recoil]{background-image:url('./assets/one-more-swing/v5/mole-recoil.png');animation:qm-once4 .6s steps(4) 1 both}
-/* Looping runs 0..-5 frames (never rests on the end); one-shots stop on their last real frame. */
-@keyframes qm-frames5{to{background-position:calc(var(--qm-mole) * -5) 0}}
-@keyframes qm-once8{to{background-position:calc(var(--qm-mole) * -8) 0}}
-@keyframes qm-once4{to{background-position:calc(var(--qm-mole) * -4) 0}}
-#quick-mode .qm-gem{width:18px;height:18px;image-rendering:pixelated;flex:0 0 auto;vertical-align:middle}
+#quick-mode .qm-gem{flex:0 0 auto;width:18px;height:18px;image-rendering:pixelated;vertical-align:middle}
 
-/* In-game header */
-#quick-mode .qm-hud{--qm-mole:52px;display:flex;align-items:center;gap:8px;text-align:left;margin:-6px 36px 8px -4px;min-height:52px}
-#quick-mode .qm-hud .qm-mole{margin:0;flex:0 0 auto}
+/* ── in-game header ─────────────────────────────────────────────────────── */
+#quick-mode .qm-hud{--qm-mole:52px;display:flex;align-items:center;gap:var(--space-2)}
+#quick-mode .qm-hud{min-height:52px;margin:-6px 0 var(--space-2) -4px;text-align:left}
+#quick-mode .qm-hud .qm-mole{flex:0 0 auto;margin:0}
 #quick-mode .qm-hud>div{flex:1;min-width:0}
-#quick-mode .qm-meta{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#quick-mode .qm-score{font-size:12px;color:var(--muted)}
-#quick-mode .qm-question{font-size:19px;line-height:1.2;letter-spacing:-.3px;margin:2px 0 12px}
-#quick-mode .qm-feedback{font-size:12px;min-height:34px;display:grid;place-items:center;margin-top:8px}
-#quick-mode .qm-rank{font:24px/1 'VT323',monospace}
+#quick-mode .qm-meta{font-size:var(--text-xs);color:var(--muted)}
+#quick-mode .qm-meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#quick-mode .qm-score{font-size:var(--text-xs);color:var(--muted)}
+#quick-mode .qm-question{margin:2px 0 var(--space-3);font-size:17px;line-height:1.2;letter-spacing:-.3px}
+#quick-mode .qm-feedback{display:grid;place-items:center;min-height:34px;margin-top:var(--space-2)}
+#quick-mode .qm-feedback{font-size:var(--text-xs)}
+#quick-mode .qm-rank{font:var(--icon)/1 var(--font-display)}
 
-/* Higher or Lower */
+/* ── Higher or Lower ────────────────────────────────────────────────────── */
 #quick-mode .qm-duel{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;gap:6px}
-#quick-mode .qm-vs{align-self:center;font:18px 'VT323',monospace;color:var(--muted)}
-#quick-mode .qm-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;padding:12px 6px;border:1px solid var(--line);border-bottom-width:3px;border-radius:8px;background:var(--soft)}
-#quick-mode .qm-card strong{font-size:14px;line-height:1.15;overflow-wrap:anywhere}
-#quick-mode .qm-card>span{font-size:11px;color:var(--muted)}
+#quick-mode .qm-vs{align-self:center;font:18px var(--font-display);color:var(--muted)}
+#quick-mode .qm-card{display:flex;flex-direction:column;align-items:center;justify-content:center}
+#quick-mode .qm-card{gap:var(--space-1);min-width:0;padding:var(--space-3) 6px}
+#quick-mode .qm-card{background:var(--soft);border:1px solid var(--line);border-bottom-width:3px;border-radius:var(--radius-md)}
+#quick-mode .qm-card strong{font-size:var(--text-sm);line-height:1.15;overflow-wrap:anywhere}
+#quick-mode .qm-card>span{font-size:var(--text-xs);color:var(--muted)}
 #quick-mode .qm-card.qm-hidden{border-style:dashed;background:var(--paper)}
 #quick-mode .qm-card.qm-hidden .qm-rank{color:var(--muted)}
 #quick-mode .qm-card.qm-right{border-color:var(--qm-good);animation:qm-pop .35s ease-out}
 #quick-mode .qm-card.qm-wrong{border-color:var(--qm-bad);animation:qm-shake .4s}
-#quick-mode .qm-prompt{font-size:12px;color:var(--muted);margin:12px 0 10px}
-#quick-mode .qm-choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#quick-mode .qm-prompt{margin:var(--space-3) 0;font-size:var(--text-xs);color:var(--muted)}
+#quick-mode .qm-choices{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}
 #quick-mode .qm-choices .qm-primary{grid-column:1/-1}
-#quick-mode [data-choice]{min-height:58px;padding:8px;font-size:14px;font-weight:600;background:var(--paper);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+#quick-mode [data-choice]{min-height:58px;padding:var(--space-2);font-size:var(--text-sm);font-weight:var(--weight-bold)}
+#quick-mode [data-choice]{background:var(--paper);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
 #quick-mode [data-choice]:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
 #quick-mode [data-choice]:disabled{opacity:.5}
 
-/* Bullseye */
-#quick-mode .qm-target{font:30px/1 'VT323',monospace;color:var(--legendary)}
-#quick-mode .qm-meter{position:relative;height:14px;margin:4px 8px 0;border:2px solid var(--ink);background:repeating-linear-gradient(90deg,var(--soft) 0 8px,var(--paper) 8px 16px)}
+/* ── Bullseye ───────────────────────────────────────────────────────────── */
+#quick-mode .qm-target{font:30px/1 var(--font-display);color:var(--legendary)}
+#quick-mode .qm-meter{position:relative;height:14px;margin:var(--space-1) var(--space-2) 0}
+#quick-mode .qm-meter{border:2px solid var(--ink)}
+#quick-mode .qm-meter{background:repeating-linear-gradient(90deg,var(--soft) 0 8px,var(--paper) 8px 16px)}
 #quick-mode .qm-meter i{position:absolute;left:var(--at);top:-6px;width:4px;height:22px;margin-left:-2px}
-#quick-mode .qm-mark-target{background:var(--legendary)}
-#quick-mode .qm-mark-guess{background:currentColor;height:10px!important;top:0!important;width:6px!important;margin-left:-3px!important;opacity:.85}
-#quick-mode .qm-meter-ends{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin:4px 6px 8px}
-#quick-mode .qm-guesses,#quick-mode .qm-missed ul{list-style:none;padding:0;margin:0;display:grid;gap:5px}
-#quick-mode .qm-guesses li,#quick-mode .qm-missed li{display:flex;align-items:center;gap:7px;padding:5px 9px;border:1px solid var(--line);border-radius:6px;background:var(--soft);text-align:left;font-size:13px;margin:0}
+#quick-mode .qm-meter i.qm-mark-target{background:var(--legendary)}
+/* Guess marks are shorter and sit inside the bar: one extra class beats the
+   shared `i` rule on specificity, which is what the old !important faked. */
+#quick-mode .qm-meter i.qm-mark-guess{top:0;width:6px;height:10px;margin-left:-3px}
+#quick-mode .qm-meter i.qm-mark-guess{background:currentColor;opacity:.85}
+#quick-mode .qm-meter-ends{display:flex;justify-content:space-between}
+#quick-mode .qm-meter-ends{margin:var(--space-1) 6px var(--space-2);font-size:var(--text-xs);color:var(--muted)}
+#quick-mode .qm-guesses,#quick-mode .qm-missed ul{display:grid;gap:5px;margin:0;padding:0;list-style:none}
+#quick-mode .qm-guesses li,#quick-mode .qm-missed li{display:flex;align-items:center;gap:7px;margin:0}
+#quick-mode .qm-guesses li,#quick-mode .qm-missed li{padding:5px 9px;font-size:var(--text-sm);text-align:left}
+#quick-mode .qm-guesses li,#quick-mode .qm-missed li{background:var(--soft);border:1px solid var(--line);border-radius:var(--radius-md)}
 #quick-mode .qm-guesses li span,#quick-mode .qm-missed li span{flex:1;min-width:0;overflow-wrap:anywhere}
-#quick-mode .qm-guesses small{font-size:11px;color:var(--muted);white-space:nowrap}
-#quick-mode .qm-tries{font-size:11px;color:var(--muted);margin:8px 0}
-#quick-mode .qm-tries span{letter-spacing:2px;color:var(--ink)}
-#quick-mode .qm-result{padding:10px;border:2px solid var(--ink);border-radius:8px;background:var(--soft);display:grid;gap:6px;font-size:13px;animation:qm-pop .35s ease-out}
-#quick-mode .qm-result-head{font-size:15px;font-weight:700}
-#quick-mode .qm-result-head b{font:26px/1 'VT323',monospace;color:var(--legendary);margin-left:4px}
+#quick-mode .qm-guesses small{font-size:var(--text-xs);color:var(--muted);white-space:nowrap}
+#quick-mode .qm-tries{margin:var(--space-2) 0;font-size:var(--text-xs);color:var(--muted)}
+#quick-mode .qm-pips{display:inline-flex;align-items:center;gap:var(--space-1);vertical-align:-2px}
+#quick-mode .qm-pip{width:10px;height:10px;background:var(--ink);border:2px solid var(--ink);border-radius:50%}
+#quick-mode .qm-pip.used{background:transparent;border-color:var(--muted)}
+#quick-mode .qm-result{display:grid;gap:6px;padding:var(--space-3);font-size:var(--text-sm)}
+#quick-mode .qm-result{background:var(--soft);border:2px solid var(--ink);border-radius:var(--radius-md)}
+#quick-mode .qm-result{animation:qm-pop .35s ease-out}
+#quick-mode .qm-result-head{font-size:var(--text-md);font-weight:var(--weight-bold)}
+#quick-mode .qm-result-head b{margin-left:var(--space-1);font:26px/1 var(--font-display);color:var(--legendary)}
 
-/* Forms */
-#quick-mode .qm-form{display:flex;gap:8px}
-#quick-mode .qm-form input{min-width:0;flex:1;width:100%;padding:11px 10px;font:16px 'DM Sans',sans-serif;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px}
-#quick-mode .qm-form input::placeholder{font-size:13px;color:var(--muted);opacity:1}
-#quick-mode .qm-form button{flex:0 0 auto;min-width:60px;min-height:44px;padding:0 12px;background:var(--ink);color:var(--paper);border:0;font-weight:700}
+/* ── forms ──────────────────────────────────────────────────────────────── */
+#quick-mode .qm-form{display:flex;gap:var(--space-2)}
+#quick-mode .qm-form input{flex:1;width:100%;min-width:0;padding:11px var(--space-3)}
+#quick-mode .qm-form input{background:var(--paper);color:var(--ink)}
+#quick-mode .qm-form input{border:1px solid var(--line-strong);border-radius:var(--radius-md)}
+#quick-mode .qm-form input{font:var(--text-md) var(--font-ui)}
+#quick-mode .qm-form input::placeholder{font-size:var(--text-sm);color:var(--muted);opacity:1}
+#quick-mode .qm-form button{flex:0 0 auto;min-width:60px;min-height:var(--tap);padding:0 var(--space-3)}
+#quick-mode .qm-form button{background:var(--ink);color:var(--paper);border:0;font-weight:var(--weight-bold)}
 
-/* Top 10 Blitz */
-#quick-mode .qm-timer{margin-left:auto;padding:2px 10px;border:2px solid var(--ink);border-radius:6px;background:var(--soft)}
-#quick-mode .qm-timer b{font:32px/1 'VT323',monospace}
+/* ── Top 10 Blitz ───────────────────────────────────────────────────────── */
+#quick-mode .qm-timer{margin-left:auto;padding:2px var(--space-3)}
+#quick-mode .qm-timer{background:var(--soft);border:2px solid var(--ink);border-radius:var(--radius-md)}
+#quick-mode .qm-timer b{font:32px/1 var(--font-display)}
 #quick-mode .qm-timer.qm-low{border-color:var(--qm-bad);color:var(--qm-bad)}
 #quick-mode .qm-timer.qm-low b{color:var(--qm-bad);animation:qm-blink 1s steps(2) infinite}
-#quick-mode .qm-board{list-style:none;padding:0;margin:0 0 10px;display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:column;grid-template-rows:repeat(5,auto);gap:5px}
-#quick-mode .qm-board li{display:flex;align-items:center;gap:6px;min-height:34px;margin:0;padding:3px 7px;border:1px dashed var(--line);border-radius:5px;text-align:left;font-size:12px;min-width:0}
-#quick-mode .qm-slot-rank{font:20px/1 'VT323',monospace;color:var(--muted);min-width:26px}
-#quick-mode .qm-slot-name{color:var(--muted);display:flex;align-items:center;gap:4px;min-width:0;overflow-wrap:anywhere;line-height:1.1}
-#quick-mode .qm-board li.qm-filled{border-style:solid;border-color:currentColor;background:var(--soft);animation:qm-pop .35s ease-out}
+#quick-mode .qm-board{display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:column}
+#quick-mode .qm-board{grid-template-rows:repeat(5,auto);gap:5px;margin:0 0 var(--space-3);padding:0;list-style:none}
+#quick-mode .qm-board li{display:flex;align-items:center;gap:6px;min-width:0;min-height:34px}
+#quick-mode .qm-board li{margin:0;padding:3px 7px;font-size:var(--text-xs);text-align:left}
+#quick-mode .qm-board li{border:1px dashed var(--line);border-radius:var(--radius-sm)}
+#quick-mode .qm-slot-rank{min-width:26px;font:var(--text-lg)/1 var(--font-display);color:var(--muted)}
+#quick-mode .qm-slot-name{display:flex;align-items:center;gap:var(--space-1);min-width:0}
+#quick-mode .qm-slot-name{color:var(--muted);overflow-wrap:anywhere;line-height:1.1}
+#quick-mode .qm-board li.qm-filled{border-style:solid;border-color:currentColor;background:var(--soft)}
+#quick-mode .qm-board li.qm-filled{animation:qm-pop .35s ease-out}
 #quick-mode .qm-board li.qm-filled .qm-slot-rank{color:inherit}
-#quick-mode .qm-board li.qm-filled .qm-slot-name{color:var(--ink);font-weight:600}
+#quick-mode .qm-board li.qm-filled .qm-slot-name{color:var(--ink);font-weight:var(--weight-bold)}
 
-/* End screen */
+/* ── end screen ─────────────────────────────────────────────────────────── */
 #quick-mode .qm-final{display:flex;align-items:baseline;justify-content:center;gap:6px;margin:6px 0 0}
-#quick-mode .qm-final b{font:64px/1 'VT323',monospace}
-#quick-mode .qm-final span{font-size:13px;color:var(--muted)}
-#quick-mode .qm-new-best{display:inline-block;margin:4px 0 10px;padding:3px 10px;border:2px solid var(--legendary);color:var(--legendary);font:22px/1 'VT323',monospace;box-shadow:2px 2px 0 var(--legendary);animation:qm-pop .5s ease-out}
-#quick-mode .qm-missed{margin-top:4px;text-align:left}
-#quick-mode .qm-missed h3{font-size:12px;color:var(--muted);font-weight:600;margin:0 0 6px}
+#quick-mode .qm-final b{font:64px/1 var(--font-display)}
+#quick-mode .qm-final span{font-size:var(--text-sm);color:var(--muted)}
+#quick-mode .qm-new-best{display:inline-block;margin:var(--space-1) 0 var(--space-3);padding:3px var(--space-3)}
+#quick-mode .qm-new-best{border:2px solid var(--legendary);color:var(--legendary)}
+#quick-mode .qm-new-best{font:22px/1 var(--font-display);box-shadow:2px 2px 0 var(--legendary)}
+#quick-mode .qm-new-best{animation:qm-pop .5s ease-out}
+#quick-mode .qm-missed{margin-top:var(--space-1);text-align:left}
+#quick-mode .qm-missed h3{margin:0 0 6px;font-size:var(--text-xs);font-weight:var(--weight-bold);color:var(--muted)}
 
+/* ── keyframes ──────────────────────────────────────────────────────────── */
+/* Looping runs 0..-5 frames (never rests on the end); one-shots stop on their last real frame. */
+@keyframes qm-frames5{to{background-position:calc(var(--qm-mole) * -5) 0}}
+@keyframes qm-once8{to{background-position:calc(var(--qm-mole) * -8) 0}}
+@keyframes qm-once4{to{background-position:calc(var(--qm-mole) * -4) 0}}
 @keyframes qm-pop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:none}}
 @keyframes qm-shake{25%,75%{transform:translateX(-4px)}50%{transform:translateX(4px)}}
 @keyframes qm-blink{50%{opacity:.4}}
-@media(prefers-reduced-motion:reduce){#quick-mode *,#quick-mode .qm-mole{animation:none!important}}
-@media(max-width:400px){#quick-mode{padding:18px 14px 14px}#quick-mode h2{font-size:24px}#quick-mode .qm-question{font-size:17px}#quick-mode .qm-card strong{font-size:13px}#quick-mode [data-choice]{font-size:13px}}
+
+/* ── 600px and up ───────────────────────────────────────────────────────── */
+@media(min-width:600px){
+ #quick-mode .qm-headline{font-size:27px}
+ #quick-mode .qm-question{font-size:19px}
+ #quick-mode .qm-card strong{font-size:var(--text-md)}
+ #quick-mode [data-choice]{font-size:var(--text-md)}
+ #quick-mode .qm-board li{font-size:var(--text-sm)}
+}

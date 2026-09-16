@@ -1,5 +1,6 @@
-import {drawBurrow,heapMetrics,pileHeight,rulerHeight,rulerLabelWidth} from './burrow.js?v=804e5dbc4495';
-import {drawMaterial} from './terrain.js?v=804e5dbc4495';
+import {drawBurrow,heapMetrics,pileHeight,rulerHeight,rulerLabelWidth} from './burrow.js?v=52b81d98bb60';
+import {drawMaterial} from './terrain.js?v=52b81d98bb60';
+import {openSheet} from './sheet.js?v=52b81d98bb60';
 const clamp=n=>Math.max(0,Math.min(1,n));
 export class BurrowView{
   constructor(dialog,scene){
@@ -15,7 +16,7 @@ export class BurrowView{
     this.profile=profile;const p=this.scene.meta.props.house,m=heapMetrics(profile.total);
     const desired=(Math.max(rulerHeight(m.height)+8,p.foot-p.top)+48)*2;
     this.scroll.style.height='max(150px, min(48dvh, '+desired+'px))';
-    this.dialog.showModal();this.layout();this.go('door');
+    openSheet(this.dialog);this.layout();this.go('door');
   }
   layout(){
     if(!this.dialog.open||!this.scene.meta)return;
@@ -64,6 +65,6 @@ export class BurrowView{
     }
     ctx.restore();
     const atBase=this.scroll.scrollTop>=maxY-2&&this.scroll.scrollLeft<2;
-    this.canvas.setAttribute('aria-label','An open shelter with an outdoor treasure pile to its right and a measuring pole marked in metres. '+this.profile.total+' lifetime points. '+(atBase?'At the shelter.':this.scroll.scrollTop<2?'At the top of the pile.':'Exploring the pile.'));
+    this.canvas.setAttribute('aria-label','Your home, with an outdoor treasure pile to its right and a measuring pole marked in metres. '+this.profile.total+' lifetime points. '+(atBase?'At the door.':this.scroll.scrollTop<2?'At the top of the pile.':'Exploring the pile.'));
   }
 }

@@ -1,7 +1,7 @@
-import {categories,score as oldScore} from './core.js?v=804e5dbc4495';
-import {baseScore as score,legacyScore,legacyMaxMultiplier,settlement} from './rewards.js?v=804e5dbc4495';
-import {edition,utcDay} from './edition.js?v=804e5dbc4495';
-import {findFor} from './feedback.js?v=804e5dbc4495';
+import {categories,score as oldScore} from './core.js?v=52b81d98bb60';
+import {baseScore as score,legacyScore,legacyMaxMultiplier,settlement} from './rewards.js?v=52b81d98bb60';
+import {edition,utcDay} from './edition.js?v=52b81d98bb60';
+import {findFor} from './feedback.js?v=52b81d98bb60';
 export const SAVE_KEY='rarer.daily.v2';
 export const BACKUP_KEY='rarer.reset-backup.v1';
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -17,6 +17,9 @@ function validRun(r){
  if(!r||!/^\d{4}-\d{2}-\d{2}$/.test(r.day)||!Number.isInteger(r.ci)||r.ci<0||r.ci>2||!validChain(r.chain)||!['home','play','banked','bust','result'].includes(r.stage))return false;
  if(!Number.isInteger(r.mistakes)||r.mistakes<0||r.mistakes>3||!Number.isInteger(r.lost)||r.lost<0||r.lost>Math.max(score(r.chain),legacyScore(r.chain)))return false;
  if(!Array.isArray(r.cargo)||!r.cargo.every(a=>validAnswer(a)&&r.chain.some(b=>b[0]===a[0]&&b[1]===a[1])))return false;
+ // A cave-in must carry the answer that caused it, and something to compare it against.
+ if(r.failed!==null&&!validAnswer(r.failed))return false;
+ if(r.stage==='bust'&&(r.failed===null||!r.chain.length))return false;
  const n=r.stage==='home'?0:r.stage==='play'?r.ci:r.stage==='result'?3:r.ci+1;
  return Array.isArray(r.results)&&r.results.length===n&&r.results.every(v=>v&&validChain(v.chain)&&Number.isInteger(v.points)&&v.points>=0&&v.points<=pointCap(v.chain));
 }

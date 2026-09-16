@@ -1,11 +1,13 @@
 // Quick modes: Higher or Lower, Bullseye and Top 10 Blitz, played in one dialog.
 // The pure helpers at the top have no DOM access so they can be tested in Node.
-import {normalize,tier} from './core.js?v=804e5dbc4495';
-import {updateModes,loadModes,recordFinds,recordBest} from './modes-store.js?v=804e5dbc4495';
+import {normalize,tier} from './core.js?v=52b81d98bb60';
+import {updateModes,loadModes,recordFinds,recordBest} from './modes-store.js?v=52b81d98bb60';
+import {sheetHead,openSheet,bindSheetControls,closeSheet} from './sheet.js?v=52b81d98bb60';
+import {iconSvg} from './icons.js?v=52b81d98bb60';
 
 // ---------- Pure logic ----------
 export const QUICK_MODES={
- 'higher-lower':{title:'Higher or Lower',rule:'Tap the answer more people look up. One wrong pick ends the run.'},
+ 'higher-lower':{title:'Higher or Lower',rule:'Tap the answer more people look up. One wrong pick ends the game.'},
  bullseye:{title:'Bullseye',rule:'Name an answer as close to the target rank as you can. Five targets, three tries each.'},
  blitz:{title:'Top 10 Blitz',rule:'Name the 10 most looked-up answers before 90 seconds run out.'}
 };
@@ -90,22 +92,22 @@ const later=(fn,ms)=>{const id=setTimeout(fn,ms);timers.push(()=>clearTimeout(id
 function getDialog(){
  let dialog=document.getElementById('quick-mode');
  if(!dialog){
-  dialog=document.createElement('dialog');dialog.id='quick-mode';dialog.setAttribute('aria-labelledby','quick-mode-title');
-  dialog.innerHTML='<button type="button" class="qm-close" aria-label="Close">×</button><div class="qm-screen"></div><p class="qm-sr qm-live" role="status" aria-live="polite"></p>';
-  dialog.querySelector('.qm-close').onclick=()=>dialog.close();
+  dialog=document.createElement('dialog');dialog.id='quick-mode';dialog.className='sheet';dialog.setAttribute('aria-labelledby','quick-mode-title');
+  dialog.innerHTML=sheetHead('quick-mode','Quick game')+'<div class="sheet-body qm-body"><div class="qm-screen"></div><p class="sr-only qm-live" role="status" aria-live="polite"></p></div>';
+  // Escape, backdrop click and focus return are handled by the shared sheet shell.
+  bindSheetControls(dialog);
   dialog.addEventListener('close',stop);
-  // Escape always closes, even when Chrome skips the cancel event (no recent user gesture).
-  dialog.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();dialog.close();}});
   document.body.append(dialog);
  }
  return dialog;
 }
 
-export function openQuickMode(kind,{catalog,storage=null,categoryId=null,random=Math.random}={}){
+export function openQuickMode(kind,{catalog,storage=null,categoryId=null,random=Math.random,opener}={}){
  const mode=QUICK_MODES[kind];
  if(!mode)throw Error('Unknown quick mode: '+kind);
  if(!catalog?.categories?.length)throw Error('Catalog missing');
  const dialog=getDialog(),screen=dialog.querySelector('.qm-screen'),live=dialog.querySelector('.qm-live');
+ dialog.querySelector('#quick-mode-title').textContent=mode.title;
  const $=s=>screen.querySelector(s);
  const say=text=>{const f=$('.qm-feedback');if(f)f.textContent=text;live.textContent=text;};
  const save=(categoryIdToSave,names)=>updateModes(storage,s=>recordFinds(s,categoryIdToSave,names));
@@ -116,14 +118,14 @@ export function openQuickMode(kind,{catalog,storage=null,categoryId=null,random=
 
  function intro(){
   const best=loadModes(storage).best[kind];
-  show(`<p class="qm-kicker">Quick game</p>${mole()}<h2 id="quick-mode-title" tabindex="-1">${mode.title}</h2><p class="qm-rule">${mode.rule}</p><p class="qm-best">${Number.isFinite(best)?`Your best <b>${best}</b>`:'No best score yet'}</p><button type="button" class="qm-primary qm-start">Start</button>`);
+  show(`<p class="qm-kicker">Quick game</p>${mole()}<p class="qm-headline">${mode.title}</p><p class="qm-rule">${mode.rule}</p><p class="qm-best">${Number.isFinite(best)?`Your best <b>${best}</b>`:'No best score yet'}</p><button type="button" class="qm-primary qm-start">Start</button>`);
   $('.qm-start').onclick=games[kind];$('.qm-start').focus();
  }
 
  function finish({title,score,detail,missedTitle,missed}){
   let result;updateModes(storage,s=>{result=recordBest(s,kind,score);return result.state;});
-  show(`<p class="qm-kicker">${mode.title}</p>${mole(result.isBest&&score>0?'celebrate':'idle')}<h2 id="quick-mode-title" tabindex="-1">${title}</h2><p class="qm-final"><b>${score}</b><span>${kind==='higher-lower'?'streak':'points'}</span></p>${result.isBest&&score>0?'<p class="qm-new-best">New best!</p>':`<p class="qm-best">Your best <b>${result.previous??score}</b></p>`}${detail?`<p class="qm-rule">${detail}</p>`:''}${missed?.length?`<section class="qm-missed" aria-label="${esc(missedTitle)}"><h3>${esc(missedTitle)}</h3><ul>${missed.join('')}</ul></section>`:''}<div class="qm-actions"><button type="button" class="qm-primary qm-again">Play again</button><button type="button" class="qm-secondary qm-done">Close</button></div>`);
-  $('.qm-again').onclick=games[kind];$('.qm-done').onclick=()=>dialog.close();
+  show(`<p class="qm-kicker">${mode.title}</p>${mole(result.isBest&&score>0?'celebrate':'idle')}<p class="qm-headline">${title}</p><p class="qm-final"><b>${score}</b><span>${kind==='higher-lower'?'streak':'points'}</span></p>${result.isBest&&score>0?'<p class="qm-new-best">New best!</p>':`<p class="qm-best">Your best <b>${result.previous??score}</b></p>`}${detail?`<p class="qm-rule">${detail}</p>`:''}${missed?.length?`<section class="qm-missed" aria-label="${esc(missedTitle)}"><h3>${esc(missedTitle)}</h3><ul>${missed.join('')}</ul></section>`:''}<div class="qm-actions"><button type="button" class="qm-primary qm-again">Play again</button><button type="button" class="qm-secondary qm-done">Close</button></div>`);
+  $('.qm-again').onclick=games[kind];$('.qm-done').onclick=()=>closeSheet(dialog);
   live.textContent=`${title} ${score} ${kind==='higher-lower'?'streak':'points'}.${result.isBest&&score>0?' New best!':''}`;
   $('.qm-again').focus();
  }
@@ -133,7 +135,7 @@ export function openQuickMode(kind,{catalog,storage=null,categoryId=null,random=
   let streak=0,{category,current,next}=pickPair(catalog,0,random),used=[current.name,next.name];
   function draw(){
    const size=category.entries.length;
-   show(`${hud(esc(category.name)+' · '+size+' answers',`<b>${streak}</b> streak`)}<h2 id="quick-mode-title" class="qm-question">Which do more people look up?</h2><div class="qm-duel"><div class="qm-card">${gem(current)}<strong>${esc(current.name)}</strong><span>${rankTag(current)} of ${size}</span></div><span class="qm-vs" aria-hidden="true">vs</span><div class="qm-card qm-hidden"><img class="qm-gem" src="${art}v11/rocks.png" alt=""><strong>${esc(next.name)}</strong><span class="qm-next-rank">${rankTag(next,true)} of ${size}</span></div></div><p class="qm-prompt">Is <b>${esc(next.name)}</b> more or less looked-up than ${esc(current.name)}?</p><div class="qm-choices"><button type="button" data-choice="more">▲ More looked-up</button><button type="button" data-choice="less">▼ Less looked-up</button></div><p class="qm-feedback" aria-hidden="true"></p>`);
+   show(`${hud(esc(category.name)+' · '+size+' answers',`<b>${streak}</b> streak`)}<p class="qm-question">Which do more people look up?</p><div class="qm-duel"><div class="qm-card">${gem(current)}<strong>${esc(current.name)}</strong><span>${rankTag(current)} of ${size}</span></div><span class="qm-vs" aria-hidden="true">vs</span><div class="qm-card qm-hidden"><img class="qm-gem" src="${art}v11/rocks.png" alt=""><strong>${esc(next.name)}</strong><span class="qm-next-rank">${rankTag(next,true)} of ${size}</span></div></div><p class="qm-prompt">Is <b>${esc(next.name)}</b> more or less looked-up than ${esc(current.name)}?</p><div class="qm-choices"><button type="button" data-choice="more">More looked-up</button><button type="button" data-choice="less">Less looked-up</button></div><p class="qm-feedback" aria-hidden="true"></p>`);
    screen.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>choose(b.dataset.choice));
    $('[data-choice]').focus();
   }
@@ -152,7 +154,7 @@ export function openQuickMode(kind,{catalog,storage=null,categoryId=null,random=
     const lost={current,next,category};
     say(`Oh no! ${next.name} is #${next.rank}, ${next.rank<current.rank?'more':'less'} looked-up than ${current.name}.`);
     $('.qm-choices').innerHTML='<button type="button" class="qm-primary qm-see">See your score</button>';
-    $('.qm-see').onclick=()=>finish({title:'Run over',score:streak,missedTitle:'The pick that got you',missed:[`<li>${gem(lost.next)}<span>${esc(lost.next.name)}</span>${rankTag(lost.next)}</li>`,`<li>${gem(lost.current)}<span>${esc(lost.current.name)}</span>${rankTag(lost.current)}</li>`],detail:`${esc(lost.category.label||lost.category.name)}: ${esc(lost.next.name)} is ${lost.next.rank<lost.current.rank?'more':'less'} looked-up.`});
+    $('.qm-see').onclick=()=>finish({title:'Game over',score:streak,missedTitle:'The pick that got you',missed:[`<li>${gem(lost.next)}<span>${esc(lost.next.name)}</span>${rankTag(lost.next)}</li>`,`<li>${gem(lost.current)}<span>${esc(lost.current.name)}</span>${rankTag(lost.current)}</li>`],detail:`${esc(lost.category.label||lost.category.name)}: ${esc(lost.next.name)} is ${lost.next.rank<lost.current.rank?'more':'less'} looked-up.`});
     $('.qm-see').focus();
    }
   }
@@ -173,14 +175,14 @@ export function openQuickMode(kind,{catalog,storage=null,categoryId=null,random=
   function start(){
    target=pickTarget(catalog,random,usedCats);usedCats.push(target.category.id);guesses=[];best=null;done=false;
    const {category,rank,size}=target;
-   show(`${hud(`Target ${index+1} of ${BULLSEYE_TARGETS}`,`<b>${total}</b> points`)}<h2 id="quick-mode-title" class="qm-question">${esc(category.name)} as close to <b class="qm-target">#${rank}</b> of ${size} as you can</h2><div class="qm-meter" aria-hidden="true"><i class="qm-mark-target" style="--at:${(rank-1)/(size-1)*100}%"></i></div><div class="qm-meter-ends" aria-hidden="true"><span>#1 most looked-up</span><span>#${size}</span></div><ol class="qm-guesses" aria-label="Your guesses"></ol><p class="qm-tries"></p><form class="qm-form"><label class="qm-sr" for="qm-guess">Your guess: ${esc(lower(category.name))}</label><input id="qm-guess" ${inputAttrs} placeholder="${esc(category.name)}…"><button type="submit">Guess</button></form><p class="qm-feedback" aria-hidden="true"></p>`);
+   show(`${hud(`Target ${index+1} of ${BULLSEYE_TARGETS}`,`<b>${total}</b> points`)}<p class="qm-question">${esc(category.name)} as close to <b class="qm-target">#${rank}</b> of ${size} as you can</p><div class="qm-meter" aria-hidden="true"><i class="qm-mark-target" style="--at:${(rank-1)/(size-1)*100}%"></i></div><div class="qm-meter-ends" aria-hidden="true"><span>#1 most looked-up</span><span>#${size}</span></div><ol class="qm-guesses" aria-label="Your guesses"></ol><p class="qm-tries"></p><form class="qm-form"><label class="sr-only" for="qm-guess">Your guess: ${esc(lower(category.name))}</label><input id="qm-guess" ${inputAttrs} placeholder="${esc(category.name)}…"><button type="submit">Guess</button></form><p class="qm-feedback" aria-hidden="true"></p>`);
    $('.qm-form').onsubmit=guess;drawGuesses();$('#qm-guess').focus();
   }
   function drawGuesses(){
    const {size}=target;
    $('.qm-guesses').innerHTML=guesses.map(g=>`<li>${gem(g.entry)}<span>${esc(g.entry.name)}</span>${rankTag(g.entry)}<small>${g.distance?`${g.distance} away${g.note?' · '+g.note:''}`:'Bullseye!'}</small></li>`).join('');
    const left=BULLSEYE_TRIES-guesses.length;
-   $('.qm-tries').innerHTML=`<span aria-hidden="true">${'●'.repeat(Math.max(0,left))}${'○'.repeat(guesses.length)}</span> ${done?'':`${left} ${left===1?'try':'tries'} left`}`;
+   $('.qm-tries').innerHTML=`<span class="qm-pips" aria-hidden="true">${'<i class="qm-pip"></i>'.repeat(Math.max(0,left))}${'<i class="qm-pip used"></i>'.repeat(guesses.length)}</span> ${done?'':`${left} ${left===1?'try':'tries'} left`}`;
    $('.qm-meter').querySelectorAll('.qm-mark-guess').forEach(m=>m.remove());
    guesses.forEach(g=>$('.qm-meter').insertAdjacentHTML('beforeend',`<i class="qm-mark-guess ${tier(g.entry.rarity).className}" style="--at:${(g.entry.rank-1)/(size-1)*100}%"></i>`));
   }
@@ -218,7 +220,7 @@ export function openQuickMode(kind,{catalog,storage=null,categoryId=null,random=
   const category=catalog.categories.find(c=>c.id===categoryId&&c.entries?.length>=10)||pick(catalog.categories.filter(c=>c.entries?.length>=10),random);
   const board=topTen(category),found=new Set(),tried=[];
   let over=false;
-  show(`<div class="qm-hud">${mole()}<div><p class="qm-meta">${esc(category.label||category.name)}</p><p class="qm-score"><b class="qm-found">0</b>/10 found</p></div><p class="qm-timer" role="timer" aria-label="Time left"><b>1:30</b></p></div><h2 id="quick-mode-title" class="qm-question">Name the top 10: ${esc(lower(category.name))}</h2><ol class="qm-board" aria-label="Top 10 board">${board.map((e,i)=>`<li data-slot="${i}"><span class="qm-slot-rank">#${e.rank}</span><span class="qm-slot-name">?</span></li>`).join('')}</ol><form class="qm-form"><label class="qm-sr" for="qm-blitz">Name ${esc(lower(category.name))}</label><input id="qm-blitz" ${inputAttrs} placeholder="${esc(category.name)}…"><button type="submit">Go</button></form><p class="qm-feedback" aria-hidden="true">Type fast. Wrong answers cost nothing.</p>`);
+  show(`<div class="qm-hud">${mole()}<div><p class="qm-meta">${esc(category.label||category.name)}</p><p class="qm-score"><b class="qm-found">0</b>/10 found</p></div><p class="qm-timer" role="timer" aria-label="Time left"><b>1:30</b></p></div><p class="qm-question">Name the top 10: ${esc(lower(category.name))}</p><ol class="qm-board" aria-label="Top 10 board">${board.map((e,i)=>`<li data-slot="${i}"><span class="qm-slot-rank">#${e.rank}</span><span class="qm-slot-name">?</span></li>`).join('')}</ol><form class="qm-form"><label class="sr-only" for="qm-blitz">Name ${esc(lower(category.name))}</label><input id="qm-blitz" ${inputAttrs} placeholder="${esc(category.name)}…"><button type="submit">Go</button></form><p class="qm-feedback" aria-hidden="true">Type fast. Wrong answers cost nothing.</p>`);
   // Wall-clock deadline: throttled or backgrounded tabs catch up on the next tick.
   const deadline=Date.now()+BLITZ_SECONDS*1000;let shown=BLITZ_SECONDS;
   const tick=()=>{
@@ -254,14 +256,14 @@ export function openQuickMode(kind,{catalog,storage=null,categoryId=null,random=
   function end(){
    if(over)return;over=true;
    const left=secondsLeft(deadline,Date.now()),all=found.size>=10;
-   finish({title:all?'All 10 found!':'Time!',score:blitzScore(found.size,left),detail:all?`${found.size} × 10 + ${left}s left`:`${found.size} of 10 found.`,missedTitle:'The top 10 you missed',missed:board.filter((e,i)=>!found.has(i)).map(e=>`<li>${gem(e)}<span>${esc(e.name)}</span>${rankTag(e)}</li>`)});
+   finish({title:all?'All 10 found!':'Time!',score:blitzScore(found.size,left),detail:all?`10 points each, plus ${left} seconds left`:`${found.size} of 10 found.`,missedTitle:'The top 10 you missed',missed:board.filter((e,i)=>!found.has(i)).map(e=>`<li>${gem(e)}<span>${esc(e.name)}</span>${rankTag(e)}</li>`)});
   }
   $('#qm-blitz').focus();
  }
 
  const games={'higher-lower':higherLower,bullseye,blitz};
  intro();
- if(!dialog.open)dialog.showModal();
+ if(!dialog.open)openSheet(dialog,{opener,onClose:stop});
  $('.qm-start')?.focus();
  return dialog;
 }

@@ -1,4 +1,4 @@
-import {tiers,tier} from './core.js?v=804e5dbc4495';
+import {tiers,tier} from './core.js?v=52b81d98bb60';
 // Rarer finds are worth more. The catalog rarity (0–100) stays internal.
 export const treasureValue=rarity=>(rarity+1)*10;
 // A bigger leap from the previous answer pays up to double. The first find has no leap.
@@ -8,7 +8,7 @@ const worth=(a,reverse)=>reverse?100-a[1]:a[1];
 export const findValues=(chain,reverse=false)=>chain.map((a,i)=>findValue(worth(a,reverse),i?worth(chain[i-1],reverse):null));
 export const treasureSum=chain=>chain.reduce((total,a)=>total+treasureValue(a[1]),0);
 export const baseScore=(chain,reverse=false)=>findValues(chain,reverse).reduce((total,v)=>total+v,0);
-// Receipts banked before scoring version 3 used treasure × chain length, with bonuses up to ×2.6.
+// Receipts banked before scoring version 3 used treasure times chain length, with bonuses up to 2.6.
 export const legacyScore=chain=>treasureSum(chain)*chain.length;
 export const legacyMaxMultiplier=2.6;
 // Banking combos, collected at home. Each pays once per dig; percentages add.

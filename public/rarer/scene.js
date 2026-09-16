@@ -1,8 +1,8 @@
-import {findFor,cargoSlot,lootPosition} from './feedback.js?v=804e5dbc4495';
-import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=804e5dbc4495';
-import {pileHeight} from './progress.js?v=804e5dbc4495';
-import {drawMaterial,rebaseTween} from './terrain.js?v=804e5dbc4495';
-import {drawBurrow,heapMetrics} from './burrow.js?v=804e5dbc4495';
+import {findFor,cargoSlot,lootPosition} from './feedback.js?v=52b81d98bb60';
+import {surfaceAt,ceilingAt,wallAt,leftWallAt,railGround,cartFoot,mineLayout} from './geology.js?v=52b81d98bb60';
+import {pileHeight} from './progress.js?v=52b81d98bb60';
+import {drawMaterial,rebaseTween} from './terrain.js?v=52b81d98bb60';
+import {drawBurrow,heapMetrics} from './burrow.js?v=52b81d98bb60';
 const assetRoot='./assets/one-more-swing/';
 const loadImage=src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Missing art: '+src));img.src=assetRoot+src;});
 const clamp=n=>Math.max(0,Math.min(1,n));
@@ -111,7 +111,7 @@ export class MineScene {
     await this.tween({deposit:1},550);
     this.pack=[];this.state.deposit=0;this.home=profile;
     await this.tween({pile:pileHeight(profile.total),viewY:this.homeViewY()},350);
-    this.canvas.setAttribute('aria-label','The mole has delivered every find to the outdoor pile on the right of his shelter. A marked pole measures its height. '+profile.total+' total points. Visit your burrow to explore the whole pile.');this.draw();
+    this.canvas.setAttribute('aria-label','The mole has delivered every find to the outdoor pile beside his home. A marked pole measures its height. '+profile.total+' total points. Open Your home to explore the whole pile.');this.draw();
   }
   duration(ms){return this.reduced.matches?0:ms*(this.slow()?2.5:1);}
   pose(name,facing=1){this.state.pose=name;this.state.facing=facing;this.poseStart=performance.now();this.draw();}

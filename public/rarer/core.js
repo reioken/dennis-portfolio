@@ -37,4 +37,4 @@ export function missed(category,chain,reverse=false){
   const last=chain.length?chain.at(-1)[1]:reverse?101:-1;
   return allAnswers(category).filter(a=>(reverse?a[1]<last:a[1]>last)&&!chain.some(b=>a[0]===b[0])).sort((a,b)=>reverse?a[1]-b[1]:b[1]-a[1]).slice(0,2).reverse();
 }
-export function shareText(results){return 'Spelunkle · Sample day\n'+results.map(r=>r.name+' '+r.chain.map(a=>tier(a[1]).square).join('')+(r.bust?' ×':'')+' · '+score(r.chain)+' · ×'+r.chain.length).join('\n')+'\nTotal '+results.reduce((n,r)=>n+score(r.chain),0).toLocaleString('en-US');}
+export function shareText(results,title='Spelunkle'){return title+'\n'+results.map(r=>r.name+' '+r.chain.map(a=>tier(a[1]).square).join('')+(r.bust?' ×':'')+' · '+score(r.chain)+' · ×'+r.chain.length).join('\n')+'\nTotal '+results.reduce((n,r)=>n+score(r.chain),0).toLocaleString('en-US');}
