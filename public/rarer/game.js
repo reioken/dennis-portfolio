@@ -1,25 +1,25 @@
-import {treasureValue,findValues,baseScore,settlement,challenges} from './rewards.js?v=52b81d98bb60';
-import {rewardReceipt,bonusSummary,playReveal,clearReveal,showToast,comboGlyph} from './rewards-view.js?v=52b81d98bb60';
-import {mountWelcome,welcomeSeen} from './welcome.js?v=52b81d98bb60';
-import {visualGuide} from './how-to.js?v=52b81d98bb60';
-import {categories,tier,score as oldScore,assess,missed,shareText,rankOf} from './core.js?v=52b81d98bb60';
-import {MineScene} from './scene.js?v=52b81d98bb60';
-import {BurrowView} from './burrow-view.js?v=52b81d98bb60';
-import {findFor} from './feedback.js?v=52b81d98bb60';
-import {mineLayout} from './geology.js?v=52b81d98bb60';
-import * as legacyProgress from './progress.js?v=52b81d98bb60';
-import * as dailyProgress from './daily-progress.js?v=52b81d98bb60';
-import {edition,loadDaily,useDay,utcDay,selectCategories,dailyNumber,dayForNumber,FIRST_DAY} from './edition.js?v=52b81d98bb60';
-import {pointsLeft,takePenalty,dailyShare} from './risk.js?v=52b81d98bb60';
-import {loadModes,updateModes,recordFinds,recordBest} from './modes-store.js?v=52b81d98bb60';
-import {openQuickMode} from './quick-modes.js?v=52b81d98bb60';
-import {openAlbum} from './album.js?v=52b81d98bb60';
-import {modeIcon,categoryIcon,iconSvg} from './icons.js?v=52b81d98bb60';
-import {sheetHead,openSheet,closeSheet,bindSheetControls} from './sheet.js?v=52b81d98bb60';
-import {openStats,statsFrom,bestStreak,msUntilReset,countdownText,countdownDuration,resetLocalTime} from './stats.js?v=52b81d98bb60';
-import {openSettings,bootSettings,undoImport} from './settings.js?v=52b81d98bb60';
-import {pickerSection,pickerLink,bindPicker,openPicker} from './modes-picker.js?v=52b81d98bb60';
-import {loadCoach,nextTip,coachHtml,bindCoach} from './coach.js?v=52b81d98bb60';
+import {treasureValue,findValues,baseScore,settlement,challenges} from './rewards.js?v=0b45fd07d30d';
+import {rewardReceipt,bonusSummary,playReveal,clearReveal,showToast,comboGlyph} from './rewards-view.js?v=0b45fd07d30d';
+import {mountWelcome,welcomeSeen} from './welcome.js?v=0b45fd07d30d';
+import {visualGuide} from './how-to.js?v=0b45fd07d30d';
+import {categories,tier,score as oldScore,assess,missed,shareText,rankOf} from './core.js?v=0b45fd07d30d';
+import {MineScene} from './scene.js?v=0b45fd07d30d';
+import {BurrowView} from './burrow-view.js?v=0b45fd07d30d';
+import {findFor} from './feedback.js?v=0b45fd07d30d';
+import {mineLayout} from './geology.js?v=0b45fd07d30d';
+import * as legacyProgress from './progress.js?v=0b45fd07d30d';
+import * as dailyProgress from './daily-progress.js?v=0b45fd07d30d';
+import {edition,loadDaily,useDay,utcDay,selectCategories,dailyNumber,dayForNumber,FIRST_DAY} from './edition.js?v=0b45fd07d30d';
+import {pointsLeft,takePenalty,dailyShare} from './risk.js?v=0b45fd07d30d';
+import {loadModes,updateModes,recordFinds,recordBest} from './modes-store.js?v=0b45fd07d30d';
+import {openQuickMode} from './quick-modes.js?v=0b45fd07d30d';
+import {openAlbum} from './album.js?v=0b45fd07d30d';
+import {modeIcon,categoryIcon,iconSvg} from './icons.js?v=0b45fd07d30d';
+import {sheetHead,openSheet,closeSheet,bindSheetControls} from './sheet.js?v=0b45fd07d30d';
+import {openStats,statsFrom,bestStreak,msUntilReset,countdownText,countdownDuration,resetLocalTime} from './stats.js?v=0b45fd07d30d';
+import {openSettings,bootSettings,undoImport} from './settings.js?v=0b45fd07d30d';
+import {pickerSection,pickerLink,bindPicker,openPicker} from './modes-picker.js?v=0b45fd07d30d';
+import {loadCoach,nextTip,coachHtml,bindCoach} from './coach.js?v=0b45fd07d30d';
 const $=id=>document.getElementById(id),escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const params=new URLSearchParams(location.search);
 // Dig modes are URL-driven: ?mode=free|deep|climb (&cat=id). Past dailies use ?day=YYYY-MM-DD.
@@ -42,8 +42,6 @@ const reduced={
   addEventListener:(...args)=>prefersReduced.addEventListener(...args),
   removeEventListener:(...args)=>prefersReduced.removeEventListener(...args)
 };
-// At 960px and up the modes list moves into the sticky rail.
-const wide=matchMedia('(min-width:960px)');
 const scene=new MineScene($('mine'),reduced);scene.slow=()=>$('slow').checked;
 const burrow=new BurrowView($('burrow'),scene);
 if($('help-open')){
@@ -292,16 +290,12 @@ function railStats(){
   return '<ul class="rail-stat-list">'+[['Current streak',s.currentStreak],['Best streak',s.bestStreak],['Days played',s.daysPlayed]]
     .map(([label,value])=>'<li class="stat-tile"><span class="stat-label">'+label+'</span><strong class="stat-value">'+fmt(value)+'</strong></li>').join('')+'</ul>';
 }
-// "More ways to dig" is rendered into #after so the phone order stays Today
-// card → canvas → how it works → modes. On desktop the same node moves into
-// the rail. Moving it keeps its handlers and whatever focus it holds.
+// "More ways to dig" always sits below the controls, in one centred column at
+// every width: Today card → canvas → how it works → modes.
 function placeRail(){
-  const node=$('after').firstElementChild||$('rail-modes').firstElementChild;
-  if(!node)return;
-  const host=wide.matches?$('rail-modes'):$('after');
-  if(node.parentElement!==host)host.append(node);
+  const node=$('rail-modes').firstElementChild;
+  if(node)$('after').append(node);
 }
-wide.addEventListener('change',placeRail);
 // The tip due right now, if this is still the player's first dig.
 function showCoach(){
   if(!wantsDaily||stage!=='play'||!$('answer-form'))return;

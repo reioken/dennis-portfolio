@@ -1,9 +1,9 @@
 // Collection album: every answer found in any mode, per category, with unfound ranks as silhouettes.
 // The helpers at the top are pure (no DOM) so they can be tested in Node.
-import {tier} from './core.js?v=52b81d98bb60';
-import {loadModes} from './modes-store.js?v=52b81d98bb60';
-import {categoryIcon} from './icons.js?v=52b81d98bb60';
-import {sheetHead,openSheet,bindSheetControls} from './sheet.js?v=52b81d98bb60';
+import {tier} from './core.js?v=0b45fd07d30d';
+import {loadModes} from './modes-store.js?v=0b45fd07d30d';
+import {categoryIcon} from './icons.js?v=0b45fd07d30d';
+import {sheetHead,openSheet,bindSheetControls} from './sheet.js?v=0b45fd07d30d';
 
 const art='./assets/one-more-swing/v11/';
 // Same materials as the dig feedback (feedback.js findFor): stone, ore, amethyst, diamond.

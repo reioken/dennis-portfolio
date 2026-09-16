@@ -1,5 +1,5 @@
-import {challenges} from './rewards.js?v=52b81d98bb60';
-import {iconSvg} from './icons.js?v=52b81d98bb60';
+import {challenges} from './rewards.js?v=0b45fd07d30d';
+import {iconSvg} from './icons.js?v=0b45fd07d30d';
 const icons={rainbow:'🌈',triple:'💎',staircase:'🪜',legendary:'👑',spotless:'✨'};
 // Emoji are for share text only. On screen every combo uses its pixel icon.
 export const comboIcon=id=>icons[id]||'';

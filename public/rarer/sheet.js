@@ -6,7 +6,7 @@
 // - A click on the backdrop closes.
 // - Focus moves into the sheet on open and returns to the opener on close.
 // - Tab cycles inside the sheet.
-import {iconSvg} from './icons.js?v=52b81d98bb60';
+import {iconSvg} from './icons.js?v=0b45fd07d30d';
 
 const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
 const openers=new WeakMap();

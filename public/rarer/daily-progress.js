@@ -1,7 +1,7 @@
-import {categories,score as oldScore} from './core.js?v=52b81d98bb60';
-import {baseScore as score,legacyScore,legacyMaxMultiplier,settlement} from './rewards.js?v=52b81d98bb60';
-import {edition,utcDay} from './edition.js?v=52b81d98bb60';
-import {findFor} from './feedback.js?v=52b81d98bb60';
+import {categories,score as oldScore} from './core.js?v=0b45fd07d30d';
+import {baseScore as score,legacyScore,legacyMaxMultiplier,settlement} from './rewards.js?v=0b45fd07d30d';
+import {edition,utcDay} from './edition.js?v=0b45fd07d30d';
+import {findFor} from './feedback.js?v=0b45fd07d30d';
 export const SAVE_KEY='rarer.daily.v2';
 export const BACKUP_KEY='rarer.reset-backup.v1';
 const clone=x=>JSON.parse(JSON.stringify(x));

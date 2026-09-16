@@ -3,10 +3,10 @@
 //
 // The helpers above the "Sheet" comment are pure and DOM-free so
 // .rarer-tools/test-stats.mjs can run them in Node.
-import {utcDay,dailyNumber,FIRST_DAY} from './edition.js?v=52b81d98bb60';
-import {tier} from './core.js?v=52b81d98bb60';
-import {iconSvg,modeIcon,categoryIcon} from './icons.js?v=52b81d98bb60';
-import {sheetHead,openSheet,bindSheetControls} from './sheet.js?v=52b81d98bb60';
+import {utcDay,dailyNumber,FIRST_DAY} from './edition.js?v=0b45fd07d30d';
+import {tier} from './core.js?v=0b45fd07d30d';
+import {iconSvg,modeIcon,categoryIcon} from './icons.js?v=0b45fd07d30d';
+import {sheetHead,openSheet,bindSheetControls} from './sheet.js?v=0b45fd07d30d';
 
 const DAY=86400000;
 const escape=text=>String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

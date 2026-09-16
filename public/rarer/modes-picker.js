@@ -4,8 +4,8 @@
 // Every row looks the same. Rows that navigate are links and carry a chevron;
 // rows that open a sheet are buttons and carry none, so the two never look
 // identical but behave differently (UX-SPEC §3.9).
-import {modeIcon,iconSvg} from './icons.js?v=52b81d98bb60';
-import {sheetHead,openSheet,bindSheetControls} from './sheet.js?v=52b81d98bb60';
+import {modeIcon,iconSvg} from './icons.js?v=0b45fd07d30d';
+import {sheetHead,openSheet,bindSheetControls} from './sheet.js?v=0b45fd07d30d';
 
 export const MODE_GROUPS=[
  {id:'endless',label:'Endless',items:[

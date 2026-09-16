@@ -513,7 +513,8 @@ html:has(dialog[open]) .action-bar .btn--primary{background:var(--paper);border-
 .daily-bonuses small{font-size:var(--text-xs);color:var(--muted)}
 
 /* ── the scene ──────────────────────────────────────────────────────────── */
-.scene-frame{position:relative;width:100%;height:210px;flex:none;overflow:hidden;background:var(--sky)}
+/* The cave scene runs edge to edge across the whole page; the game column stays centred. */
+.scene-frame{position:relative;width:100vw;margin-left:calc(50% - 50vw);height:210px;flex:none;overflow:hidden;background:var(--sky)}
 #mine{display:block;width:100%;height:100%;image-rendering:pixelated}
 #scene-caption{position:absolute;left:0;right:0;top:12px;pointer-events:none}
 #scene-caption{font:17px var(--font-display);color:var(--muted);text-align:center}
@@ -588,25 +589,15 @@ html:has(dialog[open]) .action-bar .btn--primary{background:var(--paper);border-
  .footer-edition{flex:1 1 100%;order:4}
 }
 
-/* ── 960px and up: canvas and controls left, a sticky rail right ────────── */
+/* ── 960px and up: the same centred column under a taller, full-width scene ─ */
 @media(min-width:960px){
- main,.site-header,.site-footer{max-width:1120px}
+ .site-header,.site-footer{max-width:1120px}
  .site-header{min-height:72px}
  .site-header .brand{font-size:var(--display-xl);line-height:.95}
- .game{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:var(--space-6);align-items:start}
- .stage{grid-column:1;grid-row:1}
- .rail{grid-column:2;grid-row:1;position:sticky;top:24px}
- .rail{max-height:calc(100dvh - 48px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
- #rail-stats,#rail-modes{display:block}
- #rail-stats{margin-top:var(--space-4)}
- #rail-modes .picker{margin-top:var(--space-4)}
- #category-steps{margin-top:0}
- .scene-frame{height:360px}
- .home .scene-frame,.banked .scene-frame,.bust .scene-frame{height:400px}
- .result .scene-frame{height:300px}
+ .scene-frame{height:380px}
+ .home .scene-frame,.banked .scene-frame,.bust .scene-frame{height:440px}
+ .result .scene-frame{height:320px}
  .chain{max-height:320px}
- .rail-stat-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-2)}
- .rail-stat-list{margin:0;padding:0;list-style:none}
 }
 
 /* ── reduced motion ─────────────────────────────────────────────────────────

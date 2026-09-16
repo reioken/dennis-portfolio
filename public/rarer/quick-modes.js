@@ -1,9 +1,9 @@
 // Quick modes: Higher or Lower, Bullseye and Top 10 Blitz, played in one dialog.
 // The pure helpers at the top have no DOM access so they can be tested in Node.
-import {normalize,tier} from './core.js?v=52b81d98bb60';
-import {updateModes,loadModes,recordFinds,recordBest} from './modes-store.js?v=52b81d98bb60';
-import {sheetHead,openSheet,bindSheetControls,closeSheet} from './sheet.js?v=52b81d98bb60';
-import {iconSvg} from './icons.js?v=52b81d98bb60';
+import {normalize,tier} from './core.js?v=0b45fd07d30d';
+import {updateModes,loadModes,recordFinds,recordBest} from './modes-store.js?v=0b45fd07d30d';
+import {sheetHead,openSheet,bindSheetControls,closeSheet} from './sheet.js?v=0b45fd07d30d';
+import {iconSvg} from './icons.js?v=0b45fd07d30d';
 
 // ---------- Pure logic ----------
 export const QUICK_MODES={
