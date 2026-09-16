@@ -1,6 +1,6 @@
-import {drawBurrow,heapMetrics,pileHeight,rulerHeight,rulerLabelWidth} from './burrow.js?v=b6103573572c';
-import {drawMaterial} from './terrain.js?v=b6103573572c';
-import {openSheet} from './sheet.js?v=b6103573572c';
+import {drawBurrow,heapMetrics,pileHeight,rulerHeight,rulerLabelWidth} from './burrow.js?v=cea0b2abe3a6';
+import {drawMaterial} from './terrain.js?v=cea0b2abe3a6';
+import {openSheet} from './sheet.js?v=cea0b2abe3a6';
 const clamp=n=>Math.max(0,Math.min(1,n));
 export class BurrowView{
   constructor(dialog,scene){

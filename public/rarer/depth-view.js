@@ -1,8 +1,8 @@
 // Spelunkle Depths page: pick a layer, then name something that lives there.
-import {loadDaily,edition,selectCategories,dailyNumber} from './edition.js?v=b6103573572c';
-import {iconSvg,categoryIcon} from './icons.js?v=b6103573572c';
-import {updateModes,recordFinds,recordBest} from './modes-store.js?v=b6103573572c';
-import {LAYERS,MAX_MISSES,layerIndex,layerRanges,newDig,attempt,bankDig,cartPoints,digPoints,digDone,depthShare,loadDepth,saveDepth} from './depth.js?v=b6103573572c';
+import {loadDaily,edition,selectCategories,dailyNumber} from './edition.js?v=cea0b2abe3a6';
+import {iconSvg,categoryIcon} from './icons.js?v=cea0b2abe3a6';
+import {updateModes,recordFinds,recordBest} from './modes-store.js?v=cea0b2abe3a6';
+import {LAYERS,MAX_MISSES,layerIndex,layerRanges,newDig,attempt,bankDig,cartPoints,digPoints,digDone,depthShare,loadDepth,saveDepth} from './depth.js?v=cea0b2abe3a6';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -6,7 +6,7 @@
 //
 // Everything above "View" is pure, so .rarer-tools/test-coach.mjs runs it in
 // Node with a plain object for storage.
-import {iconSvg} from './icons.js?v=b6103573572c';
+import {iconSvg} from './icons.js?v=cea0b2abe3a6';
 
 export const COACH_KEY='rarer.coach.v1';
 

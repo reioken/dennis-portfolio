@@ -1,6 +1,6 @@
 // Spelunkle Depths: "Choose a depth, then name something that belongs there."
 // Pure rules and save helpers, testable in Node. The page lives in depth-view.js.
-import {assess} from './core.js?v=b6103573572c';
+import {assess} from './core.js?v=cea0b2abe3a6';
 
 // Layers cover slices of each category's ranking, by the 0–100 rarity score
 // (0 = most looked-up). Surface is the top 10%, Legendary the rarest 15%.
@@ -13,7 +13,7 @@ export const LAYERS=[
 ];
 export const MAX_MISSES=3;
 export const DEPTH_KEY='rarer.depth.v1';
-export const DEPTH_URL='dennisbf.design/rarer/depth';
+export const DEPTH_URL='dennisbf.design/rarer/?mode=depth';
 
 export const layerIndex=rarity=>LAYERS.findIndex(layer=>rarity<=layer.max);
 
