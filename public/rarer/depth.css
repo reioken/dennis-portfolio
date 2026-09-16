@@ -1,0 +1,86 @@
+/* Spelunkle Depths — the layer-picking mode. Tokens come from style.css. */
+.depth{padding-block:var(--space-3) var(--space-6)}
+.depth h1{margin-top:var(--space-1)}
+.depth-hook{margin:var(--space-2) 0 var(--space-3);color:var(--muted)}
+
+/* today's three digs */
+.depth-steps{display:flex;gap:var(--space-2);margin:var(--space-3) 0 0;padding:0;list-style:none}
+.depth-steps li{flex:1 1 0;min-width:0;display:grid;grid-template-columns:auto 1fr;column-gap:var(--space-2);align-items:center}
+.depth-steps li{padding:var(--space-2);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--soft)}
+.depth-steps .is-current{border:2px solid var(--ink)}
+.depth-step-name{font-size:var(--text-sm);font-weight:var(--weight-medium);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.depth-steps small{grid-column:2;font-size:var(--text-xs);color:var(--muted)}
+.depth-steps .is-done small{color:var(--uncommon);font-weight:var(--weight-medium)}
+.depth-step-icon{display:inline-grid;place-items:center}
+
+/* the layered wall: depth = rarity */
+.strata{margin:0 0 var(--space-4);padding:0;list-style:none;border:2px solid var(--line-strong);border-radius:var(--radius-md);overflow:hidden}
+.stratum{position:relative}
+.stratum--surface{--layer-bg:#e2cfab;--layer-ink:#2b2233}
+.stratum--shallow{--layer-bg:#c9a97c;--layer-ink:#2b2233}
+.stratum--deep{--layer-bg:#7a5e48;--layer-ink:#fff2d9}
+.stratum--abyss{--layer-bg:#4f3c37;--layer-ink:#fff2d9}
+.stratum--legendary{--layer-bg:#2b2233;--layer-ink:#f2c14e}
+.stratum-button{display:grid;grid-template-columns:1fr auto;grid-template-areas:"name points" "range points" "misses misses"}
+.stratum-button{align-items:center;column-gap:var(--space-3);width:100%;min-height:64px;margin:0}
+.stratum-button{padding:var(--space-2) var(--space-4) var(--space-2) 68px;border:0;border-radius:0}
+.stratum-button{background-color:var(--layer-bg);color:var(--layer-ink);font:inherit;text-align:left;cursor:pointer}
+.stratum-button{background-image:repeating-linear-gradient(90deg,transparent 0 30px,rgb(0 0 0/.07) 30px 32px),repeating-linear-gradient(0deg,transparent 0 14px,rgb(0 0 0/.06) 14px 16px)}
+.stratum+.stratum .stratum-button{border-top:2px solid rgb(0 0 0/.3)}
+.stratum-button:hover:not(:disabled){filter:brightness(1.07)}
+.stratum-button:disabled{cursor:default;opacity:1}
+.stratum-button:focus-visible{outline:var(--focus-ring);outline-offset:-5px}
+.stratum.is-selected .stratum-button{box-shadow:inset 0 0 0 4px var(--gold)}
+.stratum-name{grid-area:name;font-size:var(--text-md);font-weight:var(--weight-bold)}
+.stratum-range{grid-area:range;font:20px/1 var(--font-display);opacity:.9}
+.stratum-points{grid-area:points;display:flex;align-items:center;gap:var(--space-2);font:24px/1 var(--font-display)}
+.stratum.is-found .stratum-points{font:var(--weight-bold) var(--text-sm)/1.2 var(--font-ui)}
+.stratum-points img{width:24px;height:24px;image-rendering:pixelated}
+.stratum-misses{grid-area:misses;display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:var(--space-1)}
+.stratum-miss{padding:2px var(--space-2);border-radius:var(--radius-pill);background:rgb(0 0 0/.34);color:#fff2d9;font-size:var(--text-xs)}
+.depth-mole{position:absolute;left:10px;top:50%;width:48px;height:48px;margin-top:-26px;pointer-events:none}
+.depth-mole{background:url('./assets/one-more-swing/v5/mole-idle.png') 0 0/240px 48px no-repeat;image-rendering:pixelated}
+.depth-mole{animation:depth-mole .9s steps(5) infinite}
+@keyframes depth-mole{to{background-position:-240px 0}}
+
+/* answer, cart and climbing out */
+.depth-form label{display:block;margin-bottom:var(--space-2);font-weight:var(--weight-medium)}
+.depth-answer-row{display:flex;gap:var(--space-2)}
+.depth-answer-row input{flex:1;min-width:0;min-height:52px;padding:0 var(--space-3)}
+.depth-answer-row input{border:2px solid var(--line-strong);border-radius:var(--radius-md);background:var(--paper);color:var(--ink);font:inherit}
+.depth-answer-row input:disabled{opacity:.7}
+.depth-dig{min-width:60px;padding:0}
+.depth .message{margin:var(--space-3) 0 0;font-size:var(--text-sm)}
+.depth .message.success{color:var(--uncommon);font-weight:var(--weight-medium)}
+.depth-cart{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin:var(--space-3) 0}
+.depth-cart strong{font:28px/1 var(--font-display)}
+.depth-misses{display:flex;gap:6px}
+.depth-misses i{width:16px;height:16px;border:2px solid var(--line-strong);border-radius:3px}
+.depth-misses i.used{border-color:var(--danger);background:var(--danger)}
+.depth-bank,.depth-copy{width:100%}
+
+/* after a dig and the day */
+.depth-summary{display:grid;gap:var(--space-3);margin:0 0 var(--space-3)}
+.depth-summary h2{font-size:var(--text-lg)}
+.depth-summary-points strong{font:36px/1 var(--font-display)}
+.depth-examples-title{font-size:var(--text-sm);font-weight:var(--weight-medium)}
+.depth-examples{display:grid;gap:var(--space-1);margin:0;padding:0;list-style:none;font-size:var(--text-sm);color:var(--muted)}
+.depth-results{display:grid;gap:var(--space-2);margin:var(--space-3) 0 var(--space-4);padding:0;list-style:none}
+.depth-results li{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:var(--space-2)}
+.depth-results li{padding:var(--space-2) var(--space-3);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--soft)}
+.depth-result-name{font-weight:var(--weight-medium)}
+.depth-result-gems{display:flex;align-items:center;gap:2px}
+.depth-result-gems img{width:20px;height:20px;image-rendering:pixelated}
+.depth-results strong{font:24px/1 var(--font-display)}
+.depth-cavein{margin-left:var(--space-1);font-size:var(--text-xs);color:var(--danger)}
+.depth-share-label{display:block;margin-bottom:var(--space-2);font-weight:var(--weight-medium)}
+.depth-share{display:block;width:100%;min-height:150px;margin-bottom:var(--space-3);padding:var(--space-3)}
+.depth-share{border:1px solid var(--line-strong);border-radius:var(--radius-md);background:var(--soft);color:var(--ink)}
+.depth-share{font:var(--text-sm)/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+.depth-rules{margin-top:var(--space-5);border-top:1px solid var(--line)}
+.depth-rules summary{display:flex;align-items:center;min-height:var(--tap);font-weight:var(--weight-medium);cursor:pointer}
+.depth-rules ul{display:grid;gap:var(--space-2);margin:0;padding-left:1.2em;color:var(--muted);font-size:var(--text-sm)}
+
+@media(min-width:960px){.stratum-button{min-height:72px}}
+@media(prefers-reduced-motion:reduce){.depth-mole{animation:none}}
+:root[data-motion=reduce] .depth-mole{animation:none}

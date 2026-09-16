@@ -1,7 +1,7 @@
-import {tier,assess,rankOf} from './core.js?v=0b45fd07d30d';
-import {baseScore,settlement,findValues} from './rewards.js?v=0b45fd07d30d';
-import {sheetHead,openSheet,bindSheetControls,closeSheet} from './sheet.js?v=0b45fd07d30d';
-import {iconSvg} from './icons.js?v=0b45fd07d30d';
+import {tier,assess,rankOf} from './core.js?v=b6103573572c';
+import {baseScore,settlement,findValues} from './rewards.js?v=b6103573572c';
+import {sheetHead,openSheet,bindSheetControls,closeSheet} from './sheet.js?v=b6103573572c';
+import {iconSvg} from './icons.js?v=b6103573572c';
 const art='./assets/one-more-swing/';
 const escape=text=>String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 

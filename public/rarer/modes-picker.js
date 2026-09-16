@@ -4,10 +4,13 @@
 // Every row looks the same. Rows that navigate are links and carry a chevron;
 // rows that open a sheet are buttons and carry none, so the two never look
 // identical but behave differently (UX-SPEC §3.9).
-import {modeIcon,iconSvg} from './icons.js?v=0b45fd07d30d';
-import {sheetHead,openSheet,bindSheetControls} from './sheet.js?v=0b45fd07d30d';
+import {modeIcon,iconSvg} from './icons.js?v=b6103573572c';
+import {sheetHead,openSheet,bindSheetControls} from './sheet.js?v=b6103573572c';
 
 export const MODE_GROUPS=[
+ {id:'new',label:'New',items:[
+  {id:'depth',name:'Depths',hint:'Pick a layer, then name something that lives there',href:'depth.html'}
+ ]},
  {id:'endless',label:'Endless',items:[
   {id:'free',name:'Free Dig',hint:'Any category, any time',href:'?mode=free'},
   {id:'deep',name:'Deep Mine',hint:'One endless run, deeper each time',href:'?mode=deep'}

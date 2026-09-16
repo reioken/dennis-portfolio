@@ -1,4 +1,4 @@
-import {categories} from './core.js?v=0b45fd07d30d';
+import {categories} from './core.js?v=b6103573572c';
 export const utcDay=(now=new Date())=>now.toISOString().slice(0,10);
 // Daily numbers, like Wordle: Spelunkle #1 is the first edition.
 export const FIRST_DAY='2026-09-13';

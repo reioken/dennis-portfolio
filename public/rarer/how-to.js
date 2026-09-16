@@ -1,5 +1,5 @@
-import {tiers} from './core.js?v=0b45fd07d30d';
-import {iconSvg} from './icons.js?v=0b45fd07d30d';
+import {tiers} from './core.js?v=b6103573572c';
+import {iconSvg} from './icons.js?v=b6103573572c';
 const gem='<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 2h8v2h2v6h-2v2h-2v2H6v-2H4v-2H2V4h2z"/><path fill="var(--paper)" opacity=".6" d="M5 4h5v2H7v4H5z"/></svg>';
 const ladder='<svg viewBox="0 0 24 28" aria-hidden="true"><path d="M5 2v24M19 2v24M5 6h14M5 13h14M5 20h14" fill="none" stroke="currentColor" stroke-width="3"/><path d="m9 5 3-3 3 3M12 2v11" fill="none" stroke="var(--paper)" stroke-width="2"/></svg>';
 export function visualGuide({help=false,risk=true}={}){

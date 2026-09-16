@@ -7,11 +7,11 @@
 //
 // Everything above "Sheet" is pure apart from the storage object it is handed,
 // so .rarer-tools/test-save-transfer.mjs can exercise it in Node.
-import {iconSvg} from './icons.js?v=0b45fd07d30d';
-import {sheetHead,openSheet,closeSheet,bindSheetControls} from './sheet.js?v=0b45fd07d30d';
-import {decodeProgress,SAVE_KEY,BACKUP_KEY} from './daily-progress.js?v=0b45fd07d30d';
-import {statsFrom} from './stats.js?v=0b45fd07d30d';
-import {utcDay} from './edition.js?v=0b45fd07d30d';
+import {iconSvg} from './icons.js?v=b6103573572c';
+import {sheetHead,openSheet,closeSheet,bindSheetControls} from './sheet.js?v=b6103573572c';
+import {decodeProgress,SAVE_KEY,BACKUP_KEY} from './daily-progress.js?v=b6103573572c';
+import {statsFrom} from './stats.js?v=b6103573572c';
+import {utcDay} from './edition.js?v=b6103573572c';
 
 export const SETTINGS_KEY='rarer.settings.v1';
 export const THEME_KEY='rarer.theme';

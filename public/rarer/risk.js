@@ -1,7 +1,7 @@
-import {tier} from './core.js?v=0b45fd07d30d';
-import {baseScore as score} from './rewards.js?v=0b45fd07d30d';
-import {comboIcon} from './rewards-view.js?v=0b45fd07d30d';
-import {dailyNumber} from './edition.js?v=0b45fd07d30d';
+import {tier} from './core.js?v=b6103573572c';
+import {baseScore as score} from './rewards.js?v=b6103573572c';
+import {comboIcon} from './rewards-view.js?v=b6103573572c';
+import {dailyNumber} from './edition.js?v=b6103573572c';
 export const pointsLeft=(chain,lost=0,reverse=false)=>Math.max(0,score(chain,reverse)-lost);
 // The first slip is a free warning. The second caves in: half the haul spills and the dig ends.
 export function takePenalty(chain,lost,mistakes,cargo,reverse=false){
