@@ -17,6 +17,7 @@ import { ScreenDissolve } from './screenDissolve';
 import { textTexture } from './marqueeTexture';
 import { tvPresentation } from './presentation.mjs';
 import { ROOM_POWER_MS, collectRoomPowerTargets, withRoomPower } from './roomPower.mjs';
+import { visibleTimeout } from './visibleTimeout.mjs';
 import { makeGlassWear, clearScreenGlass, addPanelWear } from './hardwareWear';
 import { WallPaint } from './wallPaint';
 import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './hallLayout';
@@ -136,6 +137,13 @@ export const SPACING = 2.0; // Ceiling fixture rhythm; cabinets use measured wid
 const TEX = '/textures/quaternius';
 
 const NEAR = 3;
+/**
+ * World-space height band the hall pose keeps between the nav and the dock on desktop: from the floor edge
+ * in front of the bed to the top of the wall TV. Derived from the 1920×1080 framing (nav 56 px, dock top at
+ * 960 px, fov 42, camera 6.5 m from the cabinet plane): that window stays pixel-identical, shorter windows widen
+ * the fov instead of hiding the cabinet bases under the dock.
+ */
+const HALL_BAND: readonly [number, number] = [-0.35, 3.82];
 
 /**
  * Echte Modelle pro Automatentyp. `height` normiert die Modellhöhe in Metern, `screen` legt
@@ -540,7 +548,8 @@ export class HallScene {
   private managedLoading = false;
   private assembled = false;
   private readinessTimer = 0;
-  private readyTimeouts = new Set<number>();
+  /** Cancel functions of the visible-time startup budgets (see visibleTimeout). */
+  private readyTimeouts = new Set<() => void>();
   private readyRejectors: ((reason: Error) => void)[] = [];
   private startupFailed = false;
   private deferredScreens = new Map<number, (() => Promise<void> | void)[]>();
@@ -1197,11 +1206,12 @@ export class HallScene {
     return new Promise<void>((resolve, reject) => {
       this.readyResolvers.push(resolve);
       this.readyRejectors.push(reject);
-      const timeout = window.setTimeout(() => {
-        this.readyTimeouts.delete(timeout);
+      // Visible time only: a tab opened in the background must not burn its budget while hidden.
+      const cancel = visibleTimeout(timeoutMs, () => {
+        this.readyTimeouts.delete(cancel);
         if (!this.readyDone) this.failStartup(new Error('Hall assets or GPU preparation timed out'));
-      }, timeoutMs);
-      this.readyTimeouts.add(timeout);
+      });
+      this.readyTimeouts.add(cancel);
       this.queueReady();
     });
   }
@@ -1211,7 +1221,7 @@ export class HallScene {
     this.startupFailed = true;
     this.container.dataset.startupPhase = 'failed';
     this.stop();
-    this.readyTimeouts.forEach(window.clearTimeout);
+    this.readyTimeouts.forEach(cancel => cancel());
     this.readyTimeouts.clear();
     const rejects = this.readyRejectors.splice(0);
     this.readyResolvers = [];
@@ -1375,7 +1385,7 @@ export class HallScene {
     }
     this.powerTargets = collectRoomPowerTargets(this.scene);
     this.warming = false;
-    this.readyTimeouts.forEach(window.clearTimeout);
+    this.readyTimeouts.forEach(cancel => cancel());
     this.readyTimeouts.clear();
     this.container.dataset.warmupMs = String(Math.round(performance.now() - warmAt));
     this.container.dataset.readyMs = String(Math.round(performance.now() - this.bornAt));
@@ -2311,11 +2321,28 @@ export class HallScene {
     const aspect = this.camera.aspect || 1.6;
     if (this.pose === 'hall' || !m) {
       const compact=this.container.clientWidth<768;
-      const floorBand=this.frame.cy+this.frame.fh/2;
-      const lookY=1.45+(floorBand-.82)*2;
-      this.goalPos.set(this.targetX,compact?1.7:1.8,compact?6.0:6.5);
-      this.goalLook.set(this.targetX,compact?1.35:lookY,0);
-      this.goalFov=compact?48:42;
+      if (compact) {
+        this.goalPos.set(this.targetX,1.7,6.0);
+        this.goalLook.set(this.targetX,1.35,0);
+        this.goalFov=48;
+        return;
+      }
+      // Desktop: the free band between the nav and the dock (frame) must hold the world band
+      // HALL_BAND = [bed/floor edge, TV/sign top]. That band is what a 1920×1080 window shows at fov 42
+      // (bed clear of the dock, TV under the nav). Shorter windows — 1080p at 125 % / 150 % Windows
+      // scaling with the browser chrome taken off leave 730 / 580 px — used to keep the fixed fov and
+      // only tilt, so the cabinet bases and the bed disappeared under the dock (2026-09-16). Now the fov
+      // widens just enough for the band to fit, and the look height pins the floor edge to the dock top.
+      const [yLow,yHigh]=HALL_BAND;
+      const fh=Math.max(.3,this.frame.fh);
+      const sBottom=this.frame.cy+fh/2;
+      const dist=6.5;
+      const halfSpan=Math.max(dist*Math.tan(THREE.MathUtils.degToRad(21)),(yHigh-yLow)/(2*fh));
+      const fov=2*THREE.MathUtils.radToDeg(Math.atan(halfSpan/dist));
+      const lookY=yLow+(2*sBottom-1)*halfSpan;
+      this.goalPos.set(this.targetX,1.8,dist);
+      this.goalLook.set(this.targetX,lookY,0);
+      this.goalFov=Math.min(56,fov);
       return;
     }
     const f = this.frame;
@@ -3142,7 +3169,7 @@ export class HallScene {
     if (this.disposed) return;
     this.disposed = true;
     window.clearTimeout(this.readinessTimer);
-    this.readyTimeouts.forEach(window.clearTimeout);
+    this.readyTimeouts.forEach(cancel => cancel());
     this.readyTimeouts.clear();
     this.readyRejectors.splice(0).forEach(reject => reject(new Error('Hall disposed during startup')));
     this.readyResolvers = [];

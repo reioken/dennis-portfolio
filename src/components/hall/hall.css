@@ -1498,3 +1498,4 @@ body[data-mode='case'] .hall-panel__btn--coin {
   box-shadow: 0 0 24px #b29ad633;
 }
 @media (pointer: coarse) { .hall__blue-pet { pointer-events: auto; } }
+

@@ -107,6 +107,13 @@ function Bi({ de, en }: { de: string; en?: string }) {
 
 export const isMachine = (it: HallItem): it is HallMachine => it.kind !== 'kasse' && it.kind !== 'phone';
 
+/**
+ * Below 900 px a project page is a native reading page (hall-panel.css, CaseCaptures native mode, 2026-09-17):
+ * the hall behind it is hidden, so it is neither booted nor rendered there. About and Contact keep the hall.
+ */
+export const nativeCase = (mode: HallMode, it?: HallItem) =>
+  typeof window !== 'undefined' && window.innerWidth < 900 && mode === 'case' && Boolean(it) && isMachine(it as HallItem);
+
 /** Position eines Automaten relativ zum Fokus — Reihe, die in die Halle zurückweicht */
 function placement(d: number) {
   const a = Math.abs(d);
@@ -199,11 +206,17 @@ export function measureFrame(kind: 'hall' | 'case' | 'arcade' | 'center' | 'scre
   }
   let left = W;
   let top = H;
-  const panel = predict ? null : document.querySelector<HTMLElement>('.hall-panel');
+  const found = predict ? null : document.querySelector<HTMLElement>('.hall-panel');
+  const rect = found?.getBoundingClientRect();
+  // Desktop, but the panel is a full-width block: its route stylesheet (about.css, the case CSS) is only requested
+  // after the soft swap, so the first measurement saw an unstyled panel, fell into the phone sheet branch below and
+  // aimed the camera under the floor. About never re-measured and stayed black beside the panel in production
+  // (2026-09-17; dev injects styles early and never showed it). Until the real geometry exists, predict it.
+  const unstyled = Boolean(rect) && W >= 900 && (rect!.width >= W * 0.9 || rect!.width === 0);
+  const panel = rect && !unstyled ? rect : null;
   if (panel) {
-    const r = panel.getBoundingClientRect();
-    if (r.width < W * 0.9) left = r.left;
-    else top = r.top;
+    if (panel.width < W * 0.9) left = panel.left;
+    else top = panel.top;
   } else if (W >= 900) {
     // Vorhersage der Panel-Linken (hall-panel.css), damit der erste Frame nicht springt:
     // Über mich folgt --panel-left, Projekte der A1-Geometrie (Karte links der Mitte, Breite wächst mit dem Schirm)
@@ -292,6 +305,10 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
   const [gl, setGl] = useState<'css' | 'load' | 'on'>('css');
   const glRef = useRef(gl);
   glRef.current = gl;
+  /** WebGL is available but the stage was not booted because the visit began on a native project page */
+  const deferredBoot = useRef(false);
+  /** Pose the stage is built with: the page mode at mount, or the route a deferred boot happens on */
+  const bootMode = useRef<HallMode>(initialMode);
   const [lite, setLite] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -422,6 +439,12 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       const small = window.matchMedia('(max-width: 760px)').matches;
       const weak = (navigator as { hardwareConcurrency?: number }).hardwareConcurrency ? (navigator.hardwareConcurrency ?? 8) <= 4 : false;
       setLite(small || weak);
+      if (nativeCase(initialMode, items[focusRef.current])) {
+        // No three.js download and no 10 s warm-up for a page that never shows the hall; booted on the way back.
+        deferredBoot.current = true;
+        document.documentElement.classList.remove('gl-pending');
+        return;
+      }
       frameRef.current = measureFrame(initialMode, items[focusRef.current]?.kind === 'kasse');
       setGl('load');
     } catch {
@@ -476,10 +499,22 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       modeRef.current = r.mode;
       if (r.index >= 0) focusRef.current = r.index;
       const sc = sceneRef.current;
+      const native = nativeCase(r.mode, r.index >= 0 ? items[r.index] : undefined);
       if (sc) {
         if (r.index >= 0) sc.setFocus(r.index);
         sc.setPose(poseFor(r.mode), measureFrame(r.mode, r.index >= 0 && items[r.index].kind === 'kasse'));
-        sc.start();
+        // Hidden behind a native project page: keep the pose for the way back, render nothing meanwhile
+        if (native) sc.stop();
+        else sc.start();
+        document.documentElement.classList.remove('gl-pending');
+      } else if (!native && deferredBoot.current && glRef.current === 'css') {
+        // The visit began on a native project page; this route shows the hall, so boot it now (HallGuard has
+        // already put the loading emblem up for this swap).
+        deferredBoot.current = false;
+        bootMode.current = r.mode;
+        frameRef.current = measureFrame(r.mode, r.index >= 0 && items[r.index].kind === 'kasse');
+        setGl('load');
+      } else if (native) {
         document.documentElement.classList.remove('gl-pending');
       }
     };
@@ -574,8 +609,23 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       });
     };
     window.addEventListener('resize', onResize);
+    // The panel's own box changes without a window resize: its route stylesheet lands after the soft swap, fonts
+    // load, the sheet expands. Re-measure then too; the panel element is replaced on every page load.
+    let ro: ResizeObserver | null = null;
+    const watchPanel = () => {
+      ro?.disconnect();
+      ro = null;
+      const panel = document.querySelector('.hall-panel');
+      if (!panel || typeof ResizeObserver === 'undefined') return;
+      ro = new ResizeObserver(onResize);
+      ro.observe(panel);
+    };
+    watchPanel();
+    document.addEventListener('astro:page-load', watchPanel);
     return () => {
       window.removeEventListener('resize', onResize);
+      document.removeEventListener('astro:page-load', watchPanel);
+      ro?.disconnect();
       cancelAnimationFrame(raf);
     };
   }, []);
@@ -986,7 +1036,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
             attract={attract}
             reduce={reduce}
             lite={lite}
-            pose={poseFor(initialMode)}
+            pose={poseFor(bootMode.current)}
             frame={frameRef.current}
             onScene={(s) => {
               sceneRef.current = s;

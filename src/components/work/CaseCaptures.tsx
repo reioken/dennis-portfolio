@@ -77,6 +77,15 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
   const [open, setOpen] = useState(false);
   const [closeup, setCloseup] = useState(false);
   const [mounted, setMounted] = useState(false);
+  /**
+   * Phones and portrait tablets (< 900 px) read project pages natively (2026-09-17): no 3D cabinet behind a
+   * half-height sheet. The captures become a large swipeable carousel at the top of the page, a tap opens the
+   * lightbox, and nothing here drives the cabinet screen or the close-up.
+   */
+  const [native, setNative] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
+  /** The carousel reports its own scroll position as the selection; do not scroll it back in response. */
+  const fromHeroScroll = useRef(false);
   const stripRef = useRef<HTMLDivElement>(null);
   const hoverTimer = useRef<number | null>(null);
   const hovering = useRef(false);
@@ -106,6 +115,14 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
     return () => obs.disconnect();
   }, []);
 
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 899px)');
+    const apply = () => setNative(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+
   /* ---------- Bildschirm folgt der Auswahl; beim Verlassen wieder frei ---------- */
   const src = current?.src ?? null;
   useEffect(() => {
@@ -121,14 +138,14 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
 
   // Only the selected cabinet in the info view rotates. Interaction takes ownership.
   useEffect(() => {
-    if (reduce || autoplayPaused || closeup || open || images.length < 2) return;
+    if (native || reduce || autoplayPaused || closeup || open || images.length < 2) return;
     const timer = window.setInterval(() => {
       if (!document.hidden && document.querySelector('.hall.is-3d[data-mode="case"]')) {
         setSel(previous => ((previous ?? 0) + 1) % images.length);
       }
     }, CABINET_HOLD_MS);
     return () => window.clearInterval(timer);
-  }, [reduce, autoplayPaused, closeup, open, images.length, gi]);
+  }, [native, reduce, autoplayPaused, closeup, open, images.length, gi]);
 
   /* ---------- Aktive Thumb im Streifen halten (nur horizontal, das Panel scrollt nicht mit) ---------- */
   useEffect(() => {
@@ -140,6 +157,48 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
     const left = el.offsetLeft - strip.clientWidth / 2 + el.offsetWidth / 2;
     strip.scrollTo({ left, behavior: reduce ? 'auto' : 'smooth' });
   }, [shown, gi, reduce]);
+
+  /* ---------- Native carousel: its scroll position is the selection; outside picks scroll it ---------- */
+  useEffect(() => {
+    if (!native) return;
+    const hero = heroRef.current;
+    if (!hero) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        const mid = hero.scrollLeft + hero.clientWidth / 2;
+        let best = 0;
+        let bestD = Infinity;
+        hero.querySelectorAll<HTMLElement>('[data-slide]').forEach((el, i) => {
+          const d = Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid);
+          if (d < bestD) { bestD = d; best = i; }
+        });
+        setSel((previous) => {
+          if ((previous ?? 0) === best) return previous;
+          fromHeroScroll.current = true;
+          return best;
+        });
+      });
+    };
+    hero.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      hero.removeEventListener('scroll', onScroll);
+      window.cancelAnimationFrame(raf);
+    };
+  }, [native, gi, images.length]);
+  useEffect(() => {
+    if (!native) return;
+    if (fromHeroScroll.current) {
+      fromHeroScroll.current = false;
+      return;
+    }
+    const hero = heroRef.current;
+    const el = hero?.querySelector<HTMLElement>(`[data-slide="${shown}"]`);
+    if (!hero || !el) return;
+    hero.scrollTo({ left: el.offsetLeft - (hero.clientWidth - el.offsetWidth) / 2, behavior: 'auto' });
+  }, [native, shown, gi]);
 
   const thumbAt = useCallback((i: number) => stripRef.current?.querySelector<HTMLElement>(`[data-i="${i}"]`) ?? null, []);
 
@@ -159,10 +218,15 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
       if (!images.length) return;
       if (i !== undefined) pick(i);
       setAutoplayPaused(true);
+      if (native) {
+        // No cabinet on a phone page: the lightbox is the large view.
+        setOpen(true);
+        return;
+      }
       setCloseup(true);
       tellCloseup(true, i ?? shown);
     },
-    [images.length, pick, shown],
+    [images.length, pick, shown, native],
   );
   const exitCloseup = useCallback(() => {
     setCloseup(false);
@@ -267,7 +331,7 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
   const titleAttr = lang === 'en' ? PE.showOnCabinet : P.showOnCabinet;
 
   return (
-    <div className={`captures${phone ? ' captures--phone' : ''}`} style={{ ['--brand' as string]: brand } as CSSProperties}>
+    <div className={`captures${phone ? ' captures--phone' : ''}${native ? ' captures--native' : ''}`} style={{ ['--brand' as string]: brand } as CSSProperties}>
       {groups.length > 1 ? (
         <div className="captures__chips" role="group" aria-label={surfacesLabel}>
           {groups.map((g, i) => (
@@ -291,13 +355,35 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
         <p className="captures__label mono">
           <Bi de={P.captures} en={PE.captures} /> · {String(images.length).padStart(2, '0')}
         </p>
-        <button type="button" className="captures__large mono" onClick={() => enterCloseup()}>
-          <Icon name="expand" size={16} />
-          <Bi de={P.viewLarge} en={PE.viewLarge} />
-        </button>
+        {native ? null : (
+          <button type="button" className="captures__large mono" onClick={() => enterCloseup()}>
+            <Icon name="expand" size={16} />
+            <Bi de={P.viewLarge} en={PE.viewLarge} />
+          </button>
+        )}
       </div>
 
-      {images.length > 6 && <button type="button" className="captures__more" aria-expanded={expanded || shown >= 6} onClick={() => { if (expanded || shown >= 6) { setExpanded(false); setSel(0); } else setExpanded(true); }}><Bi de={expanded || shown >= 6 ? 'Weniger Screenshots' : `Alle ${images.length} Screenshots`} en={expanded || shown >= 6 ? 'Fewer screenshots' : `All ${images.length} screenshots`} /></button>}
+      {native ? (
+        <div className="captures__hero" ref={heroRef} role="group" aria-label={lang === 'en' ? PE.captures : P.captures}>
+          {images.map((shot, i) => (
+            <button
+              key={`${group.id}-hero-${shot.src}-${i}`}
+              type="button"
+              data-slide={i}
+              className="captures__slide"
+              aria-label={`Capture ${i + 1} ${lang === 'en' ? 'of' : 'von'} ${images.length}: ${altFor(shot, lang)}`}
+              onClick={() => enterCloseup(i)}
+            >
+              <picture>
+                {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
+                <img src={shot.src} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" draggable={false} />
+              </picture>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {!native && images.length > 6 && <button type="button" className="captures__more" aria-expanded={expanded || shown >= 6} onClick={() => { if (expanded || shown >= 6) { setExpanded(false); setSel(0); } else setExpanded(true); }}><Bi de={expanded || shown >= 6 ? 'Weniger Screenshots' : `Alle ${images.length} Screenshots`} en={expanded || shown >= 6 ? 'Fewer screenshots' : `All ${images.length} screenshots`} /></button>}
       <div className="captures__strip" ref={stripRef} onKeyDown={onStripKey}>
         {images.slice(0, expanded || shown >= 6 ? undefined : 6).map((shot, i) => {
           const on = i === shown;

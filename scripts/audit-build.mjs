@@ -80,7 +80,16 @@ for (const file of marketingFiles) {
     failures.push(`${relative}: hreflang pair missing`);
   }
 
-  const refs = [...html.matchAll(/\b(?:href|src)="([^"]+)"/g)].map((match) => match[1]);
+  const refs = [...html.matchAll(/\b(?:href|src|poster)="([^"]+)"/g)].map((match) => match[1]);
+  // srcset candidates ("a.avif 720w, b.avif 1400w"): a browser that picks a missing AVIF candidate from a
+  // <source type="image/avif"> shows the alt text, it never falls back to the <img> (2026-09-16 /work cards).
+  // Astro's React renderer writes the prop name as-is (`srcSet="…"`), so match case-insensitively.
+  for (const match of html.matchAll(/\bsrcset="([^"]+)"/gi)) {
+    for (const candidate of match[1].split(',')) {
+      const url = candidate.trim().split(/\s+/)[0];
+      if (url) refs.push(url);
+    }
+  }
   for (const ref of refs) {
     const target = localTarget(ref);
     if (target && !(await resolvesPublicPath(target))) {

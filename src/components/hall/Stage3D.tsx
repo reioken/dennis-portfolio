@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { HallItem } from './Hall';
 import { HallScene, type Frame, type Pose } from './hallScene';
+import { visibleTimeout } from './visibleTimeout.mjs';
 
 type Props = {
   items: HallItem[];
@@ -30,7 +31,7 @@ export default function Stage3D({ items, focus, attract, reduce, lite, pose, fra
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    let watchdog: number | undefined;
+    let watchdog: (() => void) | undefined;
     let active = true;
     try {
       scene.current = new HallScene(
@@ -48,13 +49,14 @@ export default function Stage3D({ items, focus, attract, reduce, lite, pose, fra
       cbs.current.onScene(scene.current);
       // Bühne erst zeigen, wenn die Modelle rund um den Start da sind — kein Aufblitzen der Platzhalter
       const sc = scene.current;
-      watchdog = window.setTimeout(() => {
+      // Both budgets count visible time only (background tab: throttled timers, see visibleTimeout).
+      watchdog = visibleTimeout(31000, () => {
         if (active && scene.current === sc) { active = false; cbs.current.onFail(); }
-      }, 31000);
+      });
       sc.ready(30000).then(() => {
-        window.clearTimeout(watchdog);
+        watchdog?.();
         if (active && scene.current === sc) cbs.current.onReady();
-      }).catch(() => { window.clearTimeout(watchdog); if (active) cbs.current.onFail(); });
+      }).catch(() => { watchdog?.(); if (active) cbs.current.onFail(); });
     } catch (err) {
       console.warn('[hall] WebGL nicht verfügbar, CSS-Kulisse bleibt', err);
       cbs.current.onFail();
@@ -72,7 +74,7 @@ export default function Stage3D({ items, focus, attract, reduce, lite, pose, fra
     canvas?.addEventListener('webglcontextlost', lost);
     return () => {
       active = false;
-      window.clearTimeout(watchdog);
+      watchdog?.();
       document.removeEventListener('visibilitychange', vis);
       canvas?.removeEventListener('webglcontextlost', lost);
       cbs.current.onScene(null);

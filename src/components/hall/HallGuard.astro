@@ -26,7 +26,10 @@ import './hall-loading.css';
   try {
     var d = document.documentElement;
     d.classList.remove('gl-pending');
-    if (!document.querySelector('.hall.is-3d, .hall[data-startup-fallback]')) {
+    // Below 900 px a project page is a native reading page without the hall (Hall.tsx nativeCase): no
+    // loading emblem there, the panel must not wait for a stage that is never booted.
+    var nativeCase = window.innerWidth < 900 && /^\/(en\/)?work\/[^/]+\/?$/.test(location.pathname);
+    if (!nativeCase && !document.querySelector('.hall.is-3d, .hall[data-startup-fallback]')) {
       var ok = window.__glOk;
       if (ok === undefined) {
         var c = document.createElement('canvas');

@@ -1392,3 +1392,115 @@ html.is-screen-info .hall-panel__body { padding-top: 64px; }
  .hall-panel .hall-panel__chrome { position: fixed; top: calc(var(--nav-h) + 12px); left: 12px; right: 12px; }
  .hall-panel__chrome .hall-panel__detent { margin-left: auto; }
 }
+
+/* ------------------------------------------------------------------------------------------------------------
+   Native project pages below 900 px (2026-09-17). Dennis: the arcades do not work well on phones. The 3D cabinet
+   behind a half-height sheet left a ~450 px reading window and a 10 s WebGL start on every project. Project
+   pages now use the sheet's existing full-height geometry permanently, the hall behind is hidden and stopped
+   (Hall.tsx), and the captures lead the page as a swipeable carousel (CaseCaptures native mode). About and
+   Contact keep their sheet over the hall.
+   ------------------------------------------------------------------------------------------------------------ */
+@media (max-width: 899px) {
+  .hall-panel--case {
+    top: calc(var(--nav-h) + 8px);
+  }
+  .hall-panel--case .hall-panel__handle,
+  .hall-panel--case .hall-panel__detent {
+    display: none;
+  }
+  .hall-panel--case .hall-panel__body {
+    display: flex;
+    flex-direction: column;
+    /* clears the floating back pill (nav + 8 px, 32 px tall) */
+    padding-top: 60px;
+  }
+  .hall-panel--case .hall-panel__body > * {
+    flex: 0 0 auto;
+  }
+  /* Scrolled text fades out under the floating back pill instead of running behind it */
+  .hall-panel--case .hall-panel__card::before {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    inset: 0 0 auto;
+    height: 58px;
+    border-radius: 18px 18px 0 0;
+    background: linear-gradient(#0b0c12 62%, #0b0c1200);
+    pointer-events: none;
+  }
+  /* Captures first: carousel, caption, then title and text */
+  .hall-panel--case .hall-panel__captures {
+    order: -1;
+    margin-bottom: 18px;
+  }
+  .captures--native .captures__strip {
+    display: none;
+  }
+  .captures--native .captures__hero {
+    display: flex;
+    gap: 10px;
+    margin: 0 calc(var(--pad) * -1);
+    padding: 2px var(--pad) 4px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--pad);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .captures--native .captures__hero::-webkit-scrollbar {
+    display: none;
+  }
+  .captures--native .captures__slide {
+    flex: 0 0 auto;
+    /* 16:10 captures end up ~83 vw wide, so the next slide peeks in and the row reads as swipeable */
+    height: min(52vw, 46svh);
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--brand) 55%, transparent);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #05060a;
+    scroll-snap-align: center;
+    cursor: zoom-in;
+  }
+  .captures--native.captures--phone .captures__slide {
+    height: min(118vw, 60svh);
+  }
+  .captures--native .captures__slide picture,
+  .captures--native .captures__slide img {
+    display: block;
+    height: 100%;
+    width: auto;
+    max-width: 84vw;
+    object-fit: contain;
+  }
+  .captures--native .captures__slide:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  .captures--native .captures__head {
+    order: 2;
+    margin: 12px 0 0;
+  }
+  .captures--native {
+    display: flex;
+    flex-direction: column;
+  }
+  .captures--native .captures__chips {
+    order: 0;
+  }
+  .captures--native .captures__hero {
+    order: 1;
+  }
+  .captures--native .captures__caption {
+    order: 3;
+    margin-top: 6px;
+  }
+  /* The hall behind a native project page is neither visible nor rendered */
+  html:has(.hall-panel--case) .hall {
+    visibility: hidden;
+  }
+  html:has(.hall-panel--case) .hall-panel__hint {
+    display: none;
+  }
+}
