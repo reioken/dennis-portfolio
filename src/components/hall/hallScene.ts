@@ -232,6 +232,19 @@ type Machine = {
 };
 
 const isMachine = (it: HallItem): it is HallMachine => it.kind !== 'kasse' && it.kind !== 'phone';
+/** Figures and props on the floor in front of the machines (Nori, the taxi, sprites). Off for now at Dennis's request (2026-09-19); the claw machine keeps its prizes. */
+const FLOOR_CAST = false;
+/** Plush prizes inside the claw machine, in the machine's floor space (metres; x right, z towards the glass front). */
+const CLAW_PRIZES: { url: string; size: number; x: number; y?: number; z: number; rotY?: number }[] = [
+  // Meshy models from generated reference images (scripts/models/claw-plush-generate.py); the heaps are single meshes, so the toys really press into each other.
+  { url: '/models/plush/pile-back-v1.glb', size: .64, x: 0, z: -.27 },
+  { url: '/models/plush/pile-side-v1.glb', size: .52, x: -.27, z: -.03, rotY: 1.25 },
+  { url: '/models/plush/whale-v1.glb', size: .25, x: .29, z: -.02, rotY: -1.0 },
+  { url: '/models/plush/axolotl-v1.glb', size: .2, x: .3, y: .075, z: -.05, rotY: -.75 },
+  { url: '/models/plush/cat-v1.glb', size: .2, x: .29, z: .27, rotY: -.45 },
+  { url: '/models/plush/axolotl-v1.glb', size: .17, x: -.2, z: .32, rotY: .35 },
+  { url: '/models/plush/whale-v1.glb', size: .21, x: .05, z: .33, rotY: -.35 },
+];
 // Dieselbe Datei (z. B. nori.glb als Figur und als Preis) nur einmal laden
 THREE.Cache.enabled = true;
 
@@ -673,7 +686,7 @@ export class HallScene {
 
     this.buildRoom();
     // Plüsch in der Kasse: nur Figuren ohne eigenes 3D-Modell — Nori steht dort schon als Modell, das alte Bild bleibt draußen
-    this.kassePlush = items.filter(isMachine).filter((it) => !it.characterModel).map((it) => it.character).filter((x): x is string => Boolean(x)).slice(0, 5);
+    this.kassePlush = [];
     this.focus = initial;
     this.initialFocus = initial;
     items.forEach((it, i) => this.addMachine(it, i));
@@ -844,7 +857,7 @@ export class HallScene {
     }
 
     // Figur neben dem Automaten: echtes Modell, sonst Sprite
-    if (isMachine(item) && item.characterModel) {
+    if (FLOOR_CAST && isMachine(item) && item.characterModel) {
       const done = this.track(index);
       this.gltf.load(
         item.characterModel,
@@ -880,7 +893,7 @@ export class HallScene {
         undefined,
         () => done(),
       );
-    } else if (isMachine(item) && (item.characterSheet || item.character)) {
+    } else if (FLOOR_CAST && isMachine(item) && (item.characterSheet || item.character)) {
       const sheet = item.characterSheet;
       const tex = this.loader.load(sheet ? sheet.url : item.character!);
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -906,7 +919,7 @@ export class HallScene {
       const spec = MODELS_BY_SLUG[item.slug] ?? MODELS[item.kind];
       if (spec) this.loadModel(m, spec);
     }
-    if (isMachine(item) && item.props) for (const prop of item.props) this.loadProp(m, prop);
+    if (FLOOR_CAST && isMachine(item) && item.props) for (const prop of item.props) this.loadProp(m, prop);
   }
 
   /** Requisite: auf Ziel-Länge normieren, am Boden aufsetzen, neben den Automaten stellen */
@@ -1248,9 +1261,10 @@ export class HallScene {
    * too: no visibility or camera mutations. Canvas uses display-space tone mapping; composer and reflector
    * targets use linear output without tone mapping, so the two are distinct Three shader variants.
    */
-  private async compileFor(target: THREE.WebGLRenderTarget | null, batchSize: number): Promise<number> {
+  private async compileFor(target: THREE.WebGLRenderTarget | null, batchSize: number, parallel = false): Promise<number> {
     let maxBatch = 0;
     const renderables = this.compileRenderables;
+    const submitted: Promise<unknown>[] = [];
     for (let i = 0; i < renderables.length; i += batchSize) {
       if (this.disposed || this.startupFailed) return maxBatch;
       const batch = new THREE.Group();
@@ -1258,21 +1272,39 @@ export class HallScene {
       batch.children = renderables.slice(i, i + batchSize);
       const batchAt = performance.now();
       const previousTarget = this.renderer.getRenderTarget();
+      let pending: Promise<unknown>;
       try {
         this.renderer.setRenderTarget(target);
-        this.warmupPromise = this.renderer.compileAsync(batch, this.camera, this.scene);
+        pending = this.renderer.compileAsync(batch, this.camera, this.scene);
       } finally {
         // Compilation captures these parameters synchronously. Never retain an
         // offscreen framebuffer across an asynchronous navigation/disposal turn.
         this.renderer.setRenderTarget(previousTarget);
       }
+      if (parallel) {
+        // Behind the loading emblem every program is handed to the driver before any is awaited:
+        // KHR_parallel_shader_compile builds them on its worker threads at once. Awaiting batch by
+        // batch held the driver to twelve programs at a time (2026-09-19: 4.5 s of a 10.7 s start).
+        submitted.push(pending.catch(() => undefined));
+      } else {
+        this.warmupPromise = pending;
+        try {
+          await this.warmupPromise;
+        } finally {
+          this.warmupPromise = null;
+        }
+      }
+      maxBatch = Math.max(maxBatch, performance.now() - batchAt);
+      await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+    }
+    if (parallel) {
+      this.warmupPromise = Promise.all(submitted);
       try {
         await this.warmupPromise;
       } finally {
         this.warmupPromise = null;
       }
-      maxBatch = Math.max(maxBatch, performance.now() - batchAt);
-      await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+      if (this.disposed || this.startupFailed) return maxBatch;
     }
     this.compiledTargets.add(target);
     return maxBatch;
@@ -1344,7 +1376,7 @@ export class HallScene {
     // ensureCompiled() before the performance watchdog switches the render path, so no program is built on first sight.
     const startupTarget = this.composer && this.perfLevel === 2 ? this.composer.readBuffer : null;
     this.compileRenderables = renderables;
-    maxCompileBatch = await this.compileFor(startupTarget, 12);
+    maxCompileBatch = await this.compileFor(startupTarget, 12, true);
     this.container.dataset.compileMs = String(Math.round(performance.now() - compileAt));
     this.container.dataset.compileBatchMaxMs = String(Math.round(maxCompileBatch));
     performance.mark('hall:compile-end');
@@ -1862,13 +1894,8 @@ export class HallScene {
             () => doneF(),
           );
         }
-        // Preise auf dem Boden: Nori (Modell), das Taxi (Modell), der Igel und die anderen als Plüsch
-        const prizes: { url?: string; sprite?: string; size: number; x: number; z: number; rotY?: number }[] = [];
-        const nori = this.items.find((it) => isMachine(it) && it.characterModel);
-        if (nori && isMachine(nori) && nori.characterModel) prizes.push({ url: nori.characterModel, size: 0.3, x: -0.27, z: 0.14, rotY: 0.6 });
-        const taxi = this.items.find((it) => isMachine(it) && it.props?.length);
-        if (taxi && isMachine(taxi) && taxi.props?.[0]) prizes.push({ url: taxi.props[0].url, size: 0.36, x: 0.28, z: 0.1, rotY: -0.7 });
-        this.kassePlush.forEach((src, i) => prizes.push({ sprite: src, size: 0.2, x: -0.3 + i * 0.2, z: -0.22 + (i % 2) * 0.08 }));
+        // Prizes around the figure: plush models made for this machine (CLAW_PRIZES).
+        const prizes: { url?: string; sprite?: string; size: number; x: number; y?: number; z: number; rotY?: number }[] = CLAW_PRIZES.map((pz) => ({ ...pz }));
         for (const pz of prizes) {
           if (pz.url) {
             this.gltf.load(pz.url, (pr) => {
@@ -1879,6 +1906,8 @@ export class HallScene {
                 if (!mesh.isMesh || !mesh.material) return;
                 const mat = mesh.material as THREE.MeshStandardMaterial;
                 if (mat.vertexColors) mat.vertexColors = false;
+                // The cabinet's top light sits right above the pale fabrics: hold them under white.
+                mat.color.multiplyScalar(.8);
                 mat.needsUpdate = true;
               });
               const b = new THREE.Box3().setFromObject(r);
@@ -1889,7 +1918,7 @@ export class HallScene {
               r.scale.setScalar(kk);
               r.position.set(-cc.x * kk, -b.min.y * kk, -cc.z * kk);
               holder.add(r);
-              holder.position.set(pz.x, floorTop, pz.z);
+              holder.position.set(pz.x, floorTop + (pz.y ?? 0), pz.z);
               holder.rotation.y = pz.rotY ?? 0;
               g.add(holder);
               this.dirty = true;
@@ -2391,7 +2420,7 @@ export class HallScene {
     const ex = this.extentOf(m);
     // Maßgeblich für die Höhe ist die Vorderseite der Station (Leuchtschild, Bedienfeld): sie liegt der
     // Kamera am nächsten und würde sonst über den Rahmen hinauswachsen
-    const hasMascot = isMachine(m.item) && Boolean(m.item.characterModel || m.item.character || m.item.characterSheet || m.item.props?.length);
+    const hasMascot = FLOOR_CAST && isMachine(m.item) && Boolean(m.item.characterModel || m.item.character || m.item.characterSheet || m.item.props?.length);
     const fill = hasMascot ? .84 : .9;
     const dFront = Math.max(ex.h / (fill * f.fh * 2 * tanH), ex.w / (0.9 * f.fw * 2 * aspect * tanH), 1.0);
     const d = dFront + ex.d * 0.5;

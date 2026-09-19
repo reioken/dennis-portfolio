@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { navigate } from 'astro:transitions/client';
 import type { Lang } from '../../lib/i18n';
 
 /**
@@ -7,16 +8,24 @@ import type { Lang } from '../../lib/i18n';
  * navigiert zur Schwester-URL. Die EN-Seiten sind das DE-HTML mit html[data-lang="en"] (scripts/en-routes.mjs),
  * darum kommt der aktive Zustand aus CSS (html[data-lang] .lang-switch [data-part]) und nicht aus React-Klassen —
  * abweichende Server-Attribute würde die Hydration nicht korrigieren.
+ * Der Wechsel läuft als weiche Navigation: die Halle bleibt stehen und zündet nicht neu; der Swap setzt
+ * html[data-lang], Halle und Navigation beobachten das Attribut.
  */
 export default function LangSwitch({ initialLang = 'de' }: { initialLang?: Lang }) {
   const ref = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const en = document.documentElement.dataset.lang === 'en';
-    const b = ref.current;
-    if (!b) return;
-    b.setAttribute('aria-label', en ? 'Auf Deutsch wechseln' : 'Switch to English');
-    b.title = en ? 'Deutsch' : 'English';
+    const label = () => {
+      const en = document.documentElement.dataset.lang === 'en';
+      const b = ref.current;
+      if (!b) return;
+      b.setAttribute('aria-label', en ? 'Auf Deutsch wechseln' : 'Switch to English');
+      b.title = en ? 'Deutsch' : 'English';
+    };
+    label();
+    const observer = new MutationObserver(label);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-lang'] });
+    return () => observer.disconnect();
   }, []);
 
   const toggle = () => {
@@ -30,7 +39,7 @@ export default function LangSwitch({ initialLang = 'de' }: { initialLang?: Lang 
           ? pathname
           : `/en${pathname === '/' ? '/' : pathname}`
         : pathname.replace(/^\/en(?=\/|$)/, '') || '/';
-    window.location.assign(`${target}${search}${hash}`);
+    navigate(`${target}${search}${hash}`);
   };
 
   return (

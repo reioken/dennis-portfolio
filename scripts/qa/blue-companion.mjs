@@ -23,8 +23,12 @@ try {
     await page.waitForFunction(() => window.__hall?.readyDone && window.__hall?.blue, { timeout: 90000 });
     await page.waitForTimeout(reduce ? 500 : 6000);
     const home = await state(page); assert.equal(home.plan.kind, 'home');
-    // Station: pick the third cabinet, Blue strolls in and sits beside it.
+    // Station: browsing alone never wakes him (only a click, a toy or Über mich does) …
     await page.evaluate(() => window.__hall.cb.onPick(2));
+    await page.waitForTimeout(reduce ? 500 : 2500);
+    const dozing = await state(page); assert.equal(dozing.mood, 'sleep'); assert.equal(dozing.plan.kind, 'home');
+    // … once the visitor has woken him he strolls to the picked cabinet and sits beside it.
+    await page.evaluate(() => window.__hall.blue.disturb());
     const seated = await until(page, s => s.focus === 2 && (s.mood === 'sit' || s.mood === 'sitidle'), reduce ? 4000 : 30000, 'sit at station 2');
     assert.equal(seated.plan.kind, 'station'); assert.equal(seated.elevation, 0);
     const stationX = await page.evaluate(() => window.__hall.stationX.map(v => +v.toFixed(3)));

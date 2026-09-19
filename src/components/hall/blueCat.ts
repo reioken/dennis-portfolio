@@ -1339,7 +1339,9 @@ export class BlueCat {
     this.clock += dt;
     this.frame++;
     const stationX = scene?.stationX ?? [this.stationX];
-    const plan = this.wanted(scene);
+    let plan = this.wanted(scene);
+    // Asleep in his bed he stays there while the visitor browses the stations: only a click, a toy or Über mich wakes him (Dennis, 2026-09-19).
+    if (plan.kind === 'station' && this.mood === 'sleep' && this.inBed) plan = { kind: 'home' };
     if (this.toy?.held) this.playUntil = this.clock + 28;
     if (plan.kind !== 'home' || reduce || this.clock > this.playUntil) this.toy = null;
     if (plan.kind !== this.plan.kind || (plan.kind === 'station' && this.plan.kind === 'station' && plan.index !== this.plan.index)) this.replan(plan, stationX, reduce);
@@ -1362,8 +1364,7 @@ export class BlueCat {
         case 'turn': if (this.age * this.turnRate > this.length(this.turnClip)) this.advance(stationX); else this.applyTurn(); break;
         case 'sitarch': if (this.age > this.length('sitarch') && this.purr <= .2) this.advance(stationX); break;
         case 'sleep':
-          if (this.undisturbed && this.hover && this.clock - this.hoverSince > .35) this.disturb();
-          else if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
+          if (this.age > this.dwell) { if (this.plan.kind === 'station') this.enter('sitidle'); else this.enter('wake'); }
           break;
         case 'arch': if (this.age > this.length('arch') && this.purr <= .2) this.advance(stationX); break;
         case 'wake': if (this.age > this.length('wake')) this.advance(stationX); break;
