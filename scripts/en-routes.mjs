@@ -71,6 +71,10 @@ const META_EN = {
     title: 'Lowlight — Dennis Bierreth-Fernandez',
     desc: 'Resizable Windows companion for Spotify — Obsidian and Frosted Glass themes.',
   },
+  'work/vgm-battle/': {
+    title: 'VGM Battle — Dennis Bierreth-Fernandez',
+    desc: 'Battle, rank and discover the greatest video game music ever written.',
+  },
   'work/riftback/': {
     title: 'Riftback — Dennis Bierreth-Fernandez',
     desc: 'Fan reference for League Classic: builds, champions, items, runes, jungle and tier lists — without invented win rates.',

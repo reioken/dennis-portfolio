@@ -4,16 +4,18 @@
 // check: node, mesh, material, animation and skin names must be unchanged, because the hall addresses controls,
 // screens and glow parts by name. A file the pass would make larger is restored from the original. Originals are
 // kept in .source-assets/models-original/ for rollback.
-//   node scripts/models/shrink-textures.mjs && node scripts/models/pack-models.mjs [--dry]
+//   node scripts/models/shrink-textures.mjs && node scripts/models/pack-models.mjs [--dry] [--only <name>]
+// --only packs one file: a full run rewrites every GLB byte-wise, and those names are edge-cached for a day.
 import { NodeIO, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, prune, resample, meshopt } from '@gltf-transform/functions';
 import { MeshoptEncoder, MeshoptDecoder } from 'meshoptimizer';
 import { readdir, stat, mkdir, copyFile } from 'node:fs/promises';
-import { join, relative, dirname } from 'node:path';
+import { join, relative, dirname, basename } from 'node:path';
 
 const ROOT = 'public/models', BACKUP = '.source-assets/models-original';
 const dry = process.argv.includes('--dry');
+const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 await MeshoptEncoder.ready; await MeshoptDecoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 
@@ -43,6 +45,7 @@ const differences = (a, b) => Object.keys(a).filter(k => JSON.stringify(a[k]) !=
 
 const rows = [];
 for await (const file of walk(ROOT)) {
+  if (only && basename(file) !== `${only}.glb`) continue;
   const before = (await stat(file)).size;
   const document = await io.read(file);
   const shape = names(document);

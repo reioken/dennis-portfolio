@@ -174,6 +174,7 @@ export const MODELS_BY_SLUG: Record<string, ModelSpec> = {
   riftback: { url: '/models/mach-riftback.glb', height: 1.55, screenNames: ['screen'] },
   riftcast: { url: '/models/mach-riftcast.glb', height: 1.55, screenNames: ['screen'] },
   lowlight: { url: '/models/mach-lowlight.glb?v=63355decf507', height: 1.65, screenNames: ['screen'] },
+  'vgm-battle': { url: '/models/cab-vgm-battle.glb', height: 1.92, screenNames: ['screen'] },
   berry: { url: '/models/mach-berry.glb', height: 1.95, screenNames: ['screen'] },
   safeplate: { url: '/models/mach-safeplate.glb', height: 1.95, screenNames: ['screen'] },
   angry: { url: '/models/mach-angry.glb', height: 1.95, screenNames: ['screen'] },

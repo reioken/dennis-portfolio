@@ -1,0 +1,89 @@
+---
+title: "VGM Battle"
+summary: "Zwei Videospiel-Soundtracks treten gegeneinander an, du wählst einen — daraus entsteht eine Elo-Rangliste der besten Videospielmusik."
+summaryEn: "Battle, rank and discover the greatest video game music ever written."
+role: "Solo Product Build"
+roleEn: "Solo Product Build"
+year: "2026"
+timeline: "2026 · live"
+timelineEn: "2026 · live"
+stack: ["Next.js 16", "React 19", "TypeScript", "PostgreSQL (Neon)", "Drizzle", "Vitest + PGlite", "YouTube IFrame API", "Vercel"]
+outcome: "Head-to-head-Voting · Elo-Rangliste · Arena Daily"
+outcomeEn: "Head-to-head voting · Elo ladder · Arena Daily"
+tags: ["product", "design"]
+featured: false
+cover: "/media/vgm-battle/shots/home.webp"
+coverAlt: "VGM Battle — Startseite mit der Überschrift „Two tracks. One call.“ und zwei Challenger-Karten"
+coverAltEn: "VGM Battle — home page with the heading “Two tracks. One call.” and two challenger cards"
+logo: "/media/vgm-battle/logo.svg"
+gallery:
+  - "/media/vgm-battle/shots/home.webp"
+  - "/media/vgm-battle/shots/battle.webp"
+  - "/media/vgm-battle/shots/daily.webp"
+  - "/media/vgm-battle/shots/rankings.webp"
+  - "/media/vgm-battle/shots/discover.webp"
+  - "/media/vgm-battle/shots/song.webp"
+hallScreens:
+  - "/media/vgm-battle/screens/battle.webp"
+  - "/media/vgm-battle/screens/home.webp"
+  - "/media/vgm-battle/screens/rankings.webp"
+  - "/media/vgm-battle/screens/daily.webp"
+galleryAlts:
+  - "Home: Hero mit zwei Challenger-Karten und dem Einstieg ins Voting"
+  - "Battle: zwei Tracks nebeneinander, jeder mit eigenem Player"
+  - "Arena Daily: ein gemeinsames Matchup pro Tag"
+  - "Rankings: Competitive-Elo und Popularity als getrennte Listen"
+  - "Discover: Suche nach Tracks, Spielen, Komponisten und Franchises"
+  - "Track-Seite: Player, Elo-Rating, Confidence und Rang"
+galleryAltsEn:
+  - "Home: hero with two challenger cards and the entry into voting"
+  - "Battle: two tracks side by side, each with its own player"
+  - "Arena Daily: one shared matchup a day"
+  - "Rankings: competitive Elo and popularity as separate lists"
+  - "Discover: search across tracks, games, composers and franchises"
+  - "Track page: player, Elo rating, confidence and rank"
+order: 4.6
+status: "live"
+platform: ["web"]
+engine: "Next.js 16"
+externalUrl: "https://vgmbattle.com"
+brand:
+  primary: "#7c4dff"
+  secondary: "#22d3ee"
+---
+
+<div data-lang="de">
+
+**Two tracks. One call.**
+
+Zwei Tracks laufen nebeneinander, du wählst den, den du lieber noch einmal hören würdest. Das nächste Paar wartet schon. Ohne Account startklar; jeder Track im Pool ist tatsächlich abspielbar.
+
+**Rangliste** — Rating, Confidence und Popularity werden als drei getrennte Werte veröffentlicht. Jede Stimme zählt für Popularity; angemeldete Stimmen bewegen Elo, sobald beide Tracks gehört wurden. Ein Track braucht fünf Competitive-Votes, bevor er in die Elo-Rangliste kommt.
+
+**Modi** — Die offene Arena als Endlos-Schleife, Arena Daily mit einem gemeinsamen Matchup pro Tag und Retro Challenger mit acht Battles aus der Zeit vor 2000.
+
+**Gestaltung** — Dunkles HUD in Arcade-Violett, Chiptune-Cyan und Amber für die Siegerseite. Abgeschrägte Ecken, Scanlines, Mono-Labels in Versalien; Chakra Petch, Inter und JetBrains Mono. Handgeschriebenes CSS mit Design-Tokens, ohne UI-Framework.
+
+**Build** — Next.js 16 mit PostgreSQL auf Neon und Drizzle, gehostet auf Vercel. Audio ausschließlich über eingebettete YouTube-Player; Metadaten aus MusicBrainz und Wikidata. Anmeldung per Google, Discord oder E-Mail. Tests laufen mit Vitest gegen ein echtes Postgres (PGlite).
+
+**Stand** — Live auf vgmbattle.com. Am 19.09.2026 zeigte die Startseite 1.753 Tracks aus 348 Spielen in Rotation.
+
+</div>
+
+<div data-lang="en">
+
+**Two tracks. One call.**
+
+Hear them side by side and pick the one you would rather hear again. The next pair is already waiting. No account needed to start; every track actually plays.
+
+**Ladder** — VGM Battle publishes rating, confidence, and popularity as separate signals. Every vote counts toward Popularity; signed-in votes also move Elo once you have heard both tracks. Five competitive votes are required before a track can enter the Elo leaderboard.
+
+**Modes** — The open arena as an endless loop, Arena Daily with one shared matchup a day, and Retro Challenger: eight battles, every one seeded before 2000.
+
+**Design** — A dark HUD in arcade purple, chiptune cyan and amber for the winning side. Cut corners, scanlines, uppercase mono labels; Chakra Petch, Inter and JetBrains Mono. Hand-written CSS with design tokens, no UI framework.
+
+**Build** — Next.js 16 with PostgreSQL on Neon and Drizzle, hosted on Vercel. Audio is delivered through embedded YouTube players only; metadata comes from MusicBrainz and Wikidata. Sign-in with Google, Discord or email. Tests run with Vitest against a real Postgres (PGlite).
+
+**Status** — Live at vgmbattle.com. On 19 Sep 2026 the home page showed 1,753 tracks from 348 games in rotation.
+
+</div>

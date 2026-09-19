@@ -1,5 +1,5 @@
 /** Cabinet footprints in metres, matching the Blender specifications. */
-const widths: Record<string,number> = {'echo-frequency':.76,'saute-survivors':.76,'cab-no-9':.78,carillon:.8,nexus:.95,riftback:.95,riftcast:.95,lowlight:1.02,berry:.5,safeplate:.5,briefly:.5,mina:.5,hookline:.86,kasse:.94,telefon:.60};
+const widths: Record<string,number> = {'echo-frequency':.76,'saute-survivors':.76,'cab-no-9':.78,carillon:.8,nexus:.95,riftback:.95,riftcast:.95,lowlight:1.02,'vgm-battle':1.06,berry:.5,safeplate:.5,briefly:.5,mina:.5,hookline:.86,kasse:.94,telefon:.60};
 export function cabinetWidth(slug:string) { return widths[slug]??.8; }
 type Station = {slug:string};
 // One clear edge-to-edge gap for every pair, including enough room for the taxi.

@@ -46,6 +46,7 @@ export const ORDER = [
   'riftback',
   'nexus',
   'lowlight',
+  'vgm-battle',
   'saute-survivors',
   'echo-frequency',
   'safeplate',
