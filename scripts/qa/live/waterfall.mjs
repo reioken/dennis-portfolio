@@ -1,0 +1,12 @@
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright');
+const b = await chromium.launch({ headless: true, args: ['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist'] });
+const page = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+await page.goto(process.argv[2]+'/',{waitUntil:'domcontentloaded'});
+await page.waitForFunction(()=>performance.getEntriesByName('hall:render-warm-end').length>0,null,{timeout:60000});
+const r=await page.evaluate(()=>performance.getEntriesByType('resource').filter(e=>/models|textures|media/.test(e.name)).map(e=>({n:e.name.split('/').slice(-1)[0].slice(0,28),kb:Math.round((e.transferSize||e.encodedBodySize)/1024),start:Math.round(e.startTime),ttfb:Math.round(e.responseStart-e.startTime),dl:Math.round(e.responseEnd-e.responseStart),end:Math.round(e.responseEnd),proto:e.nextHopProtocol})).sort((a,b)=>a.start-b.start));
+for(const x of r) console.log(String(x.start).padStart(5),String(x.end).padStart(5),'ttfb',String(x.ttfb).padStart(4),'dl',String(x.dl).padStart(4),String(x.kb).padStart(5)+'KB',x.proto,x.n);
+const lt=await page.evaluate(()=>new Promise(res=>{const o=[];try{new PerformanceObserver(l=>o.push(...l.getEntries().map(e=>[Math.round(e.startTime),Math.round(e.duration)]))).observe({type:'longtask',buffered:true});}catch{} setTimeout(()=>res(o),300)}));
+console.log('longtasks', JSON.stringify(lt));
+await b.close();

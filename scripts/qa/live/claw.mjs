@@ -1,0 +1,12 @@
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright');
+const BASE = process.argv[2]; const S = process.argv[3]; const tag = process.argv[4] ?? 'a';
+const b = await chromium.launch({ headless: true, args: ['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist'] });
+const page = await (await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5 })).newPage();
+const errs=[]; page.on('console',m=>{if(m.type()==='error')errs.push(m.text().slice(0,200))}); page.on('pageerror',e=>errs.push(String(e).slice(0,200))); page.on('response',r=>{if(r.status()>=400)errs.push(r.status()+' '+r.url())});
+await page.goto(BASE+'/about/',{waitUntil:'domcontentloaded'}); await page.waitForTimeout(16000);
+await page.screenshot({path:`${S}/claw-${tag}.png`,clip:{x:40,y:280,width:480,height:560}});
+await page.goto(BASE+'/',{waitUntil:'domcontentloaded'}); await page.waitForTimeout(16000);
+await page.screenshot({path:`${S}/claw-${tag}-hall.png`,clip:{x:520,y:380,width:400,height:400}});
+console.log('ERRORS',errs); await b.close();
