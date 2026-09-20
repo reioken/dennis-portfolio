@@ -31,6 +31,12 @@ scripts/assets/hero-wear-texture.py            the six generated wear tiles (pub
 scripts/build-hero-environment.mjs             the room hero machines mirror (public/textures/hero-environment-v1.bin.gz)
 ```
 
+One command runs the chain for any hero model (14 stations, `claw-v2`, `phone-booth-v1`, `tv-rig-v1`): it copies
+`scripts/models/hero-recipes/<name>.json` to where the generator reads it, bakes, attaches, optimizes, packs and
+prints the sha8: `sh scripts/models/build-hero.sh <name>`. About five minutes on the GPU each. The capture and test
+tools are in `scripts/qa/hero/` (README there). The story, Dennis's verdicts and the open work:
+`HANDOVER-2026-09-20.md`.
+
 `/models/*` is edge-cached for a day: every rebuilt GLB needs a new `?v=` (first 8 hex of its SHA-256).
 
 ## A recipe
