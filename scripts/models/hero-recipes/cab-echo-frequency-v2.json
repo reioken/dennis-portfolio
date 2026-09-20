@@ -1,0 +1,53 @@
+{
+  "name": "cab-echo-frequency",
+  "title": "Echo Frequency",
+  "variant": "terminal",
+  "brand": "#58c2ba",
+  "brand2": "#D9B847",
+  "tmolding": "#58C2BA",
+  "accent": "#D9B847",
+  "hero": {
+    "width": 0.78,
+    "depth": 0.78,
+    "tilt": 6,
+    "shelf_z": 0.96,
+    "shelf_edge": 0.05,
+    "deck_len": 0.22,
+    "deck_tilt": 9,
+    "display_top": 1.66,
+    "hood_drop": 0.14,
+    "hood_angle": 8,
+    "screen_w": 0.6,
+    "screen_aspect": 1.31,
+    "pedestal": "speakers",
+    "drivers": [
+      [
+        0,
+        0.36,
+        0.2
+      ],
+      [
+        0,
+        0.665,
+        0.045
+      ]
+    ],
+    "speakers": "none",
+    "light_line": "hood",
+    "controls": "arcade",
+    "knobs": 1,
+    "paint": "#16252e",
+    "panel": "#1b2f39",
+    "door": 0.1,
+    "seed": "echo",
+    "wear": {
+      "edge": 1,
+      "hands": 0.3,
+      "shoes": 0.2,
+      "knees": 0,
+      "crevice": 1,
+      "low": 0.5,
+      "dust": 0.8
+    }
+  }
+}

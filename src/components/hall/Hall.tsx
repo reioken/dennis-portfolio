@@ -662,8 +662,9 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       sc.start();
     };
     const onCtl = (e: Event) => {
-      const d = (e as CustomEvent<{ name?: string; action?: CtlAction; dir?: -1 | 1 }>).detail;
+      const d = (e as CustomEvent<{ name?: string; action?: CtlAction; dir?: -1 | 1; spin?: { dx: number; dy: number } }>).detail;
       if (!d?.name) return;
+      if (d.spin) sceneRef.current?.spin(d.name, d.spin.dx, d.spin.dy);
       if (d.dir) sceneRef.current?.joyDir(d.dir);
       if (d.action) sceneRef.current?.ctl(d.name, d.action);
     };

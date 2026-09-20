@@ -1,0 +1,56 @@
+{
+  "name": "cab-vgm-battle",
+  "title": "VGM Battle",
+  "variant": "terminal",
+  "brand": "#7c4dff",
+  "brand2": "#37d8ff",
+  "tmolding": "#7c4dff",
+  "accent": "#37d8ff",
+  "hero": {
+    "width": 1.08,
+    "depth": 0.82,
+    "tilt": 8,
+    "shelf_z": 0.9,
+    "shelf_edge": 0.06,
+    "deck_len": 0.3,
+    "deck_tilt": 8,
+    "display_top": 1.68,
+    "hood_drop": 0.18,
+    "hood_angle": 26,
+    "screen_w": 0.86,
+    "screen_aspect": 1.6,
+    "pedestal": "speakers",
+    "coin_door": true,
+    "drivers": [
+      [
+        -0.345,
+        0.4,
+        0.115
+      ],
+      [
+        0.345,
+        0.4,
+        0.115
+      ]
+    ],
+    "speakers": "none",
+    "light_line": "shelf",
+    "controls": "arcade",
+    "second_stick": true,
+    "knobs": 0,
+    "paint": "#1c1830",
+    "panel": "#231d3d",
+    "door": 0.09,
+    "seed": "vgm",
+    "wear": {
+      "edge": 0.9,
+      "hands": 0.7,
+      "shoes": 0.4,
+      "knees": 0,
+      "door": 0.4,
+      "crevice": 1,
+      "low": 0.7,
+      "dust": 0.3
+    }
+  }
+}

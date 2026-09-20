@@ -1,6 +1,6 @@
 // Modell-Pipeline für die Spielhalle.
 //
-//   node scripts/models/optimize.mjs [--in <dir>] [--only <name>] [--size 1024] [--inspect]
+//   node scripts/models/optimize.mjs [--in <dir>] [--only <name>] [--size 1024] [--inspect] [--keep-attributes]
 //
 // Nimmt GLB/glTF aus .source-assets/models-in/ (nicht im Git; Sketchfab-Downloads liegen dort),
 // optimiert sie mit gltf-transform (dedup, prune, weld, Quantisierung, Texturen → WebP mit
@@ -23,6 +23,8 @@ const OUT = path.join(ROOT, 'public', 'models');
 const SIZE = Number(opt('--size', '1024'));
 const ONLY = opt('--only', null);
 const INSPECT = args.includes('--inspect');
+// Hero machines carry a tiling UV set no glTF texture refers to (the hall binds its scanned surfaces at runtime).
+const KEEP_ATTRIBUTES = args.includes('--keep-attributes');
 
 if (!existsSync(IN)) {
   console.error(`[models] Eingang fehlt: ${IN}`);
@@ -62,7 +64,7 @@ for (const { name, file } of inputs) {
   const out = path.join(OUT, `${slug}.glb`);
   const before = statSync(file).size;
   process.stdout.write(`[models] ${name} → ${path.relative(ROOT, out)} … `);
-  gltfTransform('optimize', file, out, '--compress', 'quantize', '--texture-compress', 'webp', '--texture-size', String(SIZE), '--simplify', 'false', '--instance', 'false', '--flatten', 'false', '--join', 'false', '--palette', 'false');
+  gltfTransform('optimize', file, out, '--compress', 'quantize', '--texture-compress', 'webp', '--texture-size', String(SIZE), '--simplify', 'false', '--instance', 'false', '--flatten', 'false', '--join', 'false', '--palette', 'false', ...(KEEP_ATTRIBUTES ? ['--prune-attributes', 'false'] : []));
   const after = statSync(out).size;
   console.log(`${(before / 1048576).toFixed(2)} MB → ${(after / 1048576).toFixed(2)} MB`);
   if (INSPECT) {

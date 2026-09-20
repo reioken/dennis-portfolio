@@ -1,0 +1,22 @@
+{
+  "name": "mach-lowlight",
+  "title": "Lowlight",
+  "variant": "terminal",
+  "brand": "#d8c3a5",
+  "brand2": "#b9a8ce",
+  "paint": "#15131b",
+  "tmolding": "#b3a08c",
+  "panel": "#121219",
+  "accent": "#d8c3a5",
+  "hero": {
+    "width": 1.21, "depth": 0.72, "tilt": 8.0,
+    "shelf_z": 0.95, "shelf_edge": 0.075, "deck_len": 0.20, "deck_tilt": 12.0, "display_top": 1.75,
+    "hood_drop": 0.12, "hood_angle": 20.0,
+    "screen_w": 0.90, "screen_aspect": 1.6,
+    "pedestal": "speakers", "speakers": "none", "light_line": "hood", "controls": "transport",
+    "chrome": "#a69583",
+    "paint": "#25222c", "panel": "#1d1b24", "door": 0.1,
+    "seed": "lowlight",
+    "wear": {"edge": 0.55, "hands": 0.4, "shoes": 0.18, "knees": 0.05, "crevice": 0.85, "low": 0.55, "dust": 0.5}
+  }
+}

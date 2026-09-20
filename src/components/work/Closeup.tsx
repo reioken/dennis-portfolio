@@ -84,6 +84,11 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
   const [info, setInfo] = useState(false);
   const [ui, setUi] = useState(true);
   const [hovered, setHovered] = useState<string | null>(null);
+  /** Hero machines print the arrows on their button caps: no floating tags next to those controls */
+  const [printed, setPrinted] = useState(false);
+  /** Trackball under the pointer: the ball follows the drag; every 70 px of travel pages one capture */
+  const ballDrag = useRef<{ x: number; y: number; acc: number; moved: boolean } | null>(null);
+  const ballDragged = useRef(false);
   const [prevShot, setPrevShot] = useState<GalleryShot | null>(null);
   /** Große Variante erst zeigen, wenn sie abseits des Hauptthreads dekodiert ist — sonst hängt der Klick */
   const [hiReady, setHiReady] = useState<string | null>(null);
@@ -120,8 +125,9 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
       setRect({ x: d.x, y: d.y, w: d.w, h: d.h });
     };
     const onCtl = (e: Event) => {
-      const d = (e as CustomEvent<{ pose?: string; rects?: CtlRects }>).detail;
+      const d = (e as CustomEvent<{ pose?: string; rects?: CtlRects; printed?: boolean }>).detail;
       if (d?.pose === 'screen' && d.rects) {
+        setPrinted(Boolean(d.printed));
         setCtlRects(Object.fromEntries(Object.entries(d.rects).filter(([, bounds]) => validRect(bounds))));
       }
     };
@@ -489,12 +495,38 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
         : role === 'fullscreen'
           ? <><Icon name="expand" size={14} />{hovered === name ? fsLabel : null}</>
           : role === 'play' ? <><span className="closeup__coin" />{en ? PE.play : P.play}</> : String(Number(name.slice(4)) + 1);
-    tagEls.push(
-      <span key={`tag-${name}`} className={`closeup__tag mono${hovered === name || role === 'both' || /^btn_[345]$/.test(name) || /^(tbtn|kbtn)_/.test(name) ? ' is-on' : ''}`} style={{ left: Math.round(r.x + r.w / 2), top: Math.round(role === 'both' ? ctlRects[name].y - 10 : ctlRects[name].y + ctlRects[name].h + 30) }} aria-hidden>
+    if (!(printed && (role === 'prev' || role === 'next' || role === 'both'))) tagEls.push(
+      <span key={`tag-${name}`} className={`closeup__tag mono${hovered === name || (!printed && (role === 'both' || /^btn_[345]$/.test(name) || /^(tbtn|kbtn)_/.test(name))) ? ' is-on' : ''}`} style={{ left: Math.round(r.x + r.w / 2), top: Math.round(role === 'both' ? ctlRects[name].y - 10 : ctlRects[name].y + ctlRects[name].h + 30) }} aria-hidden>
         {tagText}
       </span>,
     );
-    if (role === 'both') {
+    if (role === 'both' && name === 'trackball') {
+      const half = (dir: -1 | 1) => (
+        <button
+          key={`${name}-${dir}`}
+          type="button"
+          {...common}
+          className="closeup__proxy closeup__proxy--ball"
+          style={box(dir < 0 ? r.x : r.x + r.w / 2, r.y, r.w / 2, r.h)}
+          aria-label={`Trackball: ${dir < 0 ? prevLabel : nextLabel}`}
+          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); ballDrag.current = { x: e.clientX, y: e.clientY, acc: 0, moved: false }; ballDragged.current = false; }}
+          onPointerMove={(e) => {
+            const d = ballDrag.current;
+            if (!d) return;
+            const dx = e.clientX - d.x, dy = e.clientY - d.y;
+            if (!dx && !dy) return;
+            d.x = e.clientX; d.y = e.clientY; d.acc += dx;
+            if (Math.abs(dx) + Math.abs(dy) > 1) d.moved = true;
+            document.dispatchEvent(new CustomEvent('hall:ctl', { detail: { name, spin: { dx, dy } } }));
+            if (Math.abs(d.acc) >= 70 && total > 1) { const way = d.acc > 0 ? 1 : -1; d.acc = 0; onIndex((index + way + total) % total); wake(); }
+          }}
+          onPointerUp={() => { ballDragged.current = Boolean(ballDrag.current?.moved); ballDrag.current = null; }}
+          onPointerCancel={() => { ballDrag.current = null; }}
+          onClick={() => { if (ballDragged.current) { ballDragged.current = false; return; } step(dir, name); }}
+        />
+      );
+      proxies.push(half(-1), half(1));
+    } else if (role === 'both') {
       proxies.push(
         <button key={`${name}-l`} type="button" {...common} style={box(r.x, r.y, r.w / 2, r.h)} aria-label={`${name === 'joy' ? 'Joystick' : 'Trackball'}: ${prevLabel}`} onClick={() => step(-1, name)} />,
         <button key={`${name}-r`} type="button" {...common} style={box(r.x + r.w / 2, r.y, r.w / 2, r.h)} aria-label={`${name === 'joy' ? 'Joystick' : 'Trackball'}: ${nextLabel}`} onClick={() => step(1, name)} />,
@@ -542,6 +574,12 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
           </figure>
         ) : null}
         <div className={`closeup__crt${scan ? ' is-scan' : ''}`} aria-hidden />
+        {total > 1 ? (
+          <>
+            <button type="button" className="closeup__edge closeup__edge--prev" onClick={() => step(-1)} aria-label={prevLabel}><Icon name="chevron-left" size={28} /></button>
+            <button type="button" className="closeup__edge closeup__edge--next" onClick={() => step(1)} aria-label={nextLabel}><Icon name="chevron-right" size={28} /></button>
+          </>
+        ) : null}
 
         {groups.length > 1 ? (
           <div className="closeup__chips" role="group" aria-label={en ? PE.surfaces : P.surfaces}>

@@ -86,7 +86,7 @@ html.gl-pending .hall:not(.is-3d) .hall-dock { opacity: 0; pointer-events: none;
 :root .closeup__rail-arrow, :root .closeup__rail-btn { width: auto; min-width: 44px; min-height: 44px; padding: 8px 12px; margin: 0; border: 1px solid #ffffff24; border-radius: 4px; color: var(--text); background: transparent; box-shadow: none; white-space: nowrap; }
 :root .closeup__rail-arrow { border-radius: 50%; }
 :root .closeup__rail-btn:hover, :root .closeup__rail-arrow:hover { background: #ffffff0a; border-color: #ffffff60; }
-:root .closeup__proxy:hover { background: #ffffff08; outline: none; }
+:root .closeup__proxy:hover { background: transparent; outline: none; }
 :root .closeup__tag { border-radius: 4px; background: #101217f5; color: var(--text); border-color: #ffffff38; box-shadow: 0 4px 16px #0005; font-size: 11px; letter-spacing: 0; }
 :root .closeup__tag::after { background: #101217; border-color: #ffffff38; }
 :root .closeup__bar { background: #0d0f14; border-top: 1px solid var(--stroke); }

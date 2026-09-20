@@ -1,0 +1,42 @@
+{
+  "name": "mach-mina",
+  "title": "Mina",
+  "variant": "terminal",
+  "brand": "#f2d33c",
+  "brand2": "#ff6b6b",
+  "tmolding": "#f2d33c",
+  "accent": "#ff6b6b",
+  "hero": {
+    "width": 0.5,
+    "depth": 0.42,
+    "screen_w": 0.3,
+    "screen_aspect": 0.5625,
+    "speakers": "none",
+    "controls": "kiosk",
+    "knobs": 0,
+    "tilt": 7,
+    "shelf_z": 0.97,
+    "shelf_edge": 0.05,
+    "deck_len": 0.14,
+    "deck_tilt": 14,
+    "display_top": 1.78,
+    "hood_drop": 0.1,
+    "hood_angle": 18,
+    "pedestal": "intercom",
+    "light_line": "shelf",
+    "paint": "#2a2716",
+    "panel": "#4D2020",
+    "door": 0.11,
+    "seed": "mina",
+    "wear": {
+      "edge": 0.85,
+      "hands": 0.45,
+      "shoes": 0.55,
+      "knees": 0,
+      "corners": 0.35,
+      "crevice": 1,
+      "low": 0.9,
+      "dust": 0.3
+    }
+  }
+}

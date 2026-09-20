@@ -1,0 +1,41 @@
+{
+  "name": "mach-safeplate",
+  "title": "Safeplate",
+  "variant": "terminal",
+  "brand": "#c6a57b",
+  "brand2": "#f3ebdd",
+  "tmolding": "#c6a57b",
+  "accent": "#f3ebdd",
+  "hero": {
+    "width": 0.5,
+    "depth": 0.42,
+    "screen_w": 0.3,
+    "screen_aspect": 0.5625,
+    "speakers": "none",
+    "controls": "kiosk",
+    "knobs": 0,
+    "tilt": 5,
+    "shelf_z": 1,
+    "shelf_edge": 0.045,
+    "deck_len": 0.13,
+    "deck_tilt": 18,
+    "display_top": 1.8,
+    "hood_drop": 0.08,
+    "hood_angle": 10,
+    "pedestal": "nfc",
+    "light_line": "hood",
+    "paint": "#2a2622",
+    "panel": "#4a4641",
+    "door": 0.12,
+    "seed": "safeplate",
+    "wear": {
+      "edge": 0.3,
+      "hands": 0.25,
+      "shoes": 0.15,
+      "knees": 0,
+      "crevice": 0.6,
+      "low": 0.4,
+      "dust": 0.35
+    }
+  }
+}

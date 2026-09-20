@@ -1,0 +1,42 @@
+{
+  "name": "cab-cab-no-9",
+  "title": "Cab No. 9",
+  "variant": "terminal",
+  "brand": "#e4d8b8",
+  "brand2": "#DFB96C",
+  "tmolding": "#914739",
+  "accent": "#DFB96C",
+  "hero": {
+    "width": 0.82,
+    "depth": 0.82,
+    "tilt": 10,
+    "shelf_z": 0.9,
+    "shelf_edge": 0.065,
+    "deck_len": 0.26,
+    "deck_tilt": 10,
+    "display_top": 1.6,
+    "hood_drop": 0.24,
+    "hood_angle": 22,
+    "screen_w": 0.62,
+    "screen_aspect": 1.31,
+    "pedestal": "coin_door",
+    "speakers": "pedestal",
+    "light_line": "hood",
+    "controls": "arcade",
+    "knobs": 0,
+    "paint": "#c9bf9f",
+    "panel": "#b9ad8a",
+    "door": 0.1,
+    "seed": "cab9",
+    "wear": {
+      "edge": 0.8,
+      "hands": 0.5,
+      "shoes": 0.45,
+      "knees": 0,
+      "corners": 0.25,
+      "crevice": 1,
+      "low": 0.85,
+      "dust": 0.4
+    }
+  }
+}

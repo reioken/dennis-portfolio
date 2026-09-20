@@ -37,17 +37,43 @@ async function reachable(distDir, entry, cache) {
   return [...seen];
 }
 
+/**
+ * The first view's large files (environment, the claw machine's figure and plush, Blue). Measured live 2026-09-19:
+ * the network sat idle from 0.5 s (JS done) to 1.4 s (scene constructed, loaders started) while these 4.5 MB were
+ * still to come. `as="fetch" crossorigin` matches three's FileLoader and the environment fetch, so the preloaded
+ * response is reused. Phone case pages are native and never start the hall: they get a media condition.
+ */
+async function firstViewAssets(distDir, html) {
+  const blue = (await readFile(path.join(process.cwd(), 'src/components/hall/blueCat.ts'), 'utf8')).match(/BLUE_ASSET_BUILD = '([^']+)'/)?.[1];
+  const figure = html.match(/\/models\/dennis\.glb\?v=[0-9a-f]+/)?.[0];
+  const wanted = [
+    '/textures/hall-environment-v2.bin.gz',
+    figure,
+    blue && `/models/blue-rigged-${blue}.glb`,
+    '/models/plush/pile-back-v1.glb',
+    '/models/plush/pile-side-v1.glb',
+  ].filter(Boolean);
+  const present = [];
+  for (const href of wanted) {
+    try { await readFile(path.join(distDir, href.split('?')[0])); present.push(href); } catch { /* renamed asset: no preload rather than a 404 */ }
+  }
+  return present;
+}
+
 export async function addModulePreloads(distDir) {
   const cache = new Map();
-  let pages = 0, links = 0;
+  let pages = 0, links = 0, assets = 0;
   for (const file of await htmlFiles(distDir)) {
     const html = await readFile(file, 'utf8');
     const island = html.match(/component-url="(\/_astro\/Hall\.[^"]+\.js)"/);
     if (!island || html.includes('rel="modulepreload"')) continue;
     const chunks = await reachable(distDir, island[1], cache);
-    const tags = chunks.map((href) => `<link rel="modulepreload" href="${href}">`).join('');
+    const media = /(^|[\\/])work[\\/]/.test(path.relative(distDir, file)) ? ' media="(min-width: 761px)"' : '';
+    const firstView = await firstViewAssets(distDir, html);
+    const tags = chunks.map((href) => `<link rel="modulepreload" href="${href}">`).join('')
+      + firstView.map((href) => `<link rel="preload" as="fetch" crossorigin href="${href}"${media}>`).join('');
     await writeFile(file, html.replace('</head>', `${tags}</head>`), 'utf8');
-    pages += 1; links += chunks.length;
+    pages += 1; links += chunks.length; assets += firstView.length;
   }
-  console.log(`[modulepreload] ${pages} hall pages, ${links} links`);
+  console.log(`[modulepreload] ${pages} hall pages, ${links} links, ${assets} first-view asset preloads`);
 }

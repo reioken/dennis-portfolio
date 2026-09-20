@@ -1,0 +1,42 @@
+{
+  "name": "cab-saute-survivors",
+  "title": "Saute Survivors",
+  "variant": "terminal",
+  "brand": "#e03a2f",
+  "brand2": "#F2B233",
+  "tmolding": "#F2B233",
+  "accent": "#57B8FF",
+  "hero": {
+    "width": 0.78,
+    "depth": 0.8,
+    "tilt": 12,
+    "shelf_z": 0.92,
+    "shelf_edge": 0.07,
+    "deck_len": 0.24,
+    "deck_tilt": 14,
+    "display_top": 1.62,
+    "hood_drop": 0.22,
+    "hood_angle": 34,
+    "screen_w": 0.58,
+    "screen_aspect": 1.31,
+    "pedestal": "coin_door",
+    "speakers": "hood",
+    "light_line": "shelf",
+    "controls": "arcade",
+    "knobs": 0,
+    "paint": "#a82c24",
+    "panel": "#7d211b",
+    "door": 0.08,
+    "seed": "saute",
+    "wear": {
+      "edge": 0.6,
+      "hands": 0.8,
+      "shoes": 0.5,
+      "knees": 0,
+      "corners": 0.45,
+      "crevice": 1,
+      "low": 1,
+      "dust": 0.2
+    }
+  }
+}

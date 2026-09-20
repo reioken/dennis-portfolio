@@ -134,6 +134,35 @@
   color: var(--text);
   background: var(--elev);
 }
+/* Arrows at the screen's edges: there when the pointer is over the screen, like any gallery. The cabinet's own
+   controls keep working; a click here moves them too. */
+.closeup__edge {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin-top: -23px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--stroke);
+  border-radius: 50%;
+  background: rgba(7, 8, 12, 0.82);
+  color: var(--text);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.18s ease, border-color 0.18s ease;
+}
+.closeup__edge--prev { left: 14px; }
+.closeup__edge--next { right: 14px; }
+.closeup__screen:hover .closeup__edge,
+.closeup__edge:focus-visible { opacity: 1; }
+.closeup__edge:hover { border-color: var(--brand); }
+.closeup__edge:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@media (hover: none) { .closeup__edge { display: none; } }
+.closeup__proxy--ball { cursor: grab; touch-action: none; }
+.closeup__proxy--ball:active { cursor: grabbing; }
 .closeup__arrow:disabled {
   opacity: 0.35;
   cursor: default;

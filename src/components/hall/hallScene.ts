@@ -20,8 +20,10 @@ import { ROOM_POWER_MS, collectRoomPowerTargets, withRoomPower } from './roomPow
 import { visibleTimeout } from './visibleTimeout.mjs';
 import { makeGlassWear, clearScreenGlass, addPanelWear } from './hardwareWear';
 import { WallPaint } from './wallPaint';
+import { attachWallGrime } from './wallGrime';
 import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './hallLayout';
 import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMaterials';
+import { loadHeroMaps, heroMaterial, isHeroMaterial, stripHeroLight, makeHeroGlow, marbleBall, type HeroMaps, type HeroGlow, type HeroLook } from './heroMaterial';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -59,6 +61,13 @@ export type Frame = {
 /** Bedienelement-Aktion aus der Seite (hall:ctl) — Glühen und Bewegung des Meshes */
 export type CtlAction = 'lit' | 'dim' | 'hover' | 'press' | 'release' | 'idle';
 /** Namen der Bedienelemente in den Modellen (scripts/models/blender/*_gen.py) */
+/** The ceiling track, the trolley and the TV (hero_tv_gen.py): dusty steel up in the dark, wiped glossy bezel. */
+const TV_RIG_MODEL = '/models/tv-rig-v1.glb?v=2e5831e7';
+const TV_RIG_LOOK: HeroLook = { seed: 'tvrig', lines: 'swirls', chips: 'chips', turn: .4, scale: 1.6, chip: .4, line: .5 };
+/** The claw machine, rebuilt as a hero machine; its wear is its own (wiped glass box, dinged steel). */
+const CLAW_MODEL = '/models/claw-v2.glb?v=8e82aa7c';
+const CLAW_LOOK: HeroLook = { seed: 'claw', lines: 'swirls', chips: 'chips', turn: .8, scale: .9, chip: .5, line: .7 };
+const SPIN_UP = new THREE.Vector3(0, 1, 0), SPIN_RIGHT = new THREE.Vector3(1, 0, 0);
 const CTL_NAME = /^(joy|btn|btn_\d+|start_\d+|trackball|tbtn_\d+|kbtn_\d+|sel_\d+)$/;
 /**
  * Bedienelement: `node` ist eine Pivot-Gruppe an der Unterkante des Teils (Plattenseite) — der
@@ -160,31 +169,57 @@ type ModelSpec = {
   screen?: { w: number; h: number; y: number; x?: number; zOffset?: number };
   /** Mesh-Namen, die als Bildschirm gelten */
   screenNames?: string[];
+  /** No nameplate on or above the machine: the wall title names it (terminal v3). */
+  noMarquee?: boolean;
+  /** Hero machines: how this one has aged. Every machine its own seed and kind of wear (heroMaterial.ts). */
+  hero?: HeroLook;
+  /** The model's `glass` is an enclosure seen from both sides (the phone booth), not a screen's cover glass. */
+  enclosure?: boolean;
+  /** Colour of the hero model's own lamp (mask channel G); a screen's cold white when absent. */
+  lamp?: number;
   /** Material-Namen, die in der Produktfarbe eingefärbt werden */
   tintMaterials?: string[];
 };
 /** Pro Produkt generierte Automaten (Blender-Generator, scripts/models/blender/cabinet_gen.py) */
+/** One height for every station (Dennis, 2026-09-19: only tall machines, no zigzag skyline). Models scale uniformly. */
+const STATION_HEIGHT = 1.95;
 export const MODELS_BY_SLUG: Record<string, ModelSpec> = {
-  'echo-frequency': { url: '/models/cab-echo-frequency.glb', height: 1.9, screenNames: ['screen'] },
-  carillon: { url: '/models/cab-carillon.glb', height: 1.98, screenNames: ['screen'] },
-  'cab-no-9': { url: '/models/cab-cab-no-9.glb', height: 1.86, screenNames: ['screen'] },
-  'saute-survivors': { url: '/models/cab-saute-survivors.glb', height: 1.9, screenNames: ['screen'] },
+  'echo-frequency': { url: '/models/cab-echo-frequency-v2.glb?v=b917abe3', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'echo', lines: 'swirls', chips: 'flakes', turn: .6, scale: 1.2, chip: 1.1, line: .5 } },
+  carillon: { url: '/models/cab-carillon-v2.glb?v=3d1a348f', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'carillon', lines: 'scuffs', chips: 'flakes', turn: 2.7, scale: 1.25, chip: .7, line: .8 } },
+  'cab-no-9': { url: '/models/cab-cab-no-9-v2.glb?v=65539f64', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'cab9', lines: 'scratches', chips: 'flakes', turn: .5, scale: .75, chip: 1, line: 1.1 } },
+  'saute-survivors': { url: '/models/cab-saute-survivors-v2.glb?v=d11eccc3', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'saute', lines: 'scuffs', chips: 'chips', turn: 2, scale: .8, chip: .8, line: .9 } },
   // Apps: Terminals (Desktop), Kiosk-Türme (Phone), Jukebox (Audio) — scripts/models/blender/machine_gen.py
-  nexus: { url: '/models/mach-nexus.glb', height: 1.55, screenNames: ['screen'] },
-  riftback: { url: '/models/mach-riftback.glb', height: 1.55, screenNames: ['screen'] },
-  riftcast: { url: '/models/mach-riftcast.glb', height: 1.55, screenNames: ['screen'] },
-  lowlight: { url: '/models/mach-lowlight.glb?v=63355decf507', height: 1.65, screenNames: ['screen'] },
-  'vgm-battle': { url: '/models/cab-vgm-battle.glb', height: 1.92, screenNames: ['screen'] },
-  berry: { url: '/models/mach-berry.glb', height: 1.95, screenNames: ['screen'] },
-  safeplate: { url: '/models/mach-safeplate.glb', height: 1.95, screenNames: ['screen'] },
-  angry: { url: '/models/mach-angry.glb', height: 1.95, screenNames: ['screen'] },
-  briefly: { url: '/models/mach-briefly.glb', height: 1.95, screenNames: ['screen'] },
-  mina: { url: '/models/mach-mina.glb', height: 1.95, screenNames: ['screen'] },
-  hookline: { url: '/models/mach-hookline.glb', height: 1.6, screenNames: ['screen'] },
+  nexus: { url: '/models/mach-nexus-v2.glb?v=42d044ae', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'nexus', lines: 'swirls', chips: 'pits', turn: 1.1, scale: 1.4, chip: .75, line: .85 } },
+  riftback: { url: '/models/mach-riftback-v4.glb?v=aede9f7f', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true },
+  riftcast: { url: '/models/mach-riftcast-v2.glb?v=e862fdaf', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'riftcast', lines: 'swirls', chips: 'chips', turn: .2, scale: 1, chip: .7, line: .9 } },
+  lowlight: { url: '/models/mach-lowlight-v2.glb?v=3391f2f2', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'lowlight', lines: 'scratches', chips: 'pits', turn: 1.45, scale: 1.9, chip: .6, line: .55 } },
+  'vgm-battle': { url: '/models/cab-vgm-battle-v2.glb?v=3c35ff8c', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'vgm', lines: 'scuffs', chips: 'flakes', turn: .3, scale: 1, chip: .8, line: 1 } },
+  berry: { url: '/models/mach-berry-v2.glb?v=523ed9c6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'berry', lines: 'scratches', chips: 'chips', turn: 2.2, scale: 2.2, chip: .45, line: .8 } },
+  safeplate: { url: '/models/mach-safeplate-v2.glb?v=42d49e7c', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'safeplate', lines: 'swirls', chips: 'chips', turn: 2.6, scale: 1.7, chip: .5, line: .7 } },
+  angry: { url: '/models/mach-angry.glb', height: STATION_HEIGHT, screenNames: ['screen'] },
+  briefly: { url: '/models/mach-briefly-v2.glb?v=5bf8e7a7', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'briefly', lines: 'swirls', chips: 'pits', turn: 2, scale: 2.3, chip: .45, line: .5 } },
+  mina: { url: '/models/mach-mina-v2.glb?v=a5e2876c', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'mina', lines: 'scuffs', chips: 'chips', turn: .9, scale: 1.1, chip: .95, line: 1 } },
+  hookline: { url: '/models/mach-hookline-v2.glb?v=074db376', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'hookline', lines: 'scuffs', chips: 'pits', turn: 1, scale: 1.5, chip: .7, line: .6 } },
 };
 export const MODELS: Partial<Record<MachineKind | 'kasse' | 'phone', ModelSpec>> = {
   kiosk: { url: '/models/vending-machine.glb', height: 1.95, screen: { w: 0.42, h: 0.74, y: 1.3, x: -0.1, zOffset: 0.06 }, tintMaterials: ['VendingMachine_Albedo'] },
-  phone: { url: '/models/payphone.glb', height: 1.7, y: 0, z: 0.1 },
+  // Kontakt: a classic yellow phone booth (hero_booth_gen.py). 1.95 m like every station, so it covers neither the wall
+  // title nor the TV; its panes are enclosure glass, its lamp warms the inside.
+  phone: { url: '/models/phone-booth-v1.glb?v=31542388', height: STATION_HEIGHT, y: 0, z: 0, enclosure: true, lamp: 0xffe2b8,
+    hero: { seed: 'booth', lines: 'scuffs', chips: 'chips', turn: 1.3, scale: 1.3, chip: .8, line: .8 } },
 };
 
 export type SceneCallbacks = {
@@ -227,6 +262,8 @@ type Machine = {
   screenFrame?: ScreenFrame;
   /** Bedienelemente des Modells (joy, btn_0 …): Pivot an der Plattenkante, Mesh, eigenes Material fürs Glühen */
   ctl: Map<string, Ctl>;
+  /** Hero machine: its buttons carry printed arrows, the close-up needs no floating tags for them. */
+  hero?: boolean;
   /** Weltbox aller Bedienelemente (gecacht) */
   ctlBox?: THREE.Box3 | null;
 };
@@ -551,8 +588,10 @@ export class HallScene {
   private override: string | null = null;
   private blackout = false;
   private texCache = new Map<string, THREE.Texture>();
-  /** Captures, die per Letterbox auf das Seitenverhältnis eines Bildschirms gebracht wurden (src|aspect) */
+  /** Captures, die per Letterbox auf das Seitenverhältnis eines Bildschirms gebracht wurden (src|aspect|Kantenlänge) */
   private fitCache = new Map<string, THREE.Texture>();
+  /** Nachschärfen des fokussierten Bildschirms, sobald die Kamera steht (sharpenFocusScreen) */
+  private sharpenTimer = 0;
   private hoverAt = 0;
   private bornAt = 0;
   /** 0 = Halle, 1 = Zoom/Play: Nachbarn gehen bis auf Restlicht aus */
@@ -613,6 +652,8 @@ export class HallScene {
   private wallPaint = new WallPaint();
   private stationX: number[] = [];
   private surfaceMaps = makeSurfaceMaps();
+  /** Scanned surfaces for hero machines, fetched with the first one (inside the startup gate). */
+  private heroMaps?: HeroMaps;
   private glassWear = makeGlassWear();
   private reflectionResources: { dispose(): void }[] = [];
 
@@ -767,7 +808,7 @@ export class HallScene {
   private updateWallTitle() {
     const it=this.items[this.focus]; if(!it)return;
     const en=document.documentElement.dataset.lang==='en';
-    const label=(isMachine(it)?(en?it.titleEn??it.title:it.title):it.kind==='kasse'?'Dennis':en?'Contact':'Kontakt').split(' – ')[0].toUpperCase();
+    const label=(isMachine(it)?(en?it.titleEn??it.title:it.title):it.kind==='kasse'?(en?'About me':'Über mich'):en?'Contact':'Kontakt').split(' – ')[0].toUpperCase();
     this.wallPaint.update(label,this.stationX[this.focus],this.container.clientWidth<768,this.pose==='hall',this.wallTitleKey!==label);
     this.wallTitleKey=label;
     this.dirty=true;
@@ -799,7 +840,8 @@ export class HallScene {
     this.roomLighting = new HallLighting(s,this.items,this.stationX,this.loader,this.lite);
     const pbr = (base: string, repeat: [number, number]) => {
       const load = (name: string, srgb = false) => {
-        const t = this.loader.load(`${TEX}/${base}_${name}.webp`);
+        // a base with a folder is a texture set of the hall's own (scripts/assets/hall-floor-texture.py)
+        const t = this.loader.load(base.includes('/') ? `/textures/${base}_${name}.webp` : `${TEX}/${base}_${name}.webp`);
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         t.repeat.set(repeat[0], repeat[1]);
         if (srgb) t.colorSpace = THREE.SRGBColorSpace;
@@ -809,14 +851,18 @@ export class HallScene {
       const orm = load('orm');
       return { map: load('basecolor', true), normalMap: load('normal'), aoMap: orm, roughnessMap: orm, metalnessMap: orm };
     };
-    const floorTex = pbr('marble', [45, 12]);
+    // Polished concrete with saw-cut joints every 2 m (Dennis, 2026-09-20: a more realistic floor). v2 keeps the
+    // cloudiness under half a metre; the large scale lives in world space in floorReflectionShader.ts.
+    const floorTex = pbr('floor/concrete-v2', [45, 12]);
     const floor = createHallFloor(floorTex,this.roomLighting,this.lite,this.container.clientWidth/this.container.clientHeight,()=>({dirty:this.mirrorDirty,ready:this.readyDone,quality:this.perfLevel}),()=>{this.mirrorDirty=false;this.mirrorAt=performance.now();});
     s.add(floor.mesh);this.reflectionResources.push(floor);
     if(floor.mesh instanceof Reflector)this.mirror=floor.mesh;
-    // Rückwand aus Ziegel (Quaternius, CC0), Decke dunkel
-    const wallTex = pbr('brick', [60, 8]);
+    // Rückwand aus Ziegel: eigener Läuferverband, 240 x 73 mm Steine auf 2-m-Kachel (scripts/assets/hall-wall-texture.py),
+    // 90 x 12 auf der 180 x 24 m Fläche = reale Steingröße. Decke dunkel.
+    const wallTex = pbr('wall/brick-v2', [90, 12]);
     const wall = new THREE.Mesh(new THREE.PlaneGeometry(180, 24), new THREE.MeshStandardMaterial({ ...wallTex, color: 0x858c99, roughness: 1, metalness: 0 }));
     this.wallPaint.attach(wall.material);
+    attachWallGrime(wall.material);
     this.roomLighting.decorate(wall.material,'wall');
     wall.name = 'hall-back-wall';
     wall.position.set((this.stationX[0] + this.stationX[this.stationX.length - 1]) / 2, 12, -1.6);
@@ -979,15 +1025,27 @@ export class HallScene {
       m.ctl = new Map();
       m.ctlBox = undefined;
       const ctlNodes = new Map<string, { obj: THREE.Object3D; mats: CtlMat[] }>();
+      let glow: HeroGlow | undefined;
       root.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (!mesh.isMesh) return;
         simplifyMaterial(mesh);
-        finishHardware(mesh,this.surfaceMaps);
         const name = mesh.name.toLowerCase();
+        const source = mesh.material as THREE.MeshStandardMaterial;
+        const control = CTL_NAME.test(name) || Boolean(mesh.parent && CTL_NAME.test(mesh.parent.name.toLowerCase()));
+        if (isHeroMaterial(source) && !control) {
+          this.heroMaps ??= loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+          if (!glow) { glow = makeHeroGlow(m.brand, spec.hero); if (spec.lamp !== undefined) glow.screen.value.set(spec.lamp).multiplyScalar(7); }
+          m.hero = true;
+          mesh.material = heroMaterial(source, this.heroMaps, glow);
+          mesh.userData.hero = true;
+        } else { stripHeroLight(source); finishHardware(mesh,this.surfaceMaps); }
         const mat = mesh.material as THREE.MeshStandardMaterial;
         if (mat && /tmolding/.test(mat.name)) {
           mat.emissive.copy(m.brand); mat.emissiveIntensity=.24;mat.roughness=.28;
+          // Hero machines keep the hall's glowing outline (Dennis: flashy like the other arcades); a little metal
+          // underneath gives the glow a highlight to sit on.
+          if (mesh.userData.hero) { mat.metalness=.35; mat.roughness=.24; mat.emissiveIntensity=.34; mat.envMapIntensity=1.1; }
         }
         if (mat && spec.tintMaterials?.includes(mat.name)) {
           // Klon pro Automat, damit jeder seine eigene Farbe trägt
@@ -1008,10 +1066,11 @@ export class HallScene {
           m.marquee = mesh as Machine['marquee'];
           m.gltfUv = true;
         } else if (['side_art_l','side_art_r','front_art','deck_art'].includes(name)) {
-          mesh.material=this.cabinetArtwork(mesh,m.item.slug);
+          // A hero machine's plain front and deck inserts keep their baked surface.
+          if (!mesh.userData.hero) mesh.material=this.cabinetArtwork(mesh,m.item.slug);
         } else if (name === 'glass') {
-          mesh.material = clearScreenGlass(this.glassWear,mesh);
-          mesh.renderOrder = 4;
+          mesh.material = clearScreenGlass(this.glassWear,mesh,Boolean(spec.enclosure));
+          mesh.renderOrder = spec.enclosure ? 5 : 4;
         } else if (name.startsWith('pilaster') && mat && mat.emissive) {
           // Jukebox-Säulen leuchten, aber nicht bis in den Bloom
           mat.emissiveIntensity = Math.min(mat.emissiveIntensity, 0.4);
@@ -1069,7 +1128,7 @@ export class HallScene {
         for (const part of parts) {
           const mn = ((part.material as THREE.Material).name || '').toLowerCase();
           if (/ring|washer|claw_dark/.test(mn)) continue;
-          if (name === 'trackball' && /ball/.test(mn)) spin = part;
+          if (name === 'trackball' && /ball/.test(mn)) { spin = part; if (m.hero) marbleBall(part.material as THREE.MeshStandardMaterial); }
           move.attach(part);
         }
         m.ctl.set(name, { node: pivot, obj, move, spin, mats, level: 0, goal: 0, pressAt: -1e9, pressK: 0, joyDir: 1, pos: pivot.position.clone(), rot: pivot.rotation.clone() });
@@ -1090,7 +1149,7 @@ export class HallScene {
       m.group.add(root);
 
       // Leuchtschild über dem Modell, wenn das Modell keins mitbringt
-      if (!m.marquee && isMachine(m.item)) {
+      if (!m.marquee && !spec.noMarquee && isMachine(m.item)) {
         const w = Math.max(0.56, size.x * k);
         const mq = makeMarquee(m.group, w, 0.24, 0, spec.height + (spec.y ?? 0) + 0.14, (spec.z ?? 0) + size.z * k * 0.5 - 0.02, m.brand);
         mq.face.material.map = textTexture(m.item.title, `#${m.brand.getHexString()}`, { aspect: artworkAspect(mq.face) });
@@ -1136,18 +1195,17 @@ export class HallScene {
    * Capture auf das Seitenverhältnis des Bildschirms bringen: weicht es um mehr als 12 % ab, wird es
    * mittig mit dunklen Balken auf eine Leinwand im Bildschirmformat gezeichnet (kein Verzerren).
    */
-  private fitTexture(tex: THREE.Texture, src: string, m: Machine): THREE.Texture {
+  private fitTexture(tex: THREE.Texture, src: string, m: Machine, long = 1024): THREE.Texture {
     const img = tex.image as { width?: number; height?: number } | undefined;
     const sf = this.screenFrameOf(m);
     if (!img?.width || !img.height || !sf || sf.h <= 0) return tex;
     const screenAspect = sf.w / sf.h;
     const imgAspect = img.width / img.height;
-    // Kleine Bilder im passenden Format direkt; große immer auf ≤ 1024 px bringen (Upload und Speicher)
-    if (Math.abs(imgAspect / screenAspect - 1) < 0.12 && Math.max(img.width, img.height) <= 1280) return tex;
-    const key = `${src}|${screenAspect.toFixed(3)}|${m.gltfUv ? 'g' : 'p'}`;
+    // Kleine Bilder im passenden Format direkt; große immer auf die Zielkante bringen (Upload und Speicher)
+    if (Math.abs(imgAspect / screenAspect - 1) < 0.12 && Math.max(img.width, img.height) <= Math.min(1280, Math.round(long * 1.25))) return tex;
+    const key = `${src}|${screenAspect.toFixed(3)}|${m.gltfUv ? 'g' : 'p'}|${long}`;
     const cached = this.fitCache.get(key);
     if (cached) return cached;
-    const long = 1024;
     const w = screenAspect >= 1 ? long : Math.round(long * screenAspect);
     const h = screenAspect >= 1 ? Math.round(long / screenAspect) : long;
     const c = document.createElement('canvas');
@@ -1500,6 +1558,8 @@ export class HallScene {
     const Z = -1.05;
     const W = 1.85;
     const H = 1.15625;
+    /** The box stand-ins below; the real hardware (tv-rig GLB) replaces them as soon as it has loaded. */
+    const crude: THREE.Object3D[] = [];
 
     // Schienen + Deckenhalter (fest)
     const x0 = range[0] - 1.2;
@@ -1508,11 +1568,13 @@ export class HallScene {
       const rail = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.05, 0.05), metal);
       rail.position.set((x0 + x1) / 2, RAIL_Y, z);
       s.add(rail);
+      crude.push(rail);
     }
     for (let i = first; i <= last; i++) {
       const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.3), metal);
       bracket.position.set(((this.stationX[i] ?? range[1]) + (this.stationX[i + 1] ?? range[1] + 1.1)) / 2, 4.12, Z);
       s.add(bracket);
+      crude.push(bracket);
     }
 
     // Laufwagen mit vier Rädern, Arm nach unten
@@ -1520,6 +1582,7 @@ export class HallScene {
     const carriage = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.08, 0.34), dark);
     carriage.position.set(0, RAIL_Y, Z);
     rig.add(carriage);
+    crude.push(carriage);
     const wheels: THREE.Mesh[] = [];
     const wheelGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.03, 20);
     for (const wx of [-0.17, 0.17]) for (const wz of [Z - 0.09, Z + 0.09]) {
@@ -1528,6 +1591,7 @@ export class HallScene {
       w.position.set(wx, RAIL_Y, wz);
       rig.add(w);
       wheels.push(w);
+      crude.push(w);
     }
     // Gerät hängt am Arm: Drehpunkt am Laufwagen, damit es beim Anfahren leicht pendelt
     const hang = new THREE.Group();
@@ -1536,15 +1600,18 @@ export class HallScene {
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.3, 0.07), metal);
     arm.position.set(0, -0.15, 0);
     hang.add(arm);
+    crude.push(arm);
     const cy = -.76; // Screen above the architectural title band.
     const body = new THREE.Mesh(new RoundedBoxGeometry(W + 0.12, H + 0.12, 0.08, 3, 0.018), dark);
     body.position.set(0, cy, 0);
     hang.add(body);
+    crude.push(body);
     // A broad, matte bezel avoids a subpixel specular stripe under the TV as the camera moves.
     const bezel = new THREE.MeshStandardMaterial({ color: 0x20242d, metalness: 0.4, roughness: 0.62 });
     const rim = new THREE.Mesh(new RoundedBoxGeometry(W + 0.20, H + 0.20, 0.03, 3, 0.012), bezel);
     rim.position.set(0, cy, -0.03);
     hang.add(rim);
+    crude.push(rim);
     const geoN = new THREE.PlaneGeometry(W, H);
     const geoF = geoN.clone();
     const uv = geoF.attributes.uv as THREE.BufferAttribute;
@@ -1640,6 +1707,79 @@ export class HallScene {
     this.tvBlank.needsUpdate = true;
     this.tvDissolve = new ScreenDissolve(screen.material, true);
     this.tvDissolve.set(this.tvBlank, 0, 0);
+    this.loadTvRig(s, rig, hang, wheels, crude, x0, x1, RAIL_Y, Z);
+  }
+
+  /**
+   * The track, the trolley and the TV as real hardware (scripts/models/blender/hero_tv_gen.py), baked and shaded like the
+   * hero machines. The model's nodes keep their own transforms (they carry the dequantization); every part goes into a
+   * holder that the scene positions. The rail is one metre, instanced along the hall.
+   */
+  private loadTvRig(scene: THREE.Scene, rig: THREE.Group, hang: THREE.Group, wheels: THREE.Mesh[], crude: THREE.Object3D[], x0: number, x1: number, railY: number, z: number) {
+    const done = this.track(0);
+    this.gltf.load(TV_RIG_MODEL, (res) => {
+      done();
+      if (this.disposed) return;
+      const root = res.scene;
+      const glow = makeHeroGlow(new THREE.Color(0xc8daf4), TV_RIG_LOOK);
+      root.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const source = mesh.material as THREE.MeshStandardMaterial;
+        if (!isHeroMaterial(source)) return;
+        this.heroMaps ??= loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+        mesh.material = heroMaterial(source, this.heroMaps, glow);
+      });
+      root.updateMatrixWorld(true);
+      const part = (name: string) => root.getObjectByName(name);
+      const held = (name: string, parent: THREE.Object3D, x: number, y: number, zz: number) => {
+        const node = part(name);
+        if (!node) return undefined;
+        const holder = new THREE.Group();
+        holder.name = `tv_rig_${name}`;
+        holder.position.set(x, y, zz);
+        holder.add(node);
+        parent.add(holder);
+        return holder;
+      };
+      // one metre of track, instanced from end to end
+      const rail = part('rail');
+      if (rail) {
+        const count = Math.max(1, Math.ceil(x1 - x0));
+        const place = new THREE.Matrix4();
+        rail.traverse((o) => {
+          const mesh = o as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, count);
+          inst.name = 'tv_rig_rail';
+          for (let i = 0; i < count; i++) inst.setMatrixAt(i, place.makeTranslation(x0 + 0.5 + i, railY, z).multiply(mesh.matrixWorld));
+          inst.instanceMatrix.needsUpdate = true;
+          inst.frustumCulled = false;
+          scene.add(inst);
+        });
+      }
+      // the wheels run ON the channels (their top is 25 mm above the track's centre line); the trolley hangs from the axles
+      const axleY = railY + 0.025 + 0.055;
+      held('carriage', rig, 0, axleY, z);
+      const wheel = part('wheel');
+      if (wheel) {
+        wheels.length = 0;
+        for (const wx of [-0.17, 0.17]) for (const wz of [z - 0.09, z + 0.09]) {
+          const holder = new THREE.Group();
+          holder.position.set(wx, axleY, wz);
+          holder.rotation.y = Math.PI / 2; // the model's axle runs along X; across the rails it has to run along Z
+          const spinner = new THREE.Group();
+          spinner.add(wheel.clone());
+          holder.add(spinner);
+          rig.add(holder);
+          wheels.push(spinner as unknown as THREE.Mesh);
+        }
+      }
+      held('arm', hang, 0, 0.075, 0); // the drop tube comes down through the gap between the rails, from the deck
+      held('tv', hang, 0, 0, 0);
+      for (const o of crude) { o.removeFromParent(); const m = o as THREE.Mesh; m.geometry?.dispose(); }
+      this.dirty = this.mirrorDirty = true;
+    }, undefined, () => done());
   }
 
   /**
@@ -1788,7 +1928,7 @@ export class HallScene {
     const brand = m.brand;
     const done = this.track(m.index);
     this.gltf.load(
-      '/models/claw.glb',
+      CLAW_MODEL,
       (res) => {
         done();
         if (this.disposed) return;
@@ -1797,13 +1937,25 @@ export class HallScene {
         let carriage: THREE.Object3D | undefined;
         let claw: THREE.Object3D | undefined;
         let floor: THREE.Mesh | undefined;
+        let glass: THREE.Mesh | undefined;
+        let glow: HeroGlow | undefined;
         root.traverse((o) => {
           const mesh = o as THREE.Mesh;
           if (!mesh.isMesh) return;
           simplifyMaterial(mesh);
           const name = mesh.name.toLowerCase();
+          const source = mesh.material as THREE.MeshStandardMaterial;
+          // The hero claw machine (hero_claw_gen.py): baked surfaces like the arcades'. Lamps, LEDs and the panes keep
+          // their own materials; the interior lamps are the mask's "screen" light.
+          if (isHeroMaterial(source) && !/^(lamp|led|glass)/.test(name) && !/^(lamp|led|glass)/.test(mesh.parent?.name.toLowerCase() ?? '')) {
+            this.heroMaps ??= loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+            glow ??= makeHeroGlow(brand, CLAW_LOOK);
+            glow.screen.value.setRGB(1, .95, .86).multiplyScalar(3.2);
+            mesh.material = heroMaterial(source, this.heroMaps, glow);
+            mesh.userData.hero = true;
+            m.hero = true;
+          } else { stripHeroLight(source); finishHardware(mesh,this.surfaceMaps); }
           const mat = mesh.material as THREE.MeshStandardMaterial;
-          finishHardware(mesh,this.surfaceMaps);
           if (name === 'front_art' || name === 'side_art_l' || name === 'side_art_r' || name === 'deck_art') {
             mesh.material=this.cabinetArtwork(mesh,'kasse');
           } else if (name === 'marquee') {
@@ -1816,6 +1968,7 @@ export class HallScene {
           } else if (name === 'glass') {
             mesh.material = clearScreenGlass(this.glassWear,mesh,true);
             mesh.renderOrder = 5;
+            glass = mesh;
           } else if (name === 'disc') disc = mesh;
           else if (name === 'carriage') carriage = mesh;
           else if (name === 'claw') claw = mesh;
@@ -1828,6 +1981,10 @@ export class HallScene {
             mat.emissiveIntensity = 1.2;
           }
         });
+        // A part with several materials arrives as a group of meshes (claw_1, claw_2 ...), not as one mesh.
+        disc ??= root.getObjectByName('disc') as THREE.Mesh | undefined;
+        carriage ??= root.getObjectByName('carriage');
+        claw ??= root.getObjectByName('claw');
         const box = new THREE.Box3().setFromObject(root);
         const size = box.getSize(new THREE.Vector3());
         const k = 1.95 / Math.max(0.001, size.y);
@@ -1882,6 +2039,17 @@ export class HallScene {
               fr.scale.setScalar(fk);
               fr.position.set(-fc.x * fk, -fb.min.y * fk, -fc.z * fk);
               stage.add(fr);
+              // Dennis: the claw must be connected to the figure. It comes down onto his head, a size larger so it reads as
+              // the gripper for the main prize, and from then on it stays over him and turns with the turntable.
+              if (claw && clawRest) {
+                claw.scale.multiplyScalar(1.35); // multiply: a quantized node already carries its dequantization scale
+                g.updateWorldMatrix(true, true);
+                const tipY = g.worldToLocal(new THREE.Vector3(0, new THREE.Box3().setFromObject(claw).min.y, 0)).y;
+                const drop = tipY - (stage.position.y + figureH - 0.04);
+                if (drop > 0) claw.position.y -= drop / k;
+                clawRest.copy(claw.position);
+                (g.userData.kasse as { hold?: boolean }).hold = true;
+              }
               // Die Figur bestimmt den Zoom der Kasse — Rahmen neu rechnen
               m.extent = undefined;
               if (m.index === this.focus) {
@@ -1896,6 +2064,12 @@ export class HallScene {
         }
         // Prizes around the figure: plush models made for this machine (CLAW_PRIZES).
         const prizes: { url?: string; sprite?: string; size: number; x: number; y?: number; z: number; rotY?: number }[] = CLAW_PRIZES.map((pz) => ({ ...pz }));
+        // The panes in the machine's own space: no plush may reach through them.
+        const localBox = (o: THREE.Object3D) => {
+          const world = new THREE.Box3().setFromObject(o);
+          return new THREE.Box3().setFromPoints([g.worldToLocal(world.min.clone()), g.worldToLocal(world.max.clone())]);
+        };
+        const panes = glass ? localBox(glass) : undefined;
         for (const pz of prizes) {
           if (pz.url) {
             this.gltf.load(pz.url, (pr) => {
@@ -1921,6 +2095,16 @@ export class HallScene {
               holder.position.set(pz.x, floorTop + (pz.y ?? 0), pz.z);
               holder.rotation.y = pz.rotY ?? 0;
               g.add(holder);
+              if (panes) {
+                holder.updateWorldMatrix(true, true);
+                const own = localBox(holder);
+                const pad = .025;
+                for (const axis of ['x', 'z'] as const) {
+                  const room = panes.max[axis] - panes.min[axis] - pad * 2, width = own.max[axis] - own.min[axis];
+                  if (width >= room) holder.position[axis] += (panes.max[axis] + panes.min[axis]) / 2 - (own.max[axis] + own.min[axis]) / 2;
+                  else holder.position[axis] += Math.max(0, panes.min[axis] + pad - own.min[axis]) - Math.max(0, own.max[axis] - (panes.max[axis] - pad));
+                }
+              }
               this.dirty = true;
             });
           } else if (pz.sprite) {
@@ -2308,7 +2492,7 @@ export class HallScene {
         tex.needsUpdate = true;
       }
       if (tex.image) {
-        tex = this.fitTexture(tex, src, m);
+        tex = this.fitTexture(tex, src, m, this.screenLong(m));
         this.renderer.initTexture(tex);
       }
     } else {
@@ -2318,6 +2502,67 @@ export class HallScene {
       if(tex.image) this.displayTexture(m, tex);
     }
     this.dirty = true;
+    this.scheduleSharpen();
+  }
+
+  /** Breite des fokussierten Bildschirms in echten Framebuffer-Pixeln (Kamera steht bereits am Ziel) */
+  private screenPixels(m: Machine) {
+    const sf = this.screenFrameOf(m);
+    if (!sf) return 0;
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    const p = new THREE.Vector3();
+    for (const c of sf.corners) {
+      p.copy(c).project(this.camera);
+      if (!Number.isFinite(p.x)) return 0;
+      x0 = Math.min(x0, p.x);
+      x1 = Math.max(x1, p.x);
+    }
+    return ((x1 - x0) / 2) * this.renderer.domElement.width;
+  }
+
+  /**
+   * Zielkante für die Capture des fokussierten Bildschirms.
+   *
+   * In der Halle bleibt es bei 1024 (unverändert, keine zusätzlichen Bytes, kein Umschalten im Bild). Steht die
+   * Kamera dagegen vor einem Automaten, wird die Capture auf ihre eigene Fußspur gebracht: eine feste 1024er
+   * Leinwand liegt bei rund 550 gezeichneten Pixeln genau zwischen zwei Mip-Stufen, die GPU mischt 1024 und 512 —
+   * das ist die Unschärfe auf dem Glas. Auf 128er Stufen gerundet liegt die Abtastung wieder auf Mip 0.
+   */
+  private screenLong(m: Machine) {
+    if (this.pose === 'hall' || !this.settledFlag) return 1024;
+    const px = this.screenPixels(m);
+    if (!(px > 64)) return 1024;
+    return Math.max(256, Math.min(2048, Math.ceil(px / 128) * 128));
+  }
+
+  private scheduleSharpen(delay = 90) {
+    if (this.sharpenTimer || this.disposed || this.pose === 'hall') return;
+    this.sharpenTimer = window.setTimeout(() => {
+      this.sharpenTimer = 0;
+      this.sharpenFocusScreen();
+    }, delay);
+  }
+
+  /**
+   * Die Capture auf dem fokussierten Bildschirm auf die Pixel bringen, mit denen sie wirklich gezeichnet wird.
+   *
+   * In der Case-Pose bedeckt das Glas rund 550 Framebuffer-Pixel. Eine feste 1024er Leinwand liegt damit genau
+   * zwischen zwei Mip-Stufen: die GPU mischt 1024 und 512 — das ist die Unschärfe, die Dennis sieht. Auf die
+   * eigene Fußspur gebracht (Vielfache von 128) liegt die Abtastung wieder auf Mip 0 und das Bild steht scharf.
+   * Nur der fokussierte Automat, nur außerhalb der Halle, keine zusätzlichen Bytes: die Case-Seite hat die
+   * Capture in voller Auflösung ohnehin schon geladen.
+   */
+  private sharpenFocusScreen() {
+    if (this.disposed || this.startupFailed || this.pose === 'hall' || this.blackout || !this.override) return;
+    const m = this.machines[this.focus];
+    if (!m?.screen || !isMachine(m.item)) return;
+    const raw = this.texCache.get(this.override);
+    if (!raw?.image) return;
+    const sharp = this.fitTexture(raw, this.override, m, this.screenLong(m));
+    if (sharp === m.screen.material.map) return;
+    this.renderer.initTexture(sharp);
+    this.displayTexture(m, sharp, 0);
   }
 
   private markGoalChanged() {
@@ -2570,7 +2815,7 @@ export class HallScene {
       const r = this.projectBox(new THREE.Box3().setFromObject(c.node));
       if (r) rects[name] = r;
     }
-    document.dispatchEvent(new CustomEvent('hall:ctlrects', { detail: { pose: this.pose, rects } }));
+    document.dispatchEvent(new CustomEvent('hall:ctlrects', { detail: { pose: this.pose, rects, printed: Boolean(m.hero) } }));
   }
 
   /** Bedienelement glühen lassen oder drücken (hall:ctl aus der Seite) */
@@ -2628,6 +2873,15 @@ export class HallScene {
   }
 
   /** Joystick-Richtung fürs nächste Kippen (−1 links, 1 rechts) */
+  /** The trackball under the pointer: the ball turns with the drag (pixels), about the screen's axes. */
+  spin(name: string, dx: number, dy: number) {
+    const c = this.machines[this.focus]?.ctl.get(name);
+    if (!c?.spin) return;
+    c.spin.rotateOnWorldAxis(SPIN_UP, dx * 0.012);
+    c.spin.rotateOnWorldAxis(SPIN_RIGHT, dy * 0.012);
+    this.dirty = true;
+  }
+
   joyDir(dir: -1 | 1) {
     const m = this.machines[this.focus];
     for (const name of ['joy', 'trackball']) {
@@ -2927,7 +3181,7 @@ export class HallScene {
     if (!camMoving && !this.settledFlag) {
       this.settledFlag = true;
       this.flushDeferredScreens();
-      if (!inHall) this.emitScreenRect();
+      if (!inHall) { this.emitScreenRect(); this.scheduleSharpen(); }
       if (this.pose === 'zoom') this.emitMachineRect();
       if (this.pose === 'screen' || this.pose === 'play') this.emitControlRects();
       document.dispatchEvent(new CustomEvent('hall:settled', { detail: { pose: this.pose } }));
@@ -3068,12 +3322,14 @@ export class HallScene {
           // Außerhalb der Halle rendert die Bühne nur bei Änderungen — die Figur bewegt sich, also zeichnen
           if (!inHall) this.dirty = true;
           m.model.rotation.y = Math.sin(t * 0.45) * 0.55; // Drehteller pendelt, Gesicht bleibt vorn
-          const kz = m.group.userData.kasse as { disc?: THREE.Object3D; carriage?: THREE.Object3D; claw?: THREE.Object3D; carriageRest?: THREE.Vector3 | null; clawRest?: THREE.Vector3 | null; k: number } | undefined;
+          const kz = m.group.userData.kasse as { disc?: THREE.Object3D; carriage?: THREE.Object3D; claw?: THREE.Object3D; carriageRest?: THREE.Vector3 | null; clawRest?: THREE.Vector3 | null; k: number; hold?: boolean } | undefined;
           if (kz) {
             if (kz.disc) kz.disc.rotation.y = m.model.rotation.y;
             // Greifer fährt langsam über die Preise (Versatz in Modell-Einheiten)
-            const ox = (Math.sin(t * 0.35) * 0.16) / kz.k;
-            const oz = (Math.cos(t * 0.27) * 0.035) / kz.k; // die Rollen bleiben auf den Schienen
+            // Holding the figure, the gantry stays over him and the claw turns with the turntable.
+            const ox = kz.hold ? 0 : (Math.sin(t * 0.35) * 0.16) / kz.k;
+            const oz = kz.hold ? 0 : (Math.cos(t * 0.27) * 0.035) / kz.k; // die Rollen bleiben auf den Schienen
+            if (kz.hold && kz.claw) kz.claw.rotation.y = m.model.rotation.y;
             if (kz.carriage && kz.carriageRest) kz.carriage.position.set(kz.carriageRest.x + ox, kz.carriageRest.y, kz.carriageRest.z + oz);
             if (kz.claw && kz.clawRest) kz.claw.position.set(kz.clawRest.x + ox, kz.clawRest.y, kz.clawRest.z + oz);
           } else {
@@ -3204,6 +3460,8 @@ export class HallScene {
     this.readyRejectors.splice(0).forEach(reject => reject(new Error('Hall disposed during startup')));
     this.readyResolvers = [];
     window.clearTimeout(this.deferredScreenTimer);
+    window.clearTimeout(this.sharpenTimer);
+    this.sharpenTimer = 0;
     this.deferredScreens.clear();
     this.stop();
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);

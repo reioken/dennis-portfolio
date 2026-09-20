@@ -19,6 +19,17 @@ export function createHallFloor(maps:Record<string,THREE.Texture>,lighting:HallL
  material.onBeforeCompile=(shader,renderer)=>{before(shader,renderer);Object.assign(shader.uniforms,{floorProjection:matrix,floorSoft:{value:soft.texture},floorBroad:{value:broad.texture}});
  shader.vertexShader='uniform mat4 floorProjection;varying vec4 vFloorProjection;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvFloorProjection=floorProjection*vec4(transformed,1.0);');
  shader.fragmentShader='uniform sampler2D floorSoft;uniform sampler2D floorBroad;varying vec4 vFloorProjection;\n'+shader.fragmentShader;
+ // The slab tile repeats every 2 m. Everything larger is analytic and in world space (vHallWorld comes from
+ // HallLighting.decorate, applied above), so it cannot tile: slow cloudiness in the sealer over five to seventy
+ // metres, and the lane people walk in front of the machines, which is scuffed dull and breaks up the reflection.
+ shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
+  float floorWander=sin(vHallWorld.x*.0917+.9)*.5+sin(vHallWorld.x*.2310-1.8)*.31+sin(vHallWorld.x*.5310+vHallWorld.z*.37+2.4)*.19;
+  floorWander+=sin(vHallWorld.z*.3110+vHallWorld.x*.1130-.7)*.24;
+  float floorCloud=clamp(.5+.42*floorWander,0.,1.);
+  float floorLane=exp(-pow((vHallWorld.z-1.35)/1.45,2.))*(.62+.38*sin(vHallWorld.x*1.2310+1.1));
+  float floorPath=clamp(floorLane*(.55+.45*floorCloud),0.,1.);
+  roughnessFactor=clamp(roughnessFactor*(1.+.52*floorPath)+.11*(floorCloud-.5),.04,1.);
+  diffuseColor.rgb*=1.+.12*(floorCloud-.5)-.07*floorPath;`);
  shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
   vec2 reflectionUv=vFloorProjection.xy/max(vFloorProjection.w,.0001);
   vec3 worldNormal=inverseTransformDirection(normal,viewMatrix);
@@ -30,7 +41,7 @@ export function createHallFloor(maps:Record<string,THREE.Texture>,lighting:HallL
   float contribution=fresnel*valid*(1.-roughnessFactor*.45);
   outgoingLight=outgoingLight*(1.-contribution)+reflected*contribution;
   #include <opaque_fragment>`);
- };material.customProgramCacheKey=()=>oldKey()+'-rough-planar-v2';
+ };material.customProgramCacheKey=()=>oldKey()+'-rough-planar-v3';
  (mirror as unknown as THREE.Mesh).material=material;
  const previousCamera=new THREE.Matrix4();let last=-1;
  mirror.onBeforeRender=(renderer,scene,camera,geometry,mat,group)=>{const flags=state(),moved=!previousCamera.equals(camera.matrixWorld);if(last>=0&&!moved&&!flags.dirty)return;if(flags.ready&&!moved&&performance.now()-last<(flags.quality===2?45:85))return;

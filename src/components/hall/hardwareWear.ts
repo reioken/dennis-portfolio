@@ -48,11 +48,12 @@ export function clearScreenGlass(wear: ReturnType<typeof makeGlassWear>, mesh?: 
     clearcoat:enclosure?.45:.22,clearcoatRoughness:enclosure?.12:.085,envMapIntensity:enclosure?.7:1.15,depthWrite:false,
     side:enclosure?THREE.DoubleSide:THREE.FrontSide,forceSinglePass:true});
   // Keep reflected light visible without adding an opaque diffuse veil.
-  if (!enclosure) {
-    mat.blending=THREE.CustomBlending;
-    mat.blendSrc=THREE.OneFactor;
-    mat.blendDst=THREE.OneMinusSrcAlphaFactor;
-  }
+  mat.blending=THREE.CustomBlending;
+  mat.blendSrc=THREE.OneFactor;
+  mat.blendDst=THREE.OneMinusSrcAlphaFactor;
+  // A flat pane facing a dark room reflects nothing: the enclosure carries two soft diagonal sheen bands.
+  // They ride on the emissive term, so the room's power cue dims them with every other lit surface.
+  if (enclosure) { mat.emissive=new THREE.Color(0xcfe2ff); mat.emissiveIntensity=1; }
   mat.onBeforeCompile=shader=>{
     shader.fragmentShader=shader.fragmentShader.replace('#include <alphamap_fragment>',`
       #include <alphamap_fragment>
@@ -60,7 +61,22 @@ export function clearScreenGlass(wear: ReturnType<typeof makeGlassWear>, mesh?: 
       float glassEdge = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 4.0);
       diffuseColor.a = 0.018 + glassEdge * 0.12 + max(0.0, glassMarks - 0.16) * 0.12;
     `);
-    if (!enclosure) shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>', `
+    if (enclosure) shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>', `
+      #include <emissivemap_fragment>
+      float sheenAxis = vRoughnessMapUv.x * .8 + vRoughnessMapUv.y;
+      float glassSheen = smoothstep(.78,.86,sheenAxis) * (1.0 - smoothstep(.96,1.04,sheenAxis))
+        + .55 * smoothstep(1.12,1.15,sheenAxis) * (1.0 - smoothstep(1.19,1.22,sheenAxis));
+      // One pane at a time: only the outer face of the pane the viewer looks through. Side panes seen from the
+      // front stay clear, otherwise their bands cross the front pane's.
+      float glassFacing = abs(dot(normalize(vNormal), normalize(vViewPosition)));
+      glassSheen *= smoothstep(.6,.9,glassFacing) * (gl_FrontFacing ? 1.0 : 0.0);
+      totalEmissiveRadiance *= glassSheen * .075;
+    `).replace('#include <opaque_fragment>', `
+      #include <opaque_fragment>
+      gl_FragColor.rgb = (outgoingLight - totalEmissiveRadiance) * (0.3 + glassEdge * 0.5) + totalEmissiveRadiance;
+      gl_FragColor.a = clamp(0.03 + glassEdge * 0.2 + max(0.0, glassMarks - 0.16) * 0.06 + glassSheen * 0.03, 0.03, 0.3);
+    `);
+    else shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>', `
       #include <opaque_fragment>
       // Preserve grazing highlights while keeping the front-facing display
       // readable. A constant reflection gain made broad lamp reflections
@@ -69,7 +85,7 @@ export function clearScreenGlass(wear: ReturnType<typeof makeGlassWear>, mesh?: 
       gl_FragColor.a = clamp(0.035 + glassEdge * 0.24 + max(0.0, glassMarks - 0.16) * 0.045, 0.035, 0.32);
     `);
   };
-  mat.customProgramCacheKey=()=> enclosure ? 'clear-worn-enclosure-v3' : 'convex-screen-glass-v4';
+  mat.customProgramCacheKey=()=> enclosure ? 'clear-worn-enclosure-v5' : 'convex-screen-glass-v4';
   return mat;
 }
 

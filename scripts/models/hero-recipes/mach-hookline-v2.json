@@ -1,0 +1,68 @@
+{
+  "name": "mach-hookline",
+  "title": "Hookline",
+  "variant": "terminal",
+  "brand": "#d4ff3a",
+  "brand2": "#c9b6ff",
+  "tmolding": "#d4ff3a",
+  "accent": "#c9b6ff",
+  "hero": {
+    "width": 1.05,
+    "depth": 0.7,
+    "tilt": 9,
+    "shelf_z": 0.94,
+    "shelf_edge": 0.075,
+    "deck_len": 0.21,
+    "deck_tilt": 11,
+    "display_top": 1.66,
+    "hood_drop": 0.18,
+    "hood_angle": 30,
+    "screen_w": 0.74,
+    "screen_aspect": 1.33,
+    "pedestal": "speakers",
+    "drivers": [
+      [
+        0,
+        0.34,
+        0.19
+      ],
+      [
+        -0.345,
+        0.5,
+        0.085
+      ],
+      [
+        0.345,
+        0.5,
+        0.085
+      ],
+      [
+        -0.345,
+        0.22,
+        0.04
+      ],
+      [
+        0.345,
+        0.22,
+        0.04
+      ]
+    ],
+    "speakers": "none",
+    "light_line": "hood",
+    "controls": "selectors",
+    "knobs": 3,
+    "paint": "#1f2312",
+    "panel": "#3C374D",
+    "door": 0.1,
+    "seed": "hookline",
+    "wear": {
+      "edge": 0.5,
+      "hands": 0.65,
+      "shoes": 0.2,
+      "knees": 0,
+      "crevice": 0.9,
+      "low": 0.5,
+      "dust": 0.45
+    }
+  }
+}

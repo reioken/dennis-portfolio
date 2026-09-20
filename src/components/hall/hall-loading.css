@@ -147,7 +147,7 @@ html:has(.hall__stage[data-power='on']) .hall-startup { animation: hall-emblem-d
 @keyframes hall-signal { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
 @keyframes hall-emblem-dismiss { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: no-preference) {
-  .hall:has(.hall__stage[data-power='on']) .hall-dock { animation: hall-controls-power 6800ms ease-out both; }
+  .hall:has(.hall__stage[data-power='on']) .hall-dock { animation: hall-controls-power 4080ms ease-out both; }
 }
 @keyframes hall-controls-power { 0%, 35% { opacity: .04; } 68% { opacity: .5; } 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {

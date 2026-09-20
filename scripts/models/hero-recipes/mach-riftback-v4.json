@@ -1,0 +1,16 @@
+{
+  "name": "mach-riftback",
+  "title": "Riftback",
+  "variant": "terminal",
+  "brand": "#c9a45c",
+  "brand2": "#8a6d2f",
+  "paint": "#181510",
+  "tmolding": "#c9a45c",
+  "panel": "#29210E",
+  "accent": "#8a6d2f",
+  "height": 1.55,
+  "width": 0.95,
+  "depth": 0.7,
+  "wear": 0.3,
+  "screenTilt": 12
+}

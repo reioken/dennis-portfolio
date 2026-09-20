@@ -1,5 +1,7 @@
 /** One startup lighting cue in the real scene, with no loading gate. */
-export const ROOM_POWER_MS = 6800;
+/** The cue was authored on a 6800 ms timeline; it plays back compressed (2026-09-19: the cue was 6.8 s of a 12.6 s cold start). 1 restores the authored length. */
+export const ROOM_POWER_SCALE = .6;
+export const ROOM_POWER_MS = 6800 * ROOM_POWER_SCALE;
 const ramp = (time, start, end) => {
   const t = Math.max(0, Math.min(1, (time - start) / (end - start)));
   return t * t * (3 - 2 * t);
@@ -24,8 +26,10 @@ export function roomCircuitOffset(x,originX) {
   return Math.min(650,Math.abs(bank)*135)+phase*160;
 }
 
-export function roomPowerLevels(elapsed, offset=0) {
-  if (elapsed >= ROOM_POWER_MS) return { ambient: 1, room: 1, circuit: 1, screen: 1 };
+export function roomPowerLevels(realElapsed, offset=0) {
+  if (realElapsed >= ROOM_POWER_MS) return { ambient: 1, room: 1, circuit: 1, screen: 1 };
+  // Authored time from here on.
+  const elapsed=realElapsed/ROOM_POWER_SCALE;
   const time=elapsed-offset;
   const warm=settle(time,2450,5650);
   // One small local ballast dip during warm-up, rather than wobbling the entire room.
@@ -78,7 +82,7 @@ export function withRoomPower(scene, elapsed, originX, draw, preparing=false, ta
       // Saturated project lights retain their identity throughout.
       if (!ambient && object.color && Math.max(object.color.r,object.color.g,object.color.b)-Math.min(object.color.r,object.color.g,object.color.b)<.22) {
         const color=object.color.clone();
-        const cold=1-settle(elapsed-delay,2200,5200);
+        const cold=1-settle(elapsed/ROOM_POWER_SCALE-delay,2200,5200);
         object.color.g *= 1-cold*.035;
         object.color.b *= 1-cold*.10;
         restore.push(()=>object.color.copy(color));

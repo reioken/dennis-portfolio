@@ -1,0 +1,22 @@
+{
+  "name": "mach-nexus",
+  "title": "NEXUS",
+  "variant": "terminal",
+  "brand": "#ac8bfd",
+  "brand2": "#4a82fe",
+  "paint": "#16131C",
+  "tmolding": "#ac8bfd",
+  "panel": "#16274C",
+  "accent": "#4a82fe",
+  "hero": {
+    "width": 1.2, "depth": 0.8, "tilt": 6.0,
+    "shelf_z": 0.88, "shelf_edge": 0.05, "deck_len": 0.31, "deck_tilt": 5.0, "display_top": 1.70,
+    "hood_drop": 0.17, "hood_angle": 12.0,
+    "screen_w": 1.0, "screen_aspect": 1.7778,
+    "pedestal": "pc_bay", "speakers": "pedestal", "light_line": "hood",
+    "kb_w": 0.62, "kb_x": -0.16, "trackball_x": 0.40,
+    "paint": "#24222c", "panel": "#1f2a44", "door": 0.09,
+    "seed": "nexus",
+    "wear": {"edge": 0.3, "hands": 0.0, "shoes": 0.22, "knees": 0.1, "crevice": 0.6, "low": 0.4, "dust": 0.7}
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "mach-berry",
+  "title": "Berry",
+  "variant": "terminal",
+  "brand": "#5ce6a0",
+  "brand2": "#9dffc8",
+  "tmolding": "#5ce6a0",
+  "accent": "#9dffc8",
+  "hero": {
+    "width": 0.5,
+    "depth": 0.42,
+    "screen_w": 0.3,
+    "screen_aspect": 0.5625,
+    "speakers": "none",
+    "controls": "kiosk",
+    "knobs": 0,
+    "tilt": 9,
+    "shelf_z": 0.94,
+    "shelf_edge": 0.05,
+    "deck_len": 0.15,
+    "deck_tilt": 10,
+    "display_top": 1.76,
+    "hood_drop": 0.12,
+    "hood_angle": 28,
+    "pedestal": "tray",
+    "light_line": "shelf",
+    "paint": "#16241d",
+    "panel": "#2F4D3C",
+    "door": 0.1,
+    "seed": "berry",
+    "wear": {
+      "edge": 0.5,
+      "hands": 0.6,
+      "shoes": 0.35,
+      "knees": 0,
+      "door": 0.35,
+      "door_z": 0.68,
+      "crevice": 0.9,
+      "low": 0.6,
+      "dust": 0.25
+    }
+  }
+}

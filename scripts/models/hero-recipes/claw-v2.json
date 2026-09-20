@@ -1,0 +1,13 @@
+{
+  "name": "claw",
+  "paint": "#24212c",
+  "chrome": "#d8dbe4",
+  "accent": "#c8daf4",
+  "glassTint": "#8fb0c8",
+  "height": 1.95,
+  "width": 0.9,
+  "depth": 0.9,
+  "baseHeight": 0.74,
+  "canopyHeight": 0.10,
+  "wear": 0.25
+}
