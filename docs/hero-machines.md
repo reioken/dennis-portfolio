@@ -37,6 +37,11 @@ prints the sha8: `sh scripts/models/build-hero.sh <name>`. About five minutes on
 tools are in `scripts/qa/hero/` (README there). The story, Dennis's verdicts and the open work:
 `HANDOVER-2026-09-20.md`.
 
+The optional top-level recipe field `atlasSize` caps exported textures during optimization (768 or 1024; default
+1024). Bakes remain 1024 so the original high-resolution sources are retained. Berry, Safeplate, Briefly, Mina
+and the TV rig use 768. Keep `--keep-attributes`: both UV sets are required. When re-optimizing an existing bake,
+run the optimizer at that recipe's size, then pack only that model and update its URL hash.
+
 `/models/*` is edge-cached for a day: every rebuilt GLB needs a new `?v=` (first 8 hex of its SHA-256).
 
 ## A recipe
@@ -47,6 +52,10 @@ with `bay: "rack"`, `speakers` with `drivers: [[x, y, r], ...]` and `coin_door: 
 `intercom`), `speakers` (`hood`, `pedestal`, `none`), `light_line` (`shelf`, `hood`), `controls` (`keyboard`,
 `transport`, `selectors`, `arcade` with `second_stick`, `kiosk`), `knobs`, `chrome`, `paint panel door`, `seed`, `wear`
 (zone strengths: edge, hands, shoes, knees, crevice, low, dust).
+
+`hero.speaker_wear: false` gives the hood speaker panel a separate `_unworn` material (currently Riftback,
+per Dennis's September 20 verdict). `hero-attach-mask.mjs` tags it with `extras.heroWear: 0` so optimization
+retains it and the runtime suppresses wear on that panel only, including scratch roughness.
 
 Control names are the hall's contract: `trackball tbtn_0 tbtn_1` · `joy btn_0..5 start_0 start_1` · `kbtn_0 kbtn_1` ·
 `start_0 sel_0..5`. Previous/next buttons carry a printed chevron.

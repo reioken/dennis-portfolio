@@ -11,6 +11,9 @@ export type GalleryShot = {
   alt: string;
   /** Englischer Alt-Text; fehlt er, bleibt der deutsche stehen */
   altEn?: string;
+  /** Intrinsic capture size reserves the mobile carousel before image decode. */
+  width?: number;
+  height?: number;
 };
 
 export function readLang(): Lang {

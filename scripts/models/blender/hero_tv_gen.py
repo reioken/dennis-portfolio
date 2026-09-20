@@ -11,8 +11,8 @@ Until now hallScene.buildTv drew all of it from boxes. This file builds the part
     carriage  the trolley: deck plate, cheek plates, axle bolts, a drive motor with its gearbox, a cable clamp
     wheel     one flanged steel wheel, axle along X, origin at its centre (the scene places four and turns them)
     arm       the drop tube with its flange and the tilt bracket
-    tv        the display: back shell, a slim chamfered bezel around the opening, a chin with stamped speaker slots,
-              the mount plate. The picture, the LED and the light stay the scene's.
+    tv        the display: thin anodized frame and inset seal, shallow rear housing, underside speaker vents,
+              ports, fasteners and the mount plate. The picture, the LED and the light stay the scene's.
 
 Coordinates: Blender Z-up, the viewer looks along +Y (front = -Y). Every part is modelled around its own origin in the
 scene's terms (see buildTv): rail and carriage around the track's centre line, arm and tv around the hang pivot.
@@ -51,9 +51,12 @@ def T(x, y, z):
 def build():
     steel = material("rig_metal", grey(0.30), rough=0.38, metal=1.0)
     zinc = material("rig_metal_zinc", grey(0.55), rough=0.42, metal=1.0)
+    rail_steel = material("rig_metal_rail", grey(0.14), rough=0.55, metal=1.0)
+    rail_zinc = material("rig_metal_rail_zinc", grey(0.26), rough=0.55, metal=1.0)
     dark = material("rig_paint", grey(0.02), rough=0.5)
-    shell = material("rig_shell", grey(0.015), rough=0.55)
-    bezel = material("rig_bezel_gloss", grey(0.012), rough=0.2)
+    bezel = material("rig_bezel_unworn", grey(0.009), rough=0.42)
+    edge = material("rig_metal_frame_unworn", grey(0.075), rough=0.4, metal=1.0)
+    rear = material("rig_shell_unworn", grey(0.019), rough=0.62)
     hole = material("rig_hole", grey(0.004), rough=0.9)
     rubber = material("rig_rubber", grey(0.012), rough=0.7)
     b = cl.wbox
@@ -99,7 +102,8 @@ def build():
     G["carriage"].append(cylinder("motor_can", 0.03, 0.09, steel, T(0.215, 0, -0.09) @ cl.rot("Y", 90), segs=20, bevel=0.003, bevel_seg=1))
     G["carriage"].append(b("gearbox", 0.05, 0.10, 0.05, steel, (0.03, 0, -0.085), bevel=0.004, seg=1))
     G["carriage"].append(b("cable_clamp", 0.03, 0.05, 0.02, zinc, (-0.17, 0.11, -0.06), bevel=0.002, seg=1))
-    pts = [(-0.17, 0.11, -0.07), (-0.22, 0.13, -0.16), (-0.12, 0.10, -0.24), (-0.03, 0.04, -0.20), (0.0, 0.035, -0.12)]
+    # Clipped to the underside of the deck, then into the motor; no loose loop below the trolley.
+    pts = [(-0.17, 0.11, -0.07), (-0.14, 0.09, -0.06), (-0.07, 0.065, -0.06), (-0.015, 0.045, -0.075), (0.0, 0.035, -0.12)]
     G["carriage"].append(cl.loft_tube("cable", pts, [0.006] * len(pts), (0, 0, 1), rubber, segs=8))
 
     # --- one wheel: axle along X, flanged like a crane wheel --------------------------------------------------------------
@@ -119,21 +123,47 @@ def build():
     G["arm"].append(cylinder("tilt_pin", 0.008, 0.19, zinc, T(0, 0, -0.30) @ cl.rot("Y", 90), segs=10))
 
     # --- the display (origin: the hang pivot; centre of the picture at z = TV_CY, picture plane y = -0.045) -------------------
-    bw, bh = TV_W + 0.06, TV_H + 0.06 + 0.035  # a slim bezel, and a chin under the picture
-    cz = TV_CY - 0.0175
-    G["tv"].append(b("back", bw - 0.02, 0.06, bh - 0.02, shell, (0, 0.0, cz), bevel=0.02, seg=3))
+    # Thin anodized perimeter, inset black seal and a shallow rear electronics enclosure.
+    # The screen opening/plane stay fixed: runtime content keeps exactly the same framing.
+    bw, bh = TV_W + 0.032, TV_H + 0.044
+    cz = TV_CY - 0.006
     F = T(0, -0.03, cz) @ cl.rot("X", 90)
-    G["tv"].append(cg.frame_plate("bezel", bw, bh, TV_W, TV_H, 0.018, -0.002, 0.014, bezel, F, bevel=0.004, seg=2, inner_bevel=0.002, hole_dy=0.0175))
-    for i in range(18):  # the chin's speaker slots
-        G["tv"].append(b(f"chin_slot_{i}", 0.05, 0.002, 0.004, hole, (-0.72 + i * 0.085, -0.0485, TV_CY - TV_H / 2 - 0.036)))
+    G["tv"].append(cg.frame_plate("edge_frame", bw, bh, TV_W + 0.012, TV_H + 0.012, 0.017, -0.018, 0.006, edge, F, bevel=0.0015, seg=2, inner_bevel=0.0008, hole_dy=0.006))
+    G["tv"].append(cg.frame_plate("screen_seal", TV_W + 0.013, TV_H + 0.013, TV_W, TV_H, 0.016, 0.008, 0.003, bezel, T(0, -0.03, TV_CY) @ cl.rot("X", 90), bevel=0.0006, seg=1, inner_bevel=0.0004))
+    G["tv"].append(b("back_skin", bw - 0.006, 0.018, bh - 0.006, rear, (0, -0.002, cz), bevel=0.005, seg=3))
+    G["tv"].append(b("electronics_housing", 1.24, 0.034, 0.62, rear, (0, 0.019, TV_CY - 0.12), bevel=0.012, seg=3))
+    # A narrow seam separates the rear shell from the metal edge; screws secure the removable housing.
+    for sx in (-1, 1):
+        G["tv"].append(b(f"shell_seam_{sx}", 0.0015, 0.002, bh - 0.025, hole, (sx * (bw / 2 - 0.006), 0.008, cz)))
+        for dz in (-0.25, 0.25):
+            ht.screw(G["tv"], G["tv"], {"dark_metal": edge}, T(0, 0.038, TV_CY - 0.12) @ cl.rot("X", -90), sx * 0.56, dz, 0, r=0.003, turn=sx * 0.4 + dz)
+    # Down-firing speakers are discreet underneath, with an IR window in the clean front chin.
+    bottom = cz - bh / 2
+    for sx in (-1, 1):
+        for i in range(16):
+            G["tv"].append(b(f"speaker_vent_{sx}_{i}", 0.003, 0.013, 0.0015, hole, (sx * (0.40 + i * 0.022), -0.013, bottom - 0.0004)))
+    G["tv"].append(b("ir_window", 0.032, 0.0015, 0.008, bezel, (0, -0.0475, TV_CY - TV_H / 2 - 0.014), bevel=0.0015, seg=2))
     G["tv"].append(b("mount_plate", 0.44, 0.012, 0.30, zinc, (0, 0.036, TV_CY + 0.30), bevel=0.003, seg=1))
     G["tv"].append(b("mount_spine", 0.09, 0.03, 0.62, dark, (0, 0.045, TV_CY + 0.43), bevel=0.006, seg=2))
     for sx in (-1, 1):
         for dz in (-0.1, 0.1):
             G["tv"].append(cylinder(f"vesa_{sx}{dz}", 0.007, 0.006, zinc, T(sx * 0.15, 0.044, TV_CY + 0.30 + dz) @ cl.rot("X", 90), segs=6))
-    # vents on the back's top edge
-    for i in range(14):
-        G["tv"].append(b(f"vent_{i}", 0.06, 0.03, 0.002, hole, (-0.6 + i * 0.092, 0.0, cz + (bh - 0.02) / 2 + 0.0005)))
+    # Rear cooling slots, side-facing HDMI/USB sockets and the power lead entering the mount spine.
+    for sx in (-1, 1):
+        for i in range(14):
+            G["tv"].append(b(f"rear_vent_{sx}_{i}", 0.018, 0.0015, 0.042, hole, (sx * (0.25 + i * 0.024), 0.0365, TV_CY + 0.11)))
+    for i, (w, h) in enumerate(((0.014, 0.005), (0.014, 0.005), (0.012, 0.005))):
+        z = TV_CY - 0.17 - i * 0.038
+        G["tv"].append(b(f"port_rim_{i}", 0.002, w + 0.003, h + 0.003, edge, (0.6205, 0.02, z), bevel=0.0006, seg=1))
+        G["tv"].append(b(f"port_socket_{i}", 0.0025, w, h, hole, (0.622, 0.02, z)))
+    G["tv"].append(cl.loft_tube("rear_power_lead", [(0.12, 0.045, TV_CY - 0.08), (0.08, 0.049, TV_CY - 0.04), (0.035, 0.063, TV_CY + 0.10), (0.035, 0.063, TV_CY + 0.46)], [0.004] * 4, (1, 0, 0), rubber, segs=8))
+    # Only the repeated overhead rail is darker; retain the trolley and TV hardware's finish.
+    for ob in G["rail"]:
+        for slot in ob.material_slots:
+            if slot.material == steel:
+                slot.material = rail_steel
+            elif slot.material == zinc:
+                slot.material = rail_zinc
     return G
 
 

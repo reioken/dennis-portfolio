@@ -625,7 +625,11 @@ def build(s, M):
             rec += slots(sx * IW * 0.265, hL / 2, IW * 0.33, 7, 0.013, 0.005, 0.008, M["led"])
     if CFG["light_line"] == "hood":  # the ONE visible line sits under the hood and washes the acrylic sheet
         rec += [(0, hL * 0.3, IW - 0.12, 0.008, 0.004, M["seam"])]
-    body.append(panel("speakers", hF, hL, M["panel"], rec, round_end=True))
+    speaker_material = M["panel"]
+    if CFG.get("speaker_wear") is False:
+        speaker_material = speaker_material.copy()
+        speaker_material.name = M["panel"].name + "_unworn"
+    body.append(panel("speakers", hF, hL, speaker_material, rec, round_end=True))
     body.append(panel("fascia", *seg("J", "K"), M["paint"], round_start=True))
     for i in range(idx["K"], len(inner) - 1):
         body.append(panel(f"carcass_{i}", *seg_frame(inner[i], inner[i + 1]), M["paint"]))

@@ -12,5 +12,8 @@
   "width": 0.95,
   "depth": 0.7,
   "wear": 0.3,
-  "screenTilt": 12
+  "screenTilt": 12,
+  "hero": {
+    "speaker_wear": false
+  }
 }

@@ -535,6 +535,10 @@ html.fx-off .closeup__rail {
 
 /* Desktop: Zähler und Vollbild stehen einmal — in der Leiste rechts; das Bildschirm-OSD zeigt nur die Caption */
 @media (min-width: 900px) {
+  /* The cabinet already shows the capture. Let it remain visible while the HTML image fades in. */
+  .closeup.is-projected .closeup__screen:not(:fullscreen) {
+    background: transparent;
+  }
   .closeup__count,
   .closeup__fs {
     display: none;

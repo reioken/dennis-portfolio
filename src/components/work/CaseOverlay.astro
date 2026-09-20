@@ -7,10 +7,11 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import sharp from 'sharp';
 import type { CollectionEntry } from 'astro:content';
 import type { HallItem, HallMachine } from '../hall/Hall';
 import { copy } from '../../lib/i18n';
-import { p } from '../../lib/paths';
+import { base, p } from '../../lib/paths';
 import CaseCaptures, { type CaptureGroup } from './CaseCaptures';
 import CaseDocument from './CaseDocument';
 import MinaStudyEn from './MinaStudyEn.astro';
@@ -46,6 +47,8 @@ const asset = (src: string) => p(src.replace(/^\//, ''));
 
 function hiAsset(sitePath: string): string | undefined {
   const clean = sitePath.replace(/^\//, '');
+  // Mina's existing @2x export contains clipped text and imagery. Keep the intact cover.
+  if (clean === 'media/mina/cover.webp') return undefined;
   const candidates = [clean.replace(/(\.\w+)$/, '@2x.webp'), clean.replace(/(\.\w+)$/, '@2x$1')];
   for (const rel of candidates) {
     if (fs.existsSync(path.join(process.cwd(), 'public', rel))) return p(rel);
@@ -107,6 +110,14 @@ const groups: CaptureGroup[] = surfaces.length
   : data.document
     ? [{ id: 'cover', labelDe: 'Cover', labelEn: 'Cover', variant: plainVariant, images: [cover] }]
     : [{ id: 'gallery', labelDe: P.captures, labelEn: PE.captures, variant: plainVariant, images }];
+
+// Keep the mobile gallery's geometry identical before and after React hydration.
+await Promise.all(groups.flatMap(group => group.images).map(async shot => {
+  const file = path.join(process.cwd(), 'public', shot.src.slice(base.length));
+  const { width, height } = await sharp(file).metadata();
+  shot.width = width;
+  shot.height = height;
+}));
 
 /* ---------- Text ---------- */
 const hasBody = (entry.body ?? '').replace(/<[^>]+>/g, '').trim().length > 0;

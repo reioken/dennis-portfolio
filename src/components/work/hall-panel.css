@@ -456,7 +456,7 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 16px;
-  padding: 0 24px;
+  padding: 0 var(--pad);
   background: #0b0c12;
   border-top: 1px solid var(--stroke);
   animation: hall-panel-foot 0.18s var(--ease) both;
@@ -592,6 +592,9 @@ body[data-mode='case'] .hall-panel__hint {
    ========================================================================== */
 .captures {
   margin: 0 0 8px;
+}
+.captures__hero {
+  display: none;
 }
 .captures__chips {
   display: flex;
@@ -1042,7 +1045,7 @@ html.fx-off .hall-panel__dot-link.is-on {
   .hall-panel__corridor {
     grid-template-columns: auto 1fr auto;
     gap: 12px;
-    padding: 0 16px;
+    padding: 0 var(--pad);
   }
   .hall-panel__cor {
     padding: 6px 8px;
@@ -1433,7 +1436,9 @@ html.is-screen-info .hall-panel__body { padding-top: 64px; }
     order: -1;
     margin-bottom: 18px;
   }
-  .captures--native .captures__strip {
+  .captures--native .captures__strip,
+  .captures--native .captures__large,
+  .captures--native .captures__more {
     display: none;
   }
   .captures--native .captures__hero {
@@ -1455,6 +1460,7 @@ html.is-screen-info .hall-panel__body { padding-top: 64px; }
     flex: 0 0 auto;
     /* 16:10 captures end up ~83 vw wide, so the next slide peeks in and the row reads as swipeable */
     height: min(52vw, 46svh);
+    max-width: 84vw;
     padding: 0;
     border: 1px solid color-mix(in srgb, var(--brand) 55%, transparent);
     border-radius: 10px;

@@ -62,11 +62,11 @@ export type Frame = {
 export type CtlAction = 'lit' | 'dim' | 'hover' | 'press' | 'release' | 'idle';
 /** Namen der Bedienelemente in den Modellen (scripts/models/blender/*_gen.py) */
 /** The ceiling track, the trolley and the TV (hero_tv_gen.py): dusty steel up in the dark, wiped glossy bezel. */
-const TV_RIG_MODEL = '/models/tv-rig-v1.glb?v=2e5831e7';
+const TV_RIG_MODEL = '/models/tv-rig-v1.glb?v=de482a9f';
 const TV_RIG_LOOK: HeroLook = { seed: 'tvrig', lines: 'swirls', chips: 'chips', turn: .4, scale: 1.6, chip: .4, line: .5 };
 /** The claw machine, rebuilt as a hero machine; its wear is its own (wiped glass box, dinged steel). */
 const CLAW_MODEL = '/models/claw-v2.glb?v=8e82aa7c';
-const CLAW_LOOK: HeroLook = { seed: 'claw', lines: 'swirls', chips: 'chips', turn: .8, scale: .9, chip: .5, line: .7 };
+const CLAW_LOOK: HeroLook = { seed: 'claw', lines: 'swirls', chips: 'chips', turn: .8, scale: .9, chip: .22, line: .3 };
 const SPIN_UP = new THREE.Vector3(0, 1, 0), SPIN_RIGHT = new THREE.Vector3(1, 0, 0);
 const CTL_NAME = /^(joy|btn|btn_\d+|start_\d+|trackball|tbtn_\d+|kbtn_\d+|sel_\d+)$/;
 /**
@@ -186,7 +186,7 @@ const STATION_HEIGHT = 1.95;
 export const MODELS_BY_SLUG: Record<string, ModelSpec> = {
   'echo-frequency': { url: '/models/cab-echo-frequency-v2.glb?v=b917abe3', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'echo', lines: 'swirls', chips: 'flakes', turn: .6, scale: 1.2, chip: 1.1, line: .5 } },
-  carillon: { url: '/models/cab-carillon-v2.glb?v=3d1a348f', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  carillon: { url: '/models/cab-carillon-v2.glb?v=607f073b', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'carillon', lines: 'scuffs', chips: 'flakes', turn: 2.7, scale: 1.25, chip: .7, line: .8 } },
   'cab-no-9': { url: '/models/cab-cab-no-9-v2.glb?v=65539f64', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'cab9', lines: 'scratches', chips: 'flakes', turn: .5, scale: .75, chip: 1, line: 1.1 } },
@@ -195,21 +195,21 @@ export const MODELS_BY_SLUG: Record<string, ModelSpec> = {
   // Apps: Terminals (Desktop), Kiosk-Türme (Phone), Jukebox (Audio) — scripts/models/blender/machine_gen.py
   nexus: { url: '/models/mach-nexus-v2.glb?v=42d044ae', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'nexus', lines: 'swirls', chips: 'pits', turn: 1.1, scale: 1.4, chip: .75, line: .85 } },
-  riftback: { url: '/models/mach-riftback-v4.glb?v=aede9f7f', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true },
+  riftback: { url: '/models/mach-riftback-v4.glb?v=1a53a341', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true },
   riftcast: { url: '/models/mach-riftcast-v2.glb?v=e862fdaf', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'riftcast', lines: 'swirls', chips: 'chips', turn: .2, scale: 1, chip: .7, line: .9 } },
   lowlight: { url: '/models/mach-lowlight-v2.glb?v=3391f2f2', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'lowlight', lines: 'scratches', chips: 'pits', turn: 1.45, scale: 1.9, chip: .6, line: .55 } },
   'vgm-battle': { url: '/models/cab-vgm-battle-v2.glb?v=3c35ff8c', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'vgm', lines: 'scuffs', chips: 'flakes', turn: .3, scale: 1, chip: .8, line: 1 } },
-  berry: { url: '/models/mach-berry-v2.glb?v=523ed9c6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  berry: { url: '/models/mach-berry-v2.glb?v=59201a8f', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'berry', lines: 'scratches', chips: 'chips', turn: 2.2, scale: 2.2, chip: .45, line: .8 } },
-  safeplate: { url: '/models/mach-safeplate-v2.glb?v=42d49e7c', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  safeplate: { url: '/models/mach-safeplate-v2.glb?v=28ce00d6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'safeplate', lines: 'swirls', chips: 'chips', turn: 2.6, scale: 1.7, chip: .5, line: .7 } },
   angry: { url: '/models/mach-angry.glb', height: STATION_HEIGHT, screenNames: ['screen'] },
-  briefly: { url: '/models/mach-briefly-v2.glb?v=5bf8e7a7', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  briefly: { url: '/models/mach-briefly-v2.glb?v=805e04fc', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'briefly', lines: 'swirls', chips: 'pits', turn: 2, scale: 2.3, chip: .45, line: .5 } },
-  mina: { url: '/models/mach-mina-v2.glb?v=a5e2876c', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  mina: { url: '/models/mach-mina-v2.glb?v=117d2d01', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'mina', lines: 'scuffs', chips: 'chips', turn: .9, scale: 1.1, chip: .95, line: 1 } },
   hookline: { url: '/models/mach-hookline-v2.glb?v=074db376', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'hookline', lines: 'scuffs', chips: 'pits', turn: 1, scale: 1.5, chip: .7, line: .6 } },
@@ -731,6 +731,8 @@ export class HallScene {
     this.focus = initial;
     this.initialFocus = initial;
     items.forEach((it, i) => this.addMachine(it, i));
+    // Shared hero maps can download alongside the models instead of waiting for the first GLB to decode.
+    this.heroMaps = loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
     const blueDone = this.track(initial);
     this.gltf.load(`/models/blue-rigged-${BLUE_ASSET_BUILD}.glb`, gltf => {
       if (!this.disposed) {
@@ -809,7 +811,7 @@ export class HallScene {
     const it=this.items[this.focus]; if(!it)return;
     const en=document.documentElement.dataset.lang==='en';
     const label=(isMachine(it)?(en?it.titleEn??it.title:it.title):it.kind==='kasse'?(en?'About me':'Über mich'):en?'Contact':'Kontakt').split(' – ')[0].toUpperCase();
-    this.wallPaint.update(label,this.stationX[this.focus],this.container.clientWidth<768,this.pose==='hall',this.wallTitleKey!==label);
+    this.wallPaint.update(label,this.stationX[this.focus],this.container.clientWidth<900,this.pose==='hall' && this.container.clientWidth>=900,this.wallTitleKey!==label);
     this.wallTitleKey=label;
     this.dirty=true;
   }
@@ -1681,9 +1683,9 @@ export class HallScene {
     noise.renderOrder = 5;
     noise.visible = false;
     hang.add(noise);
-    const led = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.012, 0.01), new THREE.MeshBasicMaterial({ color: 0xff3b30 }));
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.0025, 0.002), new THREE.MeshBasicMaterial({ color: 0xff3b30 }));
     led.name = 'tv_led';
-    led.position.set(W / 2 - 0.08, cy - H / 2 - 0.04, 0.045);
+    led.position.set(0.028, cy - H / 2 - 0.014, 0.048);
     hang.add(led);
     s.add(rig);
 
@@ -2594,12 +2596,26 @@ export class HallScene {
     const m = this.machines[this.focus];
     const lite = this.lite;
     const aspect = this.camera.aspect || 1.6;
+    const compact = this.container.clientWidth < 900;
+    // On phones the cabinet is the exhibit; the dock supplies its title and navigation.
+    // Keep the overhead rig out of this closer framing instead of showing a cut-off TV.
+    if (this.tv) this.tv.rig.visible = !compact;
     if (this.pose === 'hall' || !m) {
-      const compact=this.container.clientWidth<768;
-      if (compact) {
-        this.goalPos.set(this.targetX,1.7,6.0);
-        this.goalLook.set(this.targetX,1.35,0);
-        this.goalFov=48;
+      if (compact && m) {
+        // About's case-view extent follows the figurine. Hall browsing must fit the entire claw cabinet.
+        const ex = m.item.kind === 'kasse'
+          ? { h: STATION_HEIGHT, w: cabinetWidth(m.item.slug), d: .94, cx: 0, zc: 0, y0: 0 }
+          : this.extentOf(m);
+        const f = this.frame;
+        const tan = Math.tan(THREE.MathUtils.degToRad(21));
+        const h = Math.max(2.15, ex.h + .2);
+        const front = Math.max(h / (.88 * f.fh * 2 * tan), ex.w / (.84 * f.fw * 2 * aspect * tan), 1.6);
+        const viewHeight = 2 * front * tan;
+        const x = m.group.position.x + ex.cx;
+        const y = ex.y0 + ex.h / 2 + (f.cy - .5) * viewHeight;
+        this.goalPos.set(x, y + .10, m.group.position.z + ex.zc + front + ex.d / 2);
+        this.goalLook.set(x, y, 0);
+        this.goalFov=42;
         return;
       }
       // Desktop: the free band between the nav and the dock (frame) must hold the world band

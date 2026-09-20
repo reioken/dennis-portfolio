@@ -1,4 +1,5 @@
 {
+  "atlasSize": 768,
   "name": "mach-mina",
   "title": "Mina",
   "variant": "terminal",
@@ -7,10 +8,10 @@
   "tmolding": "#f2d33c",
   "accent": "#ff6b6b",
   "hero": {
-    "width": 0.5,
+    "width": 0.68,
     "depth": 0.42,
-    "screen_w": 0.3,
-    "screen_aspect": 0.5625,
+    "screen_w": 0.5,
+    "screen_aspect": 1.6,
     "speakers": "none",
     "controls": "kiosk",
     "knobs": 0,

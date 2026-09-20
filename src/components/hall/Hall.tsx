@@ -616,9 +616,11 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
       ro?.disconnect();
       ro = null;
       const panel = document.querySelector('.hall-panel');
-      if (!panel || typeof ResizeObserver === 'undefined') return;
+      const dock = document.querySelector('.hall-dock');
+      if (typeof ResizeObserver === 'undefined') return;
       ro = new ResizeObserver(onResize);
-      ro.observe(panel);
+      if (panel) ro.observe(panel);
+      if (dock) ro.observe(dock);
     };
     watchPanel();
     document.addEventListener('astro:page-load', watchPanel);
@@ -1264,6 +1266,7 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
         <button type="button" className="hall-dock__arrow hall-dock__arrow--prev" onClick={() => move(-1)} disabled={focus === 0} aria-label={lang === 'en' ? 'Previous machine' : 'Vorheriger Automat'} tabIndex={inHall ? 0 : -1}><Icon name="chevron-left" size={20} /></button>
         <div className="hall-dock__identity" aria-live="polite">
           <h2 className="hall-dock__title">{isMachine(current) ? <Bi de={current.title} en={current.titleEn} /> : current.kind === 'kasse' ? <Bi de={H.kasseSub} en={HE.kasseSub} /> : <Bi de={H.phoneSub} en={HE.phoneSub} />}</h2>
+          <span className="hall-dock__mobile-count" aria-hidden="true">{String(focus + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}</span>
         </div>
         <a className="hall-dock__open" href={pageHref(current.href)} tabIndex={inHall ? 0 : -1} onClick={(e) => { if (modifiedClick(e)) return; e.preventDefault(); go(current.href); }}>
           {isMachine(current) ? <Bi de="Projekt ansehen" en="Explore project" /> : <Bi de={H.open} en={HE.open} />} <Icon name="arrow-up-right" size={18} />

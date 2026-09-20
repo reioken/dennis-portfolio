@@ -46,12 +46,14 @@ const WEAR_TILE = .6;
 
 /** What a hero machine mirrors (scripts/build-hero-environment.mjs): the hall's own environment is nearly black
  * towards the viewer, so a gloss front had nothing to reflect. Same prefiltered CubeUV layout and size as the hall's,
- * so swapping it in needs no new shader program. It arrives after the first frame; until then the hall's is used. */
+ * so using it needs no new shader program. Startup waits for it; a failed request retains the hall's environment. */
 type HeroRoom = { texture: THREE.Texture | null; users: Set<THREE.MeshStandardMaterial> };
-function loadHeroRoom(onLoad: () => void): HeroRoom {
+function loadHeroRoom(manager: THREE.LoadingManager, onLoad: () => void): HeroRoom {
   const room: HeroRoom = { texture: null, users: new Set() };
+  const url = '/textures/hero-environment-v1.bin.gz';
+  manager.itemStart(url);
   void (async () => {
-    const response = await fetch('/textures/hero-environment-v1.bin.gz');
+    const response = await fetch(url);
     if (!response.ok) return;
     let buffer = await response.arrayBuffer();
     const magic = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
@@ -68,7 +70,7 @@ function loadHeroRoom(onLoad: () => void): HeroRoom {
     room.texture = texture;
     for (const mat of room.users) mat.envMap = texture;
     onLoad();
-  })().catch(() => {});
+  })().catch(() => {}).finally(() => manager.itemEnd(url));
   return room;
 }
 
@@ -94,7 +96,7 @@ export function loadHeroMaps(loader: THREE.TextureLoader, onLoad: () => void): H
   // fetched on first use: a hall with one kind of wear never downloads the others
   const tiles = {} as Record<WearTile, THREE.Texture>;
   for (const name of ['scratches', 'swirls', 'scuffs', 'chips', 'pits', 'flakes'] as const) Object.defineProperty(tiles, name, { configurable: true, enumerable: true, get() { const t = wear(name); Object.defineProperty(tiles, name, { value: t, enumerable: true }); return t; } });
-  return { surfaces: maps, wear: tiles, room: loadHeroRoom(onLoad) };
+  return { surfaces: maps, wear: tiles, room: loadHeroRoom(loader.manager, onLoad) };
 }
 
 export const isHeroMaterial = (material: THREE.Material | undefined): material is THREE.MeshStandardMaterial =>
@@ -156,6 +158,10 @@ export function heroMaterial(original: THREE.MeshStandardMaterial, maps: HeroMap
   // map path on the same UV set, which is exactly right there
   if (!key) { stripHeroLight(mat); return mat; }
   const surface = SURFACES[key];
+  // Enroll wear images in startup before GPU preparation. Loading them inside onBeforeCompile
+  // started network requests during shader warm-up, after the texture upload pass had finished.
+  const scratches = maps.wear[glow.look.lines];
+  const chips = maps.wear[glow.look.chips];
   mat.normalMap = maps.surfaces[key].normal;
   mat.normalScale.setScalar(surface.normal);
   mat.roughnessMap = maps.surfaces[key].orm;
@@ -174,12 +180,12 @@ export function heroMaterial(original: THREE.MeshStandardMaterial, maps: HeroMap
     shader.uniforms.heroEdge = edge;
     shader.uniforms.heroGrain = grain;
     shader.uniforms.heroFlat = flat;
-    shader.uniforms.heroScratches = { value: maps.wear[glow.look.lines] };
-    shader.uniforms.heroChips = { value: maps.wear[glow.look.chips] };
+    shader.uniforms.heroScratches = { value: scratches };
+    shader.uniforms.heroChips = { value: chips };
     shader.uniforms.heroWearScale = { value: surface.tile / WEAR_TILE * glow.look.scale };
     shader.uniforms.heroLook = { value: new THREE.Vector3(glow.look.chip, glow.look.line, glow.look.seed ? 0 : .05) };
     shader.uniforms.heroWearShift = { value: new THREE.Vector4().copy(wearShift(original.name + glow.look.seed, glow.look.turn)) };
-    shader.uniforms.heroWearAmount = { value: surface.wear ?? 1 };
+    shader.uniforms.heroWearAmount = { value: original.userData.heroWear ?? surface.wear ?? 1 };
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform vec3 heroScreen;\nuniform vec3 heroBrand;\nuniform float heroEdge;\nuniform float heroGrain;\nuniform float heroFlat;\nuniform sampler2D heroScratches;\nuniform sampler2D heroChips;\nuniform float heroWearScale;\nuniform vec4 heroWearShift;\nuniform float heroWearAmount;\nuniform vec3 heroLook;')
       .replace('#include <map_fragment>', `#include <map_fragment>
@@ -202,7 +208,7 @@ export function heroMaterial(original: THREE.MeshStandardMaterial, maps: HeroMap
         // the lowest 5 % of the tile through everywhere: "komische Dots" (Dennis). Riftback keeps the centred window
         // (z = .05), it was approved that way.
         float heroRub = smoothstep(heroChip - heroLook.z, heroChip + .1 - heroLook.z, heroRubSoft * heroLook.x) * step(.015, heroRubSoft) * heroWear;
-        heroScratch *= heroLook.y;
+        heroScratch *= heroLook.y * step(.001, heroWearAmount);
         heroRub = max(heroRub, heroScratch * min(1.0, .12 + heroRubSoft * 2.5 + heroDirtSoft) * .55 * heroWear);
         float heroDirt = heroDirtSoft * mix(.55, 1.25, heroChip) * heroWear;
         diffuseColor.rgb *= mix(1.0, texture2D(roughnessMap, vRoughnessMapUv).r * 2.0, heroGrain);

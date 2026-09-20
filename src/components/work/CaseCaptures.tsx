@@ -331,7 +331,7 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
   const titleAttr = lang === 'en' ? PE.showOnCabinet : P.showOnCabinet;
 
   return (
-    <div className={`captures${phone ? ' captures--phone' : ''}${native ? ' captures--native' : ''}`} style={{ ['--brand' as string]: brand } as CSSProperties}>
+    <div className={`captures captures--native${phone ? ' captures--phone' : ''}`} style={{ ['--brand' as string]: brand } as CSSProperties}>
       {groups.length > 1 ? (
         <div className="captures__chips" role="group" aria-label={surfacesLabel}>
           {groups.map((g, i) => (
@@ -355,35 +355,33 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
         <p className="captures__label mono">
           <Bi de={P.captures} en={PE.captures} /> · {String(images.length).padStart(2, '0')}
         </p>
-        {native ? null : (
-          <button type="button" className="captures__large mono" onClick={() => enterCloseup()}>
-            <Icon name="expand" size={16} />
-            <Bi de={P.viewLarge} en={PE.viewLarge} />
-          </button>
-        )}
+        <button type="button" className="captures__large mono" onClick={() => enterCloseup()}>
+          <Icon name="expand" size={16} />
+          <Bi de={P.viewLarge} en={PE.viewLarge} />
+        </button>
       </div>
 
-      {native ? (
-        <div className="captures__hero" ref={heroRef} role="group" aria-label={lang === 'en' ? PE.captures : P.captures}>
-          {images.map((shot, i) => (
-            <button
-              key={`${group.id}-hero-${shot.src}-${i}`}
-              type="button"
-              data-slide={i}
-              className="captures__slide"
-              aria-label={`Capture ${i + 1} ${lang === 'en' ? 'of' : 'von'} ${images.length}: ${altFor(shot, lang)}`}
-              onClick={() => enterCloseup(i)}
-            >
-              <picture>
-                {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
-                <img src={shot.src} alt="" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" draggable={false} />
-              </picture>
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {/* CSS selects the phone carousel before hydration; both layouts keep the same image sources. */}
+      <div className="captures__hero" ref={heroRef} role="group" aria-label={lang === 'en' ? PE.captures : P.captures}>
+        {images.map((shot, i) => (
+          <button
+            key={`${group.id}-hero-${shot.src}-${i}`}
+            type="button"
+            data-slide={i}
+            className="captures__slide"
+            style={{ aspectRatio: `${shot.width ?? (phone ? 9 : 16)} / ${shot.height ?? (phone ? 16 : 10)}` }}
+            aria-label={`Capture ${i + 1} ${lang === 'en' ? 'of' : 'von'} ${images.length}: ${altFor(shot, lang)}`}
+            onClick={() => enterCloseup(i)}
+          >
+            <picture>
+              {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
+              <img src={shot.src} alt="" width={shot.width} height={shot.height} loading={i < 2 ? 'eager' : 'lazy'} decoding="async" draggable={false} />
+            </picture>
+          </button>
+        ))}
+      </div>
 
-      {!native && images.length > 6 && <button type="button" className="captures__more" aria-expanded={expanded || shown >= 6} onClick={() => { if (expanded || shown >= 6) { setExpanded(false); setSel(0); } else setExpanded(true); }}><Bi de={expanded || shown >= 6 ? 'Weniger Screenshots' : `Alle ${images.length} Screenshots`} en={expanded || shown >= 6 ? 'Fewer screenshots' : `All ${images.length} screenshots`} /></button>}
+      {images.length > 6 && <button type="button" className="captures__more" aria-expanded={expanded || shown >= 6} onClick={() => { if (expanded || shown >= 6) { setExpanded(false); setSel(0); } else setExpanded(true); }}><Bi de={expanded || shown >= 6 ? 'Weniger Screenshots' : `Alle ${images.length} Screenshots`} en={expanded || shown >= 6 ? 'Fewer screenshots' : `All ${images.length} screenshots`} /></button>}
       <div className="captures__strip" ref={stripRef} onKeyDown={onStripKey}>
         {images.slice(0, expanded || shown >= 6 ? undefined : 6).map((shot, i) => {
           const on = i === shown;

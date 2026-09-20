@@ -30,6 +30,8 @@ for (const mesh of document.getRoot().listMeshes()) {
   for (const primitive of mesh.listPrimitives()) {
     const material = primitive.getMaterial();
     if (!material || !primitive.getAttribute('TEXCOORD_1')) continue;
+    // Keep the clean speaker panel distinct through material deduplication.
+    if (material.getName().endsWith('_unworn')) material.setExtras({ ...material.getExtras(), heroWear: 0 });
     material.setOcclusionTexture(texture);
     material.getOcclusionTextureInfo().setTexCoord(1);
     if (light) {

@@ -68,7 +68,8 @@ export async function addModulePreloads(distDir) {
     const island = html.match(/component-url="(\/_astro\/Hall\.[^"]+\.js)"/);
     if (!island || html.includes('rel="modulepreload"')) continue;
     const chunks = await reachable(distDir, island[1], cache);
-    const media = /(^|[\\/])work[\\/]/.test(path.relative(distDir, file)) ? ' media="(min-width: 761px)"' : '';
+    // Match Hall.nativeCase and hall-panel.css: project pages below 900 px never boot the hall.
+    const media = /(^|[\\/])work[\\/]/.test(path.relative(distDir, file)) ? ' media="(min-width: 900px)"' : '';
     const firstView = await firstViewAssets(distDir, html);
     const tags = chunks.map((href) => `<link rel="modulepreload" href="${href}">`).join('')
       + firstView.map((href) => `<link rel="preload" as="fetch" crossorigin href="${href}"${media}>`).join('');

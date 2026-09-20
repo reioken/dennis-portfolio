@@ -5,6 +5,7 @@ set -e
 
 BLENDER=${BLENDER:-/c/Program Files/Blender Foundation/Blender 5.2/blender.exe}
 NAME="$1"
+ATLAS_SIZE=1024
 
 if [ -z "$NAME" ]; then
   echo "usage: sh scripts/models/build-hero.sh <name>"
@@ -28,6 +29,7 @@ if command -v cygpath >/dev/null 2>&1; then A=$(cygpath -m "$ROOT"); else A=$(pw
 RECIPE="scripts/models/hero-recipes/$NAME.json"
 IN=".source-assets/models-in/$NAME"
 if [ -f "$RECIPE" ]; then
+  ATLAS_SIZE=$(node -e 'const r=require("./"+process.argv[1]);const s=r.atlasSize??1024;if(![768,1024].includes(s))throw new Error("Invalid atlasSize");process.stdout.write(String(s))' "$RECIPE")
   mkdir -p "$IN"
   cp "$RECIPE" "$IN/spec.json"
 fi
@@ -51,7 +53,7 @@ else
 fi
 
 node scripts/models/hero-attach-mask.mjs "$NAME" 2>&1 | tail -1 | cut -c1-60
-node scripts/models/optimize.mjs --only "$NAME" --keep-attributes --size 1024 2>&1 | grep "models\]"
+node scripts/models/optimize.mjs --only "$NAME" --keep-attributes --size "$ATLAS_SIZE" 2>&1 | grep "models\]"
 rm -f ".source-assets/models-original/$NAME.glb"
 node scripts/models/pack-models.mjs --only "$NAME" 2>&1 | tail -1
 sha256sum "public/models/$NAME.glb" | cut -c1-8
