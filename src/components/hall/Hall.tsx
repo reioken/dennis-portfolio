@@ -79,6 +79,7 @@ export type HallMode = 'hall' | 'case' | 'arcade';
 
 type Props = {
   items: HallItem[];
+  directoryItems?: HallItem[];
   /** Station, vor der die Halle beim Laden steht (Slug aus items) */
   initialSlug?: string;
   mode?: HallMode;
@@ -271,7 +272,7 @@ const modifiedClick = (event: React.MouseEvent) => event.button !== 0 || event.m
 
 type PrepEvent = Event & { to: URL; from?: URL; loader: () => Promise<void>; navigationType?: string; signal: AbortSignal; formData?: FormData; newDocument: Document };
 
-export default function Hall({ items, initialSlug, mode: initialMode = 'hall', homeHref = '/', heading = '' }: Props) {
+export default function Hall({ items, directoryItems = items, initialSlug, mode: initialMode = 'hall', homeHref = '/', heading = '' }: Props) {
   // SSR-sicher: die Systemeinstellung erst nach dem Mount übernehmen — sonst weicht das erste Client-Markup
   // (Live-Marken im Cast) vom Server-HTML ab und React baut den ganzen Baum neu auf
   const reduceMq = useReducedMotion();
@@ -1284,8 +1285,8 @@ export default function Hall({ items, initialSlug, mode: initialMode = 'hall', h
           <h2 id="hall-directory-title"><Bi de="Alle Projekte" en="All projects" /></h2>
           <button className="hall-directory__close" type="button" onClick={() => directoryRef.current?.close()} aria-label={lang === 'en' ? 'Close project list' : 'Projektliste schließen'}><Icon name="close" size={18} /></button>
         </div>
-        <ol>{items.map((it, i) => <li key={it.slug}>
-          <a className="hall-directory__item" href={pageHref(it.href)} aria-current={i === focus ? 'true' : undefined} onClick={(e) => { if (modifiedClick(e)) return; e.preventDefault(); directoryRef.current?.close(); go(it.href); }}>
+        <ol>{directoryItems.map((it, i) => <li key={it.slug}>
+          <a className="hall-directory__item" href={pageHref(it.href)} aria-current={it.slug === current.slug ? 'true' : undefined} onClick={(e) => { if (modifiedClick(e)) return; e.preventDefault(); directoryRef.current?.close(); go(it.href); }}>
             <small>{String(i + 1).padStart(2, '0')}</small>
             <span>{isMachine(it) ? <Bi de={it.title} en={it.titleEn} /> : it.kind === 'kasse' ? <Bi de={H.kasseSub} en={HE.kasseSub} /> : <Bi de={H.phoneSub} en={HE.phoneSub} />}</span><Icon name="arrow-up-right" size={18} />
           </a>

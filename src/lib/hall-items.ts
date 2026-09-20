@@ -59,6 +59,8 @@ export const ORDER = [
   'mina',
 ];
 const rank = new Map(ORDER.map((s, i) => [s, i]));
+// Content-only projects: keep their pages and directory entries, without hall machines.
+const CONTENT_ONLY = new Set(['mina', 'briefly', 'riftcast', 'carillon']);
 
 /** Requisiten pro Produkt — das Taxi aus Cab No. 9 steht als Modell vor dem Automaten */
 const PROPS: Record<string, HallProp[]> = {
@@ -80,6 +82,7 @@ export const HOME_SLUG = 'kasse';
 
 export type HallData = {
   items: HallItem[];
+  directoryItems: HallItem[];
   machines: HallMachine[];
   /** Index der Station, vor der die Halle beim ersten Besuch steht */
   initial: number;
@@ -95,7 +98,7 @@ export function buildHallItems(): Promise<HallData> {
 
 async function build(): Promise<HallData> {
   const works = await getCollection('work');
-  const machines: HallMachine[] = works
+  const projects: HallMachine[] = works
     .filter((w) => !w.data.tags.includes('archive'))
     .sort((a, b) => (rank.get(a.id) ?? 99) - (rank.get(b.id) ?? 99) || a.data.order - b.data.order)
     .map((w) => {
@@ -133,6 +136,7 @@ async function build(): Promise<HallData> {
       };
     });
 
+  const machines = projects.filter((project) => !CONTENT_ONLY.has(project.slug));
   /* Die Kasse steht am Eingang, das Telefon hängt am Ende der Halle */
   const items: HallItem[] = [
     {
@@ -147,5 +151,6 @@ async function build(): Promise<HallData> {
     { kind: 'phone', slug: 'telefon', href: p('contact') },
   ];
   const initial = Math.max(0, items.findIndex((m) => m.slug === HOME_SLUG));
-  return { items, machines, initial, homeSlug: HOME_SLUG };
+  const directoryItems = [items[0], ...projects, items[items.length - 1]];
+  return { items, directoryItems, machines, initial, homeSlug: HOME_SLUG };
 }

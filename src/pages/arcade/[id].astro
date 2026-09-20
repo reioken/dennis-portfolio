@@ -26,7 +26,7 @@ const brand = d.brand?.primary ?? '#ac8bfd';
 const gameSrc = arcadeBuild(arcade.id);
 
 /* Der Automat steht in der Halle; die Kamera fährt vor seinen Bildschirm, der Build läuft darauf */
-const { items } = await buildHallItems();
+const { items, directoryItems } = await buildHallItems();
 const machine = items.find((it) => it.slug === entry.id);
 const version = machine && 'version' in machine ? machine.version : d.version;
 const machineIdx = items.findIndex((it) => it.slug === entry.id);
@@ -41,7 +41,7 @@ const station = machineIdx >= 0 ? { index: machineIdx, total: items.length, titl
   station={station}
 >
   {gameSrc && <HallGuard />}
-  {gameSrc && <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug={entry.id} mode="arcade" homeHref={p()} />}
+  {gameSrc && machine && <Hall client:load transition:persist="hall" transition:persist-props items={items} directoryItems={directoryItems} initialSlug={entry.id} mode="arcade" homeHref={p()} />}
   <h1 class="sr-only">
     <span data-lang="de">{d.title} — Browser-Version</span>
     <span data-lang="en">{d.titleEn ?? d.title} — browser version</span>

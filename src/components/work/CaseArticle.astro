@@ -10,6 +10,7 @@ import CaseMedia from './CaseMedia';
 import CaseSurfaceStack from './CaseSurfaceStack';
 import CaseDocument from './CaseDocument';
 import MinaStudyEn from './MinaStudyEn.astro';
+import MinaStudyDe from './MinaStudyDe.astro';
 import CertificateCard from './CertificateCard.astro';
 import CaseAdjacent from './CaseAdjacent.astro';
 import { toAvif } from '../../lib/img';
@@ -33,6 +34,7 @@ const asset = (src: string) => p(src.replace(/^\//, ''));
 
 function hiAsset(sitePath: string): string | undefined {
   const clean = sitePath.replace(/^\//, '');
+  if (clean === 'media/mina/cover.webp') return undefined;
   const candidates = [clean.replace(/(\.\w+)$/, '@2x.webp'), clean.replace(/(\.\w+)$/, '@2x$1')];
   for (const rel of candidates) {
     if (fs.existsSync(path.join(process.cwd(), 'public', rel))) return p(rel);
@@ -204,9 +206,13 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
     ) : docPages.length > 0 && data.document ? (
       entry.id === 'mina' ? (
         <>
-          {/* DE: original deck as sliced image reader · EN: full HTML rebuild */}
           <div data-lang="de">
-            <CaseDocument client:load labelDe={data.document.labelDe} labelEn={data.document.labelEn} pages={docPages} />
+            <CaseDocument client:load labelDe={data.document.labelDe} labelEn={data.document.labelEn}>
+              <MinaStudyDe />
+              <details><summary>Original-Präsentation ansehen · 11 Abschnitte</summary>
+                {docPages.map((page) => <img src={page.src} alt={page.alt} loading="lazy" width="1400" height="1465" style="max-width:100%;height:auto" />)}
+              </details>
+            </CaseDocument>
           </div>
           <div data-lang="en">
             <CaseDocument client:load labelDe={data.document.labelDe} labelEn={data.document.labelEn}>

@@ -17,6 +17,11 @@ try {
   await page.goto(base+'/', {waitUntil:'domcontentloaded'});
   await page.waitForSelector('.hall.is-3d .hall__stage[data-startup-phase="ready"]', {timeout:60000});
   await page.waitForTimeout(4500);
+  if(!before) {
+    assert.equal(await page.locator('.hall-dock__stop').count(),12,'Ten project machines plus About and Contact');
+    const railText=await page.locator('.hall-dock__rail').textContent();
+    for(const title of ['Mina','Briefly','Riftcast','Carillon']) assert.ok(!railText.includes(title), `${title} removed from hall stops`);
+  }
   await page.screenshot({path:`${dir}/claw-phone.png`});
   await page.locator('.hall-dock__arrow--next').tap();
   await page.waitForTimeout(1800);
@@ -70,11 +75,17 @@ try {
     await page.screenshot({path:`${dir}/directory-phone.png`});
     await page.locator('.hall-directory__item[href$="/work/mina/"]').tap();
     await page.waitForURL('**/work/mina/');
-    await page.locator('.hall-panel__back').tap();
+    await page.locator('.case-page').waitFor({state:'visible'});
+    await page.goBack();
     await page.waitForURL(base+'/');
     await page.waitForSelector('.hall.is-3d .hall__stage[data-startup-phase="ready"]');
+    await page.locator('.hall-dock__directory').tap();
+    await page.locator('.hall-directory__item[href$="/work/nexus/"]').tap();
+    await page.waitForURL('**/work/nexus/');
+    await page.locator('.hall-panel__back').tap();
+    await page.waitForURL(base+'/');
     await page.locator('.hall-dock__open').tap();
-    await page.waitForURL('**/work/mina/');
+    await page.waitForURL('**/work/nexus/');
     await page.locator('.hall-panel__back').tap();
     await page.waitForURL(base+'/');
     await page.setViewportSize({width:1440,height:900});

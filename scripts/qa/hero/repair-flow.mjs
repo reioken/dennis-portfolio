@@ -22,7 +22,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 800));
     await route.continue();
   });
-  await page.goto(base + '/work/mina/', { waitUntil:'domcontentloaded' });
+  await page.goto(base + '/work/safeplate/', { waitUntil:'domcontentloaded' });
   await page.waitForSelector('.hall.is-3d .hall__stage[data-startup-phase="ready"]', { timeout:60000 });
   await page.waitForTimeout(3000);
   const materials = await page.evaluate(() => ({
@@ -34,25 +34,25 @@ try {
   report.checks.push({ materials });
   await page.locator('.captures__large').click();
   await page.waitForSelector('.closeup__proxy', { timeout:10000 });
-  assert.ok(await page.locator('.closeup__proxy').count() >= 2, 'Mina retains its two hardware controls');
+  assert.ok(await page.locator('.closeup__proxy').count() >= 2, 'Essfreude retains its hardware controls');
   await page.waitForTimeout(2000);
   const closeupImage = await page.locator('.closeup__shot.is-current img').evaluate(img => ({ src:img.currentSrc, width:img.naturalWidth }));
-  assert.ok(closeupImage.width > 0 && !closeupImage.src.includes('@2x'), 'Mina uses its intact cover, not the clipped high-resolution export');
-  await page.screenshot({ path:`${dir}/mina-closeup.png` });
+  assert.ok(closeupImage.width > 0, 'Close-up image loads');
+  await page.screenshot({ path:`${dir}/safeplate-closeup.png` });
   await page.keyboard.press('Escape');
   await page.waitForTimeout(1000);
   await page.evaluate(() => { window.__repairCanvas = document.querySelector('.hall__stage canvas'); });
   await page.locator('.lang-switch').first().click();
-  await page.waitForURL('**/en/work/mina/');
+  await page.waitForURL('**/en/work/safeplate/');
   assert.ok(await page.evaluate(() => window.__repairCanvas === document.querySelector('.hall__stage canvas')), 'Language switch retains the hall');
   await page.goBack();
-  await page.waitForURL('**/work/mina/');
+  await page.waitForURL('**/work/safeplate/');
   await page.locator('.hall-panel__back').click();
   // The saved language preference may redirect home to /en/ after going back.
   await page.waitForURL(url => url.origin === new URL(base).origin && /^\/(?:en\/)?$/.test(url.pathname));
   await page.keyboard.press('ArrowLeft');
   await page.waitForTimeout(1200);
-  report.checks.push('Mina close-up controls, Escape, language switch, history and return to hall');
+  report.checks.push('Essfreude close-up controls, Escape, language switch, history and return to hall');
   await context.close();
 
   const phone = await browser.newContext({ viewport:{ width:390,height:844 }, hasTouch:true, isMobile:true });

@@ -23,7 +23,7 @@ const data = entry.data;
 
 /* Projekte mit Automat öffnen sich vor der Halle (Kamera fährt ran, Panel rechts);
    Archiv-Einträge behalten das klassische Artikel-Layout. */
-const { items } = await buildHallItems();
+const { items, directoryItems } = await buildHallItems();
 const hallIdx = items.findIndex((it) => it.slug === entry.id);
 const inHall = hallIdx >= 0;
 const hallItem = inHall ? items[hallIdx] : undefined;
@@ -66,7 +66,7 @@ const title = `${data.title} — ${site.name}`;
       <script type="application/ld+json" set:html={JSON.stringify(caseLd)} />
       <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
       <HallGuard />
-      <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug={entry.id} mode="case" homeHref={p()} />
+      <Hall client:load transition:persist="hall" transition:persist-props items={items} directoryItems={directoryItems} initialSlug={entry.id} mode="case" homeHref={p()} />
       <CaseOverlay entry={entry} items={items} index={hallIdx} homeHref={p()} hasBody={hasBody}>
         <Content />
       </CaseOverlay>

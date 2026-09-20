@@ -11,7 +11,7 @@ import Hall from '../components/hall/Hall';
 import { buildHallItems } from '../lib/hall-items';
 import { p } from '../lib/paths';
 import '../components/work/hall-panel.css';
-const { items } = await buildHallItems();
+const { items, directoryItems } = await buildHallItems();
 const station = { index: items.length - 1, total: items.length, title: 'Kontakt', titleEn: 'Contact' };
 
 const formDe = {
@@ -45,7 +45,7 @@ const formEn = {
 
 <BaseLayout title={`Kontakt — ${site.name}`} description={`Kontakt zu ${site.name} — Art Direction, UX/UI und digitale Produkte.`} mode="case" station={station}>
   <HallGuard />
-  <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug="telefon" mode="case" homeHref={p()} />
+  <Hall client:load transition:persist="hall" transition:persist-props items={items} directoryItems={directoryItems} initialSlug="telefon" mode="case" homeHref={p()} />
   <aside class="hall-panel hall-panel--contact" aria-labelledby="contact-title">
     <div class="hall-panel__chrome"><PanelBack homeHref={p()} /></div>
     <div class="hall-panel__card">

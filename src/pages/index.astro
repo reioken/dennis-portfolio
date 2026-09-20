@@ -9,7 +9,7 @@ import { copy } from '../lib/i18n';
 
 /* Die Stationen kommen aus src/lib/hall-items.ts — dieselbe Liste tragen auch die Projekt- und
    Arcade-Seiten, damit die Halle beim Navigieren stehen bleibt (transition:persist). */
-const { items, homeSlug, initial } = await buildHallItems();
+const { items, directoryItems, homeSlug, initial } = await buildHallItems();
 const startItem = items[initial];
 const station = { index: initial, total: items.length, title: startItem && 'title' in startItem ? startItem.title : copy.de.hall.kasseSub, titleEn: startItem && 'titleEn' in startItem ? startItem.titleEn : copy.en.hall.kasseSub, version: startItem && 'version' in startItem ? startItem.version : undefined };
 ---
@@ -22,6 +22,5 @@ const station = { index: initial, total: items.length, title: startItem && 'titl
  station={station}>
   <p class="sr-only">Art Director · UX/UI Designer · Independent apps and games</p>
   <HallGuard />
-  <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug={homeSlug} mode="hall" homeHref={p()} heading={site.name} />
+  <Hall client:load transition:persist="hall" transition:persist-props items={items} directoryItems={directoryItems} initialSlug={homeSlug} mode="hall" homeHref={p()} heading={site.name} />
 </BaseLayout>
-

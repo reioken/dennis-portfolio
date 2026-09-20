@@ -13,7 +13,7 @@ import { copy } from '../lib/i18n';
 import { p } from '../lib/paths';
 import { buildHallItems } from '../lib/hall-items';
 
-const { items } = await buildHallItems();
+const { items, directoryItems } = await buildHallItems();
 const kasseIndex = Math.max(0, items.findIndex((it) => it.kind === 'kasse'));
 const station = { index: kasseIndex, total: items.length, title: copy.de.hall.kasseSub, titleEn: copy.en.hall.kasseSub };
 
@@ -41,6 +41,6 @@ const description = `${site.name} — Art Director, UX/UI Designer und Independe
 <BaseLayout title={title} description={description} mode="case" station={station}>
   <script type="application/ld+json" set:html={JSON.stringify(profileLd)} />
   <HallGuard />
-  <Hall client:load transition:persist="hall" transition:persist-props items={items} initialSlug="kasse" mode="case" homeHref={p()} />
+  <Hall client:load transition:persist="hall" transition:persist-props items={items} directoryItems={directoryItems} initialSlug="kasse" mode="case" homeHref={p()} />
   <AboutOverlay items={items} index={kasseIndex} homeHref={p()} />
 </BaseLayout>
