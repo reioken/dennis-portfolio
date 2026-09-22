@@ -57,7 +57,7 @@ async function resolvesPublicPath(urlPath) {
 
 const htmlFiles = await collect(dist, (file) => file.endsWith('.html'));
 const marketingFiles = htmlFiles.filter(
-  (file) => !file.includes(`${path.sep}game-builds${path.sep}`) && !file.includes(`${path.sep}studio${path.sep}`) && !file.endsWith(`${path.sep}404.html`),
+  (file) => !file.includes(`${path.sep}game-builds${path.sep}`) && !file.includes(`${path.sep}games${path.sep}`) && !file.includes(`${path.sep}studio${path.sep}`) && !file.endsWith(`${path.sep}404.html`),
 );
 
 for (const file of marketingFiles) {
