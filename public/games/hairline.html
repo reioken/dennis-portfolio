@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>HAIRLINE</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;cursor:crosshair}</style>
+</head><body><canvas id="c"></canvas><script>
+'use strict';
+// ---------------- constants (physics tuned by the headless test - unchanged by the clarity pass) ----------------
+const VW=960,VH=600,GRID=20,DT=1/60,GRAV=500,NSUB=8,ITERS=3,DAMP=0.992,BASE_BREAK=0.006,STIFF=3600000,XRAY_LOAD=3.6,SPEED=60,WR=8,AXLE=28;
+const CART_MASS=12,MAXCORR=6;
+const XRAY_CAL=1.45; // static preview under-reads the moving cart by ~1.45x (measured in the headless test) - display only
+const EXAG=6,EXCAP=26; // rendered sag = real sag x6 (extra capped at 26px) - display only, physics untouched
+const GID='hairline';
+const DIFF={normal:{name:'NORMAL',gaps:5,fee:100,lives:4,xray:true,parK:4.3,spare:0.15},
+            hard:{name:'HARD',gaps:10,fee:150,lives:3,xray:false,parK:3.5,purse:13000}};
+let CFG=DIFF.normal;
+const TYPES={road:{cost:1.5,max:120,w:12,name:'ROAD',key:'1',use:'the cart drives on it'},strut:{cost:1,max:120,w:7,name:'STRUT',key:'2',use:'support: make triangles'},cable:{cost:0.6,max:200,w:4,name:'CABLE',key:'3',use:'pulls only, goes slack'}};
+const COL={bg:'#0b0d12',cyan:'#7cf5ff',red:'#ff5d73',gold:'#ffd166',green:'#9dff8a',text:'#eef1f8',dim:'#aab3c5',panel:'#121622',border:'#232a3d',rock:'#1b2030',edge:'#3c465c'};
+const FONT='"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let scale=1,offX=0,offY=0,bgGrad=null;
+const S={},mouse={x:0,y:0,down:false},UI={screen:'start',hard:false,t:0,mute:false};
+let drag=null,acc=0;
+const snap=v=>Math.round(v/GRID)*GRID,clamp=(v,a,b)=>v<a?a:v>b?b:v,ease=t=>1-Math.pow(1-clamp(t,0,1),3);
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,String(v))}catch(e){}}
+const loadBest=()=>+lsGet('proto_'+GID+'_best')||0;
+function fmt(n){n=Math.round(n);return(n<0?'-$':'$')+String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+
+// ---------------- audio (soft, musical, master gain, M = mute) ----------------
+let AC=null,MG=null,creakO=null,creakG=null;
+UI.mute=lsGet('proto_mute')==='1';
+function initAudio(){
+  if(AC)return;const A=window.AudioContext||window.webkitAudioContext;if(typeof A!=='function')return;
+  try{AC=new A();MG=AC.createGain();MG.gain.value=UI.mute?0:0.5;MG.connect(AC.destination);
+    creakO=AC.createOscillator();creakO.type='triangle';creakO.frequency.value=40;
+    const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=380;creakG=AC.createGain();creakG.gain.value=0;
+    creakO.connect(f);f.connect(creakG);creakG.connect(MG);creakO.start();}catch(e){AC=null}
+}
+function setMute(m){UI.mute=m;lsSet('proto_mute',m?'1':'0');if(MG)MG.gain.value=m?0:0.5}
+function tone(freq,delay,dur,type,vol){
+  if(!AC)return;const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type||'triangle';o.frequency.value=freq;
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol||0.12,t+0.012);g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.connect(g);g.connect(MG);o.start(t);o.stop(t+dur+0.02);
+}
+function crack(){
+  if(!AC)return;const n=AC.sampleRate*0.16|0,buf=AC.createBuffer(1,n,AC.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);
+  const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=1800;s.buffer=buf;g.gain.value=0.4;s.connect(f);f.connect(g);g.connect(MG);s.start();tone(98,0,0.22,'sine',0.2);
+}
+function setCreak(r){
+  if(!AC)return;const t=AC.currentTime;creakG.gain.setTargetAtTime(r>0.45?(r-0.45)*0.2:0,t,0.05);
+  creakO.frequency.setTargetAtTime(32+r*90+Math.sin(S.time*31)*8*r,t,0.03);
+}
+const PENTA=[523,587,659,784,880,1047,1175,1319];
+function flourish(big){(big?[0,2,3,5,7,5,7]:[0,2,3,5,7]).forEach((n,i)=>tone(PENTA[n],i*0.085,0.3,'triangle',0.13))}
+function sting(){tone(330,0,0.4,'sine',0.14);tone(247,0.16,0.5,'sine',0.14);tone(196,0.34,0.7,'sine',0.12)}
+const blip=(f,v)=>tone(f,0,0.08,'sine',v||0.08);
+
+// ---------------- physics (pure: works on any state object) ----------------
+function solveBeam(b,at){ // XPBD distance constraint: compliance makes strain physical, not an iteration artefact
+  const a=b.a,c=b.b,dx=c.x-a.x,dy=c.y-a.y,L=Math.hypot(dx,dy)||1e-6,C=L-b.L0;
+  if(b.type==='cable'&&C<0)return;
+  const wa=a.fixed?0:1,wc=c.fixed?0:1,ws=wa+wc;if(!ws)return;
+  const dl=clamp((-C-at*b.lam)/(ws+at),-MAXCORR,MAXCORR);b.lam+=dl;const k=dl/L;
+  a.x-=dx*k*wa;a.y-=dy*k*wa;c.x+=dx*k*wc;c.y+=dy*k*wc;
+}
+function collide(w,a,b,wInv){
+  const ex=b.x-a.x,ey=b.y-a.y,l2=ex*ex+ey*ey;if(l2<1||Math.abs(ex)<Math.abs(ey)*0.35)return;
+  const t=clamp(((w.x-a.x)*ex+(w.y-a.y)*ey)/l2,0,1),cx=a.x+ex*t,cy=a.y+ey*t,dx=w.x-cx,dy=w.y-cy,d=Math.hypot(dx,dy);
+  if(d>=WR)return;
+  const l=Math.sqrt(l2);let nx=-ey/l,ny=ex/l;if(ny>0){nx=-nx;ny=-ny}
+  const side=dx*nx+dy*ny;let pen=WR-side;
+  if(side>0&&(t===0||t===1)&&d>1e-6){nx=dx/d;ny=dy/d;pen=WR-d}
+  const wa=a.fixed?0:1-t,wb=b.fixed?0:t,lam=pen/(wInv+wa*(1-t)+wb*t);
+  w.x+=nx*lam*wInv;w.y+=ny*lam*wInv;a.x-=nx*lam*wa;a.y-=ny*lam*wa;b.x-=nx*lam*wb;b.y-=ny*lam*wb;
+  w.cn={nx,ny};
+}
+function simStep(st){for(let i=0;i<NSUB;i++)subStep(st,DT/NSUB);measure(st);st.t+=DT}
+function subStep(st,h){
+  const ramp=Math.min(1,st.t/0.6),g=GRAV*h*h,damp=Math.pow(DAMP,1/NSUB),at=1/(STIFF*h*h),cart /* STIFF = EA: compliance per beam = L0/EA */=st.cart;
+  for(const n of st.nodes){if(n.fixed)continue;const vx=(n.x-n.px)*damp,vy=(n.y-n.py)*damp;n.px=n.x;n.py=n.y;n.x+=vx;n.y+=vy+g*ramp*(n.load||1)}
+  if(cart)for(const w of cart.wheels){const vx=w.x-w.px,vy=w.y-w.py;w.px=w.x;w.py=w.y;w.x+=vx;w.y+=vy+g;w.cn=null}
+  for(const b of st.beams)b.lam=0;
+  for(let it=0;it<ITERS;it++){
+    for(const b of st.beams)if(!b.broken)solveBeam(b,at*b.L0);
+    if(cart){
+      const [p,q]=cart.wheels,dx=q.x-p.x,dy=q.y-p.y,L=Math.hypot(dx,dy)||1e-6,k=(L-AXLE)/L/2;
+      p.x+=dx*k;p.y+=dy*k;q.x-=dx*k;q.y-=dy*k;
+      const wInv=2/cart.mass;
+      for(const w of cart.wheels){
+        for(const b of st.beams)if(!b.broken&&b.type==='road')collide(w,b.a,b.b,wInv);
+        for(const s of st.ground)collide(w,s.a,s.b,wInv);
+        for(const wall of st.walls)if(w.y>wall.y+2&&(w.x-wall.x)*wall.dir<WR&&(w.x-wall.x)*wall.dir>-30)w.x=wall.x+wall.dir*WR;
+      }
+    }
+  }
+  if(cart)for(const w of cart.wheels){
+    if(!w.cn)continue;let tx=-w.cn.ny,ty=w.cn.nx;if(tx<0){tx=-tx;ty=-ty}
+    if(ty>-0.85){const dv=SPEED*h-((w.x-w.px)*tx+(w.y-w.py)*ty);w.px-=dv*tx;w.py-=dv*ty}
+  }
+}
+function measure(st){
+  let worst=null,maxR=0;
+  for(const b of st.beams){
+    if(b.broken)continue;let s=(Math.hypot(b.b.x-b.a.x,b.b.y-b.a.y)-b.L0)/b.L0;if(b.type==='cable'&&s<0)s=0;
+    b.strain=Math.abs(s);b.peak=Math.max(b.peak||0,b.strain);const r=b.strain/st.limit;if(r>maxR){maxR=r;worst=b}
+  }
+  st.curR=maxR;st.maxR=Math.max(st.maxR||0,maxR);st.worst=worst;
+  if(maxR>1&&st.canBreak)for(const b of st.beams)if(!b.broken&&(b===worst||b.strain>st.limit*1.6)){b.broken=true;st.breaks=(st.breaks||0)+1;if(st.onBreak)st.onBreak(b)}
+}
+
+// ---------------- upgrades: one data row + one hook each ----------------
+const UPS=[
+  {id:'cable',name:'CABLE',desc:'New beam (key 3): pull-only, 200px long, $0.6/px',why:'Changes how you build: hang the deck from above, cheaply.',ok:()=>!S.up.cable,fn:()=>{S.up.cable=true}},
+  {id:'steel',name:'STRONGER STEEL',desc:'Every beam survives 20% more strain',why:'Lets you delete a few struts on every later gap.',ok:()=>S.up.steel<2,fn:()=>{S.up.steel++}},
+  {id:'heavy',name:'HEAVY PAYLOAD',desc:'Cart 60% heavier, but +$400 per crossing',why:'Risk now, reward later: pays off if your bridges have slack.',ok:()=>!S.up.heavy,fn:()=>{S.up.heavy=true}},
+  {id:'xray',name:'STRESS X-RAY',desc:'Build mode predicts the strain of every beam',why:'See the weak beam BEFORE paying for a failed test.',ok:()=>!S.up.xray,fn:()=>{S.up.xray=true}},
+  {id:'refund',name:'REFUND',desc:'+$300 right now',why:'Plain money. Money is score.',ok:()=>true,fn:()=>{S.purse+=300}},
+  {id:'long',name:'LONG SPANS',desc:'Road and strut max length 120 -> 160px',why:'Changes how you build: fewer joints, bigger triangles.',ok:()=>!S.up.long,fn:()=>{S.up.long=true}},
+  {id:'hook',name:'SKY HOOK',desc:'A free anchor floats above every gap',why:'Changes how you build: hang the middle instead of propping it.',ok:()=>!S.up.hook,fn:()=>{S.up.hook=true}},
+  {id:'life',name:'SPARE LICENCE',desc:'+1 life',why:'One more failed test before the run ends.',ok:()=>S.lives<6,fn:()=>{S.lives++}},
+  {id:'bulk',name:'BULK ASPHALT',desc:'Road costs $1.2/px instead of $1.5',why:'Every bridge needs a full road - this always pays.',ok:()=>!S.up.bulk,fn:()=>{S.up.bulk=true}},
+  {id:'light',name:'LIGHT CART',desc:'Cart 15% lighter',why:'Less load = thinner bridges = more money left.',ok:()=>!S.up.light,fn:()=>{S.up.light=true}},
+  {id:'salvage',name:'SALVAGE',desc:'After each crossing get 15% of the bridge cost back',why:'Makes big safe bridges cheaper.',ok:()=>!S.up.salvage,fn:()=>{S.up.salvage=true}},
+  {id:'dry',name:'TEST LOAD',desc:'Once per gap, T runs a free rehearsal crossing',why:'Changes how you play: try a daring design with no fee, no life.',ok:()=>!S.up.dry,fn:()=>{S.up.dry=true}},
+  {id:'insure',name:'INSURANCE',desc:'Your next 2 failed tests cost no fee and no life',why:'Buys room to experiment on the hard gaps.',ok:()=>S.up.insure===0,fn:()=>{S.up.insure=2}},
+  {id:'bet',name:'DOUBLE OR NOTHING',desc:'Next gap: at or under par +$600, over par -$250',why:'Risk now, reward later - only if you trust your trusses.',ok:()=>!S.up.bet,fn:()=>{S.up.bet=true}}];
+
+// ---------------- run / level ----------------
+const KIND_NAME={low2:'TWIN FOOTINGS',lowL:'ONE FOOTING',lowR:'ONE FOOTING',pillar:'THE PILLAR',none:'BARE CLIFFS'};
+function genLevel(i){
+  const r=S.lvRng,Ly=320;let w,kind,Ry=320,pillarOff=0,pillarDy=0,mass=1,name,parMul=1;
+  if(UI.hard||i>CFG.gaps){ // HARD = the original tuning; endless continues with it
+    const j=UI.hard?i:i+4;
+    w=i===1?400:clamp(snap(300+Math.min(j-1,9)/9*170+(r()-0.3)*80),300,520);
+    Ry=i===1?320:320+[-20,0,0,20][r()*4|0];
+    kind=i===1?'low2':['none','low2','lowL','lowR','pillar','pillar'][r()*6|0];if(kind==='none'&&w>400)kind=r()<0.5?'low2':'pillar';
+    pillarOff=(r()-0.5)*100;pillarDy=20*(r()*3|0);name=KIND_NAME[kind];
+    if(UI.hard&&i===CFG.gaps)name='FINALE: THE GORGE';
+  }else if(i===1){w=320;kind='low2';name='PRACTICE CREEK'}
+  else if(i===2){w=snap(280+r()*40);kind='low2';name='EMPTY GAP'}
+  else if(i===3){w=snap(340+r()*40);kind='pillar';pillarOff=(r()-0.5)*60;name='THE PILLAR'}
+  else if(i===4){w=snap(340+r()*60);kind=r()<0.5?'lowL':'lowR';name='ONE FOOTING'}
+  else{w=420;kind='pillar';pillarOff=(r()-0.5)*40;pillarDy=20;mass=1.35;parMul=1.12;name='FINALE: THE CHASM'} // widest gap, a rock pillar mid-gap, a loaded ore wagon
+  const Lx=snap((VW-w)/2),Rx=Lx+w,pillar=kind==='pillar'?{x:snap(Lx+w/2+pillarOff),y:Ly+80+pillarDy}:null;
+  const k=CFG.parK*parMul*(kind==='none'?1.15:kind==='low2'||kind==='pillar'?0.95:1.05);
+  let par=Math.round(w*k*Math.sqrt(w/400)/10)*10;if(!UI.hard&&i===1)par=Math.max(par,970);
+  return{i,w,Lx,Rx,Ly,Ry,kind,pillar,par,mass,name,finale:i===CFG.gaps};
+}
+function startRun(seed,hard){
+  if(hard!==undefined)UI.hard=!!hard;CFG=UI.hard?DIFF.hard:DIFF.normal;
+  Object.assign(S,{seed:seed||((Date.now()%1e9)|1),level:0,lives:CFG.lives,best:loadBest(),
+    up:{cable:false,steel:0,heavy:false,xray:CFG.xray,long:false,hook:false,bulk:false,light:false,salvage:false,dry:false,insure:0,bet:false},
+    mode:'build',modeT:0,type:'road',time:0,msg:'',msgT:0,particles:[],shake:0,hitstop:0,slowmo:0,over:null,res:null,sim:null,fast:false,
+    totalSaved:0,endless:false,crossed:0,fails:0,seen:{},tip:null,tut:null,lastBreak:null,lastFail:null,confirmG:0,winScore:0,dryLeft:0,choices:[]});
+  S.rng=mulberry(S.seed);S.lvRng=mulberry(S.seed^0x5bd1e995);
+  S.plan=[];let sum=0;for(let i=1;i<=CFG.gaps;i++){const l=genLevel(i);S.plan.push(l);sum+=l.par}
+  S.purse=CFG.purse||Math.ceil(sum/(1-CFG.spare)/100)*100;S.purse0=S.purse;S.disp=S.purse;S.parSum=sum;
+  drag=null;nextLevel();
+}
+function setMode(m){S.mode=m;S.modeT=0}
+function mkNode(x,y,fixed){return{x,y,px:x,py:y,bx:x,by:y,fixed:!!fixed,ex:0,ey:0,dx:x,dy:y}}
+function showTip(key,lines,until){if(S.seen[key])return;S.seen[key]=1;S.tip={lines,until:until||'time',t:0}}
+function nextLevel(){
+  S.level++;const i=S.level,l=S.plan[i-1]||genLevel(i);S.lv=l;
+  const an=[[l.Lx,l.Ly],[l.Rx,l.Ry]];
+  if(l.kind==='low2'||l.kind==='lowL')an.push([l.Lx,l.Ly+80]);
+  if(l.kind==='low2'||l.kind==='lowR')an.push([l.Rx,l.Ry+80]);
+  if(l.pillar)an.push([l.pillar.x,l.pillar.y]);
+  if(S.up.hook)an.push([snap(l.Lx+l.w/2),l.Ly-120]);
+  S.nodes=an.map(p=>mkNode(p[0],p[1],true));S.beams=[];S.undo=[];setMode('build');S.xrDirty=true;S.levelT=0;S.lastBreak=null;S.dryLeft=S.up.dry?1:0;S.tip=null;S.tut=null;
+  if(S.endless){S.purse+=l.par;S.tollPaid=l.par;showTip('endless',['ENDLESS: your score is banked. Each gap pays its par into the purse up front - build with it.','Wider gaps, no finale. Give up (G G) whenever you like.'],'beam')}
+  if(i===1){ // deliberately flimsy starter: press GO and watch it fail
+    for(let x=l.Lx;x<l.Rx;x+=80)addBeam(x,l.Ly,x+80,l.Ly,'road');
+    addBeam(l.Lx,l.Ly+80,l.Lx+80,l.Ly,'strut');addBeam(l.Rx,l.Ry+80,l.Rx-80,l.Ry,'strut');S.undo=[];S.type='strut';
+    if(!UI.hard)S.tut={step:0};
+  }else S.type='road';
+  if(!UI.hard&&!S.endless){
+    if(i===2)showTip('g2',['NEW: an empty gap. Press 1 (ROAD) and drag from the left cliff anchor toward the right, max 120px per beam.','Then press 2 (STRUT) and build triangles under the road, like the practice gap.'],'go');
+    if(i===3)showTip('g3',['NEW: THE PILLAR - a free anchor in the middle of the gap.','Struts that rest on an anchor push their load straight into the ground.'],'beam');
+    if(i===4)showTip('g4',['NEW: only ONE footing below the deck.','The other side can only hang from the cliff edge - give it deeper triangles.'],'beam');
+    if(i===5)showTip('g5',['FINALE - THE CHASM: the widest gap, a rock pillar mid-gap, and a loaded ORE WAGON 35% heavier than the cart.','Aim for a predicted worst beam under 70% before you press GO.'],'beam');
+  }
+}
+const limit=()=>BASE_BREAK*Math.pow(1.2,S.up.steel);
+const costPx=t=>t==='road'&&S.up.bulk?1.2:TYPES[t].cost,maxLen=t=>TYPES[t].max+(S.up.long&&t!=='cable'?40:0);
+const massMul=()=>(S.up.heavy?1.6:1)*(S.up.light?0.85:1)*(S.lv.mass||1);
+const practice=()=>!UI.hard&&!S.endless&&S.level===1; // gap 1 on NORMAL can never hurt you
+function designCost(){let c=0;for(const b of S.beams)c+=b.L0*costPx(b.type);return Math.round(c)}
+function flash(m){S.msg=m;S.msgT=3}
+function nodeAt(x,y,r){let best=null,bd=r;for(const n of S.nodes){const d=Math.hypot(n.x-x,n.y-y);if(d<=bd){bd=d;best=n}}return best}
+function inRock(x,y){const l=S.lv;return(x<l.Lx&&y>l.Ly-1)||(x>l.Rx&&y>l.Ry-1)||x<20||x>VW-20||y<140||y>VH-70}
+function addBeam(ax,ay,bx,by,type){
+  type=type||S.type;const T=TYPES[type];if(!T||S.mode!=='build'||(type==='cable'&&!S.up.cable))return null;
+  ax=snap(ax);ay=snap(ay);bx=snap(bx);by=snap(by);const L=Math.hypot(bx-ax,by-ay);if(L<1||L>maxLen(type)+0.01)return null;
+  let a=nodeAt(ax,ay,1),b=nodeAt(bx,by,1);
+  if((!a&&inRock(ax,ay))||(!b&&inRock(bx,by)))return null;
+  if(a&&b&&S.beams.some(q=>(q.a===a&&q.b===b)||(q.a===b&&q.b===a)))return null;
+  if(designCost()+L*costPx(type)>S.purse){flash('Not enough money in the purse for that beam.');return null}
+  if(!a){a=mkNode(ax,ay);S.nodes.push(a)}if(!b){b=mkNode(bx,by);S.nodes.push(b)}
+  const beam={a,b,type,L0:L,broken:false,strain:0,peak:0,xr:0};S.beams.push(beam);S.undo.push(beam);S.xrDirty=true;
+  if(S.tip&&S.tip.until==='beam')S.tip=null;return beam;
+}
+function removeBeam(b){
+  const i=S.beams.indexOf(b);if(i<0||S.mode!=='build')return;S.beams.splice(i,1);
+  S.nodes=S.nodes.filter(n=>n.fixed||S.beams.some(q=>q.a===n||q.b===n));S.xrDirty=true;
+}
+function undo(){while(S.undo.length){const b=S.undo.pop();if(S.beams.includes(b)){removeBeam(b);blip(220,0.05);return}}}
+function clearDesign(){S.beams=[];S.undo=[];S.nodes=S.nodes.filter(n=>n.fixed);S.xrDirty=true}
+function hasBeam(g){return S.beams.some(b=>(b.a.x===g[0]&&b.a.y===g[1]&&b.b.x===g[2]&&b.b.y===g[3])||(b.a.x===g[2]&&b.a.y===g[3]&&b.b.x===g[0]&&b.b.y===g[1]))}
+function ghosts(){ // tutorial: three struts that turn the practice deck into triangles
+  if(!S.tut||S.tut.step<1||S.mode!=='build')return[];const l=S.lv,m=l.Lx+160,y=l.Ly;
+  return[[m-80,y,m,y+60],[m,y+60,m,y],[m,y+60,m+80,y]].filter(g=>!hasBeam(g));
+}
+function roadConnected(){
+  const l=S.lv,a=nodeAt(l.Lx,l.Ly,1),z=nodeAt(l.Rx,l.Ry,1);if(!a||!z)return false;const seen=new Set([a]),q=[a];
+  while(q.length){const n=q.pop();if(n===z)return true;for(const b of S.beams){if(b.type!=='road')continue;const o=b.a===n?b.b:b.b===n?b.a:null;if(o&&!seen.has(o)){seen.add(o);q.push(o)}}}return false;
+}
+function groundFor(l){
+  const f=(x,y)=>({x,y,fixed:true});
+  return{ground:[{a:f(-3000,l.Ly),b:f(l.Lx,l.Ly)},{a:f(l.Rx,l.Ry),b:f(4000,l.Ry)}],walls:[{x:l.Rx,y:l.Ry,dir:-1}]};
+}
+function go(dry){
+  if(S.mode!=='build'||UI.screen)return false;const cost=designCost();
+  if(!S.beams.length){flash('Build something first: drag from a white anchor.');return false}
+  if(!roadConnected()){flash('The ROAD is not connected cliff to cliff - the cart only drives on ROAD beams (key 1).');return false}
+  if(cost>S.purse){flash('This bridge costs more than your purse - delete beams (right-click) or give up (G).');return false}
+  if(dry){if(!S.up.dry||S.dryLeft<=0){flash('No TEST LOAD left on this gap.');return false}S.dryLeft--}
+  for(const n of S.nodes){n.bx=n.px=n.x;n.by=n.py=n.y}
+  for(const b of S.beams){b.broken=false;b.strain=0;b.peak=0;b.bk=null}
+  const l=S.lv,y=l.Ly-WR,wh=x=>({x,y,px:x-SPEED*DT/NSUB,py:y,cn:null,ex:0,ey:0});
+  S.sim=Object.assign({nodes:S.nodes,beams:S.beams,cart:{wheels:[wh(l.Lx-70-AXLE),wh(l.Lx-70)],mass:CART_MASS*massMul()},
+    t:0,limit:limit(),canBreak:true,maxR:0,breaks:0,onBreak,dry:!!dry,first:null},groundFor(l));
+  setMode('sim');acc=0;drag=null;S.lastBreak=null;S.slowmo=0;if(S.tip&&S.tip.until!=='time')S.tip=null;blip(392);tone(523,0.07,0.12,'sine',0.08);return true;
+}
+function onBreak(b){
+  const st=S.sim,mx=(b.a.dx+b.b.dx)/2||(b.a.x+b.b.x)/2,my=(b.a.dy+b.b.dy)/2||(b.a.y+b.b.y)/2;
+  b.bk={x:mx,y:my,n:st.breaks};if(!st.first){st.first=b;S.slowmo=1.8}
+  S.shake=Math.min(6,Math.max(S.shake,5));S.hitstop=0.07;crack();
+  for(let i=0;i<8;i++){const t=Math.random();S.particles.push({x:b.a.x+(b.b.x-b.a.x)*t,y:b.a.y+(b.b.y-b.a.y)*t,vx:(Math.random()-0.5)*200,vy:-Math.random()*180,life:0.35+Math.random()*0.3,col:i%2?'#c9ced9':'#8b95ab'})}
+  S.particles.push({x:mx,y:my,vx:0,vy:0,life:0.2,ring:true,col:'#eef1f8'});
+}
+function computeXray(){ // static-load preview on a clone (no cart, no breaking)
+  S.xrDirty=false;S.xrMax=0;S.xrWorst=null;if(!S.beams.length)return;
+  const map=new Map(),nodes=S.nodes.map(n=>{const c=mkNode(n.x,n.y,n.fixed);map.set(n,c);return c});
+  const beams=S.beams.map(b=>({a:map.get(b.a),b:map.get(b.b),type:b.type,L0:b.L0,src:b})),load=1+(XRAY_LOAD-1)*massMul();
+  for(const b of beams)if(b.type==='road'){b.a.load=load;b.b.load=load}
+  const st={nodes,beams,cart:null,t:0,limit:limit(),canBreak:false,ground:[],walls:[]};
+  for(let i=0;i<150;i++)simStep(st);
+  for(const b of beams){b.src.xr=b.peak/st.limit*XRAY_CAL;if(b.src.xr>S.xrMax){S.xrMax=b.src.xr;S.xrWorst=b.src}}
+}
+function endSim(win,why){
+  const cost=designCost(),st=S.sim,l=S.lv,first=st.first?TYPES[st.first.type].name:null;setCreak(0);S.slowmo=0;
+  if(st.dry){S.res={dry:true,win,why,first,maxR:st.maxR,breaks:st.breaks};blip(win?659:247)}
+  else if(win){
+    const bonus=S.up.heavy?400:0,saved=l.par-cost,salv=S.up.salvage?Math.round(cost*0.15):0,toll=0;let bet=0; // endless toll is paid up front in nextLevel
+    if(S.up.bet){bet=cost<=l.par?600:-250;S.up.bet=false}
+    S.purse+=bonus+salv+toll+bet-cost;S.totalSaved+=saved;S.crossed++;
+    S.res={win,cost,bonus,salv,toll,bet,saved,maxR:st.maxR,breaks:st.breaks};flourish(l.finale&&!S.endless);
+    if(S.tut)S.tut=null;
+  }else{
+    const free=practice()?'practice':S.up.insure>0?'insurance':null;
+    if(free==='insurance')S.up.insure--;
+    if(!free){S.lives--;S.purse=Math.max(0,S.purse-CFG.fee)}
+    S.fails++;S.lastFail={why,first,maxR:st.maxR,gap:S.level};S.res={win,why,first,free,maxR:st.maxR,breaks:st.breaks};sting();
+    if(S.tut&&S.tut.step===0)S.tut.step=1;
+  }
+  if(st.first)S.lastBreak=st.first;
+  setMode('result');S.resT=0;
+}
+function afterResult(){
+  for(const n of S.nodes){n.x=n.px=n.bx;n.y=n.py=n.by}for(const b of S.beams){b.broken=false;b.strain=0}
+  S.sim=null;const r=S.res;
+  if(r.dry){setMode('build');S.xrDirty=true;return}
+  if(r.win){
+    if(S.level>=CFG.gaps&&!S.endless)return gameOver('won');
+    const pool=UPS.filter(u=>u.ok());S.choices=[];while(S.choices.length<3&&pool.length)S.choices.push(pool.splice(S.rng()*pool.length|0,1)[0]);setMode('pick');
+  }else if(S.lives<=0)gameOver('lives');
+  else{setMode('build');S.xrDirty=true;
+    if(S.purse<S.lv.par)showTip('poor',['Your purse is below par for this gap. Build lean (shallow triangles, no spare beams),','or press G twice to end the run and bank your medal.'],'go')}
+}
+function pick(i){if(S.mode!=='pick'||!S.choices[i])return;S.choices[i].fn();tone(659,0,0.12,'sine');tone(880,0.08,0.16,'sine');nextLevel()}
+const goldAt=()=>UI.hard?1500:Math.round(S.purse0*0.25/100)*100,bronzeAt=()=>UI.hard?4:3; // gold = finish clearly under par (~12%); bronze = past the pillar
+function medalFor(o){
+  if(o.won)return o.score>=goldAt()?'gold':'silver';
+  return o.gaps>=bronzeAt()?'bronze':null;
+}
+const RANK={bronze:1,silver:2,gold:3};
+function gameOver(cause){
+  if(S.endless){S.over.endlessGaps=S.crossed-CFG.gaps;S.over.cause=cause;S.over.ended=true;setMode('over');return}
+  const won=cause==='won',score=won?Math.round(S.purse):0,o={won,cause,score,gaps:S.crossed,newBest:won&&score>S.best};
+  o.medal=medalFor(o);S.over=o;S.winScore=score;
+  if(o.newBest){S.best=score;lsSet('proto_'+GID+'_best',score)}
+  if(won)lsSet('proto_'+GID+'_wins',(+lsGet('proto_'+GID+'_wins')||0)+1);
+  if(o.medal&&(RANK[o.medal]>(RANK[lsGet('proto_'+GID+'_medal')]||0)))lsSet('proto_'+GID+'_medal',o.medal);
+  setMode('over');
+}
+function keepGoing(){if(S.mode!=='over'||!S.over.won||S.endless)return;S.endless=true;S.lives=Math.max(S.lives,2);const pool=UPS.filter(u=>u.ok());S.choices=[];while(S.choices.length<3&&pool.length)S.choices.push(pool.splice(S.rng()*pool.length|0,1)[0]);setMode('pick')}
+function update(dt){
+  dt=clamp(dt,0,0.05);UI.t+=dt;if(UI.screen)return; // start / help screens pause everything
+  S.time+=dt;S.levelT+=dt;S.modeT+=dt;S.disp+=(S.purse-S.disp)*Math.min(1,dt*6);if(Math.abs(S.purse-S.disp)<1)S.disp=S.purse;
+  if(S.msgT>0)S.msgT-=dt;if(S.confirmG>0)S.confirmG-=dt;S.shake*=Math.pow(0.002,dt);
+  if(S.tip){S.tip.t+=dt;if(S.tip.until==='time'&&S.tip.t>6)S.tip=null}
+  for(const p of S.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(!p.ring)p.vy+=600*dt}
+  S.particles=S.particles.filter(p=>p.life>0);
+  if(S.mode==='sim'){
+    if(S.hitstop>0){S.hitstop-=dt;return}
+    let rate=S.fast?4:1;if(S.slowmo>0&&!S.fast){S.slowmo-=dt;rate=0.22}
+    acc+=dt*rate;const st=S.sim,l=S.lv;
+    while(acc>=DT-1e-9&&S.mode==='sim'&&S.hitstop<=0){
+      acc-=DT;simStep(st);const [p,q]=st.cart.wheels;
+      if(p.x>l.Rx+12&&q.x>l.Rx+12&&p.y<l.Ry)endSim(true);
+      else if(p.y>VH+40||q.y>VH+40||!(p.x===p.x))endSim(false,'The cart fell into the gap');
+      else if(st.t>l.w/SPEED+14)endSim(false,'The cart got stuck');
+    }
+    if(S.mode==='sim')setCreak(clamp(st.curR,0,1.2));
+  }else if(S.mode==='result'){S.resT+=dt;if(S.resT>(S.res.win?5:9))afterResult()}
+  else if(S.mode==='build'&&S.up.xray&&S.xrDirty)computeXray();
+}
+
+// ---------------- rendering helpers ----------------
+function txt(s,x,y,size,col,align,weight){ctx.font=(weight||500)+' '+(size||14)+'px '+FONT;ctx.fillStyle=col||COL.text;ctx.textAlign=align||'left';ctx.fillText(s,x,y)}
+function title(s,x,y,size,col,align){try{ctx.letterSpacing='2px'}catch(e){}txt(s,x,y,size,col,align,800);try{ctx.letterSpacing='0px'}catch(e){}}
+function rr(x,y,w,h,r){const c=ctx;c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath()}
+function card(x,y,w,h,hot,alpha){const c=ctx;c.save();c.globalAlpha*=alpha===undefined?0.94:alpha;rr(x,y,w,h,12);c.fillStyle=COL.panel;c.fill();c.restore();rr(x,y,w,h,12);c.strokeStyle=hot?COL.cyan:COL.border;c.lineWidth=hot?2:1;c.stroke()}
+function inRect(p,r){return p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h}
+function button(r,label,primary,sub){
+  const c=ctx,hv=inRect(mouse,r),pr=hv&&mouse.down,y=r.y+(pr?2:hv?-1:0);
+  c.save();if(primary){c.shadowColor=COL.cyan;c.shadowBlur=hv?16:8}rr(r.x,y,r.w,r.h,10);c.fillStyle=primary?(pr?'#4cc3cf':COL.cyan):(pr?'#0e111a':hv?'#1a2030':COL.panel);c.fill();c.restore();
+  rr(r.x,y,r.w,r.h,10);c.strokeStyle=hv?COL.cyan:primary?COL.cyan:COL.border;c.lineWidth=hv?2:1;c.stroke();
+  txt(label,r.x+r.w/2,y+r.h/2+(sub?-1:6),primary?18:15,primary?'#06222a':COL.text,'center',800);
+  if(sub)txt(sub,r.x+r.w/2,y+r.h/2+16,14,primary?'#0b3c47':COL.dim,'center',600);
+}
+function strainCol(r){r=clamp(r,0,1);const a=r<0.5?[157,255,138]:[255,214,102],b=r<0.5?[255,214,102]:[255,93,115],u=r<0.5?r*2:(r-0.5)*2;
+  return'rgb('+a.map((v,i)=>Math.round(v+(b[i]-v)*u)).join(',')+')'}
+const R={go:{x:792,y:542,w:154,h:48},play:{x:380,y:500,w:200,h:52},diffN:{x:612,y:508,w:104,h:36},diffH:{x:722,y:508,w:104,h:36},
+  retry:{x:0,y:458,w:170,h:46},menu:{x:0,y:458,w:170,h:46},endless:{x:0,y:458,w:210,h:46},legend:{x:14,y:318,w:198,h:248},keys:{x:758,y:400,w:188,h:132},tip:{x:222,y:544,w:560,h:46}};
+function legendRow(i){return{x:R.legend.x+6,y:R.legend.y+26+i*54,w:R.legend.w-12,h:52}}
+function pickRect(i){return{x:118+i*248,y:176,w:228,h:270}}
+function overButtons(){const o=S.over,ids=o.won&&!S.endless?['retry','endless','menu']:['retry','menu'];let w=0;for(const id of ids)w+=R[id].w+16;let x=480-(w-16)/2;for(const id of ids){R[id].x=x;x+=R[id].w+16}return ids}
+function hoverBeam(){
+  let best=null,bd=9;for(const b of S.beams){const ex=b.b.x-b.a.x,ey=b.b.y-b.a.y,t=clamp(((mouse.x-b.a.x)*ex+(mouse.y-b.a.y)*ey)/(ex*ex+ey*ey),0,1),d=Math.hypot(mouse.x-b.a.x-ex*t,mouse.y-b.a.y-ey*t);if(d<bd){bd=d;best=b}}return best;
+}
+function hoverGhost(){for(const g of ghosts()){const ex=g[2]-g[0],ey=g[3]-g[1],t=clamp(((mouse.x-g[0])*ex+(mouse.y-g[1])*ey)/(ex*ex+ey*ey),0,1);if(Math.hypot(mouse.x-g[0]-ex*t,mouse.y-g[1]-ey*t)<10)return g}return null}
+function clampEnd(a,mx,my,max){
+  const n=nodeAt(mx,my,14);let x=n?n.x:snap(mx),y=n?n.y:snap(my),red=false;
+  if(Math.hypot(x-a.x,y-a.y)>max+0.01){red=true;const d=Math.hypot(mx-a.x,my-a.y)||1,ux=(mx-a.x)/d,uy=(my-a.y)/d;
+    for(let len=max;len>0;len-=4){x=snap(a.x+ux*len);y=snap(a.y+uy*len);if(Math.hypot(x-a.x,y-a.y)<=max+0.01)break}}
+  return{x,y,red};
+}
+function calcDraw(){ // exaggerated display positions: rest + EXAG*(actual-rest), extra capped
+  const live=S.mode==='sim'||S.mode==='result';
+  for(const n of S.nodes){let ex=0,ey=0;if(live&&!n.fixed){ex=(n.x-n.bx)*(EXAG-1);ey=(n.y-n.by)*(EXAG-1);const m=Math.hypot(ex,ey);if(m>EXCAP){ex*=EXCAP/m;ey*=EXCAP/m}}n.ex=ex;n.ey=ey;n.dx=n.x+ex;n.dy=n.y+ey}
+  if(S.sim)for(const w of S.sim.cart.wheels){let best=null,bd=WR+6,bt=0;
+    for(const b of S.beams){if(b.broken||b.type!=='road')continue;const ex=b.b.x-b.a.x,ey=b.b.y-b.a.y,t=clamp(((w.x-b.a.x)*ex+(w.y-b.a.y)*ey)/(ex*ex+ey*ey),0,1),d=Math.hypot(w.x-b.a.x-ex*t,w.y-b.a.y-ey*t);if(d<bd){bd=d;best=b;bt=t}}
+    const tx=best?best.a.ex+(best.b.ex-best.a.ex)*bt:0,ty=best?best.a.ey+(best.b.ey-best.a.ey)*bt:0;w.ex+=(tx-w.ex)*0.4;w.ey+=(ty-w.ey)*0.4}
+}
+function beamPath(ax,ay,bx,by){ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke()}
+function drawBeamStyle(type,ax,ay,bx,by,col,extra,glow){ // shape first: road = wide + dashed centre, strut = medium + solid core, cable = thin + dotted
+  const c=ctx,w=TYPES[type].w+(extra||0);c.lineCap='round';
+  c.strokeStyle='#07090d';c.lineWidth=w+3;beamPath(ax,ay,bx,by);
+  c.save();if(glow){c.shadowColor=COL.red;c.shadowBlur=14}c.strokeStyle=col;c.lineWidth=w;beamPath(ax,ay,bx,by);c.restore();
+  c.strokeStyle='rgba(7,9,13,.75)';c.lineCap='butt';
+  if(type==='road'){c.lineWidth=2;c.setLineDash([7,6])}else if(type==='strut'){c.lineWidth=1.5}else{c.lineWidth=1.5;c.setLineDash([2,4])}
+  beamPath(ax,ay,bx,by);c.setLineDash([]);c.lineCap='round';
+}
+const TYPE_GREY={road:'#c9ced9',strut:'#98a2b8',cable:'#b9c0d0'};
+function drawIcon(id,x,y){ // tiny code-drawn upgrade icons in a 44px badge
+  const c=ctx;c.save();c.translate(x,y);c.beginPath();c.arc(0,0,24,0,7);c.fillStyle='#0e1320';c.fill();c.strokeStyle=COL.gold;c.lineWidth=2;c.stroke();
+  c.strokeStyle=COL.gold;c.fillStyle=COL.gold;c.lineWidth=2.5;c.lineCap='round';c.lineJoin='round';c.beginPath();
+  if(id==='cable'){c.moveTo(-14,-8);c.quadraticCurveTo(0,16,14,-8);c.stroke();c.beginPath();c.arc(-14,-8,3,0,7);c.arc(14,-8,3,0,7);c.fill()}
+  else if(id==='steel'){c.moveTo(-10,-11);c.lineTo(10,-11);c.moveTo(-10,11);c.lineTo(10,11);c.moveTo(0,-11);c.lineTo(0,11);c.stroke()}
+  else if(id==='heavy'){c.moveTo(-8,-4);c.lineTo(8,-4);c.lineTo(13,12);c.lineTo(-13,12);c.closePath();c.fill();c.beginPath();c.arc(0,-9,4,0,7);c.stroke()}
+  else if(id==='xray'){c.moveTo(-15,0);c.quadraticCurveTo(0,-14,15,0);c.quadraticCurveTo(0,14,-15,0);c.stroke();c.beginPath();c.arc(0,0,4,0,7);c.fill()}
+  else if(id==='refund'){c.arc(0,0,12,0,7);c.stroke();txt('$',0,6,17,COL.gold,'center',800)}
+  else if(id==='long'){c.moveTo(-15,0);c.lineTo(15,0);c.moveTo(-9,-6);c.lineTo(-15,0);c.lineTo(-9,6);c.moveTo(9,-6);c.lineTo(15,0);c.lineTo(9,6);c.stroke()}
+  else if(id==='hook'){c.ellipse(0,-8,8,7,0,0,7);c.stroke();c.beginPath();c.moveTo(0,-1);c.lineTo(0,9);c.stroke();c.beginPath();c.arc(0,12,3.5,0,7);c.fill()}
+  else if(id==='life'){c.moveTo(0,12);c.bezierCurveTo(-18,-2,-8,-14,0,-5);c.bezierCurveTo(8,-14,18,-2,0,12);c.fill()}
+  else if(id==='bulk'){c.lineWidth=9;c.moveTo(-13,2);c.lineTo(13,2);c.stroke();c.strokeStyle='#0e1320';c.lineWidth=2;c.setLineDash([5,4]);c.beginPath();c.moveTo(-13,2);c.lineTo(13,2);c.stroke();c.setLineDash([])}
+  else if(id==='light'){c.moveTo(0,12);c.lineTo(0,-12);c.moveTo(-8,-4);c.lineTo(0,-12);c.lineTo(8,-4);c.stroke()}
+  else if(id==='salvage'){c.arc(0,0,11,0.6,5.6);c.stroke();c.beginPath();c.moveTo(12,-10);c.lineTo(9,-2);c.lineTo(3,-9);c.closePath();c.fill()}
+  else if(id==='dry'){c.setLineDash([4,4]);c.arc(0,0,13,0,7);c.stroke();c.setLineDash([]);txt('T',0,6,17,COL.gold,'center',800)}
+  else if(id==='insure'){c.moveTo(0,-13);c.lineTo(12,-8);c.lineTo(10,5);c.lineTo(0,13);c.lineTo(-10,5);c.lineTo(-12,-8);c.closePath();c.stroke()}
+  else if(id==='bet'){c.rect(-11,-11,22,22);c.stroke();for(const p of [[-5,-5],[5,5],[0,0],[5,-5],[-5,5]]){c.beginPath();c.arc(p[0],p[1],2,0,7);c.fill()}}
+  c.restore();
+}
+function drawMedal(m,x,y,s){
+  const c=ctx,col={gold:COL.gold,silver:'#d5dbe8',bronze:'#d39263'}[m]||'#3a4258';c.save();c.translate(x,y);c.scale(s,s);
+  c.fillStyle=m?'#3a5bd0':'#232a3d';c.beginPath();c.moveTo(-16,10);c.lineTo(-24,52);c.lineTo(-10,44);c.lineTo(-2,56);c.lineTo(2,20);c.closePath();c.fill();
+  c.beginPath();c.moveTo(16,10);c.lineTo(24,52);c.lineTo(10,44);c.lineTo(2,56);c.lineTo(-2,20);c.closePath();c.fill();
+  if(m){c.shadowColor=col;c.shadowBlur=16}c.beginPath();c.arc(0,0,30,0,7);c.fillStyle=col;c.fill();c.shadowBlur=0;
+  c.beginPath();c.arc(0,0,23,0,7);c.strokeStyle='rgba(11,13,18,.45)';c.lineWidth=2;c.stroke();
+  c.strokeStyle='rgba(11,13,18,.7)';c.lineWidth=3;c.lineJoin='round';c.beginPath();c.moveTo(-14,8);c.lineTo(14,8);c.lineTo(0,-12);c.closePath();c.stroke(); // a triangle, of course
+  c.restore();
+}
+function drawCart(x,y,ang,big,scared,t,label){
+  const c=ctx,bob=Math.sin(t*9)*0.8;c.save();c.translate(x,y);c.rotate(ang);
+  c.save();c.shadowColor=COL.gold;c.shadowBlur=12;c.fillStyle=COL.gold;rr(-24,(big?-34:-27)+bob,48,big?26:19,5);c.fill();c.restore();
+  if(big){c.fillStyle='#b98e2f';for(const p of [[-12,-36],[0,-40],[11,-36]]){c.beginPath();c.arc(p[0],p[1]+bob,8,Math.PI,0);c.fill()}}
+  c.fillStyle='#0b0d12';rr(2,(big?-30:-23)+bob,18,11,3);c.fill(); // cabin window with a nervous driver
+  const ey=(big?-24.5:-17.5)+bob,er=scared?3.2:2.4;for(const ex of [8,15]){c.beginPath();c.arc(ex,ey,er,0,7);c.fillStyle='#fff';c.fill();c.beginPath();c.arc(ex+(scared?0:1),ey+(scared?1.2:0),1.2,0,7);c.fillStyle='#0b0d12';c.fill()}
+  c.restore();
+  if(label)txt(label,x,y-(big?54:42),14,COL.gold,'center',700);
+}
+function drawWheel(x,y,rot){const c=ctx;c.beginPath();c.arc(x,y,WR,0,7);c.fillStyle='#eef1f8';c.fill();c.strokeStyle='#0b0d12';c.lineWidth=2;c.beginPath();c.moveTo(x-Math.cos(rot)*WR,y-Math.sin(rot)*WR);c.lineTo(x+Math.cos(rot)*WR,y+Math.sin(rot)*WR);c.stroke();c.beginPath();c.arc(x,y,2.5,0,7);c.fillStyle='#0b0d12';c.fill()}
+function drawAnchor(n,hot){
+  const c=ctx;c.save();if(hot){c.shadowColor=COL.cyan;c.shadowBlur=16}
+  c.beginPath();c.arc(n.dx,n.dy,n.fixed?9:6,0,7);c.fillStyle='#fff';c.fill();c.restore();
+  c.lineWidth=n.fixed?3:2;c.strokeStyle=n.fixed?COL.cyan:'#0b0d12';c.stroke();
+  if(n.fixed){c.beginPath();c.arc(n.dx,n.dy,3,0,7);c.fillStyle='#0b0d12';c.fill()}
+  if(hot){c.beginPath();c.arc(n.dx,n.dy,16,0,7);c.strokeStyle=COL.cyan;c.lineWidth=2;c.stroke()}
+}
+function mark(x,y,label,sub){ // "broke first" marker: red ring + number, never hidden
+  const c=ctx,p=1+Math.sin(UI.t*7)*0.12;c.save();c.shadowColor=COL.red;c.shadowBlur=12;c.beginPath();c.arc(x,y,13*p,0,7);c.fillStyle='#0b0d12';c.fill();c.strokeStyle=COL.red;c.lineWidth=3;c.stroke();c.restore();
+  txt(label,x,y+5,15,'#fff','center',800);if(sub){const w=sub.length*7.6+14;rr(x-w/2,y-42,w,22,6);c.fillStyle='rgba(11,13,18,.9)';c.fill();txt(sub,x,y-26,14,COL.red,'center',700)}
+}
+
+// ---------------- world ----------------
+function drawBackdrop(){
+  const c=ctx;c.setTransform(1,0,0,1,0,0);c.fillStyle=bgGrad||COL.bg;c.fillRect(0,0,cv.width,cv.height);
+  c.fillStyle='rgba(170,179,197,.10)';for(let i=0;i<36;i++){const x=((i*197.3+UI.t*(4+i%5))%(cv.width+40))-20,y=(i*113.7+Math.sin(UI.t*0.3+i)*12)%cv.height;c.fillRect(x,y,2,2)}
+}
+function drawWorld(){
+  const c=ctx,l=S.lv,t=UI.t;
+  if(S.mode==='build'){c.fillStyle='#2a3247';for(let x=l.Lx-40;x<=l.Rx+40;x+=GRID)for(let y=160;y<=520;y+=GRID)c.fillRect(x-1,y-1,2,2)}
+  else{c.fillStyle='#171c2a';for(let x=20;x<VW;x+=40)for(let y=140;y<=520;y+=40)c.fillRect(x-1,y-1,2,2)}
+  c.strokeStyle='#222b42';c.lineWidth=2;for(let k=0;k<3;k++){c.beginPath();for(let x=l.Lx-10;x<=l.Rx+10;x+=10){const y=572+k*10+Math.sin(x*0.04+t*1.2+k*2)*2.5;x===l.Lx-10?c.moveTo(x,y):c.lineTo(x,y)}c.stroke()} // river far below
+  c.fillStyle=COL.rock;c.strokeStyle=COL.edge;c.lineWidth=2;
+  for(const [x0,x1,y,ex] of [[-3000,l.Lx,l.Ly,l.Lx],[4000,l.Rx,l.Ry,l.Rx]]){c.beginPath();c.moveTo(x0,y);c.lineTo(x1,y);c.lineTo(ex,VH+900);c.lineTo(x0,VH+900);c.closePath();c.fill();c.stroke()}
+  if(l.pillar){c.beginPath();c.moveTo(l.pillar.x-16,l.pillar.y);c.lineTo(l.pillar.x+16,l.pillar.y);c.lineTo(l.pillar.x+26,VH+900);c.lineTo(l.pillar.x-26,VH+900);c.closePath();c.fill();c.stroke()}
+  // goal flag (green = safe) and start sign
+  const fx=l.Rx+46,fy=l.Ry;c.strokeStyle='#c9ced9';c.lineWidth=3;c.beginPath();c.moveTo(fx,fy);c.lineTo(fx,fy-46);c.stroke();
+  c.save();c.shadowColor=COL.green;c.shadowBlur=10;c.fillStyle=COL.green;c.beginPath();c.moveTo(fx,fy-46);c.lineTo(fx+26+Math.sin(t*3)*2,fy-38);c.lineTo(fx,fy-30);c.closePath();c.fill();c.restore();
+  if(S.level<=2)txt('GOAL',fx+4,fy-54,14,COL.green,'left',700);
+  const hook=S.up.hook&&S.nodes.find(n=>n.fixed&&n.y<l.Ly-100);
+  if(hook){c.strokeStyle='#5b6680';c.lineWidth=1.5;c.beginPath();c.moveTo(hook.x,hook.y);c.lineTo(hook.x,hook.y-34);c.stroke();c.fillStyle='#2a3247';c.strokeStyle='#5b6680';c.beginPath();c.ellipse(hook.x,hook.y-52+Math.sin(t*1.5)*1.5,22,18,0,0,7);c.fill();c.stroke()}
+  const live=S.mode==='sim'||S.mode==='result',hb=S.mode==='build'&&!drag?hoverBeam():null,lim=limit(),xr=S.up.xray&&S.mode==='build';
+  for(const b of S.beams){
+    const r=live?b.strain/lim:xr?b.xr:-1,col=r<0?TYPE_GREY[b.type]:strainCol(r);
+    if(b.broken){const ux=(b.b.dx-b.a.dx),uy=(b.b.dy-b.a.dy),L=Math.hypot(ux,uy)||1,k=b.L0*0.3/L;
+      drawBeamStyle(b.type,b.a.dx,b.a.dy,b.a.dx+ux*k,b.a.dy+uy*k,COL.red,-2);drawBeamStyle(b.type,b.b.dx,b.b.dy,b.b.dx-ux*k,b.b.dy-uy*k,COL.red,-2);continue}
+    drawBeamStyle(b.type,b.a.dx,b.a.dy,b.b.dx,b.b.dy,col,b===hb?3:0,live&&r>0.85&&Math.sin(t*14)>-0.3);
+  }
+  if(xr&&S.xrWorst&&S.xrMax>0.7&&S.beams.includes(S.xrWorst)&&S.xrWorst!==S.lastBreak){const b=S.xrWorst;txt('worst',(b.a.x+b.b.x)/2+8,(b.a.y+b.b.y)/2-10,14,strainCol(S.xrMax),'left',700)}
+  // ghost suggestions (tutorial)
+  const hg=S.mode==='build'&&!drag?hoverGhost():null;
+  for(const g of ghosts()){const hot=g===hg,p=0.55+Math.sin(t*5)*0.3;c.save();c.globalAlpha=hot?1:p;c.shadowColor=COL.cyan;c.shadowBlur=hot?16:8;c.strokeStyle=COL.cyan;c.lineWidth=hot?6:4;c.setLineDash([9,7]);c.lineCap='butt';beamPath(g[0],g[1],g[2],g[3]);c.setLineDash([]);c.restore();
+    const mx=(g[0]+g[2])/2,my=(g[1]+g[3])/2;c.beginPath();c.arc(mx,my,10,0,7);c.fillStyle=hot?COL.cyan:'#0b0d12';c.fill();c.strokeStyle=COL.cyan;c.lineWidth=2;c.stroke();txt('+',mx,my+6,18,hot?'#06222a':COL.cyan,'center',800)}
+  // nodes: big, with hover highlight and reach of the current beam type
+  const hn=S.mode==='build'&&!hg?(drag||nodeAt(mouse.x,mouse.y,16)):null;
+  if(hn){c.save();c.setLineDash([4,7]);c.strokeStyle='rgba(124,245,255,.35)';c.lineWidth=1.5;c.beginPath();c.arc(hn.x,hn.y,maxLen(S.type),0,7);c.stroke();c.restore();
+    if(!drag)txt('drag from here',hn.x,hn.y-24,14,COL.cyan,'center',600)}
+  for(const n of S.nodes)drawAnchor(n,n===hn);
+  if(S.level===1&&S.mode==='build'&&!drag)for(const n of S.nodes)if(n.fixed&&n!==hn)txt('ANCHOR',n.x+(n.x<480?-14:14),n.y+26,14,COL.dim,n.x<480?'right':'left',600);
+  if(drag){const mx=maxLen(S.type),e=clampEnd(drag,mouse.x,mouse.y,mx),L=Math.hypot(e.x-drag.x,e.y-drag.y),bad=inRock(e.x,e.y)&&!nodeAt(e.x,e.y,1);
+    c.strokeStyle=COL.cyan;c.globalAlpha=bad?0.35:1;c.lineWidth=TYPES[S.type].w*0.6+1;c.setLineDash([8,6]);beamPath(drag.x,drag.y,e.x,e.y);c.setLineDash([]);c.globalAlpha=1;
+    c.beginPath();c.arc(e.x,e.y,7,0,7);c.strokeStyle=COL.cyan;c.lineWidth=2;c.stroke();
+    const s=bad?'cannot build inside rock':TYPES[S.type].name+' '+fmt(L*costPx(S.type))+(e.red?'  (max length '+mx+'px)':'');
+    const w=s.length*7.8+16,bx=clamp(e.x+14,8,VW-w-8);rr(bx,e.y-36,w,24,6);c.fillStyle='rgba(11,13,18,.9)';c.fill();txt(s,bx+8,e.y-19,14,COL.cyan,'left',600)}
+  if(S.sim){const [p,q]=S.sim.cart.wheels,big=S.up.heavy||(l.mass||1)>1,px=p.x+p.ex,py=p.y+p.ey,qx=q.x+q.ex,qy=q.y+q.ey;
+    drawCart((px+qx)/2,(py+qy)/2,Math.atan2(qy-py,qx-px),big,S.sim.curR>0.8||S.sim.breaks>0,t,S.mode==='sim'?(l.mass>1?'ORE WAGON':S.level<=2?'CART':''):'');
+    drawWheel(px,py,p.x/WR);drawWheel(qx,qy,q.x/WR)}
+  for(const p of S.particles){c.globalAlpha=clamp(p.life*3,0,1);if(p.ring){c.strokeStyle=p.col;c.lineWidth=2.5;c.beginPath();c.arc(p.x,p.y,(0.2-p.life)*220+6,0,7);c.stroke()}else{c.fillStyle=p.col;c.fillRect(p.x-1.5,p.y-1.5,3,3)}}
+  c.globalAlpha=1;
+  if(live)for(const b of S.beams)if(b.broken&&b.bk){if(b.bk.n===1)mark(b.bk.x,b.bk.y,'1','BROKE FIRST');else{c.strokeStyle=COL.red;c.lineWidth=3;c.beginPath();c.moveTo(b.bk.x-5,b.bk.y-5);c.lineTo(b.bk.x+5,b.bk.y+5);c.moveTo(b.bk.x+5,b.bk.y-5);c.lineTo(b.bk.x-5,b.bk.y+5);c.stroke()}}
+  if(S.mode==='build'&&S.lastBreak&&S.beams.includes(S.lastBreak)){const b=S.lastBreak;mark((b.a.x+b.b.x)/2,(b.a.y+b.b.y)/2,'1','BROKE FIRST')}
+}
+
+// ---------------- HUD ----------------
+function tipLines(){
+  if(S.msgT>0)return{lines:[S.msg],col:'#fff',hot:true};
+  if(S.mode==='sim')return{lines:[(S.sim.dry?'TEST LOAD rehearsal - nothing to lose.  ':'')+'Hold F to fast-forward.  Sag is drawn x'+EXAG+' so you can see the bridge work.']};
+  if(S.mode!=='build')return null;
+  if(S.tut){const g=ghosts().length;
+    if(S.tut.step===0)return{lines:['This ready-made bridge is too flimsy. Press GO (or SPACE) and watch what happens.','Practice gap: failing here costs nothing.'],hot:true};
+    if(g)return{lines:['TRIANGLES ARE STRONG - click each glowing line to add a strut ('+g+' to go).','A flat row of beams folds like a chain; a triangle cannot change shape.'],hot:true};
+    return{lines:['Every deck joint is now the corner of a triangle. PREDICTED WORST BEAM dropped - press GO (SPACE).'],hot:true}}
+  if(S.tip)return{lines:S.tip.lines,hot:true};
+  if(S.confirmG>0)return{lines:['Press G again to give up this run.']};
+  return null;
+}
+function drawHUD(){
+  const c=ctx,l=S.lv,cost=designCost(),after=S.purse-cost,G=CFG.gaps;
+  // top-left: goal/progress + money
+  title(S.endless?'ENDLESS  GAP '+S.level:'GAP '+S.level+' / '+G,20,34,20,'#fff');txt(l.name,S.endless?210:132,34,14,l.finale&&!S.endless?COL.gold:COL.dim,'left',700);
+  if(!S.endless){const pw=Math.min(36,300/G);for(let i=0;i<G;i++){rr(20+i*(pw+4),44,pw,7,3.5);c.fillStyle=i<S.crossed?COL.green:i===S.level-1?'rgba(124,245,255,.35)':'#232a3d';c.fill();if(i===S.level-1){c.strokeStyle=COL.cyan;c.lineWidth=1.5;c.stroke()}}
+    txt('Cross '+G+' gaps',20+G*(pw+4)+8,52,14,COL.dim)}
+  let x=20;const seg=(s,size,col,wt)=>{txt(s,x,80,size,col,'left',wt);ctx.font=(wt||500)+' '+size+'px '+FONT;x+=(+ctx.measureText(s).width||s.length*size*0.55)};
+  seg('PURSE '+fmt(S.disp),20,COL.gold,800);seg('   this bridge ',15,COL.dim);seg(fmt(cost),17,'#fff',700);seg('   par ',15,COL.dim);seg(fmt(l.par),17,cost<=l.par?COL.green:'#fff',700);
+  txt(after<0?'NOT ENOUGH MONEY: '+fmt(-after)+' short':'left after this bridge: '+fmt(after)+(S.up.bet?'    BET ON: stay at or under par':''),20,100,14,after<0?COL.red:COL.dim);
+  // top-right: lives + best + upgrades
+  txt('LIVES',940-Math.max(CFG.lives,S.lives)*24-10,34,14,COL.dim,'right',700);
+  for(let i=0;i<Math.max(CFG.lives,S.lives);i++){const hx=940-i*24-10,on=i<S.lives;c.save();c.translate(hx,28);c.beginPath();c.moveTo(0,8);c.bezierCurveTo(-13,-2,-6,-11,0,-4);c.bezierCurveTo(6,-11,13,-2,0,8);if(on){c.fillStyle='#fff';c.fill();c.strokeStyle=COL.cyan;c.lineWidth=1.5;c.stroke()}else{c.strokeStyle='#3c465c';c.lineWidth=1.5;c.stroke()}c.restore()}
+  txt('failed test: -1 life, -'+fmt(CFG.fee)+' fee',940,56,14,COL.dim,'right');
+  txt(CFG.name+'   BEST '+fmt(S.best),940,76,14,COL.dim,'right',600);
+  const ups=[];if(S.up.cable)ups.push('cable');if(S.up.steel)ups.push('steel x'+S.up.steel);if(S.up.heavy)ups.push('heavy');if(S.up.long)ups.push('long');if(S.up.hook)ups.push('hook');if(S.up.bulk)ups.push('bulk');if(S.up.light)ups.push('light');if(S.up.salvage)ups.push('salvage');if(S.up.dry)ups.push('test load');if(S.up.insure)ups.push('insured x'+S.up.insure);
+  if(ups.length)txt('UPGRADES: '+ups.join(' · '),940,96,14,'#c9b37a','right');
+  // top-centre readout: the one number that matters
+  if(S.mode==='sim'||S.mode==='build'){let s,col;
+    if(S.mode==='sim'){const r=S.sim.curR;s='WORST BEAM: '+Math.round(r*100)+'% of breaking';col=strainCol(r)}
+    else if(!S.beams.length){s='Drag from a white anchor to build';col=COL.cyan}
+    else if(!roadConnected()){s='ROAD INCOMPLETE - connect ROAD beams from cliff to cliff';col=COL.cyan}
+    else if(S.up.xray){const r=S.xrMax||0;s='PREDICTED WORST BEAM: '+Math.round(r*100)+'% of breaking - '+(r<0.75?'should hold':r<1?'risky':'will snap');col=strainCol(r)}
+    else{s='No stress preview on HARD - press GO to test';col=COL.dim}
+    const w=s.length*11.2+36;rr(480-w/2,112,w,36,10);c.fillStyle='rgba(11,13,18,.82)';c.fill();c.strokeStyle=COL.border;c.lineWidth=1;c.stroke();txt(s,480,137,20,col,'center',800)}
+  // left: persistent legend (also the beam picker)
+  const L=R.legend;card(L.x,L.y,L.w,L.h);txt('BEAMS  (press the key)',L.x+10,L.y+19,14,COL.dim,'left',700);
+  Object.keys(TYPES).forEach((k,i)=>{const T=TYPES[k],r=legendRow(i),locked=k==='cable'&&!S.up.cable,on=S.type===k&&S.mode==='build',hv=S.mode==='build'&&!locked&&inRect(mouse,r);
+    if(on||hv){rr(r.x,r.y,r.w,r.h,8);c.fillStyle=on?'rgba(124,245,255,.10)':'rgba(255,255,255,.04)';c.fill();c.strokeStyle=on?COL.cyan:COL.border;c.lineWidth=on?1.5:1;c.stroke()}
+    c.globalAlpha=locked?0.45:1;drawBeamStyle(k,r.x+10,r.y+13,r.x+44,r.y+13,TYPE_GREY[k]);
+    txt(T.key+'  '+T.name,r.x+54,r.y+18,14,'#fff','left',800);txt('$'+costPx(k)+'/px  ·  max '+maxLen(k)+'px',r.x+10,r.y+34,14,COL.gold,'left',600);
+    txt(locked?'locked (an upgrade)':T.use,r.x+10,r.y+49,14,COL.dim);c.globalAlpha=1});
+  const gy=L.y+206,gr=c.createLinearGradient(L.x+10,0,L.x+L.w-10,0);if(gr&&gr.addColorStop){gr.addColorStop(0,COL.green);gr.addColorStop(0.5,'#ffd666');gr.addColorStop(1,COL.red)}
+  txt('STRAIN  (beam colour)',L.x+10,gy,14,COL.dim,'left',700);rr(L.x+10,gy+7,L.w-20,10,5);c.fillStyle=gr||COL.green;c.fill();
+  txt('relaxed',L.x+10,gy+34,14,COL.green,'left',600);txt('about to snap',L.x+L.w-10,gy+34,14,COL.red,'right',600);
+  // bottom-right: key reminders + GO
+  if(S.mode==='build'){const K=R.keys;card(K.x,K.y,K.w,K.h,false,0.8);
+    ['Drag node to node: build','Right-click / X: delete','U undo    G give up','F fast-forward test',S.up.dry?'T test load ('+S.dryLeft+' left)':'H help  R restart  M mute',S.up.dry?'H help  R restart  M mute':''].forEach((s,i)=>{if(s)txt(s,K.x+12,K.y+24+i*20,14,COL.dim)});
+    const g=R.go,hv=inRect(mouse,g),pr=hv&&mouse.down,ok=after>=0&&S.beams.length&&roadConnected(),y=g.y+(pr?2:0);
+    c.save();if(ok){c.shadowColor=COL.green;c.shadowBlur=hv?18:10}rr(g.x,y,g.w,g.h,10);c.fillStyle=ok?(pr?'#6fcf5e':COL.green):'#232a3d';c.fill();c.restore();
+    txt('GO',g.x+38,y+32,24,ok?'#0b2a10':COL.dim,'center',800);txt('SPACE',g.x+104,y+22,14,ok?'#0b2a10':COL.dim,'center',800);txt('test the bridge',g.x+104,y+38,14,ok?'#1b4a20':COL.dim,'center',600)}
+  // bottom-centre: tip area
+  const tp=tipLines();if(tp){const T=R.tip,lines=[];tp.lines.forEach((s,i)=>wrap(s,82).forEach(w=>lines.push({s:w,i})));lines.length=Math.min(lines.length,3);
+    const h=14+lines.length*19,y=592-h;card(T.x,y,T.w,h,tp.hot);lines.forEach((ln,j)=>txt(ln.s,T.x+T.w/2,y+23+j*19,14,ln.i?COL.dim:(tp.col||'#fff'),'center',ln.i?500:700))}
+}
+function drawResult(){
+  const c=ctx,r=S.res,l=S.lv,a=ease(S.modeT/0.25),y0=158-(1-a)*14;c.save();c.globalAlpha=a;card(250,y0,460,r.win&&!r.dry?128:118,false,0.96);
+  if(r.dry){title(r.win?'REHEARSAL PASSED':'REHEARSAL FAILED',480,y0+38,26,r.win?COL.green:COL.red,'center');txt((r.win?'Peak strain '+Math.round(r.maxR*100)+'%. Now press GO for real.':(r.first?'A '+r.first+' snapped first (marked 1). ':'')+'No fee, no life lost.'),480,y0+68,15,COL.text,'center')}
+  else if(r.win){title(l.finale&&!S.endless?'FINALE CROSSED!':'CROSSED!',480,y0+38,28,COL.green,'center');
+    txt('bridge '+fmt(r.cost)+'   par '+fmt(l.par)+'   peak strain '+Math.round(r.maxR*100)+'%',480,y0+64,15,COL.text,'center');
+    const ex=(r.bonus?'  heavy +'+fmt(r.bonus):'')+(r.salv?'  salvage +'+fmt(r.salv):'')+(r.toll?'  toll +'+fmt(r.toll):'')+(r.bet?'  bet '+(r.bet>0?'+':'')+fmt(r.bet):'');
+    txt((r.saved>=0?fmt(r.saved)+' under par':fmt(-r.saved)+' over par')+ex,480,y0+90,18,r.saved>=0?COL.gold:'#fff','center',800)}
+  else{title('BRIDGE FAILED',480,y0+38,28,COL.red,'center');
+    txt(r.why+(r.first?' - a '+r.first+' snapped first (marked 1)':r.why.indexOf('stuck')>=0?' - the road is too steep or blocked':''),480,y0+64,15,COL.text,'center');
+    txt(r.free==='practice'?'Practice gap: no fee, no life lost.':r.free?'INSURANCE paid: no fee, no life lost.':'inspection fee -'+fmt(CFG.fee)+'     '+Math.max(0,S.lives)+' '+(S.lives===1?'life':'lives')+' left',480,y0+88,15,r.free?COL.green:COL.dim,'center',700)}
+  txt('click or SPACE to continue',480,y0+(r.win&&!r.dry?114:108),14,COL.dim,'center');c.restore();
+}
+function drawPick(){
+  const c=ctx,a=ease(S.modeT/0.25);c.fillStyle='rgba(11,13,18,'+0.86*a+')';c.fillRect(0,0,VW,VH);c.save();c.globalAlpha=a;
+  title('PICK ONE UPGRADE',480,104,28,'#fff','center');txt('It lasts for the rest of the run.  Click a card or press 1 / 2 / 3.     Purse '+fmt(S.purse)+'     Next: '+((S.plan[S.level]||{}).name||'a wider gap'),480,136,15,COL.dim,'center');
+  S.choices.forEach((u,i)=>{const r=pickRect(i),hv=inRect(mouse,r),y=r.y+(1-ease((S.modeT-i*0.06)/0.3))*30-(hv?6:0);
+    c.save();c.shadowColor='#000';c.shadowBlur=hv?24:10;c.shadowOffsetY=hv?10:4;card(r.x,y,r.w,r.h,hv,1);c.restore();card(r.x,y,r.w,r.h,hv,1);
+    txt(String(i+1),r.x+16,y+28,16,COL.dim,'left',800);drawIcon(u.id,r.x+r.w/2,y+56);title(u.name,r.x+r.w/2,y+112,17,COL.gold,'center');
+    wrap(u.desc,26).forEach((s,j)=>txt(s,r.x+r.w/2,y+142+j*20,15,'#fff','center',600));
+    wrap(u.why,29).forEach((s,j)=>txt(s,r.x+r.w/2,y+206+j*18,14,COL.dim,'center'))});
+  c.restore();
+}
+function wrap(s,n){const out=[];let cur='';for(const w of s.split(' ')){if((cur+' '+w).trim().length>n){out.push(cur);cur=w}else cur=(cur+' '+w).trim()}if(cur)out.push(cur);return out}
+function overText(){
+  const o=S.over,f=S.lastFail,G=CFG.gaps;
+  if(o.ended)return['Endless run over: '+o.endlessGaps+' extra gap'+(o.endlessGaps===1?'':'s')+' crossed after the finale.','Your banked score of '+fmt(o.score)+' is safe. Wider gaps want deeper trusses, not more beams.'];
+  if(o.won)return['You crossed all '+G+' gaps with '+fmt(o.score)+' of '+fmt(S.purse0)+' left in the purse.',o.medal==='gold'?'GOLD. '+(UI.hard?'That is mastery.':'Try HARD: 10 gaps, no stress preview, a purse below par.'):'For GOLD finish with '+fmt(goldAt())+' left: build under par - shallower triangles, no spare beams.'];
+  if(o.cause==='gaveup')return['You gave up on gap '+S.level+' with '+fmt(S.purse)+' in the purse (par there was '+fmt(S.lv.par)+').','The purse has to last all '+G+' gaps: stay near par early, and use the PREDICTED WORST BEAM readout instead of paying for failed tests.'];
+  const why=f?(f.first?'a '+f.first+' snapped first at '+Math.round(Math.max(1,f.maxR)*100)+'% strain and the cart fell':f.why.indexOf('stuck')>=0?'the cart got stuck on the road':'the cart fell with nothing snapped'):'the last test failed';
+  const tip=f&&f.first?'Make every deck joint the corner of a triangle, and get PREDICTED WORST BEAM under 75% before pressing GO.':f&&f.why.indexOf('stuck')>=0?'Keep the road nearly flat - the cart cannot climb steep road beams.':'The cart only drives on ROAD beams: lay road from cliff to cliff first, then support it.';
+  return['Out of lives on gap '+S.level+': '+why+'.',tip];
+}
+function drawOver(){
+  const c=ctx,o=S.over,a=ease(S.modeT/0.3),G=CFG.gaps;c.fillStyle='rgba(11,13,18,'+0.9*a+')';c.fillRect(0,0,VW,VH);c.save();c.globalAlpha=a;c.translate(0,(1-a)*16);
+  card(170,60,620,458,false,1);
+  title(o.ended?'ENDLESS RUN OVER':o.won?'ALL '+G+' GAPS CROSSED':'RUN OVER',480,112,32,o.won?COL.green:COL.red,'center');
+  drawMedal(o.medal,480,178,ease((S.modeT-0.2)/0.4));
+  txt(o.medal?o.medal.toUpperCase()+' MEDAL':'no medal yet - cross '+bronzeAt()+' gaps for BRONZE',480,262,16,o.medal?COL.gold:COL.dim,'center',800);
+  const tx=overText();wrap(tx[0],76).forEach((s,j)=>txt(s,480,292+j*20,15.5,'#fff','center',600));
+  wrap('TIP: '+tx[1],84).slice(0,3).forEach((s,j)=>txt(s,480,340+j*18,14,COL.cyan,'center'));
+  const sc=Math.round(o.score*ease((S.modeT-0.3)/0.8));
+  txt('SCORE '+fmt(sc)+(o.newBest?'   NEW BEST!':'')+'      gaps '+Math.min(o.gaps,G)+'/'+G+(o.ended?' +'+o.endlessGaps:'')+'      vs par '+(S.totalSaved>=0?'+':'')+fmt(S.totalSaved)+'      failed tests '+S.fails+'      best '+fmt(S.best),480,412,15,COL.gold,'center',700);
+  txt('Bronze: '+bronzeAt()+'+ gaps   Silver: finish   Gold: finish with '+fmt(goldAt())+'+ left',480,438,14,COL.dim,'center');
+  const ids=overButtons();button(R.retry,'RETRY',true,'R');if(ids.includes('endless'))button(R.endless,'KEEP GOING',false,'E - endless, score is banked');button(R.menu,'MENU',false,'Esc');
+  c.restore();
+}
+function miniBridge(x,y,good,t){
+  const c=ctx,n=4,seg=44,sag=good?2:16+Math.sin(t*2)*4,pts=[];for(let i=0;i<=n;i++)pts.push([x+i*seg,y+Math.sin(i/n*Math.PI)*sag]);
+  c.fillStyle=COL.rock;c.strokeStyle=COL.edge;c.lineWidth=2;for(const s of [-1,1]){const ex=s<0?x:x+n*seg;c.beginPath();c.moveTo(ex+s*40,y);c.lineTo(ex,y);c.lineTo(ex,y+70);c.lineTo(ex+s*40,y+70);c.closePath();c.fill();c.stroke()}
+  const col=good?COL.green:COL.red;
+  if(good){const lo=[[x,y+46]];for(let i=0;i<n;i++)lo.push([x+i*seg+seg/2,y+34]);lo.push([x+n*seg,y+46]);
+    for(let i=0;i<n;i++){drawBeamStyle('strut',pts[i][0],pts[i][1],lo[i+1][0],lo[i+1][1],col,-2);drawBeamStyle('strut',lo[i+1][0],lo[i+1][1],pts[i+1][0],pts[i+1][1],col,-2);if(i)drawBeamStyle('strut',lo[i][0],lo[i][1],lo[i+1][0],lo[i+1][1],col,-2)}
+    drawBeamStyle('strut',lo[0][0],lo[0][1],lo[1][0],lo[1][1],col,-2);drawBeamStyle('strut',lo[n][0],lo[n][1],lo[n+1][0],lo[n+1][1],col,-2)}
+  for(let i=0;i<n;i++)drawBeamStyle('road',pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1],col,-3);
+  for(const p of pts){c.beginPath();c.arc(p[0],p[1],4.5,0,7);c.fillStyle='#fff';c.fill()}
+  const u=good?(t*0.25)%1:0.5,cx=x+u*n*seg,ci=Math.min(n-1,u*n|0),f=u*n-ci,cy=pts[ci][1]+(pts[ci+1][1]-pts[ci][1])*f;
+  c.save();c.translate(cx,cy-7);c.scale(0.62,0.62);drawCart(0,0,0,false,!good,t,'');drawWheel(-14,0,cx/5);drawWheel(14,0,cx/5);c.restore();
+  if(!good)mark(x+2*seg,y+sag+2,'!','');
+  txt(good?'triangles hold':'a flat deck snaps',x+n*seg/2,y+92,15,col,'center',700);
+}
+function drawStart(){
+  const c=ctx,a=ease(UI.t/0.3),help=UI.screen==='help',t=UI.t;c.fillStyle='rgba(11,13,18,'+(help?0.93:1)+')';if(help)c.fillRect(0,0,VW,VH);c.save();c.globalAlpha=a;c.translate(0,(1-a)*14);
+  title('HAIRLINE',40,76,46,'#fff');txt('Build every bridge barely strong enough.',42,104,17,COL.cyan,'left',600);
+  txt('GOAL: get the cart across '+CFG.gaps+' gaps on ONE shared purse. The money you have left at the end is your score.',42,134,15.5,'#fff','left',600);
+  // diagram of the core verb, drawn with the game's own shapes
+  miniBridge(90,196,false,t);miniBridge(394,196,true,t);c.strokeStyle=COL.cyan;c.lineWidth=3;c.beginPath();c.moveTo(296,222);c.lineTo(360,222);c.moveTo(350,214);c.lineTo(360,222);c.lineTo(350,230);c.stroke();txt('add struts',328,204,14,COL.cyan,'center',700);
+  const dx=640,dy=176;card(dx,dy,280,128,false,0.9);txt('THE VERB: drag node to node',dx+14,dy+24,14,COL.dim,'left',700);
+  const u=(t*0.5)%1.4,k=clamp(u,0,1),ax=dx+50,ay=dy+96,bx=dx+200,by=dy+50,mx=ax+(bx-ax)*k,my=ay+(by-ay)*k;
+  c.strokeStyle=COL.cyan;c.lineWidth=4;c.setLineDash([8,6]);beamPath(ax,ay,mx,my);c.setLineDash([]);drawAnchor({dx:ax,dy:ay,fixed:true},true);drawAnchor({dx:bx,dy:by,fixed:false},k>=1);
+  c.fillStyle='#fff';c.beginPath();c.moveTo(mx,my);c.lineTo(mx+4,my+16);c.lineTo(mx+8,my+11);c.lineTo(mx+15,my+10);c.closePath();c.fill();txt('$ per px',dx+214,dy+100,14,COL.gold,'left',600);
+  card(40,322,424,156);card(496,322,424,156);
+  txt('CONTROLS',58,348,14,COL.cyan,'left',800);
+  [['Drag','from a white node to build a beam'],['1  2  3','pick ROAD / STRUT / CABLE (cable is an upgrade)'],['Right-click / X','delete a beam      U  undo'],['SPACE','GO - the cart tests your bridge   (F fast-forward)'],['G G','give up the run and bank your medal']].forEach((r,i)=>{txt(r[0],58,372+i*21,14,'#fff','left',800);txt(r[1],168,372+i*21,14,COL.dim)});
+  txt('SCORE / LOSE',514,348,14,COL.gold,'left',800);
+  ['Score = money left after the last gap. Beams cost $ per pixel.','Green beam = relaxed, red = about to snap. Watch WORST BEAM.','A failed test costs '+fmt(CFG.fee)+' and 1 of '+CFG.lives+' lives. No lives = run over.','Win an upgrade (1 of 3) after every gap. Gap '+CFG.gaps+' is the FINALE.',UI.hard?'HARD: 10 gaps, no stress preview, purse below par. Good luck.':'NORMAL: stress preview is on, and gap 1 is free practice.'].forEach((s,i)=>txt(s,514,372+i*21,14,i<2?'#fff':COL.dim));
+  button(R.play,help?'RESUME':'PLAY',true,help?'H or click':'click or SPACE');
+  if(!help){txt('difficulty',R.diffN.x,R.diffN.y-8,14,COL.dim);for(const [r,h] of [[R.diffN,false],[R.diffH,true]]){const on=UI.hard===h,hv=inRect(mouse,r);rr(r.x,r.y,r.w,r.h,9);c.fillStyle=on?'rgba(124,245,255,.14)':COL.panel;c.fill();c.strokeStyle=on||hv?COL.cyan:COL.border;c.lineWidth=on?2:1;c.stroke();txt(h?'HARD':'NORMAL',r.x+r.w/2,r.y+23,14,on?'#fff':COL.dim,'center',800)}
+    const md=lsGet('proto_'+GID+'_medal');if(md){drawMedal(md,880,84,0.55);txt('best '+fmt(loadBest()),880,134,14,COL.dim,'center')}}
+  txt('H help     R restart     M '+(UI.mute?'unmute':'mute')+'     Esc menu',480,582,14,COL.dim,'center');c.restore();
+}
+function render(){
+  const c=ctx;drawBackdrop();
+  c.setTransform(scale,0,0,scale,offX,offY);
+  c.save();rr(0,0,VW,VH,14);c.clip();
+  const pg=c.createLinearGradient(0,0,0,VH);if(pg&&pg.addColorStop){pg.addColorStop(0,'#10141f');pg.addColorStop(1,'#0b0d12')}c.fillStyle=pg||COL.bg;c.fillRect(0,0,VW,VH);
+  if(UI.screen!=='start'){
+    calcDraw();const sh=Math.min(6,S.shake);c.save();c.translate((Math.random()-0.5)*sh,(Math.random()-0.5)*sh);drawWorld();c.restore();
+    drawHUD();
+    if(S.mode==='result')drawResult();if(S.mode==='pick')drawPick();if(S.mode==='over')drawOver();
+  }
+  if(UI.screen)drawStart();
+  c.restore();
+  c.save();c.shadowColor='rgba(124,245,255,.10)';c.shadowBlur=24;rr(0,0,VW,VH,14);c.strokeStyle=COL.border;c.lineWidth=1.5;c.stroke();c.restore();
+}
+
+// ---------------- input ----------------
+function setMouse(e){mouse.x=(e.clientX-offX)/scale;mouse.y=(e.clientY-offY)/scale}
+function resize(){cv.width=window.innerWidth||VW;cv.height=window.innerHeight||VH;scale=Math.min(cv.width/VW,cv.height/VH)*0.97;offX=(cv.width-VW*scale)/2;offY=(cv.height-VH*scale)/2;
+  const g=ctx.createRadialGradient(cv.width/2,cv.height/2,0,cv.width/2,cv.height/2,Math.max(cv.width,cv.height)*0.7);if(g&&g.addColorStop){g.addColorStop(0,'#141a2b');g.addColorStop(1,'#0b0d12');bgGrad=g}}
+function openScreen(s){UI.screen=s;UI.t=0;drag=null}
+function play(){const fresh=UI.screen==='start';UI.screen=null;if(fresh)startRun();blip(523)}
+function onDown(x,y,button){
+  mouse.x=x;mouse.y=y;
+  if(UI.screen){if(button===2)return;if(UI.screen==='start'&&inRect(mouse,R.diffN)){UI.hard=false;CFG=DIFF.normal;blip(440)}else if(UI.screen==='start'&&inRect(mouse,R.diffH)){UI.hard=true;CFG=DIFF.hard;blip(330)}else play();return}
+  if(button===2){if(drag)drag=null;else if(S.mode==='build'){const b=hoverBeam();if(b){removeBeam(b);blip(196,0.06)}}return}
+  if(S.mode==='pick'){if(S.modeT>0.3)for(let i=0;i<3;i++)if(inRect(mouse,pickRect(i)))pick(i);return}
+  if(S.mode==='over'){if(S.modeT<0.5)return;const ids=overButtons();if(inRect(mouse,R.retry))startRun();else if(ids.includes('endless')&&inRect(mouse,R.endless))keepGoing();else if(inRect(mouse,R.menu))location.href='index.html';return}
+  if(S.mode==='result'){if(S.resT>0.5)afterResult();return}
+  if(S.mode!=='build')return;
+  if(inRect(mouse,R.go)){go();return}
+  const ks=Object.keys(TYPES);for(let i=0;i<ks.length;i++)if(inRect(mouse,legendRow(i))){if(ks[i]!=='cable'||S.up.cable){S.type=ks[i];blip(494,0.05)}else flash('CABLE is locked - it can appear as an upgrade after a gap.');return}
+  let n=nodeAt(x,y,10);if(n){drag=n;return}
+  const g=hoverGhost();if(g){if(addBeam(g[0],g[1],g[2],g[3],'strut')){tone(PENTA[3-ghosts().length]||784,0,0.14,'sine',0.1);if(!ghosts().length&&S.tut)S.tut.step=2}return}
+  n=nodeAt(x,y,16);if(n)drag=n;
+}
+function onUp(x,y){
+  mouse.x=x;mouse.y=y;if(!drag||S.mode!=='build'||UI.screen){drag=null;return}
+  const end=clampEnd(drag,x,y,maxLen(S.type)),a=drag;drag=null;
+  if(end.x===a.x&&end.y===a.y)return;
+  if(addBeam(a.x,a.y,end.x,end.y,S.type)){blip(440+Math.random()*60,0.06);if(S.tut&&S.tut.step===1&&!ghosts().length)S.tut.step=2}
+}
+function onKey(k,e){
+  if(k==='escape'){location.href='index.html';return}
+  if(k==='m'){setMute(!UI.mute);return}
+  if(UI.screen){if(k===' '||k==='enter'||(k==='h'&&UI.screen==='help')){if(e)e.preventDefault();play()}else if(UI.screen==='start'&&(k==='arrowleft'||k==='arrowright'||k==='tab')){if(e)e.preventDefault();UI.hard=!UI.hard;CFG=UI.hard?DIFF.hard:DIFF.normal}else if(k==='r'&&UI.screen==='help'){UI.screen=null;startRun()}return}
+  if(k==='h'){openScreen('help');return}
+  if(k==='r'){startRun();return}
+  if(k==='f')S.fast=true;
+  if((k==='z'&&e&&(e.ctrlKey||e.metaKey))||k==='u'){undo();if(e)e.preventDefault();return}
+  if(S.mode==='over'){if(k===' '&&S.modeT>0.5)startRun();else if(k==='e')keepGoing();return}
+  if(S.mode==='pick'&&'123'.includes(k)){pick(+k-1);return}
+  if(S.mode==='result'&&(k===' '||k==='enter')&&S.resT>0.5){if(e)e.preventDefault();afterResult();return}
+  if(S.mode!=='build')return;
+  if(k===' '){if(e)e.preventDefault();go()}
+  else if(k==='t'){go(true)}
+  else if(k==='1')S.type='road';else if(k==='2')S.type='strut';else if(k==='3'){if(S.up.cable)S.type='cable';else flash('CABLE is locked - it can appear as an upgrade after a gap.')}
+  else if(k==='x'){const b=hoverBeam();if(b)removeBeam(b)}
+  else if(k==='g'){if(S.confirmG>0)gameOver('gaveup');else S.confirmG=2.5}
+}
+cv.addEventListener('mousedown',e=>{initAudio();setMouse(e);mouse.down=true;onDown(mouse.x,mouse.y,e.button)});
+window.addEventListener('mousemove',setMouse);
+window.addEventListener('mouseup',e=>{setMouse(e);mouse.down=false;onUp(mouse.x,mouse.y)});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+window.addEventListener('keydown',e=>{initAudio();onKey(e.key.toLowerCase(),e)});
+window.addEventListener('keyup',e=>{if(e.key.toLowerCase()==='f')S.fast=false});
+window.addEventListener('resize',resize);
+let last=0;function frame(t){const dt=(t-last)/1000;last=t;update(dt>0?dt:0);render();window.requestAnimationFrame(frame)}
+window.HL={S,UI,DIFF,UPS,startRun,addBeam,removeBeam,clearDesign,designCost,go,update,render,pick,undo,computeXray,limit,TYPES,ghosts,roadConnected,keepGoing,gameOver,afterResult,onKey,onDown,onUp,openScreen,medalFor};
+resize();startRun();window.requestAnimationFrame(frame);
+</script></body></html>

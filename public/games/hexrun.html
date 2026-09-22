@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>HEXRUN - greybox</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;touch-action:none;cursor:pointer}</style>
+</head><body><canvas id="c"></canvas><script>
+'use strict';
+// ---------- constants ----------
+// Disc colours are SUITS (not danger/reward): chosen for maximum separation + each has its own symbol on the top disc.
+const COLS=['#ff5fa8','#3fa9f5','#f6d045','#4cc38a','#f28c38','#9b6bff'],CNAME=['PINK','BLUE','YELLOW','GREEN','ORANGE','PURPLE'],SYMNAME=['triangle','ring','star','square','diamond','plus'];
+const WILD=-1,BLUE=1,WIN_AT=5,GUARD=400,CLEAR_AT=8,GAMEID='hexrun';
+const FONT='"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+// UI colour language: player/selection = white+cyan, danger = red, reward/score = gold, safe/success = green
+const CY='#7cf5ff',RED='#ff5d73',GOLD='#ffd166',GRN='#9dff8a',TXT='#e6e9f2',DIM='#aab3c5',BG='#0b0d12',PANEL='#121622',BORDER='#232a3d';
+// per blind: [quota, placements, colours, minHeight, maxHeight, band weights]
+const TABLES={
+ normal:[[24,16,4,3,6,[1,2,2,3]],[44,16,4,3,6,[1,2,2,3]],[60,18,4,3,6,[1,2,2,3]],[58,18,5,3,6,[1,2,2,3]],[70,18,5,3,7,[2,2,3,3]],
+  [88,18,5,3,7,[2,2,3,3]],[110,18,5,4,7,[2,3,3,4]],[135,18,6,4,8,[2,3,3,4]]],
+ hard:[[32,14,4,3,6,[1,2,2,3]],[52,14,4,3,6,[1,2,2,3]],[68,16,5,3,7,[2,2,3,3]],[80,16,5,3,7,[2,2,3,3]],
+  [95,16,5,4,7,[2,3,3,4]],[120,18,6,4,8,[2,3,3,4]],[150,18,6,4,8,[2,3,3,4]],[190,18,6,4,8,[3,3,4,4]]]};
+const BNAME=['WARM-UP','SMALL BLIND','BIG BLIND','THE FIFTH SUIT','FINALE: THE CRACKED BOARD'];
+const DARK=COLS.map(h=>'#'+[1,3,5].map(i=>Math.round(parseInt(h.substr(i,2),16)*0.55).toString(16).padStart(2,'0')).join(''));
+const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+// modifiers: data row + one rule hook each (search "hook:")
+const MODS=[
+ {id:'blue7',name:'BLUE 6',icon:'6',desc:'Blue clears at 6 instead of 8.',why:'Every blue run pays out sooner.'},
+ {id:'edge2',name:'EDGE x2',icon:'x2',desc:'Clears on the outer ring of cells score x2.',why:'Build your big run on the rim.'},
+ {id:'jump',name:'JUMP',icon:'>>',desc:'Flows may jump over one empty cell in a straight line.',why:'Reach matches without touching them.'},
+ {id:'wild',name:'WILD BASE',icon:'W',desc:'The bottom disc of every new stack is wild (matches anything).',why:'Leftovers keep chaining.'},
+ {id:'purge',name:'PURGE',icon:'-1',desc:'A cascade of 3+ clears deletes the smallest stack on the board.',why:'Chains also free up space.'},
+ {id:'plus1',name:'+1 OFFER',icon:'+1',desc:'4 offered stacks instead of 3.',why:'More choice on every deal.'},
+ {id:'more3',name:'+3 MOVES',icon:'+3',desc:'+3 placements in every blind.',why:'Plain, reliable breathing room.'},
+ {id:'bank',name:'BANK',icon:'$',desc:'Unused placements pay +2 score each (max +20) toward the NEXT quota.',why:'Finish early now, start ahead later.'},
+ {id:'big',name:'BIG RUNS',icon:'10',desc:'A cleared run of 10 or more discs scores x2.',why:'Overfill a run before it pops.'},
+ {id:'wind',name:'SECOND WIND',icon:'R+',desc:'+1 REROLL of the offer in every blind.',why:'Dodge a bad deal twice.'},
+ {id:'greed',name:'GREED',icon:'!',desc:'-3 placements per blind, but every clear scores +4.',why:'Risky: fewer moves, richer clears.'},
+ {id:'clean',name:'CLEAN SLATE',icon:'0',desc:'A clear that empties its cell completely scores +6.',why:'Keep single-colour stacks pure.'},
+ {id:'sorted',name:'SORTED DEAL',icon:'=',desc:'New stacks have at most 2 colour bands.',why:'Tidier stacks, longer runs.'},
+ {id:'last',name:'LAST CALL',icon:'x2',desc:'Clears on your final 3 placements of a blind score x2.',why:'Set up, then cash in at the end.'}];
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W=800,H=600,BGC=null,L={cx:400,cy:260,s:40,oy:540,pvY:112,panel:{x:0,y:0,w:0,h:0},rerollBtn:{x:0,y:0,w:0,h:0},helpBtn:{x:0,y:0,w:0,h:0},b:{}};
+// ---------- state ----------
+const G={phase:'start',phT:0,_ph:'',help:false,helpT:0,hard:false,muted:false,endless:false,tut:null,tutDone:false,cells:[],offers:[],sel:null,blind:1,score:0,shown:0,quota:60,owned:[],stamp:0,dealId:0,placed:-1,combo:0,left:14,last:false,carry:0,
+ rerolls:0,cleared:0,total:0,overWhy:'',endT:0,pv:null,R:null,rmsg:'',fast:false,tip:null,seen:{},newMedal:false,
+ parts:[],floats:[],flies:[],rings:[],motes:[],shake:0,hitstop:0,time:0,runTime:0,best:0,choices:[],hover:-1,drag:false,isDown:false,mx:0,my:0,
+ stats:{flows:0,clears:0,guard:0,discs:0,maxCascade:0}};
+const KEY={};
+(function buildBoard(){const a=[];for(let q=-2;q<=2;q++)for(let r=-2;r<=2;r++)if(Math.abs(q+r)<=2)a.push({q,r});
+ a.sort((A,B)=>A.r-B.r||A.q-B.q);
+ a.forEach((c,i)=>{KEY[c.q+','+c.r]=i;G.cells.push({q:c.q,r:c.r,stack:[],stamp:0,hidden:0,drop:0,locked:0,edge:Math.max(Math.abs(c.q),Math.abs(c.r),Math.abs(c.q+c.r))===2});});})();
+const lsGet=k=>{try{return localStorage.getItem(k);}catch(e){return null;}},lsSet=(k,v)=>{try{localStorage.setItem(k,''+v);}catch(e){}};
+G.best=+(lsGet('proto_'+GAMEID+'_best')||0);G.hard=lsGet('hexrun_hard')==='1';G.tutDone=lsGet('hexrun_tut')==='1';G.muted=lsGet('proto_mute')==='1';
+const has=id=>G.owned.includes(id), rnd=n=>Math.floor(Math.random()*n);
+const empties=()=>G.cells.filter(c=>!c.stack.length&&!c.locked).length,openCells=()=>G.cells.filter(c=>!c.locked).length;
+function row(b){const T=TABLES[G.hard?'hard':'normal'];if(b<=T.length)return T[b-1];
+ const l=T[T.length-1].slice();l[0]=Math.round(l[0]*Math.pow(1.3,b-T.length)/5)*5;return l;} // endless: quota keeps growing
+const budget=b=>Math.max(6,row(b)[1]+(has('more3')?3:0)-(has('greed')?3:0)); // hook: more3, greed
+// ---------- audio (soft, musical; master gain; M mutes, shared key proto_mute) ----------
+let AC=null,MG=null;const PENTA=[0,2,4,7,9];
+function initAudio(){if(AC)return;const A=window.AudioContext||window.webkitAudioContext;if(!A)return;try{AC=new A();MG=AC.createGain();MG.gain.value=G.muted?0:0.5;MG.connect(AC.destination);}catch(e){AC=null;}}
+function setMute(m){G.muted=!!m;lsSet('proto_mute',G.muted?'1':'0');if(MG)MG.gain.value=G.muted?0:0.5;}
+function tone(f,d,type,v,when){if(!AC)return;const t=AC.currentTime+(when||0),o=AC.createOscillator(),g=AC.createGain();
+ o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v||0.1,t+0.012);g.gain.exponentialRampToValueAtTime(0.001,t+d);
+ o.connect(g);g.connect(MG);o.start(t);o.stop(t+d+0.02);}
+function noise(d,v,fc){if(!AC)return;try{const n=Math.floor(AC.sampleRate*d),b=AC.createBuffer(1,n,AC.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);
+ const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=b;f.type='lowpass';f.frequency.value=fc;g.gain.value=v;s.connect(f);f.connect(g);g.connect(MG);s.start();}catch(e){}}
+const penta=k=>Math.pow(2,(PENTA[k%5]+12*Math.floor(k/5))/12);
+const sfx={
+ tick:k=>tone(294*penta(Math.min(k,14)),0.09,'triangle',0.08),
+ place:()=>{noise(0.09,0.25,500);tone(147,0.14,'sine',0.16);},
+ bad:()=>tone(147,0.12,'triangle',0.06),
+ ui:()=>tone(587,0.06,'triangle',0.05),
+ chord:c=>{const root=294*penta(Math.min(c-1,9));[1,1.25,1.5,2].forEach((m,i)=>{tone(root*m,0.45,'triangle',0.08,i*0.04);tone(root*m*2,0.3,'sine',0.03,i*0.04);});},
+ win:()=>[0,2,4,7,9,12].forEach((n,i)=>tone(392*Math.pow(2,n/12),0.4,'triangle',0.08,i*0.08)),
+ lose:()=>[0,-3,-5,-8].forEach((n,i)=>tone(294*Math.pow(2,n/12),0.5,'sine',0.08,i*0.18))};
+// ---------- stack rules ----------
+function runColor(s){for(let i=s.length-1;i>=0;i--)if(s[i]!==WILD)return s[i];return WILD;}
+function runLen(s){const c=runColor(s);let n=0;for(let i=s.length-1;i>=0&&(s[i]===c||s[i]===WILD);i--)n++;return n;}
+const match=(a,b)=>a===b||a===WILD||b===WILD;
+const threshold=col=>(col===BLUE&&has('blue7'))?CLEAR_AT-2:CLEAR_AT; // hook: blue7
+function links(i,B){const C=(B||G).cells,c=C[i],out=[]; // neighbours holding stacks (hook: jump over one empty cell)
+ for(const[dq,dr]of DIRS){let j=KEY[(c.q+dq)+','+(c.r+dr)];if(j===undefined)continue;
+  if(C[j].locked)continue; // locked cells block flows (no jumping over them either)
+  if(!C[j].stack.length){if(!has('jump'))continue;j=KEY[(c.q+2*dq)+','+(c.r+2*dr)];if(j===undefined||!C[j].stack.length)continue;}
+  out.push(j);}
+ return out;}
+function genStack(){const T=row(G.blind),nc=T[2],n=T[3]+rnd(T[4]-T[3]+1);let bands=Math.min(n,T[5][rnd(T[5].length)]);
+ if(has('sorted'))bands=Math.min(bands,2); // hook: sorted deal
+ const sizes=Array(bands).fill(1);for(let k=bands;k<n;k++)sizes[rnd(bands)]++;
+ const s=[];let prev=-9;for(const z of sizes){let c;do{c=rnd(nc);}while(c===prev);prev=c;for(let k=0;k<z;k++)s.push(c);}
+ if(has('wild'))s[0]=WILD; // hook: wild base
+ return s;}
+function ensureMatch(){if(G.hard)return; // NORMAL fairness: at least one offered top colour matches a top colour on the board
+ const tops=new Set(G.cells.filter(c=>c.stack.length).map(c=>runColor(c.stack))),idx=G.offers.map((o,i)=>o?i:-1).filter(i=>i>=0);
+ if(!tops.size||!idx.length||idx.some(i=>tops.has(runColor(G.offers[i]))||runColor(G.offers[i])===WILD))return;
+ for(let k=0;k<30;k++){const s=genStack();if(tops.has(runColor(s))){G.offers[idx[rnd(idx.length)]]=s;return;}}}
+function deal(){G.offers=Array.from({length:has('plus1')?4:3},genStack);ensureMatch();G.dealId++;G.sel=0;} // hook: plus1
+function reroll(){if(G.phase!=='play'||G.tut||G.help||G.rerolls<=0)return false;G.rerolls--;
+ G.offers=G.offers.map(o=>o?genStack():null);ensureMatch();G.dealId++;G.pv=null;G.sel=G.offers.findIndex(o=>o);tone(660,0.08,'triangle',0.06);tone(880,0.1,'triangle',0.05,0.06);return true;}
+// ---------- run / blind flow ----------
+function startRun(){G.tut=null;G.help=false;G.endless=false;G.owned=[];G.carry=0;G.blind=0;G.cleared=0;G.total=0;G.runTime=0;G.tip=null;G.newMedal=false;G.stats={flows:0,clears:0,guard:0,discs:0,maxCascade:0};nextBlind();}
+function resetBoard(){G.combo=0;G.placed=-1;G.shown=0;G.sel=null;G.R=null;G.rmsg='';G.fast=false;G.flies=[];G.pv=null;G.last=false;
+ for(const c of G.cells){c.stack=[];c.hidden=0;c.stamp=0;c.drop=0;c.locked=0;}}
+function nextBlind(){G.blind++;const T=row(G.blind);G.quota=T[0];G.left=budget(G.blind);
+ resetBoard();G.score=has('bank')?Math.min(20,2*G.carry):0;G.carry=0; // hook: bank
+ G.rerolls=(G.hard?0:1)+(has('wind')?1:0); // hook: second wind
+ if(G.blind===WIN_AT&&!G.endless){for(const k of['1,-1','-1,1'])G.cells[KEY[k]].locked=1; // FINALE: two CRACKED cells - nothing can be placed there, flows cannot pass
+  tip('finale','FINALE: two cells are CRACKED - nothing can be placed there and flows cannot pass through them. Only 17 cells: keep clearing.');}
+ deal();G.phase='play';
+ if(G.blind>1&&T[2]>row(G.blind-1)[2])tip('col'+T[2],'NEW: a '+(T[2]===5?'5th':'6th')+' colour joins the deal - '+CNAME[T[2]-1]+' ('+SYMNAME[T[2]-1]+'). Runs are harder to build'+(G.rerolls?' - remember your REROLL.':'.'));
+ G.rmsg='BLIND '+G.blind+': score '+G.quota+' in '+G.left+' placements';}
+function toPick(){const pool=MODS.filter(m=>!has(m.id));G.choices=[];
+ while(G.choices.length<3&&pool.length)G.choices.push(pool.splice(rnd(pool.length),1)[0]);
+ if(G.choices.length){G.phase='pick';G.pickT=0;}else nextBlind();}
+function pickMod(k){if(G.phase!=='pick'||!G.choices[k])return false;G.owned.push(G.choices[k].id);sfx.chord(3);nextBlind();return true;}
+function keepGoing(){if(G.phase!=='win')return false;G.endless=true;toPick();return true;}
+function saveMeta(won){const tot=G.total;if(tot>G.best){G.best=tot;lsSet('proto_'+GAMEID+'_best',tot);}
+ const m=medal(),rank={bronze:1,silver:2,gold:3},old=lsGet('proto_'+GAMEID+'_medal');
+ if(m&&(rank[m[0].toLowerCase()]||0)>(rank[old]||0)){lsSet('proto_'+GAMEID+'_medal',m[0].toLowerCase());G.newMedal=true;}
+ if(won)lsSet('proto_'+GAMEID+'_wins',(+lsGet('proto_'+GAMEID+'_wins')||0)+1);}
+function place(oi,ci){const c=G.cells[ci];if(G.phase!=='play'||G.help||!G.offers[oi]||!c||c.stack.length||c.locked)return false;
+ if(G.tut&&!tutAllowed().includes(ci)){G.tut.nag=2.5;return false;}
+ c.stack=G.offers[oi];G.offers[oi]=null;c.stamp=++G.stamp;c.drop=1;G.placed=ci;G.left--;G.last=G.left<3;G.sel=null;G.drag=false;G.tip=null;sfx.place();
+ if(G.tut)G.tut.target=ci;
+ G.phase='resolve';G.fast=false;G.rmsg='Placed - looking for matching top colours...';G.R={state:'find',t:0.3,from:-1,to:-1,left:0,n:0,pitch:0,cascade:0,steps:0,seen:new Set()};return true;}
+// ---------- tutorial (first run, 3 steps) ----------
+function startTutorial(){G.help=false;G.endless=false;G.owned=[];G.carry=0;G.blind=1;G.cleared=0;G.total=0;G.tip=null;resetBoard();
+ G.tut={step:1,target:-1,nag:0};G.score=0;G.quota=8;G.left=2;G.rerolls=0;
+ const mid=KEY['0,0'];G.cells[mid].stack=[3,3,1,1,1];G.cells[mid].stamp=++G.stamp;
+ G.offers=[[0,0,1,1]];G.dealId++;G.sel=0;G.phase='play';G.rmsg='';}
+function tutAllowed(){if(!G.tut)return[];const anchor=G.tut.step===1?KEY['0,0']:G.tut.target,c=G.cells[anchor],out=[];
+ for(const[dq,dr]of DIRS){const j=KEY[(c.q+dq)+','+(c.r+dr)];if(j!==undefined&&!G.cells[j].stack.length&&!G.cells[j].locked)out.push(j);}return out;}
+function endTutorial(){G.tutDone=true;lsSet('hexrun_tut','1');startRun();}
+function tutText(){const t=G.tut;if(!t)return null;
+ if(t.step===1&&G.phase==='play')return['TUTORIAL 1/3 - PLACE NEXT TO A MATCH','Your stack has BLUE on top. Click a glowing cell NEXT TO the blue stack on the board (the preview shows what will happen).'];
+ if(t.step===1)return['TUTORIAL 2/3 - WATCH IT FLOW','Matching TOP discs flow one by one INTO the stack you just placed. The big number is its top run: 5 of the 8 needed.'];
+ if(t.step===3&&G.phase==='play')return['TUTORIAL 3/3 - MAKE A RUN OF 8','This stack has 3 BLUE on top. Place it next to your blue 5: 5 + 3 = 8, and 8 of one colour on top CLEARS and scores.'];
+ if(t.step===3)return['TUTORIAL 3/3 - MAKE A RUN OF 8','5 + 3 = 8 ... the ring fills up and the run clears.'];
+ return null;}
+// ---------- resolve loop (deterministic state machine) ----------
+function findFlow(B){const C=B.cells;let best=null,bk=-1;
+ for(let i=0;i<C.length;i++){if(!C[i].stack.length)continue;
+  for(const j of links(i,B)){if(j<i||!match(runColor(C[i].stack),runColor(C[j].stack)))continue;
+   const k=Math.max(C[i].stamp,C[j].stamp)*1e6+Math.min(C[i].stamp,C[j].stamp); // most recently changed pair first
+   if(k>bk){bk=k;best=[i,j];}}}
+ if(!best)return null;let[a,b]=best;const ra=runLen(C[a].stack),rb=runLen(C[b].stack);
+ if(a===B.placed||b===B.placed){if(a===B.placed)[a,b]=[b,a];} // MAGNET: flows involving the just-placed stack go toward it
+ else if(ra>rb||(ra===rb&&C[a].stamp>C[b].stamp))[a,b]=[b,a]; // otherwise shorter run moves; tie -> toward most recent
+ return{from:a,to:b,n:runLen(C[a].stack)};}
+function findClear(B){let best=-1;B.cells.forEach((c,i)=>{if(c.stack.length&&runLen(c.stack)>=threshold(runColor(c.stack))&&(best<0||c.stamp>B.cells[best].stamp))best=i;});return best;}
+function applyClear(B,i,casc){const c=B.cells[i],n=runLen(c.stack),col=runColor(c.stack);c.stack.length-=n;c.stamp=++B.stamp; // pure rules, shared by game + preview sim
+ const edge=has('edge2')&&c.edge,mult=casc+B.combo; // hook: edge x2; combo carries between placements
+ let pts=(n+(has('greed')?4:0))*mult*(edge?2:1); // hook: greed
+ if(has('big')&&n>=10)pts*=2; // hook: big runs
+ if(has('last')&&B.last)pts*=2; // hook: last call
+ if(has('clean')&&!c.stack.length)pts+=6; // hook: clean slate
+ let purged=-1;
+ if(has('purge')&&casc>=3){B.cells.forEach((x,k)=>{if(x.stack.length&&(purged<0||x.stack.length<B.cells[purged].stack.length||(x.stack.length===B.cells[purged].stack.length&&x.stamp<B.cells[purged].stamp)))purged=k;});
+  if(purged>=0){B.cells[purged].stack=[];B.cells[purged].stamp=++B.stamp;}} // hook: purge smallest stack
+ return{n,col,pts,edge,mult,purged};}
+function simulate(stack,ci){const B={cells:G.cells.map(c=>({q:c.q,r:c.r,edge:c.edge,locked:c.locked,stack:c.stack.slice(),stamp:c.stamp})),stamp:G.stamp,placed:ci,combo:G.combo,last:G.left-1<3};
+ B.cells[ci].stack=stack.slice();B.cells[ci].stamp=++B.stamp;let casc=0,score=0,moved=0;const cleared=[],flows=[],clears=[];
+ for(let k=0;k<GUARD;k++){const f=findFlow(B);
+  if(f){const a=B.cells[f.from],b=B.cells[f.to];flows.push({from:f.from,to:f.to,n:f.n,col:runColor(a.stack)});moved+=f.n;
+   for(let d=0;d<f.n;d++)b.stack.push(a.stack.pop());a.stamp=++B.stamp;b.stamp=++B.stamp;continue;}
+  const c=findClear(B);if(c<0)break;const r=applyClear(B,c,++casc);score+=r.pts;cleared.push(c);clears.push({cell:c,n:r.n,pts:r.pts,col:r.col});}
+ const fs=B.cells[ci].stack;
+ return{score,casc,cleared,flows,clears,moved,run:fs.length?runLen(fs):0,need:fs.length?threshold(runColor(fs)):CLEAR_AT,empties:B.cells.filter(c=>!c.stack.length&&!c.locked).length};}
+function moveDisc(){const R=G.R,a=G.cells[R.from],b=G.cells[R.to],n0=a.stack.length,d=a.stack.pop(),p0=topPos(R.from,n0);
+ b.stack.push(d);b.hidden++;const p1=topPos(R.to,b.stack.length);
+ G.flies.push({x0:p0.x,y0:p0.y,x1:p1.x,y1:p1.y,c:d,t:0,to:R.to});sfx.tick(R.pitch++);G.stats.discs++;}
+function doClear(i){const R=G.R,p=cellPos(i),r=applyClear(G,i,++R.cascade),n=r.n;
+ G.score+=r.pts;G.stats.clears++;G.stats.maxCascade=Math.max(G.stats.maxCascade,R.cascade);
+ const hex=r.col===WILD?'#eceef5':COLS[r.col];
+ for(let k=0;k<10+n;k++){const a=Math.random()*6.283,v=(60+Math.random()*160)*L.s/45;G.parts.push({x:p.x,y:p.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-80,life:0.3+Math.random()*0.3,col:hex});}
+ G.rings.push({x:p.x,y:p.y,t:0,col:GOLD});
+ float(p.x,p.y-L.s*0.75,'+'+r.pts,1.3,L.s*0.55,GOLD);
+ G.rmsg='CLEARED '+n+' '+(r.col===WILD?'WILD':CNAME[r.col])+(r.mult>1?'  x'+r.mult+' combo':'')+(r.edge?'  x2 EDGE':'')+'  =  +'+r.pts+' SCORE';
+ sfx.chord(r.mult);G.shake=Math.min(6,2+r.mult);if(r.mult>=2)G.hitstop=0.08;
+ if(r.purged>=0){const q=cellPos(r.purged);G.rings.push({x:q.x,y:q.y,t:0,col:'#fff'});float(q.x,q.y-L.s*0.4,'PURGED',1.0,L.s*0.35,TXT);}}
+function boardSig(){return G.cells.map(c=>c.stack.join('')).join('|');}
+function stepResolve(dt){const R=G.R;R.t-=dt*(G.fast?8:1);
+ while(R.t<=0&&G.phase==='resolve'){
+  if(R.state==='flow'){
+   if(R.left>0){moveDisc();R.left--;R.t+=0.16;} // >=150ms per disc so the flow can be followed; click fast-forwards
+   else{G.cells[R.from].stamp=++G.stamp;G.cells[R.to].stamp=++G.stamp;G.stats.flows++;R.state='find';R.t+=0.25;
+    const sig=boardSig();if(R.seen.has(sig)){G.stats.guard++;finishResolve();}R.seen.add(sig);} // explicit ping-pong guard
+  }else{
+   if(G.flies.length){R.t=0.01;break;}
+   if(++R.steps>GUARD){G.stats.guard++;finishResolve();break;}
+   const f=findFlow(G);
+   if(f){R.state='flow';R.from=f.from;R.to=f.to;R.left=f.n;R.n=f.n;const col=runColor(G.cells[f.from].stack);
+    G.rmsg='FLOWING: '+f.n+' '+(col===WILD?'WILD':CNAME[col])+' disc'+(f.n>1?'s':'')+(f.to===G.placed?' into the stack you placed':' into the matching stack');R.t+=0.2;}
+   else{const c=findClear(G);if(c>=0){doClear(c);R.t+=0.6;}else finishResolve();}
+  }}}
+function tip(id,t){if(G.seen[id])return;G.seen[id]=1;G.tip={text:t,t:6};}
+function finishResolve(){const hit=G.R&&G.R.cascade>0;G.R=null;G.fast=false;G.placed=-1;
+ if(G.tut){if(G.tut.step===1){G.tut.step=3;G.offers=[[2,1,1,1]];G.dealId++;G.sel=0;G.phase='play';}else{G.tut.step=4;G.phT=0;G.phase='play';G.sel=null;sfx.win();}return;}
+ G.combo=hit?G.combo+1:0;
+ if(G.score>=G.quota){G.carry=G.left;G.cleared++;G.total+=G.score;sfx.win();
+  for(let k=0;k<5;k++)G.rings.push({x:L.cx,y:L.cy,t:-k*0.15,col:k%2?GOLD:GRN}); // stage-clear flourish
+  if(G.blind===WIN_AT&&!G.endless){G.phase='win';G.endT=0;saveMeta(true);return;}
+  toPick();return;}
+ if(G.offers.every(o=>!o))deal();
+ if(empties()===0||G.left<=0){G.overWhy=G.left<=0?'OUT OF PLACEMENTS':'BOARD FULL';G.total+=G.score;G.phase='over';G.endT=0;saveMeta(false);sfx.lose();G.shake=5;return;}
+ G.sel=G.offers.findIndex(o=>o);G.rmsg='';
+ if(hit)tip('combo','COMBO: you cleared! Clear again with your very NEXT placement and it scores x'+(G.combo+1)+'.');
+ else if(empties()<=4)tip('full','The board is filling up - a FULL board ends the run. Take any clear the preview offers to free cells.');
+ else if(G.left<=3)tip('low','Only '+G.left+' placements left - hover several cells and take the biggest PREVIEW score.');
+ G.phase='play';}
+// ---------- update ----------
+function float(x,y,text,life,size,col){G.floats.push({x,y,text,life,max:life,size,col});}
+function update(dt){G.time+=dt;if(G.phase!==G._ph){G._ph=G.phase;G.phT=0;}G.phT+=dt;G.helpT=G.help?G.helpT+dt:0;
+ for(const m of G.motes){m.x+=m.vx*dt;m.y+=m.vy*dt;if(m.x<0)m.x+=1;if(m.x>1)m.x-=1;if(m.y<0)m.y+=1;if(m.y>1)m.y-=1;}
+ if(G.help||G.phase==='start')return; // help pauses everything
+ G.runTime+=dt;G.shake*=Math.pow(0.0005,dt);if(G.shake<0.2)G.shake=0;
+ const d=G.score-G.shown;G.shown=Math.abs(d)<0.5?G.score:G.shown+d*Math.min(1,dt*7);
+ if(G.phase==='over'||G.phase==='win')G.endT+=dt;
+ if(G.tip){G.tip.t-=dt;if(G.tip.t<=0)G.tip=null;}
+ if(G.tut&&G.tut.nag>0)G.tut.nag-=dt;
+ if(G.hitstop>0){G.hitstop-=dt;return;}
+ if(G.phase==='pick')G.pickT=(G.pickT||0)+dt;
+ for(const p of G.parts){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;p.vx*=0.98;}
+ G.parts=G.parts.filter(p=>p.life>0);
+ for(const f of G.floats){f.life-=dt;f.y-=18*dt;}G.floats=G.floats.filter(f=>f.life>0);
+ for(const r of G.rings)r.t+=dt*2.2;G.rings=G.rings.filter(r=>r.t<1);
+ for(const f of G.flies){f.t+=dt*(G.fast?8:1)/0.3;if(f.t>=1)G.cells[f.to].hidden=Math.max(0,G.cells[f.to].hidden-1);}
+ G.flies=G.flies.filter(f=>f.t<1);
+ for(const c of G.cells)c.drop=Math.max(0,c.drop-dt*5);
+ if(G.phase==='resolve')stepResolve(dt);}
+// ---------- layout / geometry ----------
+function resize(){W=cv.width=window.innerWidth||800;H=cv.height=window.innerHeight||600;
+ const s=Math.max(18,Math.min(W/(5*1.732+1.0),(H-262)/9.78)),top=140; // leaves >= 66px under the offer panel for the 3-line tip area
+ const py=top+s*7.88+14,pw=Math.min(W-16,s*(4*2.4+2.9)),ph=26+s*1.9+6;
+ L={cx:W/2,cy:top+s*3.94,s,top,pvY:112,panel:{x:W/2-pw/2,y:py,w:pw,h:ph},oy:py+26+s*0.95,b:{}};
+ L.rerollBtn={x:L.panel.x+pw-s*2.7,y:L.oy-s*0.62,w:s*2.5,h:s*0.9};
+ L.helpBtn={x:W-134,y:py,w:120,h:30};buildBg();}
+function buildBg(){BGC=null;try{if(!document.createElement)return;const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+ const gr=g.createRadialGradient(W/2,H*0.45,0,W/2,H*0.45,Math.max(W,H)*0.7);gr.addColorStop(0,'#121726');gr.addColorStop(1,BG);g.fillStyle=gr;g.fillRect(0,0,W,H);
+ g.fillStyle='rgba(170,179,197,.07)';for(let y=14;y<H;y+=28)for(let x=14+((y/28)%2?14:0);x<W;x+=28)g.fillRect(x,y,2,2);BGC=c;}catch(e){BGC=null;}}
+function cellPos(i){const c=G.cells[i];return{x:L.cx+L.s*1.732*(c.q+c.r/2),y:L.cy+L.s*1.5*c.r};}
+function offerPos(i){const n=G.offers.length,gap=L.s*2.4;return{x:L.panel.x+L.s*1.4+i*gap+(n<4?(4-Math.max(n,3))*gap*0.5:0),y:L.oy};}
+function cellAt(x,y){let b=-1,bd=L.s*0.95;for(let i=0;i<G.cells.length;i++){const p=cellPos(i),d=Math.hypot(p.x-x,p.y-y);if(d<bd){bd=d;b=i;}}return b;}
+function offerAt(x,y){for(let i=0;i<G.offers.length;i++){if(!G.offers[i])continue;const p=offerPos(i);if(Math.abs(x-p.x)<L.s*1.1&&Math.abs(y-p.y)<L.s*0.98)return i;}return -1;}
+function cardRect(k,n){const gap=18,w=Math.min(270,(W-40-gap*(n-1))/n),h=232,tw=n*w+(n-1)*gap;return{x:W/2-tw/2+k*(w+gap),y:Math.max(150,H/2-h/2+40),w,h};}
+const inR=r=>r&&G.mx>=r.x&&G.mx<=r.x+r.w&&G.my>=r.y&&G.my<=r.y+r.h;
+const ease=t=>{t=Math.max(0,Math.min(1,t));return 1-(1-t)*(1-t)*(1-t);};
+// side-view column geometry: tall top "cap" disc (carries symbol + eyes) over thin band discs
+function geom(n,sc){const s=L.s*sc,cap=s*0.38,dh=n>1?Math.min(s*0.12,(s*1.3-cap)/(n-1)):0;return{s,cap,dh,w:s*0.66,cx:-s*0.27,base:s*0.64};}
+function topPos(i,n){const p=cellPos(i),g=geom(n,1);return{x:p.x+g.cx,y:p.y+g.base-(n-1)*g.dh-g.cap/2};}
+// ---------- render helpers ----------
+function hexPath(x,y,r){ctx.beginPath();for(let k=0;k<6;k++){const a=Math.PI/6+k*Math.PI/3;ctx[k?'lineTo':'moveTo'](x+Math.cos(a)*r,y+Math.sin(a)*r);}ctx.closePath();}
+function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+function text(t,x,y,size,col,align,bold){ctx.font=(bold===2?'800 ':bold?'700 ':'')+Math.max(14,Math.round(size))+'px '+FONT;try{ctx.letterSpacing=bold===2?'2px':'0px';}catch(e){}
+ ctx.fillStyle=col;ctx.textAlign=align||'left';ctx.textBaseline='middle';ctx.fillText(t,x,y);}
+function glow(col,b){ctx.shadowColor=col;ctx.shadowBlur=b;}
+function noGlow(){ctx.shadowBlur=0;ctx.shadowColor='transparent';}
+function symbol(c,x,y,r){ctx.fillStyle=BG;ctx.strokeStyle=BG;ctx.beginPath(); // one distinct shape per colour (colour-blind safe)
+ if(c===WILD){ctx.font='800 '+Math.round(r*2.2)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('W',x,y+1);return;}
+ if(c===0){ctx.moveTo(x,y-r);ctx.lineTo(x+r*1.1,y+r*0.85);ctx.lineTo(x-r*1.1,y+r*0.85);ctx.closePath();ctx.fill();}
+ else if(c===1){ctx.arc(x,y,r*0.75,0,6.283);ctx.lineWidth=r*0.5;ctx.stroke();}
+ else if(c===2){for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,q=k%2?r*0.5:r*1.15;ctx[k?'lineTo':'moveTo'](x+Math.cos(a)*q,y+Math.sin(a)*q);}ctx.closePath();ctx.fill();}
+ else if(c===3){ctx.fillRect(x-r*0.85,y-r*0.85,r*1.7,r*1.7);}
+ else if(c===4){ctx.moveTo(x,y-r*1.15);ctx.lineTo(x+r*1.15,y);ctx.lineTo(x,y+r*1.15);ctx.lineTo(x-r*1.15,y);ctx.closePath();ctx.fill();}
+ else{ctx.fillRect(x-r,y-r*0.33,r*2,r*0.66);ctx.fillRect(x-r*0.33,y-r,r*0.66,r*2);}}
+function capDisc(x,y,c,g){const x0=x-g.w/2;ctx.fillStyle=c===WILD?'#eceef5':COLS[c];rr(x0,y,g.w,g.cap,g.cap*0.3);ctx.fill();
+ ctx.fillStyle=c===WILD?'#8a8fa0':DARK[c];rr(x0+2,y+g.cap*0.84,g.w-4,g.cap*0.16,g.cap*0.08);ctx.fill();
+ const cy=y+g.cap*0.42;symbol(c,x,cy,g.cap*0.27);
+ // two small eyes that look toward the pointer
+ const ex=g.w*0.33,er=Math.max(2,g.cap*0.13),dx=G.mx-x,dy=G.my-cy,d=Math.hypot(dx,dy)||1,px=dx/d*er*0.4,py=dy/d*er*0.4;
+ for(const sgn of[-1,1]){ctx.beginPath();ctx.arc(x+sgn*ex,cy,er,0,6.283);ctx.fillStyle='#fff';ctx.fill();ctx.beginPath();ctx.arc(x+sgn*ex+px,cy+py,er*0.55,0,6.283);ctx.fillStyle=BG;ctx.fill();}}
+function drawStack(x,y,st,hidden,sc){const n=Math.max(0,st.length-(hidden||0));if(!n)return;
+ const g=geom(n,sc),vis=st.slice(0,n),run=runLen(vis),col=runColor(vis),th=threshold(col),cx=x+g.cx,x0=cx-g.w/2,base=y+g.base;
+ ctx.beginPath();ctx.ellipse(cx,base+g.s*0.02,g.w*0.62,g.s*0.08,0,0,6.283);ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill(); // drop shadow
+ for(let i=0;i<n-1;i++){const c=vis[i],yt=base-(i+1)*g.dh,e=Math.max(1,g.dh*0.25);
+  ctx.fillStyle=c===WILD?'#eceef5':COLS[c];ctx.fillRect(x0+1,yt,g.w-2,g.dh);ctx.fillStyle=c===WILD?'#8a8fa0':DARK[c];ctx.fillRect(x0+1,yt+g.dh-e,g.w-2,e);}
+ const capY=base-(n-1)*g.dh-g.cap;capDisc(cx,capY,vis[n-1],g);
+ // white frame around the TOP RUN (the part that counts toward 8)
+ const rb=base-(n-run)*g.dh;ctx.strokeStyle='#fff';ctx.lineWidth=2;rr(x0-2,capY-2,g.w+4,rb-capY+4,g.cap*0.3);ctx.stroke();
+ // progress ring + big top-run number
+ const rx=x+g.s*0.46,ry=y,r=g.s*0.28,near=run>=th-2,hex=col===WILD?'#eceef5':COLS[col];
+ ctx.beginPath();ctx.arc(rx,ry,r+g.s*0.06,0,6.283);ctx.fillStyle='rgba(11,13,18,.9)';ctx.fill();
+ ctx.beginPath();ctx.arc(rx,ry,r,0,6.283);ctx.strokeStyle='#2f3750';ctx.lineWidth=g.s*0.09;ctx.stroke();
+ if(near)glow(hex,8+4*Math.sin(G.time*5));
+ ctx.beginPath();ctx.arc(rx,ry,r,-Math.PI/2,-Math.PI/2+6.283*Math.min(1,run/th));ctx.strokeStyle=hex;ctx.lineWidth=g.s*0.09;ctx.stroke();noGlow();
+ ctx.font='800 '+Math.max(14,Math.round(g.s*0.4))+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.fillText(run,rx,ry+1);}
+function arrow(a,b,col,label,side){const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,s=L.s,x0=a.x+ux*s*0.4,y0=a.y+uy*s*0.4,x1=b.x-ux*s*0.4,y1=b.y-uy*s*0.4,sd=(side||1)*s*0.36;
+ for(const[w,c]of[[s*0.22,BG],[s*0.12,col]]){const hl=s*0.34+w*0.5,hw=s*0.17+w*0.6;ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=w;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1-ux*hl*0.8,y1-uy*hl*0.8);ctx.stroke();
+  const tx=x1+ux*w*0.4,ty=y1+uy*w*0.4;ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx-ux*hl-uy*hw,ty-uy*hl+ux*hw);ctx.lineTo(tx-ux*hl+uy*hw,ty-uy*hl-ux*hw);ctx.closePath();ctx.fill();}
+ ctx.lineCap='butt';
+ if(label){const mx=(x0+x1)/2-uy*sd,my=(y0+y1)/2+ux*sd,w=label.length*9+14;ctx.fillStyle='rgba(11,13,18,.92)';rr(mx-w/2,my-12,w,24,6);ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();text(label,mx,my+1,15,'#fff','center',true);}}
+function banner(t,col,border){const size=Math.max(14,Math.min(20,(W-60)/(t.length*0.56))),w=Math.min(W-16,t.length*size*0.58+44),y=L.pvY;
+ ctx.fillStyle='rgba(18,22,34,.96)';rr(W/2-w/2,y-19,w,38,10);ctx.fill();ctx.strokeStyle=border||BORDER;ctx.lineWidth=2;ctx.stroke();text(t,W/2,y+1,size,col,'center',true);}
+function wrap(t,maxc){const out=[];let line='';for(const w of t.split(' ')){if((line+w).length>maxc&&line){out.push(line.trim());line='';}line+=w+' ';}if(line.trim())out.push(line.trim());return out;}
+function button(r,label,col,on,size,primary){const hov=on&&inR(r),press=hov&&G.isDown,oy=press?2:hov?-1:0;
+ if(primary){glow(col,hov?18:10);ctx.fillStyle=col;rr(r.x,r.y+oy,r.w,r.h,12);ctx.fill();noGlow();text(label,r.x+r.w/2,r.y+r.h/2+1+oy,size||22,BG,'center',2);return;}
+ ctx.fillStyle=press?'#0e121b':on?'#1a2030':PANEL;rr(r.x,r.y+oy,r.w,r.h,8);ctx.fill();ctx.strokeStyle=hov?CY:col;ctx.lineWidth=hov?2.5:1.5;ctx.stroke();text(label,r.x+r.w/2,r.y+r.h/2+1+oy,size||14,col,'center',true);}
+function card(r,hov){ctx.fillStyle=PANEL;rr(r.x,r.y,r.w,r.h,12);ctx.fill();ctx.strokeStyle=hov?CY:BORDER;ctx.lineWidth=hov?2:1;ctx.stroke();}
+function medal(){const c=G.cleared;return c>=5?['GOLD',GOLD]:c>=4?['SILVER','#d5dbe8']:c>=2?['BRONZE','#d08a4e']:null;}
+function badge(x,y,r,m){ // code-drawn medal: ribbon + scalloped disc + star
+ ctx.fillStyle=m?'#3f6fd1':'#2a3142';ctx.beginPath();ctx.moveTo(x-r*0.7,y-r*1.7);ctx.lineTo(x-r*0.1,y-r*1.7);ctx.lineTo(x+r*0.3,y-r*0.4);ctx.lineTo(x-r*0.4,y-r*0.4);ctx.closePath();ctx.fill();
+ ctx.fillStyle=m?'#5d8df0':'#343c52';ctx.beginPath();ctx.moveTo(x+r*0.7,y-r*1.7);ctx.lineTo(x+r*0.1,y-r*1.7);ctx.lineTo(x-r*0.3,y-r*0.4);ctx.lineTo(x+r*0.4,y-r*0.4);ctx.closePath();ctx.fill();
+ if(m)glow(m[1],14);ctx.beginPath();for(let k=0;k<24;k++){const a=k*Math.PI/12,q=k%2?r*0.92:r;ctx[k?'lineTo':'moveTo'](x+Math.cos(a)*q,y+Math.sin(a)*q);}ctx.closePath();ctx.fillStyle=m?m[1]:'#2f3750';ctx.fill();noGlow();
+ ctx.beginPath();ctx.arc(x,y,r*0.72,0,6.283);ctx.strokeStyle='rgba(11,13,18,.45)';ctx.lineWidth=2;ctx.stroke();
+ ctx.beginPath();for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,q=k%2?r*0.24:r*0.55;ctx[k?'lineTo':'moveTo'](x+Math.cos(a)*q,y+Math.sin(a)*q);}ctx.closePath();ctx.fillStyle=m?'rgba(11,13,18,.7)':'#4a546e';ctx.fill();}
+function backdrop(){if(BGC)ctx.drawImage(BGC,0,0);else{ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);}
+ for(const m of G.motes){ctx.globalAlpha=m.a;ctx.fillStyle='#aab3c5';ctx.fillRect(m.x*W,m.y*H,m.r,m.r);}ctx.globalAlpha=1;}
+// ---------- render ----------
+function render(){ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;noGlow();backdrop();
+ if(G.phase==='start'){drawStart(false);return;}
+ ctx.save();if(G.shake)ctx.translate((Math.random()-0.5)*G.shake,(Math.random()-0.5)*G.shake);
+ const s=L.s,selStack=G.sel!==null&&G.sel>=0?G.offers[G.sel]:null,allowed=G.tut&&G.phase==='play'&&G.tut.step<4?tutAllowed():null;
+ // playfield panel
+ {const pw=s*9.3,px=L.cx-pw/2,py=L.top-8,ph=s*7.88+16;ctx.fillStyle='rgba(18,22,34,.72)';rr(px,py,pw,ph,14);ctx.fill();glow('rgba(124,245,255,.25)',14);ctx.strokeStyle=BORDER;ctx.lineWidth=1;ctx.stroke();noGlow();}
+ // board cells
+ for(let i=0;i<G.cells.length;i++){const p=cellPos(i),c=G.cells[i];hexPath(p.x,p.y,s*0.94);
+  ctx.fillStyle=c.locked?'#0a0c11':c.stack.length?'#141823':'#1b2130';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=c.locked?'#3a4056':has('edge2')&&c.edge?'#7a6a2c':'#2a3142';ctx.stroke();
+  if(c.locked){ctx.strokeStyle='#4a546e';ctx.lineWidth=2;ctx.beginPath(); // cracked cell: jagged fissure + label
+   [[-0.55,-0.6,-0.15,-0.2],[-0.15,-0.2,0.2,-0.35],[0.2,-0.35,0.05,0.15],[0.05,0.15,0.5,0.55],[-0.15,-0.2,-0.5,0.3]].forEach(([a,b,d,e])=>{ctx.moveTo(p.x+a*s,p.y+b*s);ctx.lineTo(p.x+d*s,p.y+e*s);});ctx.stroke();
+   text('LOCKED',p.x,p.y+s*0.55,14,'#6b7590','center',true);}
+  if(allowed&&allowed.includes(i)){const a=0.25+0.2*Math.sin(G.time*4);hexPath(p.x,p.y,s*0.86);ctx.fillStyle='rgba(124,245,255,'+a+')';ctx.fill();glow(CY,12);ctx.strokeStyle=CY;ctx.lineWidth=3;ctx.stroke();noGlow();}}
+ // placement preview: compute the full predicted resolve for the hovered cell
+ let ghost=-1;
+ if(selStack&&G.phase==='play'&&!G.help&&G.hover>=0&&!G.cells[G.hover].stack.length&&!G.cells[G.hover].locked&&(!allowed||allowed.includes(G.hover))){ghost=G.hover;const hp=cellPos(ghost);
+  hexPath(hp.x,hp.y,s*0.94);glow(CY,14);ctx.strokeStyle=CY;ctx.lineWidth=4;ctx.stroke();noGlow();
+  const key=G.sel+':'+ghost+':'+G.stamp+':'+G.dealId;if(!G.pv||G.pv.key!==key)G.pv={key,res:simulate(selStack,ghost)};}
+ // stacks (row order gives correct overlap)
+ for(let i=0;i<G.cells.length;i++){const p=cellPos(i),c=G.cells[i];
+  if(c.stack.length)drawStack(p.x,p.y-Math.sin(c.drop*Math.PI)*s*0.2-c.drop*s*0.25,c.stack,c.hidden,1);
+  else if(i===ghost){ctx.globalAlpha=0.55;drawStack(p.x,p.y,selStack,0,1);ctx.globalAlpha=1;}}
+ // preview arrows: which discs will move where, in order; cells that will clear get a gold dashed ring
+ if(ghost>=0&&G.pv){const r=G.pv.res,many=r.flows.length>1;
+  r.flows.slice(0,8).forEach((f,k)=>arrow(cellPos(f.from),cellPos(f.to),f.col===WILD?'#eceef5':COLS[f.col],(many?(k+1)+': ':'')+'x'+f.n));
+  for(const cl of r.clears){const cp=cellPos(cl.cell);hexPath(cp.x,cp.y,s*0.84);glow(GOLD,12);ctx.strokeStyle=GOLD;ctx.lineWidth=4;ctx.setLineDash([8,6]);ctx.stroke();ctx.setLineDash([]);noGlow();
+   const t='CLEAR +'+cl.pts,w=t.length*9.5+14;ctx.fillStyle='rgba(11,13,18,.92)';rr(cp.x-w/2,cp.y+s*0.5,w,24,6);ctx.fill();text(t,cp.x,cp.y+s*0.5+13,15,GOLD,'center',true);}}
+ // live resolve: highlight the flow that is happening now
+ if(G.phase==='resolve'&&G.R&&G.R.state==='flow')arrow(cellPos(G.R.from),cellPos(G.R.to),CY,'x'+G.R.n);
+ for(const f of G.flies){const t=f.t<0?0:f.t,e=t*t*(3-2*t),g=geom(1,1);capDisc(f.x0+(f.x1-f.x0)*e,f.y0+(f.y1-f.y0)*e-Math.sin(Math.PI*t)*s*0.7-g.cap/2,f.c,g);}
+ for(const r of G.rings){if(r.t<0)continue;ctx.beginPath();ctx.arc(r.x,r.y,s*(0.4+r.t*1.2),0,6.283);ctx.strokeStyle=r.col;ctx.globalAlpha=1-r.t;ctx.lineWidth=4*(1-r.t)+1;ctx.stroke();ctx.globalAlpha=1;}
+ for(const p of G.parts){ctx.globalAlpha=Math.min(1,p.life*3);ctx.fillStyle=p.col;ctx.fillRect(p.x-2,p.y-2,4,4);}ctx.globalAlpha=1;
+ for(const f of G.floats){const k=f.life/f.max;ctx.globalAlpha=Math.min(1,k*2.5);glow(f.col,8);text(f.text,f.x,f.y,f.size,f.col,'center',2);noGlow();}ctx.globalAlpha=1;
+ ctx.restore();
+ drawOffers(selStack,ghost);drawHud(ghost);
+ // overlays (fade + slide in)
+ const a=ease(G.phT/0.28),sl=(1-a)*24;
+ if(G.tut&&G.tut.step===4){ctx.globalAlpha=a;ctx.fillStyle='rgba(8,10,15,.88)';ctx.fillRect(0,0,W,H);const bw=Math.min(720,W-24),r={x:W/2-bw/2,y:H/2-150+sl,w:bw,h:300};card(r);
+  text('CLEARED!  THAT IS THE WHOLE GAME.',W/2,r.y+44,Math.min(28,bw/24),GRN,'center',2);
+  ['Place stacks next to matching TOP colours so they flow together.','A top run of 8+ clears: 1 point per disc. Chains and back-to-back clears multiply.','Each BLIND: reach the SCORE quota before PLACEMENTS LEFT hits 0.','A completely full board also ends the run.'].forEach((t,k)=>wrap(t,Math.floor(bw/8.6)).slice(0,1).forEach(ln=>text(ln,W/2,r.y+96+k*27,16,TXT,'center')));
+  L.b.tutGo={x:W/2-150,y:r.y+r.h-76,w:300,h:52};button(L.b.tutGo,'START BLIND 1',CY,true,22,true);ctx.globalAlpha=1;}
+ if(G.phase==='pick')drawPick(a,sl);
+ if(G.phase==='over'||G.phase==='win')drawResult(a,sl);
+ if(G.help){ctx.globalAlpha=ease(G.helpT/0.22+(G.helpT===0?1:0));drawStart(true);ctx.globalAlpha=1;}}
+
+function drawOffers(selStack,ghost){const s=L.s,P=L.panel,play=G.phase==='play';
+ ctx.fillStyle=PANEL;rr(P.x,P.y,P.w,P.h,12);ctx.fill();ctx.strokeStyle=play?'#39425a':BORDER;ctx.lineWidth=play?2:1;ctx.stroke();
+ text(play?'PLACE ONE OF THESE':'RESOLVING...  (click anywhere to fast-forward)',P.x+14,P.y+15,16,play?'#fff':DIM,'left',true);
+ if(play&&selStack&&P.w>520)text('then click an empty cell',P.x+196,P.y+15,14,DIM,'left');
+ for(let i=0;i<G.offers.length;i++){const o=G.offers[i],p=offerPos(i),sel=i===G.sel&&play,hov=play&&o&&offerAt(G.mx,G.my)===i,ly=hov&&!sel?-3:0;
+  rr(p.x-s*1.08,p.y-s*0.92+ly,s*2.16,s*1.84,10);ctx.fillStyle=sel?'#1b2a3c':'#171c29';ctx.fill();
+  if(sel){glow(CY,12);ctx.strokeStyle=CY;ctx.lineWidth=3;ctx.stroke();noGlow();}else{ctx.strokeStyle=hov?CY:BORDER;ctx.lineWidth=1;ctx.stroke();}
+  if(!o){text('placed',p.x,p.y,14,'#5d667c','center');continue;}
+  if(i===G.sel&&G.drag)continue;
+  ctx.globalAlpha=play?1:0.45;drawStack(p.x,p.y+ly,o,0,1);ctx.globalAlpha=1;
+  text('['+(i+1)+']',p.x-s*1.08+16,p.y-s*0.92+13+ly,14,sel?CY:DIM,'center',true);}
+ if(selStack&&G.drag&&ghost<0)drawStack(G.mx,G.my,selStack,0,1);
+ // reroll / skip button
+ if(G.tut)button(L.rerollBtn,'SKIP TUTORIAL [S]',DIM,true,14);
+ else if(!G.hard||has('wind')){const on=G.rerolls>0&&play;button(L.rerollBtn,G.rerolls>0?'REROLL [X]':'REROLL USED',G.rerolls>0?CY:'#5d667c',on,15);
+  text(G.rerolls>0?G.rerolls+' left this blind':'back next blind',L.rerollBtn.x+L.rerollBtn.w/2,L.rerollBtn.y+L.rerollBtn.h+13,14,G.rerolls>0?DIM:'#5d667c','center');}}
+
+function drawHud(ghost){
+ // top-left: goal/progress + score
+ const lab=G.tut?'TUTORIAL':G.endless?'BLIND '+G.blind+'  ENDLESS':'BLIND '+G.blind+' of '+WIN_AT;text(lab,16,22,20,'#fff','left',2);
+ if(!G.tut&&!G.endless){const px=16+lab.length*12.6+16;for(let k=0;k<WIN_AT;k++){ctx.beginPath();ctx.arc(px+k*20,22,6,0,6.283);ctx.fillStyle=k<G.cleared?GRN:k===G.blind-1?GOLD:'#2f3750';ctx.fill();}
+  if(W>=760)text((BNAME[G.blind-1]||'')+(G.hard?'  -  HARD':''),px+WIN_AT*20+6,23,14,G.blind===WIN_AT?GOLD:DIM,'left',true);}
+ const prog=Math.min(1,G.shown/G.quota),bw=Math.min(320,W*0.36);
+ text('SCORE '+Math.round(G.shown)+' / '+G.quota,16,52,24,prog>=1?GRN:GOLD,'left',true);
+ ctx.fillStyle='#1a1f2c';rr(16,70,bw,12,6);ctx.fill();if(prog>0){ctx.fillStyle=prog>=1?GRN:GOLD;rr(16,70,Math.max(12,bw*prog),12,6);ctx.fill();}ctx.strokeStyle='#39425a';ctx.lineWidth=1.5;rr(16,70,bw,12,6);ctx.stroke();
+ // top-right: resources
+ const low=G.left<=3,ns=String(G.left);text(ns,W-16,24,34,low?RED:'#fff','right',2);text('PLACEMENTS LEFT',W-28-ns.length*21,25,18,low?RED:TXT,'right',true);
+ const em=empties();text('EMPTY CELLS '+em+(em<=3?'  (full board = run over)':''),W-16,56,16,em<=3?RED:DIM,'right',true);
+ if(G.combo)text('COMBO: next clear x'+(G.combo+1),W-16,79,16,GOLD,'right',true);
+ let x=W-16-(G.combo?200:0);for(const id of G.owned){const m=MODS.find(z=>z.id===id),w=m.name.length*8.8+16;x-=w;if(x<bw+40)break;ctx.fillStyle='#1a2030';rr(x,68,w,22,6);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=1;ctx.stroke();text(m.name,x+w/2,80,14,GOLD,'center',true);x-=6;}
+ // centre banner: PREVIEW of the hovered move (or what is resolving right now)
+ if(ghost>=0&&G.pv){const r=G.pv.res,win=G.score+r.score>=G.quota,d=n=>n+' disc'+(n===1?'':'s');let t,col=DIM,bd='#39425a';
+  if(r.score){t='PREVIEW:  '+(r.moved?d(r.moved)+' flow  >  ':'')+r.casc+' clear'+(r.casc>1?'s':'')+'  >  +'+r.score+' SCORE'+(win?'   REACHES THE QUOTA!':'');col=win?GRN:GOLD;bd=col;}
+  else if(r.empties===0){t='PREVIEW:  no clear and this FILLS THE BOARD - the run would end!';col=RED;bd=RED;}
+  else if(r.moved){t='PREVIEW:  '+d(r.moved)+' flow in  >  top run becomes '+r.run+' of '+r.need+'  >  no clear yet';col=TXT;bd=CY;}
+  else t='PREVIEW:  nothing next to this cell matches - no flow, no score';
+  banner(t,col,bd);}
+ else if(G.phase==='resolve'&&G.rmsg)banner(G.rmsg,G.rmsg[0]==='C'?GOLD:TXT,G.rmsg[0]==='C'?GOLD:CY);
+ else if(G.phase==='play'&&!(G.tut&&G.tut.step===4))banner(G.rmsg&&G.left===budget(G.blind)&&!G.tut?G.rmsg+'  -  hover a cell to preview':'Hover an empty cell to PREVIEW exactly what the move will do',DIM);
+ // bottom-left legend, bottom-right key reminders (only where there is room beside the offer panel)
+ const P=L.panel,side=(W-P.w)/2;
+ if(side>=250){const lx=14,ly=P.y+8;text('HOW TO READ A STACK',lx,ly,14,TXT,'left',true);
+  ['Big number = discs in the TOP run','Ring fills toward 8  >  8 = CLEAR','White frame = the top run','Symbol = colour of the top disc'].forEach((t,k)=>text(t,lx,ly+22+k*19,14,DIM,'left'));
+  ['[1-'+G.offers.length+'] choose stack','[X] reroll   [R] restart','[M] '+(G.muted?'unmute':'mute')+'   [Esc] menu'].forEach((t,k)=>text(t,W-14,P.y+50+k*19,14,DIM,'right'));}
+ button(L.helpBtn,'? HELP [H]',CY,true,14);
+ // bottom-centre tip area (fixed, never over the board)
+ const tt=tutText();let lines,col=DIM;
+ if(tt){lines=[tt[0]].concat(wrap(G.tut.nag>0?'Not there - click one of the GLOWING cells next to the blue stack.':tt[1],Math.floor((W-40)/8.4)));col=G.tut.nag>0?RED:GOLD;}
+ else if(G.tip){lines=wrap('TIP: '+G.tip.text,Math.floor((W-40)/8));col=GOLD;}
+ else if(G.phase==='play')lines=wrap('Matching TOP colours flow INTO the stack you place. A top run of 8+ clears and scores.',Math.floor((W-40)/8));
+ else lines=[];
+ const n=Math.min(3,lines.length),y0=H-12-n*19+9;lines.slice(0,3).forEach((ln,k)=>text(ln,W/2,y0+k*19,k===0&&tt?16:15,k===0&&tt?'#fff':col,'center',k===0));}
+
+function drawPick(a,sl){ctx.globalAlpha=a;ctx.fillStyle='rgba(8,10,15,.9)';ctx.fillRect(0,0,W,H);const nx=row(G.blind+1),n=G.choices.length,r0=cardRect(0,n),top=r0.y;
+ text('BLIND '+G.blind+' CLEARED',W/2,top-104+sl,32,GRN,'center',2);
+ text('Pick ONE modifier - it lasts for the rest of the run',W/2,top-66+sl,18,TXT,'center',true);
+ const nextT='Next: BLIND '+(G.blind+1)+(BNAME[G.blind]&&!G.endless?' "'+BNAME[G.blind]+'"':'')+' - score '+nx[0]+', '+nx[2]+' colours'+(nx[2]>row(G.blind)[2]?' (NEW colour!)':'');
+ text(nextT,W/2,top-38+sl,15,nx[2]>row(G.blind)[2]||G.blind+1===WIN_AT?GOLD:DIM,'center');
+ G.choices.forEach((m,k)=>{const r=cardRect(k,n),hov=inR(r)&&G.pickT>=0.35;r.y+=sl+(hov?-6:0);card(r,hov);
+  const ix=r.x+r.w/2,iy=r.y+44;glow(GOLD,hov?14:6);ctx.beginPath();ctx.arc(ix,iy,24,0,6.283);ctx.fillStyle='#1a2030';ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=2;ctx.stroke();noGlow();text(m.icon,ix,iy+1,20,GOLD,'center',2);
+  text(m.name,ix,r.y+90,Math.min(20,r.w/(m.name.length*0.68)),GOLD,'center',2);
+  const mc=Math.floor((r.w-20)/7.6);let yy=r.y+118;wrap(m.desc,mc).forEach(ln=>{text(ln,ix,yy,15,TXT,'center');yy+=19;});
+  yy=Math.max(yy+6,r.y+r.h-54);wrap(m.why,mc).forEach(ln=>{text(ln,ix,yy,14,DIM,'center');yy+=17;});
+  text('['+(k+1)+']',r.x+20,r.y+18,14,hov?CY:DIM,'center',true);});ctx.globalAlpha=1;}
+
+function drawResult(a,sl){const win=G.phase==='win',bw=Math.min(700,W-24),bh=Math.min(430,H-16),bx=W/2-bw/2,by=Math.max(8,H/2-bh/2)+sl,m=medal(),short=G.quota-G.score,mc=Math.floor(bw/9);
+ ctx.globalAlpha=a;ctx.fillStyle='rgba(8,10,15,.88)';ctx.fillRect(0,0,W,H);card({x:bx,y:by,w:bw,h:bh});ctx.strokeStyle=win?GRN:RED;ctx.lineWidth=2;rr(bx,by,bw,bh,12);ctx.stroke();
+ text(win?'YOU WIN - ALL 5 BLINDS CLEARED':(G.endless?'ENDLESS OVER: ':'RUN OVER: ')+G.overWhy,W/2,by+40,Math.min(28,bw/22),win?GRN:RED,'center',2);
+ let why,tp;
+ if(win){why='You beat the finale on '+(G.hard?'HARD':'NORMAL')+' with '+G.left+' placements to spare.';tp=G.hard?'Keep going in endless mode to chase a higher blind.':'Keep going in endless mode, or press D for HARD on your next run.';}
+ else if(G.overWhy==='BOARD FULL'){why='All '+openCells()+' cells filled up on blind '+G.blind+' ('+G.score+' / '+G.quota+' score, '+G.left+' placements unused).';tp='Clears free cells. When EMPTY CELLS drops below 5, take ANY clear the preview offers - even a small one.';}
+ else{why='Blind '+G.blind+' ended '+short+' short: '+G.score+' / '+G.quota+' score with 0 placements left.';
+  tp=(G.rerolls>0)?'You never used your REROLL (X) this blind - use it when no offered top colour helps.':'Hover several cells before placing. Feed ONE big run of a colour instead of starting many small ones.';}
+ let y=by+80;wrap(why,mc).forEach(ln=>{text(ln,W/2,y,16,TXT,'center');y+=21;});y+=6;wrap('TIP: '+tp,mc).forEach(ln=>{text(ln,W/2,y,15,GOLD,'center');y+=20;});
+ const my=Math.round(Math.min(by+bh-190,(y+20+by+bh-190)/2));badge(W/2-bw*0.3,my+34,30,m);
+ text(m?m[0]+' MEDAL'+(G.newMedal?'  - NEW!':''):'NO MEDAL YET',W/2-bw*0.3+48,my+16,22,m?m[1]:DIM,'left',2);
+ text('Total score '+G.total+'   -   blinds cleared '+G.cleared+'   -   best '+G.best,W/2-bw*0.3+48,my+44,15,TXT,'left');
+ text('Clears '+G.stats.clears+'   -   longest chain '+G.stats.maxCascade+'   -   '+Math.round(G.runTime/60*10)/10+' min',W/2-bw*0.3+48,my+65,15,DIM,'left');
+ text('Bronze: clear 2 blinds     Silver: clear 4     Gold: clear all 5',W/2,my+100,14,DIM,'center');
+ const byy=by+bh-64,w1=win?250:180;
+ if(win){L.b.go={x:W/2-270,y:byy,w:w1,h:46};L.b.retry={x:W/2-10,y:byy+4,w:150,h:38};L.b.menu={x:W/2+150,y:byy+4,w:120,h:38};button(L.b.go,'KEEP GOING (ENDLESS)',CY,true,17,true);button(L.b.retry,'NEW RUN [R]',TXT,true,14);}
+ else{L.b.go=null;L.b.retry={x:W/2-w1-10,y:byy,w:w1,h:46};L.b.menu={x:W/2+10,y:byy+4,w:140,h:38};button(L.b.retry,'RETRY [R]',CY,true,20,true);}
+ button(L.b.menu,'MENU [Esc]',TXT,true,14);
+ text('Difficulty for the next run: '+(G.hard?'HARD':'NORMAL')+'  [D to change]    H help    M mute',W/2,by+bh-10,14,DIM,'center');ctx.globalAlpha=1;}
+
+function drawStart(asHelp){if(asHelp){ctx.fillStyle='rgba(8,10,15,.97)';ctx.fillRect(0,0,W,H);}
+ const k=Math.max(0.7,Math.min(1,H/860)),cx=W/2,save=L.s,mcW=Math.floor((W-48)/8.6);
+ const s0=Math.max(30,Math.min(52,W/17))*k,est=100*k+22+s0*3.75+12+164+20+30+70,off=Math.max(0,Math.round((H-est)/2-30)); // vertically centre on tall screens
+ let y=Math.round(44*k)+off;
+ text('HEXRUN',28,y,46*k,'#fff','left',2);ctx.fillStyle=CY;ctx.fillRect(30,y+27*k,150*k,3);
+ text('Hexa-sort roguelite: flow matching tops together, pop runs of 8.',28+210*k,y+4,15,DIM,'left');y+=56*k;
+ wrap('GOAL: Clear 5 blinds. In each, reach the SCORE quota before your PLACEMENTS run out.',mcW).forEach(ln=>{text(ln,28,y,17,GOLD,'left',true);y+=22;});
+ // diagram of the core verb drawn with the game's own shapes
+ const s=L.s=Math.max(30,Math.min(52,W/17))*k,dy=y+s*1.5,ax=cx-s*5.0,bx=ax+s*1.732,rx=cx+s*0.9,fx=cx+s*4.6;
+ card({x:cx-s*6.6,y:dy-s*1.75,w:s*13.2,h:s*3.75});
+ for(const[x,st,gh]of[[ax,[3,3,1,1,1],0],[bx,[0,0,1,1],1],[rx,[0,0,1,1,1,1,1],0],[fx,[2,1,1,1,1,1,1,1,1],0]]){hexPath(x,dy,s*0.94);ctx.fillStyle='#1b2130';ctx.fill();if(gh)glow(CY,12);ctx.strokeStyle=gh?CY:'#2a3142';ctx.lineWidth=gh?3:2;ctx.stroke();noGlow();drawStack(x,dy,st,0,1);}
+ arrow({x:ax,y:dy},{x:bx,y:dy},COLS[1],'x3',2.4);
+ text('>',(bx+rx)/2+s*0.1,dy,28,DIM,'center',true);text('+3  >',(rx+fx)/2,dy,20,DIM,'center',true);
+ text('on the board',ax-s*0.3,dy+s*1.5,14,DIM,'center');text('YOU PLACE',bx+s*0.4,dy-s*1.3,14,CY,'center',true);
+ text('blue on top: 5',rx,dy+s*1.5,14,DIM,'center');text('8 = CLEAR, +8',fx,dy+s*1.5,14,GOLD,'center',true);
+ L.s=save;y=dy+s*2.0+12;
+ // two cards: controls + scoring
+ const gap=14,cw=Math.min(470,(W-40-gap)/2),lx=cx-cw-gap/2,r2=cx+gap/2,mc=Math.floor((cw-28)/7.4);
+ const ctr=[['Click / 1-4','choose an offered stack'],['Hover a cell','PREVIEW what the move does'],['Click a cell','place the stack there'],['X','reroll offer (1 free per blind)'],['Click','fast-forward the animation'],['H  R  M  Esc','help, restart, mute, menu']];
+ const sc=[];['8+ same-colour discs on top CLEAR: 1 point per disc.','Chains and back-to-back clears multiply: x2, x3...','LOSE: placements run out below the quota, or all 19 cells fill up.','WIN: clear 5 blinds (the 5th is the finale), then endless.'].forEach(t=>wrap(t,mc).forEach(l=>sc.push(l)));
+ const ch=36+Math.max(ctr.length,sc.length)*20+8;card({x:lx,y,w:cw,h:ch});card({x:r2,y,w:cw,h:ch});
+ text('CONTROLS',lx+14,y+20,15,'#fff','left',2);text('SCORING / LOSING',r2+14,y+20,15,'#fff','left',2);
+ ctr.forEach((c,i)=>{text(c[0],lx+14,y+46+i*20,14,CY,'left',true);text(c[1].slice(0,Math.max(10,mc-13)),lx+14+Math.min(100,cw*0.3),y+46+i*20,14,TXT,'left');});
+ sc.forEach((t,i)=>text(t,r2+14,y+46+i*20,14,TXT,'left'));y+=ch+20;
+ // colour key: suits with their symbols
+ {const n=6,gw=Math.min(118,(W-40)/n),x0=cx-gw*n/2;for(let c=0;c<n;c++){const g={s:40,cap:22,w:40},px=x0+c*gw+22;capDisc(px,y-11,c,g);if(gw>=84)text(CNAME[c],px+27,y+1,14,DIM,'left');}y+=30;}
+ const byy=Math.min(H-84,y+26);
+ if(asHelp){L.b={resume:{x:cx-150,y:byy,w:300,h:52}};button(L.b.resume,'RESUME',CY,true,22,true);text('Mode: '+(G.hard?'HARD':'NORMAL')+'   -   paused',cx,byy-16,14,DIM,'center');}
+ else{L.b={play:{x:cx-130,y:byy,w:260,h:54},hard:{x:cx-130-16-Math.min(220,W*0.26),y:byy+8,w:Math.min(220,W*0.26),h:38},tut:{x:cx+130+16,y:byy+8,w:Math.min(220,W*0.26),h:38}};
+  button(L.b.play,'PLAY',CY,true,26,true);button(L.b.hard,(G.hard?'HARD':'NORMAL')+'  [D]',G.hard?RED:GRN,true,15);button(L.b.tut,G.tutDone?'TUTORIAL [T]':'TUTORIAL FIRST',CY,true,15);
+  if(y+4<byy-12)text(G.hard?'HARD: original tuning - tight quotas, 5 colours from blind 3, no free reroll':'NORMAL: 4 colours for blinds 1-3, generous placements, 1 free reroll per blind',cx,byy-16,14,DIM,'center');}
+ text('H help    R restart    M '+(G.muted?'unmute':'mute')+'    Esc menu',cx,H-14,14,DIM,'center');}
+// ---------- input ----------
+function xy(e){G.mx=e.clientX;G.my=e.clientY;G.hover=cellAt(G.mx,G.my);}
+function setHard(h){G.hard=!!h;lsSet('hexrun_hard',G.hard?'1':'0');sfx.ui();}
+function begin(){if(G.tutDone)startRun();else startTutorial();}
+function toStart(){G.phase='start';G.help=false;G.tut=null;}
+function menu(){location.href='index.html';}
+function down(e){xy(e);G.isDown=true;initAudio();if(AC&&AC.state==='suspended')AC.resume();
+ if(G.help){G.help=false;sfx.ui();return;}
+ if(G.phase==='start'){if(inR(L.b.hard))setHard(!G.hard);else if(inR(L.b.tut)){sfx.ui();startTutorial();}else if(inR(L.b.play)){sfx.ui();begin();}return;}
+ if(G.tut&&G.tut.step===4){if(inR(L.b.tutGo))endTutorial();return;}
+ if(G.phase==='over'||G.phase==='win'){if(G.endT<0.5)return;if(inR(L.b.menu))menu();else if(inR(L.b.go))keepGoing();else if(inR(L.b.retry))startRun();return;}
+ if(G.phase==='pick'){if((G.pickT||0)<0.35)return;G.choices.forEach((m,k)=>{if(G.phase==='pick'&&inR(cardRect(k,G.choices.length)))pickMod(k);});return;}
+ if(inR(L.helpBtn)){G.help=true;sfx.ui();return;}
+ if(G.phase==='resolve'){G.fast=true;return;}
+ if(inR(L.rerollBtn)){if(G.tut)endTutorial();else if(!reroll())sfx.bad();return;}
+ const o=offerAt(G.mx,G.my);if(o>=0){G.sel=o;G.drag=true;sfx.ui();return;}
+ if(G.sel!==null&&G.sel>=0&&G.hover>=0){if(!place(G.sel,G.hover)){sfx.bad();G.shake=3;}}}
+function up(e){xy(e);G.isDown=false;if(!G.drag)return;G.drag=false;if(G.sel!==null&&G.hover>=0&&!G.cells[G.hover].stack.length)place(G.sel,G.hover);}
+function key(k){if(k.length===1)k=k.toLowerCase();
+ if(k==='Escape'){menu();return;}
+ if(k==='m'){setMute(!G.muted);return;}
+ if(k==='r'){if(G.phase!=='start')startRun();return;}
+ if(k==='h'){if(G.phase!=='start')G.help=!G.help;return;}
+ if(G.help){if(k==='Enter'||k===' ')G.help=false;return;}
+ if(G.phase==='start'){if(k==='d')setHard(!G.hard);else if(k==='t')startTutorial();else if(k==='Enter'||k===' ')begin();return;}
+ if(G.tut&&k==='s'){endTutorial();return;}
+ if(G.tut&&G.tut.step===4){if(k==='Enter'||k===' ')endTutorial();return;}
+ if(G.phase==='win'||G.phase==='over'){if(k==='d')setHard(!G.hard);else if(k==='Enter'||k===' '){if(G.phase==='win')keepGoing();else startRun();}return;}
+ if(G.phase==='pick'){if(k>='1'&&k<='3'&&(G.pickT||0)>=0.35)pickMod(+k-1);return;}
+ if(k==='x'){if(!reroll())sfx.bad();return;}
+ if(k>='1'&&k<='4'&&G.phase==='play'&&G.offers[+k-1])G.sel=+k-1;}
+cv.addEventListener('pointerdown',down);cv.addEventListener('pointermove',xy);window.addEventListener('pointerup',up);
+window.addEventListener('resize',resize);
+window.addEventListener('keydown',e=>key(e.key));
+// ---------- boot ----------
+for(let i=0;i<36;i++)G.motes.push({x:Math.random(),y:Math.random(),vx:(Math.random()-0.5)*0.006,vy:-0.002-Math.random()*0.005,r:1+Math.random()*1.5,a:0.08+Math.random()*0.14});
+let last=0;function frame(ts){const dt=Math.min(0.05,((ts-last)/1000)||0);last=ts;update(dt);render();requestAnimationFrame(frame);}
+window.HEXRUN={G,L:()=>L,MODS,TABLES,WIN_AT,row,budget,simulate,startRun,nextBlind,startTutorial,endTutorial,tutAllowed,place,pickMod,reroll,keepGoing,setHard,setMute,begin,toStart,update,render,resize,links,runColor,runLen,findFlow,down,up,key,medal,cellPos,offerPos,cardRect};
+resize();requestAnimationFrame(frame);
+</script></body></html>

@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>LONG FUSE</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;cursor:default}</style></head>
+<body><canvas id="c"></canvas><script>
+'use strict';
+// ====================== CONFIG / DATA ======================
+const N = 8, STEP = 0.2, GAMEID = 'longfuse';
+const C = { bg: '#0b0d12', cyan: '#7cf5ff', red: '#ff5d73', gold: '#ffd166', green: '#9dff8a', text: '#e8ecf5', dim: '#aab3c5', panel: '#121622', line: '#232a3d' };
+const MODES = {
+  normal: { startHp: 6, freshTick: false, shove: true, windup: true, lunge: true, selfSafe: 1, lureFuse: 3, rate: 1, hpBonus: 0, healOnClear: 1 },
+  hard:   { startHp: 4, freshTick: true,  shove: false, windup: false, lunge: false, selfSafe: 0, lureFuse: 1, rate: .75, hpBonus: 1, healOnClear: 0 },
+};
+const CFG = Object.assign({ mode: 'normal', firstTier: 40 /* score-reward tiers: 40, 160, 520, 1600... (score is squared, so tiers triple) */, medkitMax: 2, lurePips: 4, lureRange: 2, kickDist: 3, fuseCap: 9, spawnMinDist: 4, defuseMax: 2,
+  minRegion: 10 /* a bomb may not shrink your reachable area below this: no bomb-wall fortress */, shoveCd: 3, mopUp: 5, bronze: 60, silver: 300, gold: 800 }, MODES.normal);
+const TYPES = {
+  walker:   { name: 'Walker',   tag: 'W', w: 6, hp: [1, 6], speed: 1, col: '#ff5d73', desc: 'moves 1 tile a turn' },
+  runner:   { name: 'Runner',   tag: 'R', w: 3, hp: [1, 2], speed: 2, col: '#ff8552', desc: 'moves 2 tiles a turn' },
+  defuser:  { name: 'Defuser',  tag: 'D', w: 2, hp: [2, 2], speed: 1, col: '#e0529c', defuse: 2, desc: 'adds +2 fuse to a bomb it touches' },
+  shielded: { name: 'Shielded', tag: 'S', w: 2, hp: [3, 3], speed: 1, col: '#c9405a', minDmg: 3, desc: 'ignores bombs of 1-2 pips' },
+  warden:   { name: 'Warden',   tag: 'X', w: 0, hp: [12, 12], speed: 1, col: '#ff3b4e', slow: true, heavy: true, dmg: 2, armour: 5, desc: '12 HP, armour caps each blast at 5 damage, moves every other turn (every turn once below half HP), hits for 2, too heavy to shove' },
+  dummy:    { name: 'Training dummy', tag: 'T', w: 0, hp: [2, 2], speed: 0, col: '#8d94a6', still: true, desc: 'harmless - blow it up' },
+};
+const WAVES = [
+  // every = turns per spawn (NORMAL); tuned with the handicapped bot: W1 ~100%, W2 ~90%, W3 ~75%, win ~45% (a human reads the forecast less reliably)
+  { name: 'WAVE 1', len: 15, every: 1.6, types: ['walker'], hpMax: 2 },
+  { name: 'WAVE 2', len: 15, every: 1.1, types: ['walker', 'runner'], hpMax: 3 },
+  { name: 'WAVE 3', len: 15, every: .9,  types: ['walker', 'runner', 'defuser'], hpMax: 4 },
+  { name: 'WAVE 4', len: 16, every: .8,  types: ['walker', 'runner', 'defuser', 'shielded'], hpMax: 5 },
+  { name: 'FINALE: THE WARDEN', len: 30, every: 1, types: ['walker', 'runner', 'defuser', 'shielded'], hpMax: 3, boss: true },
+];
+const ITEMS = [ // data row + one rule hook each (grep "items.<id>")
+  { id: 'even',   g: 'x2', name: 'DOUBLE TIME',  desc: 'Even-numbered bombs tick twice per turn.', hint: 'Changes timing: a 6 blows as fast as a 3.' },
+  { id: 'plus',   g: '+',  name: 'CROSSFIRE',    desc: 'Blasts become a plus shape with reach = pips.', hint: 'Changes aiming: snipe down rows and columns.' },
+  { id: 'kick',   g: '>>', name: 'BOOT',         desc: 'Moving into a bomb kicks it 3 tiles.', hint: 'Deliver a ticking bomb into a crowd.' },
+  { id: 'remote', g: '!!', name: 'DETONATOR',    desc: 'Once per wave, F blows every bomb right now.', hint: 'Cash in a big die the moment the crowd is right.' },
+  { id: 'reroll', g: '?',  name: 'BLOOD DICE',   desc: 'X re-rolls your die for 1 HP.', hint: 'Risky: pay health now for the right number.' },
+  { id: 'greed',  g: '$',  name: 'GREED',        desc: 'Lose 2 HP now. Every blast scores +50%.', hint: 'Risk now, reward for the rest of the run.' },
+  { id: 'arm',    g: '<>', name: 'STRONG ARM',   desc: 'Shove pushes 2 tiles and recharges in 2 turns.', hint: 'Throw enemies into your own blasts.' },
+  { id: 'magnet', g: '@',  name: 'MAGNET',       desc: 'Lure works from 3 tiles, and for 3-pip bombs too.', hint: 'Bigger crowds per blast = squared score.' },
+  { id: 'loaded', g: '6',  name: 'WEIGHTED DICE', desc: 'Every 1 you roll becomes a 6.', hint: 'No more duds, more slow heavy bombs.' },
+  { id: 'immune', g: '()', name: 'THICK SKIN',   desc: 'Your own bombs of 3 pips or fewer cannot hurt you.', hint: 'Fight at point-blank range with small dice.' },
+  { id: 'vest',   g: '[]', name: 'BLAST VEST',   desc: 'The first own-blast hit each wave is ignored.', hint: 'Forgives one mistake per wave.' },
+  { id: 'stash',  g: '+1', name: 'DEEP POCKET',  desc: '+1 stash slot.', hint: 'Save more big dice for the right moment.' },
+  { id: 'hp',     g: '+2', name: 'MEDKIT',       desc: '+2 max HP and heal 2.', hint: 'Plain and reliable (offered twice per run).' },
+  { id: 'heal',   g: 'HP', name: 'PATCH UP',     desc: 'Heal 2 HP.', hint: 'Often on offer: take it when a wave went badly.' },
+];
+const D4 = [[0, -1], [1, 0], [0, 1], [-1, 0]], D8 = [...D4, [1, -1], [1, 1], [-1, 1], [-1, -1]];
+const PIPS = { 1: [[.5, .5]], 2: [[.27, .27], [.73, .73]], 3: [[.27, .27], [.5, .5], [.73, .73]], 4: [[.27, .27], [.73, .27], [.27, .73], [.73, .73]],
+  5: [[.27, .27], [.73, .27], [.5, .5], [.27, .73], [.73, .73]], 6: [[.27, .25], [.73, .25], [.27, .5], [.73, .5], [.27, .75], [.73, .75]] };
+
+// ====================== PURE-ISH GAME LOGIC (operates on a plain JSON state S) ======================
+const rnd = n => Math.floor(Math.random() * n);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const inB = (x, y) => x >= 0 && y >= 0 && x < N && y < N;
+const bombAt = (S, x, y) => S.bombs.find(b => b.x === x && b.y === y);
+const enemyAt = (S, x, y) => S.enemies.find(e => e.x === x && e.y === y);
+const free = (S, x, y) => inB(x, y) && !bombAt(S, x, y) && !enemyAt(S, x, y) && !(S.px === x && S.py === y);
+const md = (S, e) => Math.abs(e.x - S.px) + Math.abs(e.y - S.py);
+const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+const ticksOf = (S, b) => (S.items.even && b.pips % 2 === 0) ? 2 : 1;
+const turnsLeft = (S, b) => Math.max(1, Math.ceil(b.fuse / ticksOf(S, b)) + (b.fresh && !CFG.freshTick ? 1 : 0));   // 1 = explodes when this turn ends
+const selfSafe = (S, p) => p <= (S.items.immune ? 3 : CFG.selfSafe);
+const stashCap = S => 1 + (S.items.stash || 0);
+const tierAt = n => CFG.firstTier * (3 ** (n + 1) - 1) / 2;
+const canShove = S => !!(CFG.shove || S.items.arm);
+function draw(S) { if (!S.bag.length) S.bag = shuffle([1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6]); const v = S.bag.pop(); return v === 1 && S.items.loaded ? 6 : v; }
+function waveDef(S) {
+  if (S.wave < WAVES.length) return WAVES[S.wave];
+  const k = S.wave - WAVES.length; return { name: 'ENDLESS ' + (k + 1), len: 16, every: Math.max(.5, .8 - k * .05), types: ['walker', 'runner', 'defuser', 'shielded'], hpMax: 6, boss: k % 3 === 2 };
+}
+function newState(tut) {
+  const S = { phase: 'player', turn: 1, score: 0, tier: 0, hp: CFG.startHp, maxHp: CFG.startHp, px: 3, py: 4, bombs: [], enemies: [], marks: [], stash: [], items: {}, bag: [], nid: 1,
+    wave: 0, wt: 1, spawnAcc: 0, seen: {}, picks: [], pickWhy: '', shoveCd: 0, detReady: false, vest: false, kills: 0, blasts: 0, maxChain: 0, bestBlast: 0, cause: null, offer: null,
+    sim: false, won: false, winHow: '', endless: false, tut: tut ? 1 : 0, cleared: 0 };
+  S.die = draw(S); S.next = draw(S);
+  if (tut) { S.die = 2; S.next = 3; S.enemies.push({ id: S.nid++, x: 5, y: 4, type: 'dummy', hp: 2, max: 2 }); } else startWave(S);
+  return S;
+}
+function startWave(S) {
+  const W = waveDef(S); S.wt = 1; S.spawnAcc = 0; S.detReady = !!S.items.remote; S.vest = !!S.items.vest;
+  if (W.boss) addMark(S, 'warden');
+  addMark(S, W.types.find(t => !S.seen[t]));   // a wave's new enemy type always shows up first so it can be introduced
+  fx(S, 'wave', W);
+}
+function addMark(S, force) {
+  const W = waveDef(S), pool = W.types; let tot = 0; for (const k of pool) tot += TYPES[k].w;
+  let r = Math.random() * tot, type = pool[0]; for (const k of pool) { r -= TYPES[k].w; if (r < 0) { type = k; break; } }
+  if (force) type = force;
+  const [lo, hi] = TYPES[type].hp, cap = Math.max(lo, Math.min(hi, W.hpMax + CFG.hpBonus));
+  for (let i = 0; i < 40; i++) {
+    const k = rnd(N), [x, y] = [[k, 0], [k, N - 1], [0, k], [N - 1, k]][rnd(4)];
+    if (free(S, x, y) && !S.marks.some(m => m.x === x && m.y === y) && Math.abs(x - S.px) + Math.abs(y - S.py) >= CFG.spawnMinDist) {
+      const m = { x, y, type, hp: lo + rnd(cap - lo + 1) }; S.marks.push(m); if (!S.seen[type]) { S.seen[type] = 1; fx(S, 'newtype', m); } return;
+    }
+  }
+}
+function spawnMarks(S) {
+  for (const m of [...S.marks]) if (free(S, m.x, m.y)) { // a blocked marker simply waits
+    S.marks.splice(S.marks.indexOf(m), 1);
+    const e = { id: S.nid++, x: m.x, y: m.y, type: m.type, hp: m.hp, max: m.hp }; S.enemies.push(e); fx(S, 'spawn', e);
+  }
+}
+function blastCells(S, x, y, p) {
+  const c = [];
+  if (S.items.plus) { c.push([x, y]); for (const [dx, dy] of D4) for (let i = 1; i <= p; i++) if (inB(x + dx * i, y + dy * i)) c.push([x + dx * i, y + dy * i]); }
+  else for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (inB(x + i, y + j)) c.push([x + i, y + j]);
+  return c;
+}
+function kickDest(S, b, dx, dy) { let x = b.x, y = b.y, n = 0; while (n < CFG.kickDist && free(S, x + dx, y + dy)) { x += dx; y += dy; n++; } return n ? [x, y] : null; }
+function enclosed(S, bx, by) { // would a bomb at bx,by leave the player a reachable area smaller than CFG.minRegion?
+  const seen = new Uint8Array(N * N), q = [S.py * N + S.px]; seen[q[0]] = 1; let n = 0;
+  while (q.length) {
+    const c = q.pop(), cx = c % N, cy = c / N | 0; if (++n >= CFG.minRegion) return false;
+    for (const [dx, dy] of D4) { const x = cx + dx, y = cy + dy, i = y * N + x; if (!inB(x, y) || seen[i] || (x === bx && y === by) || bombAt(S, x, y)) continue; seen[i] = 1; q.push(i); }
+  }
+  return true;
+}
+function legalActions(S) {
+  if (S.phase === 'pick') return S.offer.map((_, i) => ({ t: 'pick', i }));
+  if (S.phase === 'won') return [{ t: 'continue' }];
+  if (S.phase !== 'player') return [];
+  const A = [{ t: 'wait' }];
+  for (const [dx, dy] of D4) {
+    const x = S.px + dx, y = S.py + dy; if (!inB(x, y)) continue;
+    const e = enemyAt(S, x, y); if (e) { if (canShove(S) && !S.shoveCd && !TYPES[e.type].heavy) A.push({ t: 'shove', dx, dy }); continue; }
+    const b = bombAt(S, x, y); if (!b || (S.items.kick && kickDest(S, b, dx, dy))) A.push({ t: 'move', dx, dy });
+  }
+  for (const [dx, dy] of D8) if (free(S, S.px + dx, S.py + dy) && !enclosed(S, S.px + dx, S.py + dy)) for (let src = S.die ? 0 : 1; src <= S.stash.length; src++) A.push({ t: 'place', x: S.px + dx, y: S.py + dy, src });
+  if (S.die && S.stash.length < stashCap(S)) A.push({ t: 'stash' });
+  if (S.items.reroll && S.hp > 1) A.push({ t: 'reroll' });
+  if (S.items.remote && S.detReady && S.bombs.length) A.push({ t: 'det' });
+  return A;
+}
+const isLegal = (S, a) => { const k = JSON.stringify(a); return legalActions(S).some(b => JSON.stringify(b) === k); };
+
+// Applies the player's action. Returns true if it consumes the turn.
+function applyAction(S, a) {
+  if (a.t === 'pick') {
+    const id = S.offer[a.i];
+    if (id === 'hp') { S.maxHp += 2; S.hp += 2; S.medkits = (S.medkits || 0) + 1; } else if (id === 'heal') S.hp = Math.min(S.maxHp, S.hp + 2); else { S.items[id] = (S.items[id] || 0) + 1; if (id === 'greed') S.hp = Math.max(1, S.hp - 2); if (id === 'remote') S.detReady = true; if (id === 'vest') S.vest = true; }
+    S.offer = null; fx(S, 'pick'); nextPhase(S); return false;
+  }
+  if (a.t === 'continue') { S.endless = true; nextPhase(S); return false; }
+  if (a.t === 'reroll') { S.hp--; S.die = draw(S); fx(S, 'reroll'); return false; }
+  if (a.t === 'move') {
+    const x = S.px + a.dx, y = S.py + a.dy, b = bombAt(S, x, y);
+    if (b) { const d = kickDest(S, b, a.dx, a.dy); b.x = d[0]; b.y = d[1]; fx(S, 'kick'); }
+    S.px = x; S.py = y; fx(S, 'move');
+  } else if (a.t === 'shove') {
+    const e = enemyAt(S, S.px + a.dx, S.py + a.dy); let n = S.items.arm ? 2 : 1;
+    while (n-- && free(S, e.x + a.dx, e.y + a.dy)) { e.x += a.dx; e.y += a.dy; }
+    e.dazed = 1; e.wind = 0; S.shoveCd = S.items.arm ? 2 : CFG.shoveCd; fx(S, 'shove', e);
+  } else if (a.t === 'place') {
+    const p = a.src ? S.stash.splice(a.src - 1, 1)[0] : S.die; if (!a.src) S.die = 0;
+    const b = { id: S.nid++, x: a.x, y: a.y, pips: p, fuse: p, fresh: true }; S.bombs.push(b); fx(S, 'place', b);
+  } else if (a.t === 'stash') { S.stash.push(S.die); S.die = 0; fx(S, 'stash'); }
+  else if (a.t === 'det') { S.detReady = false; for (const b of S.bombs) { b.fuse = 0; b.fresh = false; } fx(S, 'det'); }
+  return true;
+}
+function nextPhase(S) {
+  while (S.score >= tierAt(S.tier)) { S.tier++; S.picks.push('score'); }
+  if (S.won && !S.endless) { S.phase = 'won'; return; }
+  if (S.picks.length) {
+    S.pickWhy = S.picks.shift();
+    const pool = ITEMS.filter(it => it.id === 'hp' ? (S.medkits || 0) < CFG.medkitMax : it.id === 'stash' ? (S.items.stash || 0) < 2 : it.id === 'greed' ? !S.items.greed && S.hp > 2 : it.id !== 'heal' && !S.items[it.id]).map(it => it.id);
+    S.offer = shuffle(pool).slice(0, 2 + (pool.length >= 3 && Math.random() < .5 ? 1 : 0)); S.offer.push('heal'); S.offer = shuffle(S.offer).slice(0, 3);   // PATCH UP is on the table about half the time, always once the pool runs low
+    S.phase = 'pick'; fx(S, 'offer');
+  } else S.phase = 'player';
+}
+function lureBomb(S, e) { // LURE: enemies near a big bomb that is about to blow get curious and drift toward it
+  if (TYPES[e.type].still) return null; const lp = S.items.magnet ? 3 : CFG.lurePips, lr = CFG.lureRange + (S.items.magnet ? 1 : 0); let best = null, bd = 99;
+  for (const b of S.bombs) { if (b.pips < lp || Math.ceil(b.fuse / ticksOf(S, b)) > CFG.lureFuse) continue; const d = cheb(e, b); if (d <= lr && d < bd) { bd = d; best = b; } }
+  return best;
+}
+function willLure(S, b) { // UI helper: will this bomb lure during the coming enemy phase?
+  const f = b.fuse - (b.fresh && !CFG.freshTick ? 0 : ticksOf(S, b)); return b.pips >= (S.items.magnet ? 3 : CFG.lurePips) && f > 0 && Math.ceil(f / ticksOf(S, b)) <= CFG.lureFuse;
+}
+// End-of-turn sequence as a generator: each yield = seconds to wait before the next step. Simulation just drains it.
+function* endTurn(S) {
+  for (const b of S.bombs) { if (CFG.freshTick || !b.fresh) b.fuse -= ticksOf(S, b); b.fresh = false; }   // (1) tick
+  fx(S, 'tick'); yield S.bombs.length ? STEP : 0.03;
+  let due; while ((due = S.bombs.find(b => b.fuse <= 0))) { yield* blastGroup(S, due); if (S.hp <= 0) { S.phase = 'dying'; return; } }
+  const order = [...S.enemies].sort((a, b) => md(S, a) - md(S, b)), hits = []; let moved = false;                // (2) enemies
+  for (const e of order) {
+    const T = TYPES[e.type]; e.lured = 0;
+    if (e.dazed) { e.dazed = 0; e.wind = 0; continue; }
+    if (T.still) continue;
+    const lb = lureBomb(S, e);
+    if (lb) {
+      e.lured = 1; e.wind = 0; fx(S, 'lure', e); let best = null, bc = cheb(e, lb), bm = Math.abs(e.x - lb.x) + Math.abs(e.y - lb.y);
+      if (bc > 1) for (const [dx, dy] of D4) { const p = { x: e.x + dx, y: e.y + dy }, c = cheb(p, lb), m = Math.abs(p.x - lb.x) + Math.abs(p.y - lb.y); if (free(S, p.x, p.y) && (c < bc || (c === bc && m < bm))) { bc = c; bm = m; best = p; } }
+      if (best) { e.x = best.x; e.y = best.y; moved = true; } continue;
+    }
+    if (md(S, e) === 1) { if (!CFG.windup || e.wind) { hits.push(e); e.wind = 0; } else { e.wind = 1; fx(S, 'wind', e); } continue; }   // NORMAL: wind-up "!" one turn, strike the next
+    const lunge = e.wind && CFG.lunge; e.wind = 0; if (T.slow && e.hp * 2 > e.max) { e.rest = e.rest ? 0 : 1; if (e.rest) continue; }   // the Warden rests every other turn until it is below half HP: then it is enraged and moves every turn
+    for (let i = 0; i < (lunge ? 1 : T.speed); i++) { if (md(S, e) === 1) break; const s = enemyStep(S, e); if (!s) break; e.x = s[0]; e.y = s[1]; moved = true; }
+    if (lunge && md(S, e) === 1) hits.push(e);   // a wound-up enemy LUNGES one tile after you and still strikes: shove it, bomb it, or put a bomb between you
+  }
+  for (const e of S.enemies) if (TYPES[e.type].defuse) for (const [dx, dy] of D4) {
+    const b = bombAt(S, e.x + dx, e.y + dy); if (b && (b.def || 0) < CFG.defuseMax) { b.def = (b.def || 0) + 1; b.fuse = Math.min(CFG.fuseCap, b.fuse + TYPES[e.type].defuse); fx(S, 'defuse', b); break; }
+  }
+  if (moved) { fx(S, 'emove'); yield STEP; }
+  for (const e of hits) {
+    if (!S.noHurt) S.hp -= TYPES[e.type].dmg || 1; S.cause = { x: e.x, y: e.y, why: 'enemy', type: e.type }; fx(S, 'attack', e); yield STEP;
+    if (S.hp <= 0) { S.phase = 'dying'; return; }
+  }
+  spawnMarks(S);                                                                                           // (3) spawns + wave clock
+  const W = waveDef(S);
+  if (!S.tut && S.wt < W.len) { S.spawnAcc += CFG.rate / W.every; while (S.spawnAcc >= 1) { S.spawnAcc--; addMark(S); } }
+  yield STEP * 0.5;
+  S.turn++; S.wt++; if (S.shoveCd > 0) S.shoveCd--; S.die = S.next; S.next = draw(S);
+  waveCheck(S); nextPhase(S);
+}
+function waveCheck(S) {
+  if (S.tut) {
+    const d = S.enemies.find(e => e.type === 'dummy');
+    if (!d || S.turn > 16) { S.enemies = S.enemies.filter(e => e.type !== 'dummy'); S.tut = 0; fx(S, 'tutdone'); startWave(S); }
+    else S.tut = S.bombs.some(b => blastCells(S, b.x, b.y, b.pips).some(c => c[0] === d.x && c[1] === d.y)) ? 2 : 1;
+    return;
+  }
+  const W = waveDef(S), left = S.enemies.length + S.marks.length;
+  if (W.boss) { const alive = S.enemies.some(e => e.type === 'warden') || S.marks.some(m => m.type === 'warden'); if (!alive) clearWave(S, 'kill'); else if (S.wt > W.len) clearWave(S, 'outlast'); }
+  else if (S.wt > W.len && (!left || S.wt > W.len + CFG.mopUp)) clearWave(S, left ? 'flee' : 'clean');
+}
+function clearWave(S, how) {
+  for (const e of S.enemies) fx(S, 'flee', e); S.enemies = []; S.marks = [];
+  S.hp = Math.min(S.maxHp, S.hp + CFG.healOnClear); S.cleared++; fx(S, 'clear', { how, n: S.wave });
+  if (S.wave === WAVES.length - 1 && !S.endless) { S.won = true; S.winHow = how; }
+  S.wave++; S.picks.push('wave'); startWave(S);
+}
+function* blastGroup(S, root) {
+  const queue = [root], ids = [], dead = []; let depth = 0, sum = 0; root.lit = true;
+  while (queue.length) {
+    const b = queue.shift(), cells = blastCells(S, b.x, b.y, b.pips); S.bombs.splice(S.bombs.indexOf(b), 1); ids.push(b.id);
+    for (const [x, y] of cells) {
+      const e = enemyAt(S, x, y);
+      if (e) {
+        if (b.pips < (TYPES[e.type].minDmg || 0)) fx(S, 'blocked', e); else if (TYPES[e.type].armour && b.pips > TYPES[e.type].armour) fx(S, 'armour', e);
+        else { e.hp -= TYPES[e.type].armour ? Math.min(TYPES[e.type].armour, b.pips) : b.pips; if (e.hp <= 0) { S.enemies.splice(S.enemies.indexOf(e), 1); sum += e.max; dead.push({ id: e.id, type: e.type, max: e.max }); fx(S, 'kill', e); } else fx(S, 'hit', e); }
+      }
+      if (S.px === x && S.py === y && !selfSafe(S, b.pips) && !S.noHurt) {
+        if (S.tut) fx(S, 'tutouch'); else if (S.vest) { S.vest = false; fx(S, 'vest'); } else { S.hp--; S.cause = { x: b.x, y: b.y, why: 'bomb', pips: b.pips }; fx(S, 'hurt'); }
+      }
+      const o = bombAt(S, x, y); if (o && !o.lit) { o.lit = true; queue.push(o); }
+    }
+    fx(S, 'boom', { x: b.x, y: b.y, pips: b.pips, cells, depth }); depth++;
+    yield STEP; if (S.hp <= 0) break;
+  }
+  S.blasts++; S.kills += dead.length; S.maxChain = Math.max(S.maxChain, depth);
+  const pts = Math.round(sum * sum * (S.items.greed ? 1.5 : 1)); if (S.log) S.log.push({ ids, dead, pts });
+  if (sum) { S.score += pts; S.bestBlast = Math.max(S.bestBlast, pts); fx(S, 'score', { x: root.x, y: root.y, sum, pts, depth }); yield STEP; }
+}
+function bfsStep(S, e, blockE) {
+  const prev = new Int8Array(N * N).fill(-1), st = e.y * N + e.x, goal = S.py * N + S.px, q = [st]; prev[st] = st;
+  for (let h = 0; h < q.length; h++) {
+    const c = q[h], cx = c % N, cy = c / N | 0;
+    for (const [dx, dy] of D4) {
+      const x = cx + dx, y = cy + dy, i = y * N + x; if (!inB(x, y) || prev[i] >= 0) continue;
+      if (i !== goal && (bombAt(S, x, y) || (blockE && enemyAt(S, x, y)))) continue;
+      prev[i] = c; if (i === goal) { let k = i; while (prev[k] !== st) k = prev[k]; return k === goal ? null : [k % N, k / N | 0]; }
+      q.push(i);
+    }
+  }
+  return null;
+}
+function enemyStep(S, e) {
+  let s = bfsStep(S, e, true);
+  if (!s) { s = bfsStep(S, e, false); if (s && !free(S, s[0], s[1])) s = null; }
+  if (!s) { let bd = md(S, e); for (const [dx, dy] of D4) { const d = Math.abs(e.x + dx - S.px) + Math.abs(e.y + dy - S.py); if (d < bd && free(S, e.x + dx, e.y + dy)) { bd = d; s = [e.x + dx, e.y + dy]; } } }
+  return s;
+}
+function simulate(S0, a) { const R = JSON.parse(JSON.stringify(S0)); R.sim = true; R.log = []; if (applyAction(R, a)) { R.phase = 'anim'; for (const _ of endTurn(R)); } return R; }
+function catchSim(S0, a) { // "what will this bomb catch?" - plays forward assuming you hold position and enemies keep chasing you
+  const R = JSON.parse(JSON.stringify(S0)); R.sim = true; R.log = []; R.noHurt = true; applyAction(R, a); const id = R.bombs[R.bombs.length - 1].id; let turns = 0;
+  for (; turns < 12; turns++) { for (const _ of endTurn(R)); if (R.log.some(l => l.ids.includes(id))) break; }
+  const g = R.log.find(l => l.ids.includes(id)); return { turns: turns + 1, dead: g ? g.dead : [], pts: g ? g.pts : 0, chain: g ? g.ids.length : 1 };
+}
+
+// ====================== RUNTIME: state, view, audio, fx ======================
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let S, V, L = {}, runner = null, AC = null, MG = null, muted = false, mode = 'normal';
+const TIPSEEN = {}, MOTES = []; for (let i = 0; i < 46; i++) MOTES.push({ x: Math.random(), y: Math.random(), s: .5 + Math.random() * 1.5, v: .004 + Math.random() * .01 });
+const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} } };
+muted = ls.get('proto_mute') === '1';
+const medalFor = sc => sc >= CFG.gold ? 'gold' : sc >= CFG.silver ? 'silver' : sc >= CFG.bronze ? 'bronze' : '';
+const MRANK = { '': 0, bronze: 1, silver: 2, gold: 3 };
+function setMode(m) { mode = m; Object.assign(CFG, MODES[m], { mode: m }); }
+function startRun(opts) {
+  opts = opts || {}; const tut = opts.tut !== undefined ? opts.tut : (mode === 'normal' && ls.get('proto_' + GAMEID + '_tut') !== '1');
+  V = { screen: 'play', help: false, fade: 0, pos: {}, bpos: {}, pp: { x: 3, y: 4 }, parts: [], flashes: [], pops: [], deaths: [], shake: 0, hitstop: 0, wait: 0, shown: 0, scorePop: 0, pulse: 0, hurt: 0, hpShake: 0, sel: 0,
+    hover: null, mx: -1, my: -1, down: false, deathT: 0, hud: [], btns: [], cards: [], rev: 0, fc: null, fcKey: '', dz: null, dzKey: '', t: V ? V.t : 0, fast: false, best: +ls.get('proto_' + GAMEID + '_best') || 0, newBest: false,
+    tip: null, tipQ: [], banner: null, resT: 0, done: false, wonShown: false, overT: 0 };
+  S = newState(tut); runner = null;
+  if (tut) tip('tut', 'TRAINING: put your die next to the dummy - left-click a cell beside you (cyan corners).', 99);
+}
+function toStart() { startRun({ tut: false }); V.screen = 'start'; V.fade = 0; }
+function tip(id, text, secs) { if (id && TIPSEEN[id] && id !== 'tut') return; if (id) TIPSEEN[id] = 1; const t = { id, text, t: 0, life: secs || 6 }; if (id === 'tut') { V.tip = t; return; } if (V.tip && V.tip.id !== 'tut') V.tipQ.push(t); else V.tip = t; }
+function act(a) {
+  if (V.screen !== 'play' || V.help) return false;
+  if (S.phase === 'anim') { V.fast = true; return false; }   // any input during resolution = skip the animation (never buffers a move you haven't seen the result of)
+  if (!isLegal(S, a)) { if (S.phase === 'player') { tone(140, .08, 'triangle', .05); whyNot(a); } return false; }
+  if (V.tip && V.tip.id !== 'tut' && a.t !== 'pick') V.tip.life = Math.min(V.tip.life, V.tip.t + 1.5);
+  V.rev++; if (applyAction(S, a)) { S.phase = 'anim'; runner = endTurn(S); V.wait = 0.07; V.fast = false; }
+  return true;
+}
+function whyNot(a) {
+  if (a.t === 'place') { const x = a.x, y = a.y;
+    if (!S.die && !a.src) tip(null, 'No die in hand - you stashed it. Move, wait, or place your stashed die (Q switches).', 4);
+    else if (free(S, x, y) && Math.max(Math.abs(x - S.px), Math.abs(y - S.py)) === 1 && enclosed(S, x, y)) tip(null, 'Too cramped: that bomb would wall you in. Leave yourself a way out.', 4);
+    else tip(null, 'Bombs go on an EMPTY cell right next to you (the 8 cells with cyan corners).', 4); }
+  else if (a.t === 'shove') tip(null, !canShove(S) ? 'No shoving on HARD - enemies block you.' : S.shoveCd ? 'Shove is recharging (' + S.shoveCd + ' more turn' + (S.shoveCd > 1 ? 's' : '') + ').' : 'The Warden is too heavy to shove.', 4);
+  else if (a.t === 'stash') tip(null, S.die ? 'Stash is full - place a stashed die first (Q switches die).' : 'Nothing to stash.', 4);
+}
+function audio() { const A = window.AudioContext || window.webkitAudioContext; if (AC || typeof A !== 'function') return; try { AC = new A(); MG = AC.createGain(); MG.gain.value = muted ? 0 : .55; MG.connect(AC.destination); } catch (e) { AC = null; } }
+function setMute(m) { muted = m; ls.set('proto_mute', m ? '1' : '0'); if (MG) MG.gain.value = m ? 0 : .55; }
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24], note = (i, base = 330) => base * 2 ** (PENTA[Math.max(0, Math.min(i, PENTA.length - 1))] / 12);
+function tone(f, d, type = 'sine', v = .08, f2 = 0, delay = 0) {
+  if (!AC) return; const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .012); g.gain.exponentialRampToValueAtTime(.001, t + d);
+  o.connect(g); g.connect(MG); o.start(t); o.stop(t + d + .03);
+}
+function noise(d, v = .2, freq = 900) {
+  if (!AC) return; const n = AC.sampleRate * d | 0, buf = AC.createBuffer(1, n, AC.sampleRate), a = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
+  const s = AC.createBufferSource(), g = AC.createGain(), f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq; s.buffer = buf; g.gain.value = v; s.connect(f); f.connect(g); g.connect(MG); s.start();
+}
+function burst(x, y, n, speed, cols) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, sp = (1 + Math.random() * 4) * speed; V.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: .2 + Math.random() * .3, s: .04 + Math.random() * .07, col: cols[i % cols.length] }); } }
+const pop = (x, y, text, size, col, life = 1) => V.pops.push({ x, y, text, size, col, t: 0, life });
+function fx(S, k, o) {
+  if (S.sim || !V) return;
+  switch (k) {
+    case 'tick': if (S.bombs.length) { V.pulse = 1; tone(1100, .04, 'triangle', .03); } break;
+    case 'boom': { const p = o.pips, d = o.depth; V.shake = Math.min(6, Math.max(V.shake, 2 + p * .7)); V.hitstop = Math.min(.08, .04 + .008 * p); V.flashes.push({ x: o.x, y: o.y, cells: o.cells, t: 0, p });
+      burst(o.x + .5, o.y + .5, 8 + p * 2, .6, ['#ffffff', '#ffe9c4', '#c9d1e0']); noise(.25 + p * .03, .16 + p * .02, 500 + p * 120); tone(110, .3, 'sine', .22, 40); tone(note(d + 2, 220), .18, 'triangle', .07); break; }
+    case 'kill': V.deaths.push({ x: o.x, y: o.y, type: o.type, t: 0 }); burst(o.x + .5, o.y + .5, 6, .5, [C.gold, '#fff']); pop(o.x + .5, o.y + .25, '+' + o.max + ' HP', 16, C.gold, .8); break;
+    case 'hit': (V.pos[o.id] || {}).hit = 1; break;
+    case 'armour': pop(o.x + .5, o.y + .15, 'ARMOUR: max 5', 14, '#cfd8ff', 1.1); break;
+    case 'blocked': pop(o.x + .5, o.y + .15, 'SHIELD: needs 3+', 14, '#cfd8ff', 1.1); tone(700, .08, 'triangle', .05); tip('blocked', 'Shielded enemies ignore 1- and 2-pip bombs. Hit them with 3 or more.'); break;
+    case 'score': { pop(o.x + .5, o.y - .25, o.sum + ' HP squared = +' + o.pts, 18 + Math.min(14, o.sum * 1.5), C.gold, 1.8); if (o.depth > 1) pop(o.x + .5, o.y + .5, 'CHAIN x' + o.depth, 15, '#fff', 1.4); V.scorePop = 1;
+      const n = Math.min(5, 1 + (o.sum >> 1)); for (let i = 0; i < n; i++) tone(note(i + 2, 392), .16, 'sine', .07, 0, i * .07); break; }
+    case 'hurt': V.hurt = 1; V.hpShake = 1; V.shake = Math.min(6, Math.max(V.shake, 5)); tone(180, .28, 'triangle', .12, 70); if (S.cause && S.cause.why === 'bomb') tip('ownblast', 'Ouch - your own blast. Cells marked 1 explode when you end your turn: step out first.'); break;
+    case 'attack': { const p = V.pos[o.id]; if (p) { p.x += (S.px - o.x) * .5; p.y += (S.py - o.y) * .5; } fx(S, 'hurt'); break; }
+    case 'wind': tone(520, .07, 'triangle', .05); tip('wind', CFG.windup ? '"!" = that enemy strikes when you end your turn. Step away, or shove it by moving into it.' : ''); break;
+    case 'lure': tip('lure', '"?" = distracted. Enemies within 2 tiles of a 4+ pip bomb that is about to blow wander toward it.'); break;
+    case 'spawn': tone(220, .1, 'sine', .04, 330); break;
+    case 'newtype': if (o.type !== 'walker' || S.turn > 1) tip('new_' + o.type, 'NEW: ' + TYPES[o.type].name + ' (' + TYPES[o.type].tag + ') - ' + TYPES[o.type].desc + '.', 7); break;
+    case 'defuse': pop(o.x + .5, o.y + .1, '+2 FUSE', 14, '#fff', .9); tone(300, .12, 'triangle', .05, 200); break;
+    case 'place': tone(196, .1, 'sine', .12); tone(392, .06, 'triangle', .05); break;
+    case 'move': tone(440, .04, 'sine', .035); break;
+    case 'emove': tone(147, .05, 'sine', .04); break;
+    case 'shove': tone(160, .14, 'triangle', .1, 320); noise(.08, .1, 1500); pop(o.x + .5, o.y + .1, 'DAZED', 14, C.green, .9); break;
+    case 'kick': tone(180, .12, 'triangle', .08, 500); break;
+    case 'det': tone(880, .08, 'triangle', .07); break;
+    case 'vest': pop(S.px + .5, S.py - .2, 'VEST SAVED YOU', 14, C.green, 1.2); tone(600, .1, 'triangle', .06); break;
+    case 'tutouch': tip(null, 'In a real fight that blast would have cost you 1 HP - step out of red cells before they hit 1.', 5); break;
+    case 'stash': tone(523, .06, 'sine', .06); tone(784, .08, 'sine', .05, 0, .05); break;
+    case 'reroll': V.hpShake = .6; tone(300, .1, 'triangle', .06, 600); break;
+    case 'offer': V.fade = 0; tone(note(3), .12, 'sine', .06); tone(note(5), .2, 'sine', .06, 0, .1); break;
+    case 'pick': tone(note(6), .18, 'sine', .08); break;
+    case 'flee': V.deaths.push({ x: o.x, y: o.y, type: o.type, t: 0, flee: true }); break;
+    case 'tutdone': ls.set('proto_' + GAMEID + '_tut', '1'); V.tip = null; tip(null, 'That is the whole game: fuse = damage = pips, score = (HP killed) squared. Here they come!', 6); break;
+    case 'clear': V.banner = { text: o.how === 'kill' ? 'WARDEN DESTROYED' : o.how === 'outlast' ? 'YOU OUTLASTED THE WARDEN' : 'WAVE ' + (o.n + 1) + ' CLEAR', sub: CFG.healOnClear ? '+1 HP' : '', t: 0 }; for (let i = 0; i < 5; i++) tone(note(i + 3, 330), .22, 'sine', .07, 0, i * .08); break;
+    case 'wave': if (o.boss) tip('warden', 'FINALE: the Warden (X) has 12 HP and armour (max 5 damage per blast): it takes at least 3 blasts. Below half HP it moves every turn.', 9); break;
+  }
+}
+function trackPos(map, list, k) {
+  const np = {}; for (const e of list) { const p = map[e.id] || { x: e.x, y: e.y, s: 0, hit: 0, v: 0 }; const dx = (e.x - p.x) * k, dy = (e.y - p.y) * k; p.x += dx; p.y += dy; p.v += (Math.min(1, Math.hypot(dx, dy) * 6) - p.v) * .4; p.s += (1 - p.s) * k; p.hit *= .85; np[e.id] = p; } return np;
+}
+function finishRun() {
+  if (S.score > V.best) { V.best = S.score; V.newBest = true; ls.set('proto_' + GAMEID + '_best', S.score); }
+  const m = medalFor(S.score), old = ls.get('proto_' + GAMEID + '_medal') || ''; if (MRANK[m] > (MRANK[old] || 0)) ls.set('proto_' + GAMEID + '_medal', m);
+}
+function update(dt) {
+  V.t += dt; V.fade = Math.min(1, V.fade + dt / .25); for (const m of MOTES) { m.y -= m.v * dt; if (m.y < 0) { m.y = 1; m.x = Math.random(); } }
+  if (V.screen !== 'play' || V.help) return;
+  V.shake *= Math.pow(.002, dt); if (V.shake < .3) V.shake = 0;
+  if (V.tip) { V.tip.t += dt; if (V.tip.t > V.tip.life) V.tip = V.tipQ.shift() || null; }
+  if (V.banner) { V.banner.t += dt; if (V.banner.t > 1.8) V.banner = null; }
+  if (S.phase === 'over' || S.phase === 'won') V.resT += dt;
+  if (S.phase === 'dying') { V.deathT += dt; if (V.deathT >= .5) { S.phase = 'over'; V.fade = 0; V.resT = 0; finishRun(); tone(220, .5, 'sine', .08, 110); tone(165, .8, 'sine', .07, 82, .25); } return; }   // freeze frame, gentle sting
+  if (V.hitstop > 0) { V.hitstop -= dt; return; }
+  const k = Math.min(1, dt * 16);
+  V.pp.x += (S.px - V.pp.x) * k; V.pp.y += (S.py - V.pp.y) * k; V.pos = trackPos(V.pos, S.enemies, k); V.bpos = trackPos(V.bpos, S.bombs, k);
+  for (const p of V.parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .9; p.vy *= .9; } V.parts = V.parts.filter(p => p.t < p.life);
+  for (const f of V.flashes) f.t += dt; V.flashes = V.flashes.filter(f => f.t < .4);
+  for (const d of V.deaths) d.t += dt; V.deaths = V.deaths.filter(d => d.t < .35);
+  for (const p of V.pops) p.t += dt; V.pops = V.pops.filter(p => p.t < p.life);
+  V.shown += (S.score - V.shown) * Math.min(1, dt * 5); if (S.score - V.shown < .6) V.shown = S.score;
+  V.scorePop *= Math.pow(.01, dt); V.pulse *= Math.pow(.003, dt); V.hurt *= Math.pow(.01, dt); V.hpShake *= Math.pow(.01, dt);
+  if (runner) {
+    V.wait -= dt;
+    if (V.wait <= 0) { const r = runner.next(); V.rev++; if (r.done) { runner = null; V.sel = 0; V.fast = false; phaseEntered(); } else V.wait = V.fast ? Math.min(.02, r.value) : r.value; }
+  }
+}
+function phaseEntered() {
+  if (S.phase === 'won' && !V.wonShown) { V.wonShown = true; V.fade = 0; V.resT = 0; finishRun(); ls.set('proto_' + GAMEID + '_wins', (+ls.get('proto_' + GAMEID + '_wins') || 0) + 1); for (let i = 0; i < 8; i++) tone(note(i + 1, 330), .3, 'sine', .07, 0, i * .09); }
+  if (S.tut === 2) tip('tut', 'Good! The big number is its fuse. Now step OUT of the red cells (WASD / right-click) - your blasts hurt you too.', 99);
+  else if (S.tut === 1) tip('tut', 'TRAINING: put your die next to the dummy - left-click a cell beside you (cyan corners).', 99);
+  if (!S.tut && S.wave === 0 && S.wt === 4) tip('stash', 'Wrong die for the moment? E stashes it for later (Q or click picks which die to place).');
+  if (!S.tut && S.wave === 0 && S.wt === 7 && CFG.shove) tip('shove', 'Cornered? Move INTO an enemy to SHOVE it back a tile and daze it (recharges in 3 turns).');
+}
+function forecast() { // one-turn lookahead of the hovered placement (or WAIT), plus the "will catch" run-forward for placements
+  if (S.phase !== 'player') return null;
+  if (V.sel > S.stash.length) V.sel = 0; if (!S.die && S.stash.length && V.sel === 0) V.sel = 1;
+  let a = { t: 'wait' }; if (V.hover) { const p = { t: 'place', x: V.hover[0], y: V.hover[1], src: V.sel }; if (isLegal(S, p)) a = p; else { const dx = V.hover[0] - S.px, dy = V.hover[1] - S.py, sh = { t: 'shove', dx, dy }; if (Math.abs(dx) + Math.abs(dy) === 1 && isLegal(S, sh)) a = sh; } }
+  const key = V.rev + '|' + V.sel + '|' + JSON.stringify(a);
+  if (V.fcKey !== key) { V.fcKey = key; V.fc = { a, R: simulate(S, a), c: a.t === 'place' ? catchSim(S, a) : null }; }
+  return V.fc;
+}
+function dangerCells() { // cells (yours + the 4 you can step to) where ending the turn costs HP
+  if (S.phase !== 'player') return []; const key = '' + V.rev; if (V.dzKey === key) return V.dz; V.dzKey = key; V.dz = [];
+  for (const a of legalActions(S)) if (a.t === 'wait' || a.t === 'move') { const R = simulate(S, a); if (R.hp < S.hp) V.dz.push([S.px + (a.dx || 0), S.py + (a.dy || 0), S.hp - R.hp]); }
+  return V.dz;
+}
+
+// ====================== RENDER ======================
+const FONT = '"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+function layout() {
+  const W = cv.width = window.innerWidth, H = cv.height = window.innerHeight, top = 72, bot = 164;
+  const cs = Math.max(24, Math.floor(Math.min(W - 32, H - top - bot) / N)), hw = Math.min(W - 24, Math.max(cs * N, 700));
+  L = { W, H, cs, gx: Math.round((W - cs * N) / 2), gy: Math.round(top + Math.max(0, (H - top - bot - cs * N) / 2)), hx: Math.round((W - hw) / 2), hw };
+}
+const X = x => L.gx + x * L.cs, Y = y => L.gy + y * L.cs, ease = t => 1 - (1 - t) ** 3;
+function txt(s, x, y, size, col, align = 'center', w = 700) { ctx.font = w + ' ' + size + 'px ' + FONT; ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y); }
+function tw(s, size, w = 700) { ctx.font = w + ' ' + size + 'px ' + FONT; return ctx.measureText(s).width; }
+function wrap(s, x, y, maxW, size, col, lh, w = 500, align = 'left') { let line = ''; for (const wd of s.split(' ')) { if (line && tw(line + wd, size, w) > maxW) { txt(line.trim(), x, y, size, col, align, w); line = ''; y += lh; } line += wd + ' '; } txt(line.trim(), x, y, size, col, align, w); return y + lh; }
+function rr(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
+function glow(col, b) { ctx.shadowColor = col; ctx.shadowBlur = b; } const noGlow = () => { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; };
+function panel(x, y, w, h, hot, r = 12) { ctx.fillStyle = C.panel; rr(x, y, w, h, r); ctx.fill(); ctx.strokeStyle = hot ? C.cyan : C.line; ctx.lineWidth = hot ? 2 : 1; ctx.stroke(); }
+function button(id, label, x, y, w, h, o = {}) {
+  const hot = V.mx >= x && V.mx <= x + w && V.my >= y && V.my <= y + h, dn = hot && V.down, oy = dn ? 2 : hot ? -1 : 0;
+  if (o.primary) { glow(C.cyan, hot ? 18 : 10); ctx.fillStyle = hot ? '#a8f9ff' : C.cyan; rr(x, y + oy, w, h, 12); ctx.fill(); noGlow(); txt(label, x + w / 2, y + h / 2 + oy + 1, o.size || 20, '#07222a', 'center', 800); }
+  else { ctx.fillStyle = o.on ? '#1d3a44' : C.panel; rr(x, y + oy, w, h, 10); ctx.fill(); ctx.strokeStyle = hot || o.on ? C.cyan : C.line; ctx.lineWidth = o.on ? 2 : 1; ctx.stroke(); txt(label, x + w / 2, y + h / 2 + oy + 1, o.size || 15, o.on || hot ? '#fff' : C.dim, 'center', 700); }
+  V.btns.push({ id, x, y, w, h });
+}
+function drawDie(x, y, s, p, body, pip, border, lw = 2) {
+  ctx.fillStyle = body; rr(x, y, s, s, s * .2); ctx.fill(); if (border) { ctx.strokeStyle = border; ctx.lineWidth = lw; ctx.stroke(); }
+  ctx.fillStyle = pip; for (const [u, v] of PIPS[p] || []) { ctx.beginPath(); ctx.arc(x + u * s, y + v * s, s * .09, 0, 7); ctx.fill(); }
+}
+function drawBomb(cx, cy, s, pips, t, safe, pulse) { // a die that is also a bomb: pips = damage, badge = turns until it blows
+  const hot = t <= 1, k = s * (hot ? 1 + .06 * pulse : 1), edge = safe ? C.cyan : C.red;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, cy + k * .56, k * .46, k * .13, 0, 0, 7); ctx.fill();
+  if (hot) glow(edge, 14); drawDie(cx - k / 2, cy - k / 2, k, pips, safe ? '#10222a' : '#2a1118', safe ? '#d9fbff' : '#ffd9de', edge, hot ? 3 : 2); noGlow();
+  const r = s * .3, bx = cx + k * .46, by = cy - k * .46; ctx.fillStyle = hot ? '#fff' : edge; ctx.beginPath(); ctx.arc(bx, by, r, 0, 7); ctx.fill(); ctx.strokeStyle = '#0b0d12'; ctx.lineWidth = 2; ctx.stroke();
+  txt(t, bx, by + 1, Math.max(14, r * 1.45), hot ? '#c2162e' : '#0b0d12', 'center', 800);
+}
+function drawPlayer(cx, cy, s, hurt) {
+  const b = 1 + .035 * Math.sin(V.t * 2.6), w = s * .56 * (2 - b), h = s * .62 * b;
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(cx, cy + s * .36, s * .3, s * .09, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#dfe6f2'; rr(cx - w * .42, cy + h * .36, w * .3, s * .12, s * .05); ctx.fill(); rr(cx + w * .12, cy + h * .36, w * .3, s * .12, s * .05); ctx.fill();   // feet
+  glow(C.cyan, 12); ctx.fillStyle = hurt > .3 ? '#ffc2ca' : '#fff'; rr(cx - w / 2, cy - h / 2, w, h, s * .22); ctx.fill(); noGlow();
+  ctx.fillStyle = '#0e2a33'; rr(cx - w * .38, cy - h * .28, w * .76, h * .34, s * .1); ctx.fill();                                  // visor
+  ctx.fillStyle = C.cyan; const bl = (V.t % 3.2) < .12 ? .2 : 1; ctx.beginPath(); ctx.ellipse(cx - w * .17, cy - h * .11, s * .05, s * .06 * bl, 0, 0, 7); ctx.ellipse(cx + w * .17, cy - h * .11, s * .05, s * .06 * bl, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = C.cyan; ctx.lineWidth = Math.max(2, s * .05); ctx.beginPath(); ctx.moveTo(cx, cy - h / 2); ctx.quadraticCurveTo(cx + s * .12, cy - h / 2 - s * .14, cx + s * .2, cy - h / 2 - s * .08); ctx.stroke();   // fuse antenna
+  glow(C.cyan, 8); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx + s * .2, cy - h / 2 - s * .08, s * .045 * (1 + .4 * Math.sin(V.t * 9)), 0, 7); ctx.fill(); noGlow();
+}
+function enemyPath(type, cx, cy, r) {
+  ctx.beginPath();
+  if (type === 'runner') { ctx.moveTo(cx, cy - r * 1.12); ctx.lineTo(cx + r * 1.12, cy); ctx.lineTo(cx, cy + r * 1.12); ctx.lineTo(cx - r * 1.12, cy); ctx.closePath(); }
+  else if (type === 'defuser' || type === 'dummy') ctx.arc(cx, cy, r, 0, 7);
+  else if (type === 'warden') { for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4; ctx.lineTo(cx + Math.cos(a) * r * 1.12, cy + Math.sin(a) * r * 1.12); } ctx.closePath(); }
+  else if (ctx.roundRect) ctx.roundRect(cx - r, cy - r, r * 2, r * 2, r * .38); else ctx.rect(cx - r, cy - r, r * 2, r * 2);
+}
+function drawEnemy(cx, cy, s, e, look, v = 0, hit = 0) { // rounded token: shape = type, letter badge, eyes that watch you, HP pips
+  const T = TYPES[e.type], big = e.type === 'warden', r = s * (big ? .45 : .36), sx = 1 + .18 * v, sy = 1 / sx;
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(cx, cy + r * 1.05, r * .95, r * .26, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(sx, sy);
+  if (big) { ctx.fillStyle = T.col; for (const k of [-.6, 0, .6]) { ctx.beginPath(); ctx.moveTo(k * r - r * .22, -r * .95); ctx.lineTo(k * r, -r * 1.5); ctx.lineTo(k * r + r * .22, -r * .95); ctx.fill(); } }
+  if (e.wind) glow(C.red, 14); enemyPath(e.type, 0, 0, r); ctx.fillStyle = T.col; ctx.fill(); noGlow();
+  ctx.lineWidth = T.minDmg ? Math.max(3, s * .08) : 2; ctx.strokeStyle = T.minDmg ? '#cfd8ff' : 'rgba(0,0,0,.35)'; ctx.stroke();
+  if (hit > .05) { ctx.fillStyle = `rgba(255,255,255,${hit})`; ctx.fill(); }
+  if (e.type === 'dummy') { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r * .6, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, r * .22, 0, 7); ctx.stroke(); }
+  else { const n = Math.hypot(look[0], look[1]) || 1, lx = look[0] / n * r * .1, ly = look[1] / n * r * .1, ey = -r * .18;
+    for (const k of [-1, 1]) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(k * r * .34, ey, r * .2, 0, 7); ctx.fill(); ctx.fillStyle = '#1a0a10'; ctx.beginPath(); ctx.arc(k * r * .34 + lx, ey + ly, r * .1, 0, 7); ctx.fill(); }
+    if (e.wind) { ctx.strokeStyle = '#1a0a10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-r * .6, ey - r * .34); ctx.lineTo(-r * .16, ey - r * .2); ctx.moveTo(r * .6, ey - r * .34); ctx.lineTo(r * .16, ey - r * .2); ctx.stroke(); } }
+  const per = big ? 6 : e.max, rows = Math.ceil(e.max / per), pr = Math.max(1.8, r * .085), gap = pr * 2.7;   // HP pips: white = HP left, dark = lost
+  for (let i = 0; i < e.max; i++) { const row = i / per | 0, col = i % per, inRow = Math.min(per, e.max - row * per); ctx.fillStyle = i < e.hp ? '#fff' : 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.arc((col - (inRow - 1) / 2) * gap, r * .48 + (row - (rows - 1)) * gap * .95 + (rows > 1 ? gap * .5 : 0), pr, 0, 7); ctx.fill(); }
+  ctx.restore();
+  const br = Math.max(8, s * .17), bx = cx - r * .95, by = cy - r * .95; ctx.fillStyle = '#0b0d12'; ctx.beginPath(); ctx.arc(bx, by, br, 0, 7); ctx.fill(); ctx.strokeStyle = T.col; ctx.lineWidth = 1.5; ctx.stroke(); txt(T.tag, bx, by + 1, Math.max(11, br * 1.25), '#fff', 'center', 800);
+  const st = e.wind ? ['!', C.red, '#fff'] : e.lured ? ['?', C.green, '#0b0d12'] : e.dazed ? ['*', C.green, '#0b0d12'] : null;
+  if (st) { const qx = cx + r * .95, qy = cy - r * .95, qr = Math.max(9, s * .2) * (e.wind ? 1 + .12 * Math.sin(V.t * 10) : 1); glow(st[1], 10); ctx.fillStyle = st[1]; ctx.beginPath(); ctx.arc(qx, qy, qr, 0, 7); ctx.fill(); noGlow(); txt(st[0], qx, qy + 1, Math.max(14, qr * 1.5), st[2], 'center', 800); }
+}
+function arrow(x0, y0, x1, y1, col, lw) {
+  const a = Math.atan2(y1 - y0, x1 - x0), h = lw * 3.2; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * h * .6, y1 - Math.sin(a) * h * .6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - Math.cos(a - .5) * h, y1 - Math.sin(a - .5) * h); ctx.lineTo(x1 - Math.cos(a + .5) * h, y1 - Math.sin(a + .5) * h); ctx.closePath(); ctx.fill();
+}
+function drawBackdrop() {
+  const { W, H } = L; ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(W / 2, H * .45, 0, W / 2, H * .45, Math.max(W, H) * .7); g.addColorStop(0, '#121726'); g.addColorStop(1, '#0b0d12'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(170,179,197,.07)'; for (let y = 14; y < H; y += 28) for (let x = 14; x < W; x += 28) ctx.fillRect(x, y, 1.5, 1.5);
+  ctx.fillStyle = 'rgba(170,179,197,.16)'; for (const m of MOTES) ctx.fillRect(m.x * W, m.y * H, m.s, m.s);
+}
+function render() {
+  V.btns = []; V.hud = []; V.cards = []; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; noGlow(); drawBackdrop();
+  if (V.screen === 'start') { drawInfo(false); return; }
+  drawBoard(); ctx.setTransform(1, 0, 0, 1, 0, 0); drawHud();
+  if (S.phase === 'pick') drawPick(); if (S.phase === 'over' || S.phase === 'won') drawResult();
+  if (V.help) drawInfo(true);
+}
+function drawBoard() {
+  const { cs, gx, gy } = L, pulse = .5 + .5 * Math.sin(V.t * 7), gw = cs * N, playing = S.phase === 'player' && !V.help;
+  ctx.translate((Math.random() - .5) * V.shake, (Math.random() - .5) * V.shake);
+  glow('rgba(124,245,255,.18)', 24); ctx.fillStyle = '#0e111a'; rr(gx - 8, gy - 8, gw + 16, gw + 16, 14); ctx.fill(); noGlow(); ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.stroke();
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { ctx.fillStyle = (x + y) % 2 ? '#141822' : '#171c28'; rr(X(x) + 1, Y(y) + 1, cs - 2, cs - 2, 5); ctx.fill(); }
+  // ALWAYS-ON FORECAST 1: every bomb tints its blast area; the corner number = turns until that cell blows
+  const fc = playing ? forecast() : null, bm = new Map();
+  for (const b of S.bombs) { const t = turnsLeft(S, b), safe = selfSafe(S, b.pips); for (const [x, y] of blastCells(S, b.x, b.y, b.pips)) { const i = y * N + x, o = bm.get(i); if (!o || o.t > t || (o.t === t && o.safe && !safe)) bm.set(i, { t, safe }); } }
+  for (const [i, o] of bm) {
+    const x = i % N, y = i / N | 0, a = o.t <= 1 ? .3 + .14 * pulse : o.t === 2 ? .2 : Math.max(.07, .16 - o.t * .02);
+    ctx.fillStyle = o.safe ? `rgba(124,245,255,${a * .6})` : `rgba(255,93,115,${a})`; rr(X(x) + 1, Y(y) + 1, cs - 2, cs - 2, 5); ctx.fill();
+    if (o.t <= 1) { ctx.strokeStyle = o.safe ? 'rgba(124,245,255,.7)' : `rgba(255,93,115,${.6 + .4 * pulse})`; ctx.lineWidth = 2; ctx.stroke(); }
+    txt(o.t, X(x) + cs * .17, Y(y) + cs * .2, Math.max(13, cs * .22), o.safe ? '#c9fbff' : o.t <= 1 ? '#fff' : '#ffb3be', 'center', 800);
+  }
+  for (const b of S.bombs) if (playing && willLure(S, b)) { const r = CFG.lureRange + (S.items.magnet ? 1 : 0); ctx.setLineDash([6, 6]); ctx.lineDashOffset = -V.t * 12; ctx.strokeStyle = 'rgba(157,255,138,.6)'; ctx.lineWidth = 2; const x0 = Math.max(0, b.x - r), y0 = Math.max(0, b.y - r), x1 = Math.min(N - 1, b.x + r), y1 = Math.min(N - 1, b.y + r); rr(X(x0) + 3, Y(y0) + 3, (x1 - x0 + 1) * cs - 6, (y1 - y0 + 1) * cs - 6, 8); ctx.stroke(); ctx.setLineDash([]); }
+  if (playing) {
+    // your verb's reach: cyan corner ticks on every cell you may bomb
+    ctx.strokeStyle = 'rgba(124,245,255,.55)'; ctx.lineWidth = 2; const q = cs * .2;
+    if (S.die || S.stash.length) for (const [dx, dy] of D8) { const x = S.px + dx, y = S.py + dy; if (!free(S, x, y) || enclosed(S, x, y)) continue; const l = X(x) + 4, t = Y(y) + 4, r = X(x) + cs - 4, b = Y(y) + cs - 4;
+      ctx.beginPath(); ctx.moveTo(l, t + q); ctx.lineTo(l, t); ctx.lineTo(l + q, t); ctx.moveTo(r - q, t); ctx.lineTo(r, t); ctx.lineTo(r, t + q); ctx.moveTo(r, b - q); ctx.lineTo(r, b); ctx.lineTo(r - q, b); ctx.moveTo(l + q, b); ctx.lineTo(l, b); ctx.lineTo(l, b - q); ctx.stroke(); }
+    // ALWAYS-ON FORECAST 2: red outline = ending your turn on this cell costs HP
+    for (const [x, y, d] of dangerCells()) { glow(C.red, 10); ctx.strokeStyle = C.red; ctx.lineWidth = 3; rr(X(x) + 3, Y(y) + 3, cs - 6, cs - 6, 6); ctx.stroke(); noGlow(); txt('-' + d, X(x) + cs * .8, Y(y) + cs * .82, Math.max(14, cs * .24), '#fff', 'center', 800); }
+    if (fc && fc.a.t === 'place') { // hovered placement: blast outline + ghost die
+      const p = fc.a.src ? S.stash[fc.a.src - 1] : S.die;
+      for (const [x, y] of blastCells(S, fc.a.x, fc.a.y, p)) { ctx.fillStyle = 'rgba(124,245,255,.10)'; rr(X(x) + 2, Y(y) + 2, cs - 4, cs - 4, 5); ctx.fill(); ctx.strokeStyle = 'rgba(124,245,255,.85)'; ctx.lineWidth = 2; ctx.stroke(); }
+      ctx.globalAlpha = .6; drawDie(X(fc.a.x) + cs * .2, Y(fc.a.y) + cs * .2, cs * .6, p, '#f4f7fb', '#0b0d12', C.cyan); ctx.globalAlpha = 1;
+    }
+  }
+  for (const m of S.marks) { // telegraphed spawns
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = C.red; ctx.lineWidth = 2; ctx.globalAlpha = .55 + .35 * pulse; rr(X(m.x) + 6, Y(m.y) + 6, cs - 12, cs - 12, 6); ctx.stroke(); ctx.setLineDash([]);
+    txt(TYPES[m.type].tag + m.hp, X(m.x) + cs / 2, Y(m.y) + cs / 2 + 1, Math.max(14, cs * .3), '#ff9aa8', 'center', 800); ctx.globalAlpha = 1;
+  }
+  for (const b of S.bombs) { const p = V.bpos[b.id] || b, k = p.s === undefined ? 1 : .5 + .5 * p.s; drawBomb(X(p.x) + cs / 2, Y(p.y) + cs / 2, cs * .6 * k, b.pips, turnsLeft(S, b), selfSafe(S, b.pips), pulse); }
+  for (const e of S.enemies) { const p = V.pos[e.id] || { x: e.x, y: e.y, s: 1, hit: 0, v: 0 }, lb = e.lured ? lureBomb(S, e) : null, tx = lb ? lb.x : S.px, ty = lb ? lb.y : S.py; drawEnemy(X(p.x) + cs / 2, Y(p.y) + cs / 2, cs * p.s, e, [tx - e.x, ty - e.y], p.v, p.hit); }
+  if (fc) { // ALWAYS-ON FORECAST 3: ghost arrows = where each enemy goes when you end the turn; gold X = it dies this turn
+    const R = fc.R, dead = new Set(); for (const l of R.log) for (const d of l.dead) dead.add(d.id);
+    for (const e of S.enemies) {
+      const g = R.enemies.find(o => o.id === e.id), cx = X(e.x) + cs / 2, cy = Y(e.y) + cs / 2;
+      if (dead.has(e.id)) { glow(C.gold, 8); ctx.strokeStyle = C.gold; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx - cs * .3, cy - cs * .3); ctx.lineTo(cx + cs * .3, cy + cs * .3); ctx.moveTo(cx + cs * .3, cy - cs * .3); ctx.lineTo(cx - cs * .3, cy + cs * .3); ctx.stroke(); noGlow(); continue; }
+      if (!g || (g.x === e.x && g.y === e.y)) continue;
+      ctx.globalAlpha = .9; const dx = g.x - e.x, dy = g.y - e.y, n = Math.hypot(dx, dy); arrow(cx + dx / n * cs * .34, cy + dy / n * cs * .34, X(g.x) + cs / 2, Y(g.y) + cs / 2, '#ff9aa8', Math.max(3, cs * .06)); ctx.globalAlpha = 1;
+    }
+  }
+  drawPlayer(X(V.pp.x) + cs / 2, Y(V.pp.y) + cs / 2, cs, V.hurt);
+  for (const f of V.flashes) { // explosions: warm-white cell flash + ring (never full-screen)
+    const u = f.t / .4; ctx.fillStyle = `rgba(255,${240 - 60 * u | 0},${210 - 90 * u | 0},${.6 * (1 - u)})`; for (const [x, y] of f.cells) { rr(X(x) + 1, Y(y) + 1, cs - 2, cs - 2, 5); ctx.fill(); }
+    ctx.strokeStyle = `rgba(255,255,255,${1 - u})`; ctx.lineWidth = 3 * (1 - u) + 1; ctx.beginPath(); ctx.arc(X(f.x) + cs / 2, Y(f.y) + cs / 2, cs * (.4 + 1.2 * Math.sqrt(u)), 0, 7); ctx.stroke();
+  }
+  for (const d of V.deaths) { const u = d.t / .35; ctx.globalAlpha = 1 - u; if (d.flee) txt('flees', X(d.x) + cs / 2, Y(d.y) + cs / 2 - u * cs * .4, 14, C.dim); else { enemyPath(d.type, X(d.x) + cs / 2, Y(d.y) + cs / 2, cs * .36 * (1 + u * .7)); ctx.fillStyle = TYPES[d.type].col; ctx.fill(); ctx.strokeStyle = C.gold; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(d.x) + cs / 2, Y(d.y) + cs / 2, cs * (.3 + u * .6), 0, 7); ctx.stroke(); } ctx.globalAlpha = 1; }
+  for (const p of V.parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.col; const s = p.s * cs; ctx.fillRect(X(p.x) - s / 2, Y(p.y) - s / 2, s, s); } ctx.globalAlpha = 1;
+  for (const p of V.pops) { // floating text is kept inside the panel and pushed off the player's cell
+    const u = p.t / p.life, sc = 1 + .4 * Math.max(0, 1 - p.t * 8); let py = Y(p.y) - u * cs * .6; if (Math.abs(X(p.x) - (X(S.px) + cs / 2)) < cs && Math.abs(py - (Y(S.py) + cs / 2)) < cs * .7) py = Y(S.py) - cs * .45;
+    ctx.globalAlpha = Math.min(1, (1 - u) * 3); const size = p.size * sc, hwid = tw(p.text, size, 800) / 2, px = Math.max(gx + hwid, Math.min(gx + gw - hwid, X(p.x))); py = Math.max(gy + 10, py);
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(11,13,18,.9)'; ctx.font = '800 ' + size + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.strokeText(p.text, px, py); txt(p.text, px, py, size, p.col, 'center', 800); } ctx.globalAlpha = 1;
+  if ((S.phase === 'dying' || S.phase === 'over') && S.cause) { glow(C.red, 12); ctx.strokeStyle = C.red; ctx.lineWidth = 4; rr(X(S.cause.x) - 2 - 3 * pulse, Y(S.cause.y) - 2 - 3 * pulse, cs + 4 + 6 * pulse, cs + 4 + 6 * pulse, 8); ctx.stroke(); noGlow(); }
+  if (V.banner) { const b = V.banner, a = Math.min(1, b.t / .25) * Math.min(1, (1.8 - b.t) / .3), yy = gy + gw * .3 - (1 - ease(Math.min(1, b.t / .25))) * 20; ctx.globalAlpha = a; ctx.fillStyle = 'rgba(11,13,18,.88)'; rr(gx + 10, yy - 30, gw - 20, 60, 12); ctx.fill(); ctx.strokeStyle = C.green; ctx.lineWidth = 2; ctx.stroke(); txt(b.text, gx + gw / 2, yy - (b.sub ? 8 : 0), Math.min(24, gw / 16), C.green, 'center', 800); if (b.sub) txt(b.sub, gx + gw / 2, yy + 16, 15, '#fff'); ctx.globalAlpha = 1; }
+}
+function hoverLine() { // the fixed info line under the board: what the hovered thing is / what the hovered action will do
+  for (const h of V.hud) if (h.tip && V.mx >= h.x && V.mx <= h.x + h.w && V.my >= h.y && V.my <= h.y + h.h) return [h.tip, C.text];
+  if (S.phase !== 'player') return S.phase === 'anim' ? ['resolving...  (click or any key to skip)', C.dim] : null;
+  const fc = forecast(), R = fc.R, c = V.hover, loss = S.hp - R.hp;
+  if (c) {
+    const e = enemyAt(S, c[0], c[1]), b = bombAt(S, c[0], c[1]), m = S.marks.find(k => k.x === c[0] && k.y === c[1]);
+    if (e) { const T = TYPES[e.type]; return [T.name + ' - ' + e.hp + '/' + e.max + ' HP - ' + T.desc + (e.wind ? ' - "!" strikes this turn' : e.lured ? ' - distracted by a bomb' : '') + (fc.a.t === 'shove' ? '  |  click = SHOVE it' : ''), e.wind ? '#ffb3be' : C.text]; }
+    if (b) { const t = turnsLeft(S, b); return ['Bomb: ' + b.pips + ' damage, ' + (t <= 1 ? 'explodes when you end this turn' : 'explodes in ' + t + ' turns') + (selfSafe(S, b.pips) ? ' - too small to hurt you' : '') + (willLure(S, b) ? ' - luring enemies within ' + (CFG.lureRange + (S.items.magnet ? 1 : 0)) + ' tiles' : ''), C.text]; }
+    if (m) return [TYPES[m.type].name + ' (' + m.hp + ' HP) arrives here next turn', '#ffb3be'];
+    if (fc.a.t === 'place') { const k = fc.c, p = fc.a.src ? S.stash[fc.a.src - 1] : S.die, names = k.dead.map(d => TYPES[d.type].name + '(' + d.max + ')').join(' + ');
+      const inside = !selfSafe(S, p) && blastCells(S, fc.a.x, fc.a.y, p).some(q => q[0] === S.px && q[1] === S.py);
+      return [p + '-pip bomb, blows in ' + k.turns + ' turns' + (k.chain > 1 ? ' (chain x' + k.chain + ')' : '') + ' - ' + (names ? 'will catch: ' + names + ' -> +' + k.pts + ' pts' : 'catches nothing if they keep chasing you here') + (inside ? '  |  you are in it: step out in time' : '') + (loss > 0 ? '  |  -' + loss + ' HP this turn' : ''), names ? C.gold : C.text]; }
+  }
+  if (loss > 0) return ['Ending your turn here costs ' + loss + ' HP - step off the red-outlined cell' + (canShove(S) && !S.shoveCd ? ' or shove the attacker' : ''), '#ffb3be'];
+  return [S.die ? 'Hover a cell next to you to preview a bomb  |  arrows show where enemies go next' : 'Die stashed - move, wait, or place the stashed die', C.dim];
+}
+function drawHud() {
+  const { cs, hx, hw, gy, W, H } = L, B = gy + cs * N + 8, Wd = waveDef(S), total = WAVES.length;
+  // top-left: goal / progress + score
+  txt(S.tut ? 'TRAINING' : Wd.name + (S.wave < total ? '' : '  (after victory)'), hx, 17, 15, C.cyan, 'left', 800);
+  const bw = 40; for (let i = 0; i < total; i++) { const x = hx + i * (bw + 4), f = S.tut ? 0 : i < S.wave ? 1 : i === S.wave ? Math.min(1, (S.wt - 1) / Wd.len) : 0; ctx.fillStyle = '#222838'; rr(x, 30, bw, 8, 4); ctx.fill(); if (f > 0) { ctx.fillStyle = i < S.wave ? C.green : C.cyan; rr(x, 30, Math.max(4, bw * f), 8, 4); ctx.fill(); } if (i === total - 1) txt('X', x + bw / 2, 34.5, 9, '#0b0d12', 'center', 800); }
+  const left = S.enemies.length + S.marks.length, info = S.tut ? 'blow up the dummy' : Wd.boss && S.wt <= Wd.len ? 'kill the Warden, or survive ' + (Wd.len - S.wt + 1) + ' turns' : S.wt <= Wd.len ? 'turn ' + S.wt + ' / ' + Wd.len + (S.wave < total ? '  -  goal: beat the Warden' : '') : 'mop up: ' + left + ' left, they flee in ' + Math.max(1, Wd.len + CFG.mopUp - S.wt + 1);
+  txt(info, hx + total * (bw + 4) + 6, 34, 14, C.dim, 'left', 500);
+  txt('SCORE', hx, 58, 14, C.dim, 'left', 700); glow(C.gold, V.scorePop > .1 ? 12 : 0); txt(Math.round(V.shown), hx + 58, 57, 24 + 6 * V.scorePop, C.gold, 'left', 800); noGlow();
+  const t0 = S.tier ? tierAt(S.tier - 1) : 0, t1 = tierAt(S.tier), ix = hx + 150; ctx.fillStyle = '#222838'; rr(ix, 54, 70, 8, 4); ctx.fill(); ctx.fillStyle = C.gold; rr(ix, 54, Math.max(4, 70 * Math.min(1, (S.score - t0) / (t1 - t0))), 8, 4); ctx.fill(); txt('item at ' + t1, ix + 78, 58, 14, C.dim, 'left', 500);
+  // top-right: HP + shove / detonator
+  const rx = hx + hw, sh = (Math.random() - .5) * 6 * V.hpShake; for (let i = 0; i < S.maxHp; i++) { const x = rx - 20 - i * 22 + sh, on = S.maxHp - 1 - i < S.hp; if (on) glow(C.green, 6); ctx.fillStyle = on ? (V.hurt > .3 ? '#fff' : C.green) : '#2a3040'; rr(x, 8, 18, 18, 5); ctx.fill(); noGlow(); }
+  txt('HP ' + S.hp + '/' + S.maxHp, rx - S.maxHp * 22 - 8, 18, 15, V.hurt > .3 ? C.red : C.text, 'right', 800);
+  let px = rx; const pill = (label, on, tipText) => { const w = tw(label, 14, 700) + 20; px -= w; ctx.fillStyle = on ? '#16301c' : C.panel; rr(px, 44, w, 24, 12); ctx.fill(); ctx.strokeStyle = on ? C.green : C.line; ctx.lineWidth = 1; ctx.stroke(); txt(label, px + w / 2, 57, 14, on ? C.green : C.dim); V.hud.push({ x: px, y: 44, w, h: 24, tip: tipText }); px -= 8; };
+  if (canShove(S)) pill(S.shoveCd ? 'SHOVE in ' + S.shoveCd : 'SHOVE ready', !S.shoveCd, 'SHOVE: move into an enemy next to you to push it back and daze it for a turn.');
+  if (S.items.remote) pill(S.detReady ? 'DETONATE (F)' : 'DETONATOR used', S.detReady, 'DETONATOR: press F to explode every bomb right now. Once per wave.');
+  // info line under the board
+  const hl = hoverLine(); if (hl) { let size = 15; while (size > 13 && tw(hl[0], size, 600) > W - 24) size--; txt(hl[0], W / 2, B + 12, size, hl[1], 'center', 600); }
+  // dice tray
+  const y0 = B + 30; let x = hx;
+  const slot = (p, s, label, sel, selIdx, tipText) => { const y = y0 + (52 - s) / 2;
+    if (p) { if (sel) glow(C.cyan, 12); drawDie(x, y, s, p, '#f4f7fb', '#0b0d12', sel ? C.cyan : '#5a6072', sel ? 3 : 1.5); noGlow(); } else { ctx.strokeStyle = '#3a4258'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); rr(x, y, s, s, s * .2); ctx.stroke(); ctx.setLineDash([]); }
+    txt(label, x + s / 2, y0 + 64, 14, sel ? C.cyan : C.dim, 'center', 700); V.hud.push({ x, y, w: s, h: s, sel: selIdx, tip: tipText }); x += s; };
+  slot(S.die, 52, 'YOUR DIE', V.sel === 0 && !!S.die, 0, 'Your rolled die. Placed as a bomb, its pips are BOTH the fuse (turns) and the damage.');
+  if (S.die) { txt('fuse ' + S.die + ' turn' + (S.die > 1 ? 's' : ''), x + 12, y0 + 16, 15, C.text, 'left', 700); txt('damage ' + S.die, x + 12, y0 + 38, 15, C.text, 'left', 700); } x += 118;
+  for (let i = 0; i < stashCap(S); i++) { slot(S.stash[i], 44, i ? '' : 'STASH (E)', !!S.stash[i] && V.sel === i + 1, S.stash[i] ? i + 1 : -1, 'Stash: E saves your die for later (uses the turn). Click a stashed die or press Q to place it instead.'); x += 8; }
+  x += 14; for (const id of Object.keys(S.items)) { const it = ITEMS.find(i => i.id === id); if (x + 34 > hx + hw - 70) break; ctx.fillStyle = '#2a2410'; ctx.beginPath(); ctx.arc(x + 16, y0 + 26, 16, 0, 7); ctx.fill(); ctx.strokeStyle = C.gold; ctx.lineWidth = 1.5; ctx.stroke(); txt(it.g, x + 16, y0 + 27, 14, C.gold, 'center', 800); V.hud.push({ x, y: y0 + 10, w: 32, h: 32, tip: it.name + ': ' + it.desc }); x += 38; }
+  x = hx + hw - 40; slot(S.next, 40, 'NEXT', false, -1, 'The die you will roll next turn.');
+  // tip area (bottom-centre) + key reminders (bottom-right)
+  const ty = y0 + 78;
+  if (V.tip && V.tip.text) { const a = Math.min(1, V.tip.t / .25) * Math.min(1, (V.tip.life - V.tip.t) / .3), x0 = S.tut ? hx + 150 : 8, avail = W - x0 - 8, cxt = x0 + avail / 2;   // during training the tip sits right of the SKIP button
+    let size = 15; while (size > 12 && tw(V.tip.text, size, 600) > avail - 32) size--; const w = Math.min(avail, tw(V.tip.text, size, 600) + 32); ctx.globalAlpha = Math.max(0, a); ctx.fillStyle = '#10222a'; rr(cxt - w / 2, ty, w, 28, 14); ctx.fill(); ctx.strokeStyle = C.cyan; ctx.lineWidth = 1; ctx.stroke(); txt(V.tip.text, cxt, ty + 15, size, '#e9fdff', 'center', 600); ctx.globalAlpha = 1; }
+  if (S.tut) button('skiptut', 'SKIP TRAINING', hx, H - 34, 140, 26, { size: 14 });
+  txt('H help   R restart   M ' + (muted ? 'unmute' : 'mute') + '   Esc menu', W - 14, H - 14, 14, C.dim, 'right', 500);
+}
+function drawPick() {
+  const { W, H } = L, a = ease(V.fade), n = S.offer.length, w = Math.min(250, (W - 56) / 3), h = 236, x0 = W / 2 - (w * n + 12 * (n - 1)) / 2, y0 = Math.max(96, H / 2 - h / 2 + 10) + (1 - a) * 16;
+  ctx.globalAlpha = a; ctx.fillStyle = 'rgba(8,10,16,.84)'; ctx.fillRect(0, 0, W, H);
+  txt(S.pickWhy === 'wave' ? (S.endless || S.wave < WAVES.length ? 'WAVE CLEAR - BREATHER' : 'WAVE CLEAR') : 'SCORE REWARD', W / 2, y0 - 58, 26, C.gold, 'center', 800);
+  txt('Pick 1 of ' + n + (S.pickWhy === 'wave' ? '  -  next up: ' + waveDef(S).name : '  -  next reward at ' + tierAt(S.tier) + ' points'), W / 2, y0 - 28, 15, C.text, 'center', 500);
+  S.offer.forEach((id, i) => {
+    const it = ITEMS.find(o => o.id === id), x = x0 + i * (w + 12), hot = V.mx >= x && V.mx <= x + w && V.my >= y0 && V.my <= y0 + h, y = y0 - (hot ? 6 : 0);
+    if (hot) glow('rgba(124,245,255,.4)', 18); panel(x, y, w, h, hot); noGlow();
+    glow(C.gold, 10); ctx.fillStyle = '#2a2410'; ctx.beginPath(); ctx.arc(x + w / 2, y + 44, 26, 0, 7); ctx.fill(); ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke(); noGlow(); txt(it.g, x + w / 2, y + 45, 20, C.gold, 'center', 800);
+    txt(it.name, x + w / 2, y + 92, 17, '#fff', 'center', 800); let ly = wrap(it.desc, x + w / 2, y + 120, w - 28, 15, C.text, 19, 500, 'center');
+    wrap(it.hint, x + w / 2, Math.max(ly + 8, y + 172), w - 28, 14, C.dim, 18, 500, 'center'); txt('[' + (i + 1) + ']', x + w / 2, y + h - 16, 14, C.cyan); V.cards.push({ x, y: y0, w, h, i });
+  });
+  ctx.globalAlpha = 1;
+}
+function drawMedal(cx, cy, r, m) {
+  const col = { gold: '#ffd166', silver: '#c9d1e0', bronze: '#cd7f32' }[m];
+  if (!m) { ctx.setLineDash([4, 4]); ctx.strokeStyle = '#4a5368'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke(); ctx.setLineDash([]); txt('-', cx, cy, r, '#4a5368'); return; }
+  ctx.fillStyle = '#3b6fd6'; ctx.beginPath(); ctx.moveTo(cx - r * .55, cy + r * .5); ctx.lineTo(cx - r * .8, cy + r * 1.6); ctx.lineTo(cx - r * .3, cy + r * 1.3); ctx.lineTo(cx, cy + r * 1.6); ctx.lineTo(cx + r * .3, cy + r * 1.3); ctx.lineTo(cx + r * .8, cy + r * 1.6); ctx.lineTo(cx + r * .55, cy + r * .5); ctx.fill();
+  glow(col, 14); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill(); noGlow(); ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r * .76, 0, 7); ctx.stroke();
+  drawDie(cx - r * .4, cy - r * .4, r * .8, 6, 'rgba(0,0,0,.22)', 'rgba(255,255,255,.85)', null);
+}
+function drawResult() {
+  const { W, H } = L, a = ease(V.fade), won = S.phase === 'won', w = Math.min(560, W - 24), h = 356, x = W / 2 - w / 2, y = Math.max(8, H / 2 - h / 2) + (1 - a) * 18, m = medalFor(S.score);
+  ctx.globalAlpha = a; ctx.fillStyle = 'rgba(8,10,16,.8)'; ctx.fillRect(0, 0, W, H); glow(won ? 'rgba(157,255,138,.3)' : 'rgba(255,93,115,.25)', 26); panel(x, y, w, h, false, 14); noGlow();
+  txt(won ? 'VICTORY' : S.endless ? 'RUN OVER (you had already won)' : 'DEFEAT', W / 2, y + 36, S.endless && !won ? 22 : 30, won || S.endless ? C.green : C.red, 'center', 800);
+  let cause, advice; const c = S.cause;
+  if (won) { cause = S.winHow === 'kill' ? 'You blew up the Warden and cleared all ' + WAVES.length + ' waves.' : 'You outlasted the Warden and survived all ' + WAVES.length + ' waves.'; advice = 'Score is (HP killed) squared per blast: for a higher medal, gather crowds with 4+ pip lures and chain bombs.'; }
+  else if (c && c.why === 'bomb') { cause = 'Blown up by your own ' + c.pips + '-pip bomb on turn ' + S.turn + ' (' + waveDef(S).name + ').'; advice = 'Red cells marked 1 explode when you end your turn. A red outline on your cell means: step off it first.'; }
+  else { cause = 'Struck down by a ' + (c ? TYPES[c.type].name : 'enemy') + ' on turn ' + S.turn + ' (' + waveDef(S).name + ').'; advice = CFG.windup ? 'An enemy showing "!" hits when you end your turn. Step away from it, or move INTO it to shove it back.' : 'On HARD every adjacent enemy hits each turn: keep a free cell behind you and bomb your trail.'; }
+  let ly = wrap(cause, W / 2, y + 74, w - 48, 16, '#fff', 21, 600, 'center'); ly = wrap('Tip: ' + advice, W / 2, ly + 4, w - 48, 15, C.dim, 20, 500, 'center');
+  const my = Math.max(ly + 42, y + 190); drawMedal(x + 78, my, 30, m); txt(m ? m.toUpperCase() : 'NO MEDAL', x + 78, my + 64, 14, m ? C.gold : C.dim, 'center', 800);
+  const shown = Math.round(S.score * ease(Math.min(1, V.resT / .8))); txt('SCORE', x + 150, my - 26, 14, C.dim, 'left'); glow(C.gold, 10); txt(shown, x + 150, my + 6, 40, C.gold, 'left', 800); noGlow();
+  txt(V.newBest ? 'NEW BEST!' : 'best ' + V.best, x + 150, my + 40, 15, V.newBest ? C.green : C.dim, 'left', 700);
+  const sx = x + w - 24; txt('waves cleared  ' + Math.min(S.cleared, 99) + (S.endless ? '' : ' / ' + WAVES.length), sx, my - 30, 15, C.text, 'right', 500); txt('kills  ' + S.kills + '   best blast  +' + S.bestBlast, sx, my - 8, 15, C.text, 'right', 500); txt('longest chain  x' + S.maxChain + '   turns  ' + S.turn, sx, my + 14, 15, C.text, 'right', 500);
+  txt('bronze ' + CFG.bronze + '   silver ' + CFG.silver + '   gold ' + CFG.gold, sx, my + 40, 14, C.dim, 'right', 500);
+  const by = y + h - 62, n = won ? 3 : 2, bw = Math.min(160, (w - 48 - (n - 1) * 12) / n), bx = W / 2 - (bw * n + 12 * (n - 1)) / 2;
+  button('retry', 'RETRY  (R)', bx, by, bw, 44, { primary: true, size: 16 }); if (won) button('endless', 'KEEP GOING', bx + bw + 12, by, bw, 44, { size: 15, on: true }); button('menu', 'MENU  (Esc)', bx + (n - 1) * (bw + 12), by, bw, 44, { size: 15 });
+  if (won) txt('Keep going = endless waves for score', W / 2, y + h - 10, 14, C.dim, 'center', 500);
+  ctx.globalAlpha = 1;
+}
+function drawInfo(overlay) { // START SCREEN and the H-help overlay share one layout
+  const { W, H } = L, a = ease(V.fade), pad = Math.max(16, Math.min(48, W * .04)), oy = (1 - a) * 14, small = H < 680;
+  if (overlay) { ctx.fillStyle = 'rgba(8,10,16,.93)'; ctx.fillRect(0, 0, W, H); } ctx.globalAlpha = a;
+  glow('rgba(124,245,255,.5)', 16); ctx.font = '800 ' + (small ? 38 : 48) + 'px ' + FONT; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; const title = 'LONG FUSE'; let tx = pad; for (const ch of title) { ctx.fillText(ch, tx, 44 + oy); tx += ctx.measureText(ch).width + 3; } noGlow();
+  txt('Dice are bombs. The pips are both the fuse and the damage.', pad, (small ? 78 : 86) + oy, 16, C.dim, 'left', 500);
+  txt('GOAL: survive 4 waves, then beat the Warden.', pad, (small ? 100 : 110) + oy, 16, C.cyan, 'left', 700);
+  const med = ls.get('proto_' + GAMEID + '_medal') || ''; drawMedal(W - pad - 22, 40 + oy, 18, med); txt('best ' + (+ls.get('proto_' + GAMEID + '_best') || 0) + '   wins ' + (+ls.get('proto_' + GAMEID + '_wins') || 0), W - pad - 52, 40 + oy, 15, C.dim, 'right', 600);
+  // diagram of the core verb, drawn with the game's own pieces
+  const dTop = (small ? 118 : 134) + oy, cardH = small ? 176 : 196, btnY = H - (small ? 86 : 104), cardY = btnY - cardH - (small ? 10 : 18), dH = cardY - dTop - 8, s = Math.max(30, Math.min(64, Math.floor((dH - 40) / 3))), cols = 7, dx0 = W / 2 - cols * s / 2, dy0 = dTop + 20 + (dH - 40 - s * 3) / 2, wide = W >= 1000;   // 20px caption bands above and below the diagram
+  const cell = (x, y) => [dx0 + x * s + s / 2, dy0 + y * s + s / 2];
+  for (let y = 0; y < 3; y++) for (let x = 0; x < cols; x++) { ctx.fillStyle = (x + y) % 2 ? '#141822' : '#171c28'; rr(dx0 + x * s + 1, dy0 + y * s + 1, s - 2, s - 2, 5); ctx.fill(); }
+  for (let y = 0; y < 3; y++) for (let x = 2; x < 5; x++) { ctx.fillStyle = 'rgba(255,93,115,.2)'; rr(dx0 + x * s + 1, dy0 + y * s + 1, s - 2, s - 2, 5); ctx.fill(); txt('3', dx0 + x * s + s * .17, dy0 + y * s + s * .2, Math.max(12, s * .22), '#ffb3be', 'center', 800); }
+  let p = cell(1, 1); drawPlayer(p[0], p[1], s, 0); const b = cell(3, 1); drawBomb(b[0], b[1], s * .6, 3, 3, false, 0); arrow(p[0] + s * .38, p[1], b[0] - s * .42, b[1], C.cyan, 3);
+  p = cell(4, 0); drawEnemy(p[0], p[1], s, { type: 'walker', hp: 2, max: 2 }, [-1, 1]); p = cell(6, 2); drawEnemy(p[0], p[1], s, { type: 'runner', hp: 1, max: 1, wind: 0 }, [-1, 0]); const q = cell(4, 2); ctx.globalAlpha = a * .9; arrow(p[0] - s * .4, p[1], q[0] + s * .1, q[1], '#ff9aa8', 3); ctx.globalAlpha = a;
+  if (wide) {
+    txt('1. place die', (cell(1, 1)[0] + b[0]) / 2, dy0 - 11, 14, C.cyan, 'center', 700); txt('2. enemies walk in (arrows show where)', cell(5, 0)[0] + s * .3, dy0 + s * 3 + 12, 14, '#ffb3be', 'center', 700);
+    txt('3. BOOM after 3 turns:', dx0 + cols * s + 14, dy0 + s * .9, 15, C.text, 'left', 700); txt('(2+1 HP)  squared = +9', dx0 + cols * s + 14, dy0 + s * .9 + 24, 17, C.gold, 'left', 800); txt('a 3-pip die = fuse 3, damage 3', dx0 - 14, dy0 + s * .9, 14, C.dim, 'right', 500); txt('blast is 3x3 - get out of it!', dx0 - 14, dy0 + s * .9 + 22, 14, C.dim, 'right', 500);
+  } else { // narrow: captions above and below the diagram only
+    txt('1. place your die: 3 pips = fuse 3 turns, damage 3, blast 3x3 - get out of it!', W / 2, dy0 - 11, 14, C.cyan, 'center', 700);
+    const cap = '2. enemies walk in (arrows show where)      3. BOOM: (2+1 HP) squared = +9'; let fs2 = 14; while (fs2 > 12 && tw(cap, fs2, 700) > W - 24) fs2--; txt(cap, W / 2, dy0 + s * 3 + 12, fs2, C.gold, 'center', 700);
+  }
+  // two cards: controls / scoring
+  const cw = Math.min(440, (W - pad * 2 - 16) / 2), cx0 = W / 2 - cw - 8, cx1 = W / 2 + 8, fs = cw < 380 ? 14 : 15, lh = small ? 19 : 21; panel(cx0, cardY, cw, cardH); panel(cx1, cardY, cw, cardH);
+  txt('CONTROLS', cx0 + 16, cardY + 20, 14, C.cyan, 'left', 800); txt('SCORE / LOSE', cx1 + 16, cardY + 20, 14, C.gold, 'left', 800);
+  const mx = cx0 + 34, my = cardY + 70; ctx.fillStyle = '#1b2130'; rr(mx - 18, my - 28, 36, 56, 16); ctx.fill(); ctx.strokeStyle = C.dim; ctx.lineWidth = 1.5; ctx.stroke();   // mouse diagram
+  ctx.save(); rr(mx - 18, my - 28, 36, 56, 16); ctx.clip(); ctx.fillStyle = C.cyan; ctx.fillRect(mx - 18, my - 28, 18, 24); ctx.fillStyle = '#ffffff'; ctx.fillRect(mx, my - 28, 18, 24); ctx.restore(); ctx.strokeStyle = '#0b0d12'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mx, my - 28); ctx.lineTo(mx, my - 4); ctx.moveTo(mx - 18, my - 4); ctx.lineTo(mx + 18, my - 4); ctx.stroke();
+  let yy = cardY + 48; const tx0 = cx0 + 66, tw0 = cw - 80;
+  yy = wrap('LEFT-CLICK a cell next to you: PLACE the die as a bomb (hover first = preview)', tx0, yy, tw0, fs, C.cyan, lh, 600); yy = wrap('RIGHT-CLICK or WASD / arrows: MOVE. Into an enemy = SHOVE (click it works too)', tx0, yy, tw0, fs, '#fff', lh, 600);
+  yy = wrap('Space wait   E stash die   Q switch die   Shift+dir place', cx0 + 16, Math.max(yy + 2, my + 40), cw - 32, fs, C.dim, lh, 500);
+  yy = cardY + 48; const sw = cw - 32;
+  yy = wrap('Each blast scores (enemy HP killed) squared: 1+2+3 HP in one blast = 36. Blasts chain.', cx1 + 16, yy, sw, fs, C.gold, lh, 600);
+  yy = wrap('Big bombs (4+ pips) about to blow LURE enemies within 2 tiles.', cx1 + 16, yy, sw, fs, C.green, lh, 600);
+  yy = wrap('You lose at 0 HP: your own blasts hurt you, and an enemy showing "!" hits at end of turn. Red outline = that cell costs HP.', cx1 + 16, yy, sw, fs, '#ffb3be', lh, 600);
+  // buttons
+  const bw = 200, by = btnY; button(overlay ? 'resume' : 'play', overlay ? 'RESUME' : 'PLAY', W / 2 - bw / 2, by, bw, 48, { primary: true, size: 22 });
+  if (!overlay) { button('normal', 'NORMAL', W / 2 + bw / 2 + 20, by + 8, 92, 34, { on: mode === 'normal' }); button('hard', 'HARD', W / 2 + bw / 2 + 118, by + 8, 76, 34, { on: mode === 'hard' }); txt(mode === 'hard' ? '4 HP, no shove, enemies hit every turn' : '6 HP, shove, enemies wind up first', W / 2 - bw / 2 - 20, by + 25, 14, C.dim, 'right', 500); }
+  else { button('restart', 'RESTART', W / 2 + bw / 2 + 20, by + 8, 100, 34, {}); button('menu', 'MENU', W / 2 + bw / 2 + 128, by + 8, 80, 34, {}); txt('Enemies: W walker  R runner (2 tiles)  D defuser (+2 fuse)  S shielded (3+ only)  X Warden (armour: max 5 per blast)', W / 2, by - 12 - (small ? 0 : 2), 14, C.dim, 'center', 500); }
+  txt(overlay ? 'H or click RESUME to continue' : 'Click PLAY or press Enter', W / 2, by + 62, 14, C.dim, 'center', 500);
+  txt('H help   R restart   M ' + (muted ? 'unmute' : 'mute') + '   Esc menu', W - 14, H - 14, 14, C.dim, 'right', 500);
+  ctx.globalAlpha = 1;
+}
+
+// ====================== INPUT ======================
+const KEYS = { ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0] };
+function moveOrShove(dx, dy) { const e = S.phase === 'player' && enemyAt(S, S.px + dx, S.py + dy); return act(e ? { t: 'shove', dx, dy } : { t: 'move', dx, dy }); }
+function press(id) {
+  tone(660, .05, 'sine', .05);
+  if (id === 'play') { startRun(); } else if (id === 'normal' || id === 'hard') setMode(id);
+  else if (id === 'resume') V.help = false; else if (id === 'retry' || id === 'restart') startRun(); else if (id === 'menu') window.location.href = 'index.html';
+  else if (id === 'endless') { V.wonShown = true; act({ t: 'continue' }); V.fade = 0; }
+  else if (id === 'skiptut') { ls.set('proto_' + GAMEID + '_tut', '1'); startRun({ tut: false }); }
+}
+function onKey(key, shift) {
+  audio(); const k = key.length === 1 ? key.toLowerCase() : key;
+  if (k === 'Escape') { window.location.href = 'index.html'; return; }
+  if (k === 'm') { setMute(!muted); return; }
+  if (V.screen === 'start') { if (k === 'Enter' || k === ' ') press('play'); else if (k === 'h') { /* already showing */ } return; }
+  if (k === 'h') { V.help = !V.help; V.fade = 0; return; }
+  if (k === 'r') { startRun(); return; }
+  if (V.help) { if (k === 'Enter' || k === ' ') V.help = false; return; }
+  if (S.phase === 'pick') { if ('123'.includes(k)) act({ t: 'pick', i: +k - 1 }); return; }
+  if (S.phase === 'won') { if (k === 'Enter') press('endless'); return; }
+  if (S.phase === 'anim') { V.fast = true; return; }
+  if (KEYS[k]) { const [dx, dy] = KEYS[k]; if (shift) act({ t: 'place', x: S.px + dx, y: S.py + dy, src: V.sel }); else moveOrShove(dx, dy); }
+  else if (k === ' ') act({ t: 'wait' });
+  else if (k === 'e') act({ t: 'stash' });
+  else if (k === 'q') { if (S.stash.length) { V.sel = (V.sel + 1) % (S.stash.length + 1); tone(600, .04, 'sine', .04); } }
+  else if (k === 'x') act({ t: 'reroll' });
+  else if (k === 'f') act({ t: 'det' });
+}
+const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+function cellAt(mx, my) { const x = Math.floor((mx - L.gx) / L.cs), y = Math.floor((my - L.gy) / L.cs); return inB(x, y) ? [x, y] : null; }
+function onMove(mx, my) { V.mx = mx; V.my = my; V.hover = V.screen === 'play' && !V.help ? cellAt(mx, my) : null; }
+function onDown(mx, my, btn) {
+  audio(); onMove(mx, my); V.down = true;
+  const b = V.btns.find(r => inRect(r, mx, my)); if (b) { press(b.id); return; }
+  if (V.screen !== 'play' || V.help) return;
+  if (S.phase === 'pick') { const c = V.cards.find(r => inRect(r, mx, my)); if (c && V.fade > .6) act({ t: 'pick', i: c.i }); return; }
+  if (S.phase === 'anim') { V.fast = true; return; }
+  const h = V.hud.find(r => r.sel >= 0 && inRect(r, mx, my)); if (h && h.sel <= S.stash.length && (h.sel > 0 || S.die)) { V.sel = h.sel; tone(600, .04, 'sine', .04); return; }
+  const c = cellAt(mx, my); if (!c || S.phase !== 'player') return;
+  const dx = c[0] - S.px, dy = c[1] - S.py, adj4 = Math.abs(dx) + Math.abs(dy) === 1;
+  if (adj4 && enemyAt(S, c[0], c[1])) act({ t: 'shove', dx, dy });                       // either button on an adjacent enemy = shove
+  else if (btn === 2) { if (adj4) act({ t: 'move', dx, dy }); else tip(null, 'Right-click moves 1 tile: pick a cell directly above, below, left or right of you.', 4); }   // RIGHT = move
+  else act({ t: 'place', x: c[0], y: c[1], src: V.sel });                               // LEFT = place die
+}
+window.addEventListener('keydown', ev => { if (ev.key === 'Tab' || ev.key === ' ' || ev.key.startsWith('Arrow')) ev.preventDefault(); onKey(ev.key, ev.shiftKey); });
+cv.addEventListener('mousemove', ev => onMove(ev.clientX, ev.clientY));
+cv.addEventListener('mouseleave', () => { V.hover = null; V.mx = V.my = -1; });
+cv.addEventListener('contextmenu', ev => ev.preventDefault());
+cv.addEventListener('mousedown', ev => onDown(ev.clientX, ev.clientY, ev.button));
+window.addEventListener('mouseup', () => { if (V) V.down = false; });
+window.addEventListener('resize', layout);
+
+// ====================== BOOT ======================
+let last = 0;
+function frame(t) { const dt = Math.min(.05, (t - last) / 1000 || 0); last = t; update(dt); render(); requestAnimationFrame(frame); }
+window.LF = { startRun, toStart, setMode, startWaveFor: startWave, legalActions: () => legalActions(S), legalFor: legalActions, act, update, render, simulate, catchSim, blastCells, turnsLeft, enclosed, onKey, onDown, onMove, layout, CFG, MODES, TYPES, ITEMS, WAVES,
+  get S() { return S; }, get V() { return V; }, get L() { return L; }, get mode() { return mode; }, get busy() { return !!runner; } };
+layout(); toStart(); requestAnimationFrame(frame);
+</script></body></html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Loop Prototypes</title>
+<style>
+  :root { --bg:#0b0d12; --panel:#121622; --line:#232a3d; --text:#dfe6f0; --dim:#aab3c5; --cyan:#7cf5ff; --red:#ff5d73; --gold:#ffd166; --green:#9dff8a; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; color:var(--text); font-family:"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif;
+    background: radial-gradient(1200px 700px at 50% 0%, #161c2e 0%, var(--bg) 60%) fixed; padding:36px 16px 60px; }
+  main { max-width:1080px; margin:0 auto; }
+  h1 { margin:0; font-size:40px; font-weight:800; letter-spacing:.02em; }
+  h1 span { color:var(--cyan); }
+  .sub { color:var(--dim); margin:8px 0 6px; font-size:16px; max-width:720px; line-height:1.5; }
+  .bar { display:flex; gap:18px; align-items:center; flex-wrap:wrap; margin:18px 0 8px; color:var(--dim); font-size:14px; }
+  .bar b { color:var(--text); font-variant-numeric:tabular-nums; }
+  .bar button { background:none; border:1px solid var(--line); color:var(--dim); border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; }
+  .bar button:hover { border-color:var(--cyan); color:var(--text); }
+  h2 { font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin:34px 0 12px; display:flex; align-items:center; gap:10px; }
+  h2::after { content:""; flex:1; height:1px; background:var(--line); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:14px; }
+  a.card { position:relative; display:grid; grid-template-columns:64px 1fr; gap:14px; background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:16px; text-decoration:none; color:inherit; transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  a.card:hover { transform:translateY(-3px); border-color:var(--cyan); box-shadow:0 10px 30px rgba(0,0,0,.35), 0 0 0 1px rgba(124,245,255,.15); }
+  a.card:active { transform:translateY(-1px); }
+  .icon { width:64px; height:64px; border-radius:12px; background:#0e1220; border:1px solid var(--line); }
+  .name { font-size:18px; font-weight:800; letter-spacing:.03em; color:#fff; }
+  .desc { color:var(--dim); font-size:14px; line-height:1.45; margin-top:4px; }
+  .meta { display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; }
+  .tag { font-size:11px; font-weight:700; border-radius:99px; padding:2px 9px; border:1px solid var(--line); color:var(--dim); }
+  .medal { position:absolute; top:12px; right:12px; width:26px; height:26px; border-radius:50%; display:none; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#0b0d12; }
+  .medal.bronze { display:flex; background:#c98b5a; } .medal.silver { display:flex; background:#cfd6e2; } .medal.gold { display:flex; background:var(--gold); box-shadow:0 0 14px rgba(255,209,102,.5); }
+  .best { font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums; }
+  @media (max-width:480px){ h1{font-size:30px} a.card{grid-template-columns:48px 1fr} .icon{width:48px;height:48px} }
+</style>
+</head>
+<body>
+<main>
+  <h1>Loop <span>Prototypes</span></h1>
+  <p class="sub">Sixteen small tests of one question: is this core loop fun? Play each for a few minutes and notice which one you restart without being asked. In every game: <b>H</b> help, <b>R</b> restart, <b>M</b> mute, <b>Esc</b> back here.</p>
+  <div class="bar"><span>Medals earned <b id="medalCount">0</b> / <b id="gameCount">0</b></span><span>Games won <b id="winCount">0</b></span><button id="reset">Reset progress</button></div>
+  <div id="sections"></div>
+</main>
+<script>
+const GAMES = [
+  { sec:'Real-time', id:'arena3', file:'arena3.html', name:'BAIT / CINCH / TOWLINE', input:'mouse', desc:'Three arena loops in one: herd chasers through gates, lasso them with your trail, or whip a towed ball through them.', icon:'arena' },
+  { sec:'Real-time', id:'backfire', file:'backfire.html', name:'BACKFIRE', input:'mouse', desc:'Your exhaust is your only weapon. Fly away from enemies to burn them.', icon:'cone' },
+  { sec:'Real-time', id:'owngoal', file:'owngoal.html', name:'OWN GOAL', input:'WASD + mouse', desc:'Throw discs that bounce forever and can hit you too. Catch the fat ones to bank their kills squared.', icon:'disc' },
+  { sec:'Real-time', id:'longsword', file:'longsword.html', name:'LONGSWORD', input:'WASD + mouse', desc:'One big committed swing. Grow the blade for score, and live with how unwieldy it gets.', icon:'sword' },
+  { sec:'Real-time', id:'massbudget', file:'massbudget.html', name:'MASS BUDGET', input:'WASD + mouse', desc:'Vacuum, spit, gulp. Your mass is your health, ammo, size and speed at once.', icon:'blob' },
+  { sec:'Real-time', id:'hoseline', file:'hoseline.html', name:'HOSE LINE', input:'WASD + mouse', desc:'Fight spreading fire within hose length of your truck. Moving the truck costs precious time.', icon:'fire' },
+  { sec:'Turn-based', id:'swapmeet', file:'swapmeet.html', name:'SWAPMEET', input:'click', desc:'Your only attack is swapping places with an enemy, so their attacks land on each other.', icon:'swap' },
+  { sec:'Turn-based', id:'longfuse', file:'longfuse.html', name:'LONG FUSE', input:'keys + click', desc:'Dice are bombs: the pips are both the fuse and the damage. Lead enemies to where the blast will be.', icon:'die' },
+  { sec:'Turn-based', id:'ladderblade', file:'ladderblade.html', name:'LADDERBLADE', input:'drag', desc:'Drag a path through monsters from small to large. Where the path ends is where you get hit.', icon:'path' },
+  { sec:'Turn-based', id:'dicesiege', file:'dicesiege.html', name:'DICE SIEGE', input:'drag', desc:'One die per column: a high die powers the room but brings that invader closer.', icon:'cols' },
+  { sec:'Turn-based', id:'pincer', file:'pincer.html', name:'PINCER', input:'arrows', desc:'One input moves both heroes. Enemies caught between them, or against a wall, are destroyed.', icon:'pincer' },
+  { sec:'Turn-based', id:'dutchdraft', file:'dutchdraft.html', name:'DUTCH DRAFT', input:'space', desc:'An auto-battler where prices fall in real time. Buy now, or wait and risk a rival sniping it.', icon:'price' },
+  { sec:'Tactile', id:'seam', file:'seam.html', name:'SEAM', input:'drag', desc:'A few straight cuts per slab. Cuts reveal ore, and loose chunks drop and get graded on purity.', icon:'cut' },
+  { sec:'Tactile', id:'hexrun', file:'hexrun.html', name:'HEXRUN', input:'click', desc:'Place stacks of discs; matching tops flow together, runs clear, cascades multiply.', icon:'hex' },
+  { sec:'Tactile', id:'pan', file:'pan.html', name:'PAN', input:'mouse circles', desc:'Swirl the pan. Sand washes out and gold sinks — swirl too hard and the gold goes too.', icon:'pan' },
+  { sec:'Tactile', id:'hairline', file:'hairline.html', name:'HAIRLINE', input:'drag', desc:'A bridge builder with one purse for the whole run. The cheapest bridge that barely holds wins.', icon:'bridge' },
+];
+const C = { cyan:'#7cf5ff', red:'#ff5d73', gold:'#ffd166', green:'#9dff8a', grey:'#5b657a', white:'#ffffff' };
+function ls(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+
+// tiny code-drawn icons, one per game
+function drawIcon(cv, kind){
+  const s = 128; cv.width = cv.height = s; const x = cv.getContext('2d'); x.lineCap='round'; x.lineJoin='round';
+  const dot=(px,py,r,c,glow)=>{ x.save(); if(glow){x.shadowColor=c;x.shadowBlur=14;} x.fillStyle=c; x.beginPath(); x.arc(px,py,r,0,7); x.fill(); x.restore(); };
+  const line=(pts,c,w,dash)=>{ x.save(); x.strokeStyle=c; x.lineWidth=w; if(dash)x.setLineDash(dash); x.beginPath(); pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])); x.stroke(); x.restore(); };
+  if(kind==='arena'){ line([[30,40],[98,40]],C.green,5); dot(30,40,7,C.red); dot(98,40,7,C.red); dot(64,78,8,C.white,1); [[44,100],[58,108],[76,106],[90,98]].forEach(p=>dot(p[0],p[1],5,C.red)); }
+  if(kind==='cone'){ x.save(); x.fillStyle='rgba(255,209,102,.35)'; x.beginPath(); x.moveTo(70,64); x.lineTo(18,40); x.lineTo(18,88); x.closePath(); x.fill(); x.restore(); x.save(); x.fillStyle=C.white; x.shadowColor=C.cyan; x.shadowBlur=14; x.beginPath(); x.moveTo(104,64); x.lineTo(72,50); x.lineTo(72,78); x.closePath(); x.fill(); x.restore(); dot(34,64,7,C.red); }
+  if(kind==='disc'){ line([[20,100],[60,30],[108,84]],C.grey,2,[5,6]); dot(108,84,10,C.gold,1); dot(40,66,9,C.white,1); x.save(); x.strokeStyle=C.cyan; x.lineWidth=2; x.setLineDash([4,5]); x.beginPath(); x.arc(40,66,26,0,7); x.stroke(); x.restore(); dot(92,34,6,C.red); }
+  if(kind==='sword'){ x.save(); x.fillStyle='rgba(124,245,255,.18)'; x.beginPath(); x.moveTo(40,92); x.arc(40,92,70,-1.9,-0.3); x.closePath(); x.fill(); x.restore(); line([[40,92],[100,40]],C.white,6); dot(40,92,9,C.white,1); dot(84,22,6,C.red); dot(108,62,6,C.red); }
+  if(kind==='blob'){ dot(52,72,30,C.white,1); dot(44,64,4,'#0b0d12'); dot(62,64,4,'#0b0d12'); dot(100,40,7,C.red); dot(108,70,4,C.gold); dot(96,96,4,C.gold); }
+  if(kind==='fire'){ x.fillStyle='#2a3145'; x.fillRect(18,22,40,34); x.fillRect(70,22,40,34); x.fillStyle=C.red; x.fillRect(84,30,14,14); x.fillStyle=C.gold; x.fillRect(88,34,6,6); x.fillStyle=C.white; x.fillRect(24,84,26,14); line([[50,90],[78,76],[92,52]],C.cyan,3); dot(78,76,6,C.white,1); }
+  if(kind==='swap'){ for(let i=0;i<4;i++)for(let j=0;j<4;j++){ x.strokeStyle='#232a3d'; x.strokeRect(16+i*24,16+j*24,24,24);} x.fillStyle='rgba(255,93,115,.35)'; x.fillRect(64,40,24,24); dot(28,52,8,C.white,1); dot(100,52,8,C.red); line([[40,44],[64,34],[88,44]],C.cyan,3); line([[88,62],[64,72],[40,62]],C.cyan,3); }
+  if(kind==='die'){ x.save(); x.fillStyle='#fff'; x.shadowColor=C.gold; x.shadowBlur=12; x.beginPath(); x.roundRect(34,34,60,60,12); x.fill(); x.restore(); [[50,50],[78,50],[64,64],[50,78],[78,78]].forEach(p=>dot(p[0],p[1],5,'#0b0d12')); line([[94,34],[108,20]],C.red,3); dot(110,18,4,C.gold,1); }
+  if(kind==='path'){ const p=[[24,100],[48,76],[48,48],[76,48],[100,24]]; line(p,C.cyan,4); p.forEach((q,i)=>{ dot(q[0],q[1],10,i?C.red:C.white,!i); x.fillStyle='#0b0d12'; x.font='bold 12px sans-serif'; x.textAlign='center'; if(i)x.fillText(i,q[0],q[1]+4); }); }
+  if(kind==='cols'){ for(let i=0;i<5;i++){ x.fillStyle='#1a2033'; x.fillRect(14+i*21,16,16,74); dot(22+i*21,28+((i*37)%50),6,C.red); x.fillStyle='#fff'; x.fillRect(14+i*21,96,16,16);} }
+  if(kind==='pincer'){ dot(22,64,10,C.cyan,1); dot(106,64,10,C.white,1); [48,64,80].forEach(px=>dot(px,64,8,C.red)); line([[34,64],[94,64]],C.gold,2,[3,5]); }
+  if(kind==='price'){ x.fillStyle=C.white; x.font='800 58px "Segoe UI",sans-serif'; x.textAlign='center'; x.fillText('12',58,84); line([[100,30],[100,96]],C.gold,5); line([[90,84],[100,98],[110,84]],C.gold,5); }
+  if(kind==='cut'){ x.fillStyle='#3a4258'; x.beginPath(); x.moveTo(16,16); x.lineTo(112,16); x.lineTo(104,70); x.lineTo(64,100); x.lineTo(24,74); x.closePath(); x.fill(); dot(54,52,9,C.gold,1); dot(84,40,6,C.gold); line([[14,96],[114,40]],C.cyan,3); }
+  if(kind==='hex'){ const cols=[C.cyan,C.gold,'#c58bff']; [[44,50],[84,50],[64,84]].forEach((p,i)=>{ for(let k=0;k<4;k++){ x.save(); x.fillStyle=cols[i]; x.globalAlpha=.55+.15*k; x.beginPath(); x.ellipse(p[0],p[1]-k*6,18,8,0,0,7); x.fill(); x.restore(); } }); }
+  if(kind==='pan'){ x.save(); x.strokeStyle='#5b657a'; x.lineWidth=5; x.beginPath(); x.arc(64,64,46,0,7); x.stroke(); x.restore(); for(let i=0;i<26;i++){ const a=i*2.4,r=6+i*1.2; dot(64+Math.cos(a)*r,64+Math.sin(a)*r,3,i<4?C.gold:'#c9b38a',i<4); } }
+  if(kind==='bridge'){ x.fillStyle='#2a3145'; x.fillRect(0,70,26,58); x.fillRect(102,70,26,58); line([[26,70],[102,70]],C.white,5); line([[26,70],[45,96],[64,70],[83,96],[102,70]],C.green,3); line([[45,96],[83,96]],C.gold,3); dot(58,60,7,C.gold,1); }
+}
+
+function build(){
+  const root = document.getElementById('sections'); root.innerHTML='';
+  let medals=0, wins=0;
+  [...new Set(GAMES.map(g=>g.sec))].forEach(sec=>{
+    const h=document.createElement('h2'); h.textContent=sec; root.appendChild(h);
+    const grid=document.createElement('div'); grid.className='grid'; root.appendChild(grid);
+    GAMES.filter(g=>g.sec===sec).forEach(g=>{
+      const medal=ls('proto_'+g.id+'_medal'), best=ls('proto_'+g.id+'_best'), w=+ls('proto_'+g.id+'_wins')||0;
+      if(medal) medals++; wins+=w;
+      const a=document.createElement('a'); a.className='card'; a.href=g.file;
+      a.innerHTML='<canvas class="icon"></canvas><div><div class="name"></div><div class="desc"></div><div class="meta"><span class="tag"></span><span class="best"></span></div></div><div class="medal"></div>';
+      a.querySelector('.name').textContent=g.name; a.querySelector('.desc').textContent=g.desc; a.querySelector('.tag').textContent=g.input;
+      a.querySelector('.best').textContent = best ? 'best '+best+(w?'  ·  '+w+' win'+(w>1?'s':''):'') : 'not played yet';
+      const m=a.querySelector('.medal'); if(medal){ m.classList.add(medal); m.textContent=medal[0].toUpperCase(); m.title=medal+' medal'; }
+      drawIcon(a.querySelector('canvas'), g.icon);
+      grid.appendChild(a);
+    });
+  });
+  document.getElementById('medalCount').textContent=medals; document.getElementById('gameCount').textContent=GAMES.length; document.getElementById('winCount').textContent=wins;
+}
+document.getElementById('reset').onclick=()=>{ if(!confirm('Clear saved bests and medals for all prototypes?')) return; try{ Object.keys(localStorage).filter(k=>k.startsWith('proto_')).forEach(k=>localStorage.removeItem(k)); }catch(e){} build(); };
+addEventListener('pageshow', build);
+build();
+</script>
+</body>
+</html>

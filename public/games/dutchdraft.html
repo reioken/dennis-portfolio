@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Dutch Draft</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;margin:0 auto;cursor:default}</style>
+</head><body><canvas id="c" width="1280" height="720"></canvas>
+<script>
+'use strict';
+// ============================ CONFIG / DATA ============================
+const W = 1280, H = 720, GAMEID = 'dutchdraft';
+const COL = { player: '#7cf5ff', danger: '#ff5d73', gold: '#ffd166', safe: '#9dff8a', text: '#e8ecf5', dim: '#aab3c5', bg: '#0b0d12', panel: '#121622', line: '#232a3d', field: '#0e1119' };
+const FONT = '"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+// NORMAL is tuned for a first-time human with a handicapped bot (dutchdraft_resume_test.js): round 1 ~78%, finale ~30%, run win ~30%. HARD: faster prices, 3 lives, 8 rounds, richer rivals.
+const MODES = {
+  NORMAL: { name: 'NORMAL', tick: 0.6, income: 30, rivalIncome: 22, rivalGrowth: 4, lives: 4, goalType: 'rounds', goalN: 5, react: 0.35, leanRange: 4,
+    rivalStartUnits: 3, rivalStartMaxValue: 9, multScale: 1, pause: 1.8, staged: true, practice: true, finaleBoost: 2, rivalReserve: 12 },
+  HARD: { name: 'HARD', tick: 0.4, income: 30, rivalIncome: 24, rivalGrowth: 5, lives: 3, goalType: 'rounds', goalN: 8, react: 0.2, leanRange: 3,
+    rivalStartUnits: 3, rivalStartMaxValue: 11, multScale: 1.05, pause: 1.4, staged: false, practice: false, finaleBoost: 3, rivalReserve: 8 } };
+const CFG = Object.assign({ startPrice: 20, lots: 5, cap: 60, maxTeam: 5, battleTick: 0.7, synergy: 1.3 }, MODES.NORMAL);
+const TRIBES = { Beast: '#c9803a', Undead: '#8f7be0', Machine: '#5b8fc9', Mage: '#d46ad0', Token: '#7a8194' };
+const TRIBE_TXT = { Beast: '3 Beasts: each Beast gets +1 ATK +1 HP', Undead: '3 Undead: each comes back once with 1 HP', Machine: '3 Machines: each Machine gets +2 HP', Mage: '3 Mages: each Mage\'s first hit is doubled' };
+const KW = {
+  Bargain: 'BARGAIN: gets +2 ATK and +2 HP if you buy it for 8 gold or less.',
+  Prestige: 'PRESTIGE: gets +3 ATK if you buy it for 15 gold or more.',
+  Spite: 'SPITE: gets +1 ATK and +1 HP for each rival who has less gold than you after you pay.',
+  Patient: 'PATIENT: gets +1 ATK and +1 HP for every 3 gold the price has dropped.',
+  Impulse: 'IMPULSE: gets +4 HP if you buy it while the price is still 18 or more.',
+  Cleave: 'CLEAVE: its attack also hits the enemy unit standing behind the front one.',
+  Deathrattle: 'DEATHRATTLE: when it dies, a 2 ATK / 2 HP Token takes its place.',
+  Rally: 'RALLY: the unit standing behind it gets +1 ATK when the battle starts.' };
+const KW_STAGE = { Cleave: 1, Deathrattle: 1, Rally: 1, Bargain: 2, Impulse: 2, Patient: 3, Prestige: 3, Spite: 4 }; // NORMAL: round a keyword first appears
+const UNITS = [ // name, tribe, atk, hp, baseValue, keyword
+  ['Rat Pack', 'Beast', 2, 2, 4, 'Deathrattle'], ['Alley Cat', 'Beast', 2, 3, 5, 'Bargain'], ['War Hound', 'Beast', 4, 4, 8, 'Rally'],
+  ['Dire Boar', 'Beast', 5, 6, 11, 'Cleave'], ['Alpha Lion', 'Beast', 7, 8, 15, 'Prestige'],
+  ['Bone Thrall', 'Undead', 1, 1, 6, 'Patient'], ['Ghoul', 'Undead', 3, 3, 6, 'Deathrattle'], ['Grave Miser', 'Undead', 3, 4, 7, 'Bargain'],
+  ['Wraith', 'Undead', 5, 4, 9, 'Spite'], ['Lich Lord', 'Undead', 6, 9, 15, 'Cleave'],
+  ['Scrap Bot', 'Machine', 2, 4, 5, 'Impulse'], ['Cog Sentry', 'Machine', 2, 7, 8, 'Rally'], ['Piston Ram', 'Machine', 5, 5, 10, 'Impulse'],
+  ['Bid Engine', 'Machine', 2, 2, 7, 'Patient'], ['Gilded Titan', 'Machine', 6, 10, 16, 'Prestige'],
+  ['Apprentice', 'Mage', 3, 2, 4, 'Bargain'], ['Hex Broker', 'Mage', 3, 5, 8, 'Spite'], ['Flame Adept', 'Mage', 5, 3, 8, 'Cleave'],
+  ['Sage', 'Mage', 3, 6, 9, 'Rally'], ['Archmage', 'Mage', 8, 6, 15, 'Prestige'],
+].map(r => ({ name: r[0], tribe: r[1], atk: r[2], hp: r[3], value: r[4], kw: r[5] }));
+// LEGENDARY units: only in the finale ("The Grand Auction"). Their price starts at LEGEND_START instead of 20. The champion rival brings one too.
+const LEGENDS = [['Auction King', 'Beast', 9, 10, 19, 'Prestige'], ['Dread Sovereign', 'Undead', 8, 12, 19, 'Cleave'], ['Colossus Mk IX', 'Machine', 7, 15, 19, 'Rally'], ['Grand Magus', 'Mage', 11, 8, 19, 'Spite']]
+  .map(r => ({ name: r[0], tribe: r[1], atk: r[2], hp: r[3], value: r[4], kw: r[5], legend: true }));
+const LEGEND_START = 30, LEVEL_MAX = 3, FINALE_NAME = 'THE GRAND AUCTION';
+function levelCost(u) { return 6 + 4 * (u.lvl || 0); } // between-round gold sink: 6 / 10 / 14 gold for +2 ATK +2 HP
+const RIVALS = [{ name: 'Moss', color: '#ff5d73', shape: 'circle', pers: 'Greedy - waits for low prices', mult: 0.8 },
+  { name: 'Vex', color: '#ff8a5d', shape: 'square', pers: 'Balanced - pays a fair price', mult: 1.0 },
+  { name: 'Blaze', color: '#e8508f', shape: 'tri', pers: 'Impulsive - pays high, sometimes BLUFFS', mult: 1.25, bluffs: true }];
+// UPGRADES: one data row + one rule hook each (search for has('id')). how = changes HOW you play, risk = pay now for reward later.
+const PERKS = [
+  { id: 'pockets', name: 'Deep Pockets', icon: '+G', fx: '+6 gold income every round.', why: 'More gold lets you outbid rivals more often.' },
+  { id: 'vault', name: 'Big Vault', icon: '[G]', fx: '+10 gold now. Gold cap 60 -> 90.', why: 'Save up for one dominant round.' },
+  { id: 'haggler', name: 'Haggler', icon: '<=8', fx: 'Any unit you buy for 8 or less gets +1 ATK +1 HP.', why: 'Rewards patience: wait for low prices.', how: true },
+  { id: 'showman', name: 'Showman', icon: '15+', fx: 'Any unit you buy for 15 or more gets +2 ATK.', why: 'Rewards buying early, before any rival can.', how: true },
+  { id: 'insider', name: 'Insider', icon: '?!', fx: 'See the exact price your next opponent will buy at.', why: 'Buy 1 gold above it and deny them.', how: true },
+  { id: 'slam', name: 'Gavel Slam', icon: 'Q', fx: 'Once per round press Q: the price instantly drops by 4.', why: 'Jump under a rival before they react. Risky!', how: true },
+  { id: 'front', name: 'Shield Wall', icon: 'HP', fx: 'Your front unit gets +4 HP in every battle.', why: 'The front unit takes every hit first.' },
+  { id: 'rear', name: 'Reserves', icon: 'ATK', fx: 'Your last unit gets +2 ATK +2 HP in every battle.', why: 'A strong closer wins close fights.' },
+  { id: 'banner', name: 'Tribal Banner', icon: '2x', fx: 'Tribe bonuses need only 2 units instead of 3.', why: 'Run two tribe bonuses at once.', how: true },
+  { id: 'life', name: 'Second Wind', icon: '+1', fx: '+1 life.', why: 'One more lost battle before the run ends.' },
+  { id: 'invest', name: 'Investment', icon: '%', fx: 'Lose 15 gold NOW. +8 gold income every round after.', why: 'Hurts this round, pays back within two.', risk: true },
+  { id: 'scrap', name: 'Scrap Dealer', icon: '<>', fx: 'Selling a unit refunds its FULL price, not half.', why: 'Buy cheap now, swap up later for free.', how: true },
+  { id: 'intim', name: 'Intimidate', icon: '!!', fx: 'All rivals value every unit 10% lower.', why: 'Rivals wait longer, so prices fall further for you.' },
+];
+const MEDALS = [['gold', 650], ['silver', 500], ['bronze', 200]], MEDAL_COL = { gold: '#ffd166', silver: '#cfd6e6', bronze: '#d08a55' }, MEDAL_RANK = { bronze: 1, silver: 2, gold: 3 };
+
+// ============================ STORAGE / AUDIO ============================
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) { } }
+let best = +lsGet('proto_' + GAMEID + '_best') || 0, bestMedal = lsGet('proto_' + GAMEID + '_medal') || '', muted = lsGet('proto_mute') === '1';
+let ac = null, master = null, noiseBuf = null;
+function initAudio() { if (ac) return; const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  try { ac = new AC(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.5; master.connect(ac.destination);
+    noiseBuf = ac.createBuffer(1, 4410, 44100); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ac = null; } }
+function setMute(m) { muted = m; lsSet('proto_mute', m ? '1' : '0'); if (master) master.gain.value = m ? 0 : 0.5; }
+function tone(f, d, type, v, f2, delay) {
+  if (!ac) return; const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v || 0.06, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0008, t + d); o.connect(g); g.connect(master); o.start(t); o.stop(t + d + 0.02);
+}
+function noise(d, freq, v) { if (!ac || !noiseBuf) return; const t = ac.currentTime, s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = noiseBuf; fl.type = 'lowpass'; fl.frequency.value = freq; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0008, t + d); s.connect(fl); fl.connect(g); g.connect(master); s.start(t); s.stop(t + d + 0.02); }
+const PENTA = [262, 294, 330, 392, 440, 523, 587, 659, 784, 880];
+const SFX = {
+  tick: p => tone(PENTA[Math.max(0, Math.min(9, Math.floor((CFG.startPrice - p) / 2)))], 0.07, 'sine', 0.05),
+  heart: () => { tone(70, 0.12, 'sine', 0.22); tone(60, 0.14, 'sine', 0.18, 0, 0.14); },
+  lean: () => tone(392, 0.25, 'triangle', 0.08, 784),
+  sold: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.09, 0, i * 0.06)),
+  coin: () => tone(1175 + Math.random() * 200, 0.04, 'sine', 0.02),
+  sniped: () => { tone(220, 0.4, 'triangle', 0.12, 110); noise(0.2, 500, 0.12); },
+  pass: () => tone(220, 0.15, 'sine', 0.05, 147), deny: () => tone(147, 0.12, 'triangle', 0.08), click: () => tone(587, 0.05, 'sine', 0.05),
+  hit: () => { noise(0.1, 900, 0.16); tone(130, 0.09, 'sine', 0.1, 70); },
+  die: () => tone(294, 0.25, 'triangle', 0.06, 98), bonus: i => tone(PENTA[5 + i], 0.09, 'triangle', 0.06, 0, i * 0.09),
+  win: () => [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.09, 0, i * 0.1)),
+  lose: () => [330, 262, 196].forEach((f, i) => tone(f, 0.4, 'sine', 0.09, 0, i * 0.18)),
+};
+
+// ============================ UNITS / PURCHASE BONUSES (pure) ============================
+let uid = 0;
+function makeUnit(d) { return { id: ++uid, name: d.name, tribe: d.tribe, atk: d.atk, hp: d.hp, value: d.value, kw: d.kw, paid: 0, bAtk: 0, bHp: 0, legend: !!d.legend, lvl: 0 }; }
+// elapsed is kept in the signature for compatibility; all price-aware keywords now depend only on the PRICE so they read the same at any tick speed.
+// start = the price the lot started at (20, or 30 for a legendary lot) so PATIENT reads "for every 3 gold the price has dropped".
+function purchaseBonus(kw, price, elapsed, goldAfter, otherGolds, start) {
+  start = start || CFG.startPrice;
+  switch (kw) {
+    case 'Bargain': return price <= 8 ? { a: 2, h: 2 } : { a: 0, h: 0 };
+    case 'Prestige': return price >= 15 ? { a: 3, h: 0 } : { a: 0, h: 0 };
+    case 'Spite': { const n = otherGolds.filter(g => g < goldAfter).length; return { a: n, h: n }; }
+    case 'Patient': { const n = Math.floor((start - price) / 3); return { a: n, h: n }; }
+    case 'Impulse': return price >= 18 ? { a: 0, h: 4 } : { a: 0, h: 0 };
+  } return { a: 0, h: 0 };
+}
+function playerBonus(u, price) { // keyword bonus + upgrade hooks (haggler / showman), used for BOTH the preview and the purchase
+  const b = purchaseBonus(u.kw, price, 0, G.gold - price, G.rivals.map(r => r.gold), G.lotStart);
+  if (has('haggler') && price <= 8) { b.a++; b.h++; } if (has('showman') && price >= 15) b.a += 2; return b;
+}
+function applyPurchase(u, price, b) { u.paid = price; u.bAtk = b.a; u.bHp = b.h; u.atk += b.a; u.hp += b.h; return u; }
+
+// ============================ BATTLE (pure functions) ============================
+function prepTeam(team, mods) {
+  mods = mods || {}; const need = mods.need || 3;
+  const f = team.map(u => ({ id: u.id, name: u.name, tribe: u.tribe, kw: u.kw, atk: Math.max(1, u.atk), hp: u.hp, dbl: false, revive: false, tb: false, bAtk: 0, bHp: 0, legend: !!u.legend, lvl: u.lvl || 0 }));
+  const n = {}; f.forEach(u => n[u.tribe] = (n[u.tribe] || 0) + 1);
+  f.forEach(u => { if (n[u.tribe] >= need && u.tribe !== 'Token') { u.tb = true;
+    if (u.tribe === 'Beast') { u.atk++; u.hp++; } else if (u.tribe === 'Undead') u.revive = true;
+    else if (u.tribe === 'Machine') u.hp += 2; else if (u.tribe === 'Mage') u.dbl = true; } });
+  f.forEach((u, i) => { if (u.kw === 'Rally' && f[i + 1]) f[i + 1].atk++; });
+  if (mods.all) f.forEach(u => { u.atk += mods.all; u.hp += mods.all; });
+  if (f.length) { f[0].hp += mods.front || 0; f[f.length - 1].atk += mods.rear || 0; f[f.length - 1].hp += mods.rear || 0; }
+  return f;
+}
+function battleStep(A, B) { // mutates fighter arrays, returns events for animation
+  const ev = [], hits = [];
+  const strike = (src, T, side) => { const d = src.atk * (src.dbl ? 2 : 1); src.dbl = false;
+    for (let i = 0; i < (src.kw === 'Cleave' ? 2 : 1) && i < T.length; i++) hits.push({ side, idx: i, dmg: d, u: T[i] }); };
+  strike(A[0], B, 'B'); strike(B[0], A, 'A');
+  hits.forEach(h => { h.u.hp -= h.dmg; ev.push({ side: h.side, idx: h.idx, dmg: h.dmg }); });
+  [[A, 'A'], [B, 'B']].forEach(([T, side]) => { for (let i = T.length - 1; i >= 0; i--) { const u = T[i]; if (u.hp > 0) continue;
+    if (u.revive) { u.revive = false; u.hp = 1; ev.push({ side, idx: i, note: 'REVIVED' }); }
+    else if (u.kw === 'Deathrattle') { T[i] = { id: ++uid, name: 'Token', tribe: 'Token', kw: '', atk: 2, hp: 2, dbl: false, revive: false, bAtk: 0, bHp: 0 }; ev.push({ side, idx: i, note: 'TOKEN' }); }
+    else { T.splice(i, 1); ev.push({ side, idx: i, note: 'DEFEATED' }); } } });
+  return ev;
+}
+function forecast(teamA, teamB, mA, mB) { // deterministic battle => exact preview
+  const A = prepTeam(teamA, mA), B = prepTeam(teamB, mB); let steps = 0; const hp = T => T.reduce((s, u) => s + Math.max(0, u.hp), 0), a0 = hp(A), b0 = hp(B);
+  while (A.length && B.length && steps < 300) { battleStep(A, B); steps++; }
+  const winner = A.length && !B.length ? 'A' : B.length && !A.length ? 'B' : 'draw';
+  const margin = winner === 'A' ? hp(A) / Math.max(1, a0) : winner === 'B' ? hp(B) / Math.max(1, b0) : 0;
+  return { winner, steps, capped: steps >= 300, left: winner === 'A' ? A.length : winner === 'B' ? B.length : 0, share: winner === 'A' ? 0.55 + 0.4 * margin : winner === 'B' ? 0.45 - 0.4 * margin : 0.5 };
+}
+function resolveBattle(teamA, teamB, mA, mB) { return forecast(teamA, teamB, mA, mB); }
+
+// ============================ GAME FLOW ============================
+const UI = { screen: 'start', help: false, page: 0, hard: false, fadeT: 0, overT: 0 };
+const seenTips = {};
+let G = null, BTNS = [], mx = -1, my = -1, mouseDown = false;
+const rnd = (a, b) => a + Math.random() * (b - a);
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function has(id) { return !!(G && G.perks[id]); }
+function setPhase(p) { G.phase = p; UI.fadeT = 0; }
+function tip(id, text, force) { if (seenTips[id] && !force) return; seenTips[id] = 1; G.tip = { id, text, t: 0 }; }
+function tipClear(id) { if (G.tip && G.tip.id === id) G.tip = null; }
+function score() { return G ? 100 * G.stats.wins + (G.wonAt ? 50 * G.wonAt.lives : 0) : 0; }
+function medalFor(s) { for (const m of MEDALS) if (s >= m[1]) return m[0]; return ''; }
+function playerMods() { return { front: has('front') ? 4 : 0, rear: has('rear') ? 2 : 0, need: has('banner') ? 2 : 3 }; }
+function oppMods() { return { all: G.finale ? CFG.finaleBoost : 0 }; }
+function strength(u) { return u.atk + u.hp; }
+function weakestIdx(team, key) { let k = 0; team.forEach((u, i) => { if (key(u) < key(team[k])) k = i; }); return k; }
+
+function startRun() {
+  Object.assign(CFG, MODES[UI.hard ? 'HARD' : 'NORMAL']); UI.screen = 'game'; UI.help = false;
+  G = { phase: 'lot', round: 0, lives: CFG.lives, maxLives: CFG.lives, gold: 0, goldShown: 0, cap: CFG.cap, team: [], sel: -1, time: 0, fx: [], shake: 0, banner: null, deny: -9, ff: false,
+    guide: false, practice: false, buyLock: 0, perks: {}, perkList: [], offer: [], history: [], tip: null, finale: false, endless: false, survived: 0, wonAt: null, slamUsed: false, scoreShown: 0,
+    rivals: RIVALS.map(r => Object.assign({}, r, { mult: r.mult * CFG.multScale, gold: 0, team: [], val: 0, lean: false, leanAmt: 0, reactT: 0, leanRange: CFG.leanRange, bluff: null, champion: null })),
+    stats: { lots: 0, bought: 0, spent: 0, sniped: 0, discarded: 0, wins: 0, losses: 0, leveled: 0, merged: 0, legends: 0, bluffed: 0 }, won: false, lastResult: null, cause: '', advice: '', lotStart: CFG.startPrice };
+  G.rivals.forEach(r => { r.team = shuffle(UNITS.filter(u => u.value <= CFG.rivalStartMaxValue)).slice(0, CFG.rivalStartUnits).map(makeUnit).sort((a, b) => b.hp - a.hp); });
+  startRound();
+}
+function finaleAt(round) { return !G.endless && (CFG.goalType === 'wins' ? G.stats.wins === CFG.goalN - 1 : round === CFG.goalN); }
+function teamStr(r) { return r.team.reduce((s, u) => s + strength(u), 0); }
+// Opponent for a normal round on NORMAL: round 1 Moss (the slow buyer), then the weaker of Vex/Blaze, then the stronger, then the 2nd strongest line overall (so round 4 is not a lull). HARD/endless rotate.
+function oppFor(round) { if (G.endless || !CFG.staged) return G.rivals[(round - 1) % 3]; const s = G.rivals.slice().sort((a, b) => teamStr(a) - teamStr(b)), o = s.filter(r => r !== G.rivals[0]);
+  return [G.rivals[0], o[0], o[1], s[1]][(round - 1) % 4]; }
+function startRound() {
+  G.round++; G.gold = Math.min(G.cap, G.gold + CFG.income + (has('pockets') ? 6 : 0) + (has('invest') ? 8 : 0)); G.slamUsed = false; G.history = [];
+  G.finale = finaleAt(G.round);
+  G.opp = G.nextOpp || oppFor(G.round); G.nextOpp = null;
+  G.rivals.forEach(r => { // rivals also use the gold sink: once per round, spare gold above a reserve levels their strongest unit (+2/+2)
+    if (G.round > 1 && r.team.length) { const b = r.team.reduce((m, u) => strength(u) > strength(m) ? u : m); const c = levelCost(b); if (b.lvl < LEVEL_MAX && r.gold >= c + CFG.rivalReserve) { r.gold -= c; b.lvl++; b.atk += 2; b.hp += 2; r.trained = b.name; } else r.trained = null; }
+    r.gold = Math.min(CFG.cap, r.gold + CFG.rivalIncome + CFG.rivalGrowth * (G.round - 1)); });
+  if (G.finale) { G.opp = G.rivals.slice().sort((a, b) => teamStr(b) - teamStr(a))[0]; // champion = strongest line
+    if (!G.opp.champion) { const ch = makeUnit(shuffle(LEGENDS)[0]); G.opp.champion = ch; // the champion rival brings one legendary unit
+      if (G.opp.team.length >= CFG.maxTeam) G.opp.team.splice(weakestIdx(G.opp.team, x => x.value), 1); G.opp.team.push(ch); G.opp.team.sort((a, b) => b.hp - a.hp); } }
+  const pool = CFG.staged ? UNITS.filter(u => KW_STAGE[u.kw] <= G.round && (G.round > 1 || u.value <= 11)) : UNITS;
+  G.lotIdx = 0; G.lots = shuffle(pool).slice(0, CFG.lots).map(makeUnit);
+  if (G.finale) { const leg = shuffle(LEGENDS).slice(0, 2).map(makeUnit); G.lots[1] = leg[0]; G.lots[4] = leg[1]; } // Grand Auction: 2 legendary lots (2nd and last)
+  if (G.finale) tip('finale' + G.round, FINALE_NAME + ': ' + G.opp.name + ' brings a champion (' + G.opp.champion.name + ') and every unit in their line gets +' + CFG.finaleBoost + '/+' + CFG.finaleBoost + '. Two LEGENDARY units go on sale (price starts at ' + LEGEND_START + '). Win this battle to win the run!', true);
+  else if (CFG.staged && G.round >= 2 && G.round <= 4) { const kws = Object.keys(KW_STAGE).filter(k => KW_STAGE[k] === G.round); tip('stage' + G.round, 'NEW in round ' + G.round + ': ' + kws.join(' and ').toUpperCase() + ' units. Their bonus depends on the PRICE you pay - read the card.'); }
+  startLot();
+}
+function startLot() {
+  const u = G.lot = G.lots[G.lotIdx]; G.lotStart = u.legend ? LEGEND_START : CFG.startPrice; G.price = G.lotStart; G.elapsed = 0; setPhase('lot'); G.banner = null; G.stats.lots++;
+  G.guide = G.round === 1 && G.lotIdx === 0; G.practice = G.guide && CFG.practice;
+  G.rivals.forEach(r => { r.reactT = 0; r.lean = false; r.bluff = null;
+    const wants = r.team.length < CFG.maxTeam || u.value > r.team[weakestIdx(r.team, x => x.value)].value;
+    const syn = r.team.filter(x => x.tribe === u.tribe).length >= 2 ? CFG.synergy : 1;
+    r.val = wants && !G.practice ? u.value * rnd(0.85, 1.15) * r.mult * syn * (has('intim') ? 0.9 : 1) : 0;
+    r.leanRange = 2 + Math.floor(Math.random() * (CFG.leanRange - 1)); // tell noise: the ring appears 2..leanRange ticks before the buy
+    if (r.bluffs && !G.practice && Math.random() < 0.3) { // Blaze sometimes bluffs: shows ABOUT TO BUY for 2-3 ticks well above the real buy price, then backs off
+      const bp = rivalBuyPrice(r), from = Math.min(G.lotStart - 1, Math.max(bp, 4) + r.leanRange + 4 + Math.floor(Math.random() * 4)), ticks = 2 + Math.floor(Math.random() * 2);
+      if (from - ticks > bp + r.leanRange + 1) r.bluff = { from, ticks, done: false }; } }); // the bluff ring must vanish at least 2 ticks before any real ring
+  if (u.legend) tip('legend', 'LEGENDARY unit: its price starts at ' + LEGEND_START + ' and it is far stronger than anything else. Rich rivals want it too - watch the rings.');
+  else if (!G.guide && G.team.length >= CFG.maxTeam) tip('full', 'Your line is full: buying now REPLACES your weakest unit - or click one of your units below to choose which one goes.');
+}
+function beginAuction() { if (!G.guide) return; G.guide = false; G.buyLock = 0.5; SFX.click();
+  tip('begin', G.practice ? 'Practice lot: the rivals sit this one out. Let the price fall as far as you dare, then press SPACE to buy.' : 'The price is falling. Press SPACE to buy at the price shown.', true); }
+function rivalEff(r, p) { return r.val * Math.min(1, r.gold / p); }
+function rivalBuyPrice(r) { for (let p = G.lotStart; p >= 1; p--) if (r.val > 0 && p <= rivalEff(r, p) && r.gold >= p) return p; return 0; }
+function updateLot(dt) {
+  if (G.guide) return; G.buyLock = Math.max(0, G.buyLock - dt);
+  G.elapsed += dt; const p = Math.max(1, G.lotStart - Math.floor(G.elapsed / CFG.tick + 1e-6));
+  let anyLean = false, buyer = null;
+  G.rivals.forEach((r, i) => { const eff = rivalEff(r, p), was = r.lean, bl = r.bluff;
+    if (bl && !bl.done && p <= bl.from - bl.ticks) { bl.done = true; G.stats.bluffed++; G.fx.push({ x: 78 + i * 420, y: 150, text: 'BLUFF!', color: COL.gold, t: 0, life: 1.2, size: 22 });
+      tip('bluff', r.name + ' was BLUFFING: the ring went away and nobody bought. ' + r.name + ' does that sometimes - the other two rivals never bluff.'); }
+    r.lean = (r.val > 0 && r.gold >= 1 && p - eff <= r.leanRange) || !!(bl && !bl.done && p <= bl.from);
+    if (r.lean && !was) { SFX.lean(); tip('lean', r.name + ' shows ABOUT TO BUY: the price is within a few gold of what they will pay. Buy now, or let them have it.'); } anyLean = anyLean || r.lean;
+    if (r.val > 0 && p <= eff && r.gold >= p) { r.reactT += dt; if (r.reactT >= CFG.react && (!buyer || eff > rivalEff(buyer, p))) buyer = r; } });
+  if (p !== G.price) { G.price = p; SFX.tick(p); if (anyLean) SFX.heart(); }
+  if (buyer) return rivalBuy(buyer);
+  if (G.elapsed >= G.lotStart * CFG.tick) { G.stats.discarded++; SFX.pass(); endLot('pass', null); }
+}
+function rivalBuy(r) {
+  const u = G.lot, p = G.price; r.gold -= p;
+  applyPurchase(u, p, purchaseBonus(u.kw, p, 0, r.gold, G.rivals.filter(x => x !== r).map(x => x.gold).concat([G.gold]), G.lotStart));
+  if (r.team.length >= CFG.maxTeam) r.team.splice(weakestIdx(r.team, x => x.value), 1);
+  r.team.push(u); r.team.sort((a, b) => b.hp - a.hp);
+  G.stats.sniped++; G.shake = 5; SFX.sniped(); endLot('sniped', r);
+  tip('sniped', r.name + ' bought that one. Their gold just went down - a rival with little gold cannot pay high prices.');
+}
+function replaceIdx() { return G.sel >= 0 ? G.sel : weakestIdx(G.team, strength); }
+function buy() {
+  if (!G || G.phase !== 'lot' || UI.help) return false; if (G.guide) { beginAuction(); return false; } if (G.buyLock > 0) return false;
+  if (G.gold < G.price) { G.deny = G.time; SFX.deny(); tip('poor', 'Not enough gold yet: you can buy once the price falls to ' + Math.floor(G.gold) + ' or less.'); return false; }
+  const full = G.team.length >= CFG.maxTeam, u = G.lot, p = G.price, b = playerBonus(u, p); G.gold -= p; applyPurchase(u, p, b);
+  if (full) G.team[replaceIdx()] = u; else G.team.push(u); G.sel = -1;
+  G.stats.bought++; G.stats.spent += p; if (u.legend) G.stats.legends++; SFX.sold(); if (b.a + b.h > 0) for (let i = 0; i < 3; i++) SFX.bonus(i);
+  tipClear('lean'); tipClear('full'); tipClear('begin'); tipClear('poor'); tipClear('legend'); endLot('sold', null);
+  const n = {}; G.team.forEach(x => n[x.tribe] = (n[x.tribe] || 0) + 1); const need = playerMods().need, act = Object.keys(n).find(t => n[t] === need && t === u.tribe);
+  if (act) tip('tribe', 'TRIBE BONUS ACTIVE - ' + TRIBE_TXT[act].replace(/^3/, String(need)) + '. It applies in every battle while they stay in your line.'); return true;
+}
+function slam() { if (!G || G.phase !== 'lot' || G.guide || !has('slam') || G.slamUsed || UI.help) return; G.slamUsed = true; G.elapsed += 4 * CFG.tick; SFX.sniped(); G.fx.push({ x: 690, y: 300, text: 'SLAM -4', color: COL.player, t: 0, life: 0.9, size: 26 }); }
+function endLot(kind, buyer) { const u = G.lot; setPhase('pause'); G.pauseT = CFG.pause; G.guide = false;
+  G.banner = { kind, buyer, name: u.name, price: G.price, bA: u.bAtk, bH: u.bHp, t: G.time };
+  G.history.push({ name: u.name, kind, who: kind === 'sold' ? 'YOU' : buyer ? buyer.name : '', price: G.price }); G.rivals.forEach(r => r.lean = false); }
+function nextLot() { G.lotIdx++; if (G.lotIdx >= CFG.lots) { setPhase('prebattle'); G.sel = -1; tip('prebattle', 'Battle preview: click one of your units below and use the MOVE buttons to change the order - the forecast updates. Front units fight first.'); } else startLot(); }
+function fight() { if (!G || G.phase !== 'prebattle' || UI.help) return; tipClear('prebattle'); startBattle(); }
+function startBattle() {
+  setPhase('battle'); G.sel = -1; G.result = resolveBattle(G.team, G.opp.team, playerMods(), oppMods());
+  G.bt = { A: prepTeam(G.team, playerMods()), B: prepTeam(G.opp.team, oppMods()), t: -0.5, stop: 0, lunge: 0, steps: 0, log: 'Front units hit each other at the same time.' };
+  tip('battle', 'Front units trade hits until one line is gone. Gold numbers = damage you deal, red = damage you take. Press F to fast-forward.');
+}
+const BX = (side, i) => side === 'A' ? 516 - i * 122 : 648 + i * 122, BY = 300;
+function updateBattle(dt) {
+  const b = G.bt, sp = G.ff ? 6 : 1; if (b.stop > 0) { b.stop -= dt; return; }
+  b.t += dt * sp; b.lunge = Math.max(0, b.lunge - dt * sp * 3);
+  while (b.t >= CFG.battleTick && G.phase === 'battle') { b.t -= CFG.battleTick;
+    if (!b.A.length || !b.B.length || b.steps >= 300) { finishBattle(); break; }
+    const an = b.A[0].name, bn = b.B[0].name, ev = battleStep(b.A, b.B); b.steps++; b.lunge = 1; if (!G.ff) b.stop = 0.07; G.shake = Math.min(6, Math.max(G.shake, 4)); SFX.hit();
+    const dealt = ev.filter(e => e.dmg && e.side === 'B' && e.idx === 0)[0], taken = ev.filter(e => e.dmg && e.side === 'A' && e.idx === 0)[0];
+    b.log = 'Exchange ' + b.steps + ':  your ' + an + ' deals ' + (dealt ? dealt.dmg : 0) + '   |   their ' + bn + ' deals ' + (taken ? taken.dmg : 0);
+    ev.forEach(e => { const x = BX(e.side, e.idx) + 58; if (e.dmg) G.fx.push({ x, y: BY - 6, text: '-' + e.dmg, color: e.side === 'A' ? COL.danger : COL.gold, t: 0, life: 0.9, size: 28 });
+      else { G.fx.push({ x, y: BY + 150, text: e.note, color: e.note === 'DEFEATED' ? COL.dim : COL.gold, t: 0, life: 1.0, size: 15, flat: true }); if (e.note === 'DEFEATED') { SFX.die(); G.fx.push({ ring: true, x, y: BY + 61, color: e.side === 'A' ? COL.player : COL.danger, t: 0, life: 0.45 }); } } }); }
+}
+function finishBattle() {
+  const b = G.bt, w = b.A.length && !b.B.length ? 'A' : b.B.length && !b.A.length ? 'B' : 'draw';
+  G.mismatch = w !== G.result.winner; G.lastResult = w; setPhase('battleEnd'); G.endT = 1.8;
+  if (w === 'A') { G.stats.wins++; SFX.win(); } else if (w === 'B') { G.stats.losses++; G.lives--; G.shake = 6; SFX.lose(); }
+  if (G.lives > 0) G.survived++;
+}
+function afterBattle() {
+  if (G.lives <= 0) return gameOver(false);
+  if (G.finale && !G.endless && !G.won) return gameOver(G.lastResult === 'A'); // the Grand Auction must be WON: a lost (or drawn) finale ends the run whatever your lives
+  if (!G.endless && !G.won && CFG.goalType === 'wins' && G.stats.wins >= CFG.goalN) return gameOver(true);
+  offerPerks();
+}
+function offerPerks() { G.nextOpp = finaleAt(G.round + 1) ? null : oppFor(G.round + 1); const pool = shuffle(PERKS.filter(p => !G.perks[p.id])); if (pool.length < 1) { setPhase('shop'); return; } G.offer = pool.slice(0, 3); setPhase('pick');
+  tip('pick', 'Pick 1 of 3 upgrades (click a card or press 1, 2, 3). It lasts for the rest of the run.'); }
+function pickPerk(i) { if (!G || G.phase !== 'pick' || UI.help) return; const p = G.offer[i]; if (!p) return; G.perks[p.id] = true; G.perkList.push(p); SFX.sold(); tipClear('pick');
+  if (p.id === 'vault') { G.cap = 90; G.gold = Math.min(G.cap, G.gold + 10); } if (p.id === 'life') { G.lives++; G.maxLives++; } if (p.id === 'invest') G.gold = Math.max(0, G.gold - 15);
+  setPhase('shop'); tip('shop', 'Between rounds: click a unit, then LEVEL it up for gold, MERGE it with a duplicate, move it or SELL it. Unspent gold carries over (max ' + G.cap + '). SPACE = next round.'); }
+function gameOver(won) {
+  const s = G.stats; if (won) { G.won = true; G.wonAt = { lives: G.lives, round: G.round }; }
+  setPhase('over'); G.overWon = won;
+  if (won) { G.cause = 'You won ' + FINALE_NAME + ' against ' + G.opp.name + ' and their champion in round ' + G.round + ' with ' + G.lives + ' ' + (G.lives === 1 ? 'life' : 'lives') + ' left.'; G.advice = 'Try KEEP GOING for endless rounds, or HARD mode for faster prices and richer rivals.'; }
+  else { const mine = G.team.length, avg = s.bought ? s.spent / s.bought : 0;
+    G.cause = (G.endless ? 'Endless run ended: ' : G.finale && G.lives > 0 ? (G.lastResult === 'draw' ? 'The finale was a DRAW, which does not win it: ' : 'You lost the finale (no second chances there): ') : 'Out of lives: ') + G.opp.name + '\'s line ' + (G.lastResult === 'draw' ? 'matched' : 'beat') + ' yours in ' + (G.finale ? FINALE_NAME.toLowerCase() : 'round ' + G.round) + ' (' + mine + ' of your units vs ' + G.opp.team.length + ' of theirs).';
+    G.advice = mine < CFG.maxTeam ? 'Your line had empty slots. Five weak units beat three good ones - fill the line first, upgrade later.'
+      : G.gold >= 25 ? 'You ended with ' + Math.floor(G.gold) + ' gold unspent. Gold does not fight - spend it on units, or LEVEL UP a unit between rounds.'
+      : s.sniped > s.bought ? 'Rivals took ' + s.sniped + ' lots, you took ' + s.bought + '. When you want a unit, buy the moment a rival shows ABOUT TO BUY.'
+      : avg > 11 ? 'You paid ' + avg.toFixed(1) + ' gold per unit on average. Let the price fall until a rival shows ABOUT TO BUY.'
+      : 'Look for 3 units of one tribe and use the battle preview to reorder: big HP in front, CLEAVE and RALLY near the front.'; }
+  const sc = score(), m = medalFor(sc); G.medal = m; G.newBest = sc > best;
+  if (sc > best) { best = sc; lsSet('proto_' + GAMEID + '_best', best); }
+  if (m && (MEDAL_RANK[m] || 0) > (MEDAL_RANK[bestMedal] || 0)) { bestMedal = m; lsSet('proto_' + GAMEID + '_medal', m); }
+  if (won) lsSet('proto_' + GAMEID + '_wins', (+lsGet('proto_' + GAMEID + '_wins') || 0) + 1);
+}
+function keepGoing() { if (!G || G.phase !== 'over' || !G.overWon || G.endless || UI.help) return; G.endless = true; G.finale = false; offerPerks(); }
+function nextRound() { if (G && G.phase === 'shop' && !UI.help) { G.sel = -1; tipClear('shop'); startRound(); } }
+function sellValue(u) { return has('scrap') ? u.paid : Math.floor(u.paid / 2); }
+function sell() { if (!G || G.phase !== 'shop' || G.sel < 0 || UI.help) return; const u = G.team.splice(G.sel, 1)[0]; G.gold = Math.min(G.cap, G.gold + sellValue(u)); G.sel = -1; SFX.sold(); }
+// Between-round gold sink: LEVEL UP (+2 ATK +2 HP for 6/10/14 gold, max 3 levels) and MERGE two units with the same name into one (free, frees a slot).
+function levelUp() { if (!G || G.phase !== 'shop' || G.sel < 0 || UI.help) return; const u = G.team[G.sel]; if (!u || u.lvl >= LEVEL_MAX) return; const c = levelCost(u);
+  if (G.gold < c) { G.deny = G.time; SFX.deny(); tip('poorlvl', 'Not enough gold: levelling ' + u.name + ' costs ' + c + '.'); return; }
+  G.gold -= c; u.lvl++; u.atk += 2; u.hp += 2; G.stats.leveled++; SFX.sold(); for (let i = 0; i < 3; i++) SFX.bonus(i);
+  G.fx.push({ x: 168 + G.sel * 128, y: 622, text: 'LEVEL ' + u.lvl + '  +2/+2', color: COL.gold, t: 0, life: 1.1, size: 20 }); }
+function dupIdx(i) { const u = G.team[i]; return u ? G.team.findIndex((x, k) => k !== i && x.name === u.name) : -1; }
+function merge() { if (!G || G.phase !== 'shop' || G.sel < 0 || UI.help) return; const j = dupIdx(G.sel); if (j < 0) return; const u = G.team[G.sel], o = G.team[j];
+  u.atk += o.atk; u.hp += o.hp; u.paid += o.paid; u.lvl = Math.min(LEVEL_MAX, u.lvl + 1); G.team.splice(j, 1); G.sel = G.team.indexOf(u); G.stats.merged++; SFX.sold(); for (let i = 0; i < 3; i++) SFX.bonus(i);
+  G.fx.push({ x: 168 + G.sel * 128, y: 622, text: 'MERGED  ' + u.atk + ' / ' + u.hp, color: COL.gold, t: 0, life: 1.2, size: 20 });
+  tip('merged', 'Merged: one ' + u.name + ' with both units\' ATK and HP, and a free slot for the next auction.', true); }
+function canEdit() { return G && ['lot', 'pause', 'prebattle', 'shop', 'pick'].indexOf(G.phase) >= 0; }
+function move(d) { if (!canEdit()) return; const i = G.sel, j = i + d; if (i < 0 || j < 0 || j >= G.team.length) return; [G.team[i], G.team[j]] = [G.team[j], G.team[i]]; G.sel = j; SFX.coin(); }
+
+function update(dt) {
+  G.time += dt; G.shake = Math.max(0, G.shake - dt * 30);
+  if (G.goldShown !== G.gold) { const d = G.gold - G.goldShown, s = Math.sign(d) * Math.min(Math.abs(d), dt * 45), before = Math.floor(G.goldShown); G.goldShown += s; if (Math.floor(G.goldShown) !== before) SFX.coin(); }
+  const sc = score(); if (G.scoreShown !== sc) G.scoreShown += Math.sign(sc - G.scoreShown) * Math.min(Math.abs(sc - G.scoreShown), dt * 300);
+  G.rivals.forEach((r, i) => r.leanAmt += (((r.lean || (G.guide && i === 0)) ? 1 : 0) - r.leanAmt) * Math.min(1, dt * 9));
+  G.fx = G.fx.filter(f => (f.t += dt) < f.life); if (G.tip && (G.tip.t += dt) > 6) G.tip = null;
+  if (G.phase === 'lot') updateLot(dt);
+  else if (G.phase === 'pause') { G.pauseT -= dt; if (G.pauseT <= 0) nextLot(); }
+  else if (G.phase === 'battle') updateBattle(dt);
+  else if (G.phase === 'battleEnd') { G.endT -= dt * (G.ff ? 4 : 1); if (G.endT <= 0) afterBattle(); }
+}
+function step(dt) { UI.fadeT += dt; UI.overT += dt; if (UI.screen === 'game' && !UI.help && G) update(dt); }
+
+// ============================ RENDER HELPERS ============================
+const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+const ease = k => { k = Math.max(0, Math.min(1, k)); return 1 - (1 - k) * (1 - k) * (1 - k); };
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function setFont(size, bold) { ctx.font = (bold === 2 ? '800 ' : bold ? '700 ' : '') + size + 'px ' + FONT; }
+function txt(s, x, y, size, color, align, bold) { setFont(size, bold); ctx.fillStyle = color || COL.text; ctx.textAlign = align || 'left'; ctx.fillText(s, x, y); }
+function wrap(s, x, y, maxW, lh, size, color, align, bold) { setFont(size, bold); const words = String(s).split(' '); let line = '';
+  words.forEach(w => { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { txt(line, x, y, size, color, align, bold); y += lh; line = w; } else line = t; }); if (line) { txt(line, x, y, size, color, align, bold); y += lh; } return y; }
+function panel(x, y, w, h, o) { o = o || {}; ctx.fillStyle = o.fill || COL.panel; rr(x, y, w, h, o.r || 12); ctx.fill(); ctx.strokeStyle = o.stroke || COL.line; ctx.lineWidth = o.lw || 1; ctx.stroke(); }
+function glow(color, blur) { ctx.shadowColor = color; ctx.shadowBlur = blur; }
+function noGlow() { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
+function inside(x, y, w, h) { return mx >= x && mx <= x + w && my >= y && my <= y + h; }
+function btn(x, y, w, h, label, fn, o) { o = o || {}; const hov = !o.off && inside(x, y, w, h), down = hov && mouseDown, dy = down ? 2 : hov ? -1 : 0; if (!o.off) BTNS.push({ x, y, w, h, fn });
+  if (o.primary && !o.off) glow(COL.player, 12); ctx.fillStyle = o.off ? '#151a26' : o.primary ? (down ? '#0c2e36' : '#10404b') : o.on ? '#1d3a44' : down ? '#141926' : '#1a2030'; rr(x, y + dy, w, h, 10); ctx.fill(); noGlow();
+  ctx.strokeStyle = o.off ? COL.line : hov || o.primary || o.on ? COL.player : o.stroke || '#3a4560'; ctx.lineWidth = o.primary || o.on ? 2 : 1.5; ctx.stroke();
+  txt(label, x + w / 2, y + dy + h / 2 + (o.size || 16) * 0.35, o.size || 16, o.off ? COL.dim : o.fg || '#fff', 'center', true); }
+function arrow(x1, y1, x2, y2, color) { const a = Math.atan2(y2 - y1, x2 - x1); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - 12 * Math.cos(a - 0.45), y2 - 12 * Math.sin(a - 0.45)); ctx.lineTo(x2 - 12 * Math.cos(a + 0.45), y2 - 12 * Math.sin(a + 0.45)); ctx.closePath(); ctx.fill(); }
+function drawBackground() {
+  ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, H); const g = ctx.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, 760); g.addColorStop(0, '#121726'); g.addColorStop(1, '#0b0d12'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(170,179,197,0.07)'; for (let x = 20; x < W; x += 40) for (let y = 20; y < H; y += 40) ctx.fillRect(x, y, 2, 2);
+}
+function eyes(cx, cy, gap, r, lookX, lookY) { const a = Math.atan2(lookY - cy, lookX - cx), ox = Math.cos(a) * r * 0.4, oy = Math.sin(a) * r * 0.4;
+  [-gap, gap].forEach(d => { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx + d, cy, r, 0, 7); ctx.fill(); ctx.fillStyle = '#0b0d12'; ctx.beginPath(); ctx.arc(cx + d + ox, cy + oy, r * 0.55, 0, 7); ctx.fill(); }); }
+function drawToken(cx, cy, r, tribe, lookX, lookY) { // little tribe creature: rounded token + drop shadow + eyes
+  const c = TRIBES[tribe] || '#777'; ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(cx, cy + r * 1.05, r * 0.9, r * 0.25, 0, 0, 7); ctx.fill(); ctx.fillStyle = c;
+  if (tribe === 'Beast') { ctx.beginPath(); ctx.moveTo(cx - r, cy - r * 0.2); ctx.lineTo(cx - r * 0.75, cy - r * 1.35); ctx.lineTo(cx - r * 0.1, cy - r * 0.7); ctx.moveTo(cx + r, cy - r * 0.2); ctx.lineTo(cx + r * 0.75, cy - r * 1.35); ctx.lineTo(cx + r * 0.1, cy - r * 0.7); ctx.fill(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill(); }
+  else if (tribe === 'Undead') { ctx.beginPath(); ctx.arc(cx, cy - r * 0.15, r, 0, 7); ctx.fill(); rr(cx - r * 0.6, cy + r * 0.3, r * 1.2, r * 0.75, r * 0.2); ctx.fill(); }
+  else if (tribe === 'Machine') { rr(cx - r, cy - r * 0.85, r * 2, r * 1.8, r * 0.35); ctx.fill(); ctx.fillRect(cx - 1.5, cy - r * 1.4, 3, r * 0.6); ctx.beginPath(); ctx.arc(cx, cy - r * 1.45, r * 0.2, 0, 7); ctx.fill(); }
+  else if (tribe === 'Mage') { ctx.beginPath(); ctx.arc(cx, cy + r * 0.1, r * 0.9, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(cx - r * 0.95, cy - r * 0.35); ctx.lineTo(cx + r * 0.15, cy - r * 1.7); ctx.lineTo(cx + r * 0.95, cy - r * 0.35); ctx.closePath(); ctx.fill(); }
+  else { ctx.beginPath(); ctx.arc(cx, cy, r * 0.85, 0, 7); ctx.fill(); }
+  if (r >= 6) eyes(cx, cy + r * 0.05, r * 0.38, Math.max(1.6, r * 0.22), lookX === undefined ? cx : lookX, lookY === undefined ? cy + 40 : lookY);
+}
+function drawPlayerToken(cx, cy, r) { const s = 1 + 0.04 * Math.sin((G ? G.time : UI.overT) * 2.2); ctx.save(); ctx.translate(cx, cy); ctx.scale(s, 2 - s);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(0, r * 1.1, r * 0.9, r * 0.22, 0, 0, 7); ctx.fill();
+  glow(COL.player, 12); ctx.fillStyle = '#fff'; ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath(); ctx.fill(); noGlow();
+  ctx.strokeStyle = COL.player; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = COL.player; ctx.fillRect(-r * 0.45, r * 0.35, r * 0.9, 3); ctx.restore(); eyes(cx, cy - r * 0.1, r * 0.35, r * 0.2, 450, 366); }
+function drawRivalFace(r, cx, cy, rad, lit, t) { const wob = 1 + 0.03 * Math.sin(t * 2 + cx); ctx.save(); ctx.translate(cx, cy); ctx.scale(wob, 2 - wob);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(0, rad * 1.08, rad * 0.9, rad * 0.2, 0, 0, 7); ctx.fill();
+  ctx.globalAlpha = lit ? 1 : 0.72; if (lit) glow(COL.danger, 16); ctx.fillStyle = r.color;
+  if (r.shape === 'circle') { ctx.beginPath(); ctx.arc(0, 0, rad, 0, 7); ctx.fill(); } else if (r.shape === 'square') { rr(-rad * 0.92, -rad * 0.92, rad * 1.84, rad * 1.84, rad * 0.3); ctx.fill(); }
+  else { ctx.beginPath(); ctx.moveTo(0, -rad * 1.15); ctx.lineTo(rad * 1.1, rad * 0.9); ctx.lineTo(-rad * 1.1, rad * 0.9); ctx.closePath(); ctx.fill(); }
+  noGlow(); ctx.globalAlpha = 1; ctx.fillStyle = '#0b0d12'; ctx.fillRect(-rad * 0.3, rad * 0.45, rad * 0.6, lit ? rad * 0.22 : rad * 0.1); ctx.restore();
+  eyes(cx, cy + (r.shape === 'tri' ? rad * 0.15 : -rad * 0.1), rad * 0.36, rad * (lit ? 0.24 : 0.19), 450, 366); }
+
+// ============================ CARDS ============================
+function statCol(u, o) { return { a: (u.bAtk > 0 || (o && o.pa > 0)) ? COL.gold : '#fff', h: (u.bHp > 0 || (o && o.ph > 0)) ? COL.gold : COL.safe }; }
+function drawCard(u, x, y, w, h, o) {
+  o = o || {}; const c = TRIBES[u.tribe] || '#777', a = u.atk + (o.pa || 0), hp = Math.max(0, u.hp + (o.ph || 0)), sc = statCol(u, o);
+  if (w < 70) { if (u.legend) glow(COL.gold, 8); panel(x, y, w, h, { r: 6, stroke: u.legend ? COL.gold : COL.line, lw: u.legend ? 2 : 1 }); noGlow(); ctx.fillStyle = c; rr(x + 2, y + 2, w - 4, 8, 3); ctx.fill();
+    if (u.lvl) { ctx.fillStyle = COL.gold; for (let k = 0; k < u.lvl; k++) ctx.fillRect(x + 5 + k * 7, y + 14, 5, 5); }
+    txt(a + '', x + w * 0.27, y + h * 0.72, 16, '#fff', 'center', true); txt('/', x + w / 2, y + h * 0.72, 14, COL.dim, 'center'); txt(hp + '', x + w * 0.74, y + h * 0.72, 16, COL.safe, 'center', true); return; }
+  const hov = o.hover && inside(x, y, w, h); if (hov) y -= 3;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(x + 2, y + 5, w, h, 12); ctx.fill();
+  if (o.sel) glow(COL.gold, 12); else if (u.legend) glow(COL.gold, 10); panel(x, y, w, h, { stroke: o.sel ? COL.gold : hov ? COL.player : u.legend ? COL.gold : o.stroke || COL.line, lw: o.sel || o.stroke || u.legend ? 2 : 1 }); noGlow();
+  if (w > 200) { // BIG auction card
+    ctx.fillStyle = c; rr(x + 3, y + 3, w - 6, 28, 9); ctx.fill(); txt(u.legend ? 'LEGENDARY ' + u.tribe.toUpperCase() : u.tribe.toUpperCase() + ' TRIBE', x + w / 2, y + 23, 16, '#0b0d12', 'center', 2);
+    drawToken(x + w / 2, y + 56, u.legend ? 18 : 15, u.tribe, 690, 320); txt(u.name, x + w / 2, y + 96, 22, u.legend ? COL.gold : '#fff', 'center', 2);
+    [['ATK', a, sc.a, x + 14], ['HP', hp, sc.h, x + w / 2 + 4]].forEach(s => { panel(s[3], y + 106, w / 2 - 18, 84, { fill: '#0e1119', r: 10 }); txt(s[0], s[3] + (w / 2 - 18) / 2, y + 126, 16, COL.dim, 'center', true); txt(s[1] + '', s[3] + (w / 2 - 18) / 2, y + 178, 52, s[2], 'center', 2); });
+    if ((o.pa || 0) + (o.ph || 0) > 0) txt('includes +' + o.pa + ' ATK +' + o.ph + ' HP if bought NOW', x + w / 2, y + 208, 14, COL.gold, 'center', true);
+    wrap(KW[u.kw] || '', x + w / 2, y + 230, w - 22, 17, 14, COL.text, 'center'); txt(TRIBE_TXT[u.tribe] || '', x + w / 2, y + h - 9, w > 0 ? 13.5 : 14, c, 'center', true); return; }
+  ctx.fillStyle = c; rr(x + 3, y + 3, w - 6, 20, 8); ctx.fill(); drawToken(x + 14, y + 13, 6, u.tribe); txt(u.legend ? 'LEGEND' : u.tribe.toUpperCase(), x + w / 2 + 2, y + 18, 14, '#0b0d12', 'center', 2);
+  if (u.lvl) { glow(COL.gold, 6); ctx.fillStyle = COL.gold; ctx.beginPath(); ctx.arc(x + w - 12, y + 13, 9, 0, 7); ctx.fill(); noGlow(); txt('L' + u.lvl, x + w - 12, y + 17, 11, '#0b0d12', 'center', 2); }
+  txt(u.name, x + w / 2, y + 41, 14, u.legend ? COL.gold : '#fff', 'center', true);
+  txt('ATK', x + w * 0.27, y + 59, 14, COL.dim, 'center'); txt('HP', x + w * 0.73, y + 59, 14, COL.dim, 'center');
+  txt(a + '', x + w * 0.27, y + 88, 28, sc.a, 'center', 2); txt(hp + '', x + w * 0.73, y + 88, 28, sc.h, 'center', 2);
+  txt(u.tb ? u.kw ? u.kw + ' +tribe' : 'tribe bonus' : u.kw || '', x + w / 2, y + h - 10, 14, u.tb ? COL.gold : '#cfd5e6', 'center');
+}
+
+// ============================ HUD / RIVALS / STRIP ============================
+function drawHUD() {
+  txt('DUTCH DRAFT', 20, 22, 14, COL.dim, 'left', 2);
+  const n = CFG.goalN, done = Math.min(n, CFG.goalType === 'wins' ? G.stats.wins : G.survived);
+  txt(G.endless ? 'ENDLESS - battles won: ' + G.stats.wins : CFG.goalType === 'wins' ? 'GOAL: Win ' + n + ' battles' : 'GOAL: Win the round ' + n + ' finale', 130, 22, 16, COL.text, 'left', true);
+  const sw = (300 - (n - 1) * 4) / n, rounds = CFG.goalType !== 'wins';
+  for (let i = 0; i < n; i++) { const last = i === n - 1, cur = rounds && !G.endless && i === G.round - 1; ctx.fillStyle = i < done || G.endless ? COL.gold : '#1d2333'; rr(20 + i * (sw + 4), 30, sw, 14, 4); ctx.fill();
+    if (cur) { ctx.strokeStyle = COL.player; ctx.lineWidth = 2; ctx.stroke(); } else if (last && !G.endless) { ctx.strokeStyle = COL.danger; ctx.lineWidth = 1.5; ctx.stroke(); } }
+  txt(rounds && !G.endless ? 'round ' + Math.min(G.round, n) + ' / ' + n : done + ' / ' + n, 332, 44, 20, COL.gold, 'left', true); if (!G.endless) txt('last = FINALE', 462, 43, 14, COL.dim);
+  txt('Round ' + G.round + (G.finale ? ' - ' + FINALE_NAME : '') + '    Score ' + Math.round(G.scoreShown) + '    ' + CFG.name, 20, 64, 14, G.finale ? COL.danger : COL.dim, 'left', G.finale);
+  btn(600, 8, 84, 30, '? Help', openHelp, { size: 14 }); txt(muted ? 'Sound OFF (M)' : 'Sound ON (M)', 600, 58, 14, COL.dim);
+  txt('GOLD', 930, 22, 14, COL.dim, 'left', true); glow(COL.gold, 10); txt(Math.round(G.goldShown) + '', 930, 58, 36, COL.gold, 'left', 2); noGlow();
+  txt('+' + (CFG.income + (has('pockets') ? 6 : 0) + (has('invest') ? 8 : 0)) + ' each round', 1000, 42, 14, COL.dim); txt('max ' + G.cap, 1000, 60, 14, COL.dim);
+  txt('LIVES', 1130, 22, 14, COL.dim, 'left', true); for (let i = 0; i < G.maxLives; i++) { const on = i < G.lives; if (on) glow(COL.player, 8); ctx.fillStyle = on ? '#fff' : '#1d2333'; ctx.beginPath(); ctx.arc(1142 + i * 28, 46, 10, 0, 7); ctx.fill(); noGlow(); if (on) { ctx.strokeStyle = COL.player; ctx.lineWidth = 2.5; ctx.stroke(); } }
+}
+function drawRival(r, i, x, y) {
+  const demo = G.guide && i === 0, lit = r.lean || demo, bought = G.phase === 'pause' && G.banner && G.banner.buyer === r, isOpp = G.opp === r, pulse = 0.5 + 0.5 * Math.sin(G.time * 10);
+  panel(x, y, 400, 134, { stroke: lit ? COL.danger : isOpp ? '#5a3040' : COL.line, lw: lit ? 2.5 : 1 });
+  const cx = x + 58, cy = y + 54, s = 1 + 0.5 * Math.min(1, r.leanAmt); drawRivalFace(r, cx, cy, 24 * s, lit || bought, G.time);
+  if (lit) { glow(COL.danger, 14); ctx.strokeStyle = COL.danger; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, cy, 24 * s + 7 + pulse * 3, 0, 7); ctx.stroke(); noGlow(); }
+  if (lit || bought) { ctx.fillStyle = COL.danger; rr(x + 3, y + 107, 112, 23, 8); ctx.fill(); txt(bought ? 'BOUGHT IT' : 'ABOUT TO BUY', x + 59, y + 124, 14, '#fff', 'center', 2); }
+  txt(r.name, x + 124, y + 26, 18, r.color, 'left', 2); txt(Math.floor(r.gold) + ' gold', x + 388, y + 26, 18, COL.gold, 'right', true);
+  if (isOpp) txt(G.finale ? 'FINALE CHAMPION' : 'NEXT OPPONENT', x + 388, y + 46, 14, COL.danger, 'right', true);
+  if (has('insider') && isOpp && G.phase === 'lot' && !G.guide) { const bp = rivalBuyPrice(r); txt(bp ? 'Insider: buys at ' + bp : 'Insider: not interested', x + 124, y + 46, 14, COL.gold, 'left', true); }
+  else { setFont(14); const s2 = isOpp ? r.pers.split(' - ')[0] : r.pers; txt(s2, x + 124, y + 46, 14, COL.dim); }
+  for (let k = 0; k < CFG.maxTeam; k++) { const ux = x + 124 + k * 54, uy = y + 54; if (r.team[k]) drawCard(r.team[k], ux, uy, 50, 50); else { ctx.strokeStyle = '#1d2333'; ctx.lineWidth = 1; rr(ux, uy, 50, 50, 6); ctx.stroke(); } }
+  txt('their line, front first: ATK / HP', x + 124, y + 124, 14, COL.dim);
+}
+function drawStrip() {
+  panel(12, 526, 1256, 144, { fill: COL.field, r: 14 });
+  drawPlayerToken(58, 586, 24); txt('YOU', 58, 642, 16, COL.player, 'center', 2);
+  txt('YOUR LINE - the front unit (left) fights first', 106, 543, 14, COL.dim, 'left', true);
+  const edit = canEdit();
+  for (let i = 0; i < CFG.maxTeam; i++) { const x = 106 + i * 128, y = 548, u = G.team[i];
+    if (!u) { ctx.strokeStyle = '#1d2333'; ctx.lineWidth = 1.5; rr(x, y, 124, 118, 12); ctx.stroke(); txt('empty', x + 62, y + 64, 14, '#4a5470', 'center'); continue; }
+    drawCard(u, x, y, 124, 118, { sel: G.sel === i, hover: edit, stroke: G.phase === 'lot' && !G.guide && G.team.length >= CFG.maxTeam && replaceIdx() === i && G.sel !== i ? COL.dim : null });
+    if (edit) BTNS.push({ x, y, w: 124, h: 118, fn: () => { G.sel = G.sel === i ? -1 : i; SFX.click(); } }); }
+  const px = 760, need = playerMods().need, n = {}; G.team.forEach(u => n[u.tribe] = (n[u.tribe] || 0) + 1);
+  txt('YOUR TRIBES (' + need + ' of one tribe = bonus in battle)', px, 543, 14, COL.dim, 'left', true);
+  ['Beast', 'Undead', 'Machine', 'Mage'].forEach((t, i) => { const on = (n[t] || 0) >= need, x = px + i * 124; panel(x, 550, 118, 26, { r: 8, stroke: on ? COL.gold : COL.line }); drawToken(x + 14, 563, 6, t); txt(t + ' ' + Math.min(n[t] || 0, need) + '/' + need + (on ? ' ON' : ''), x + 27, 568, 14, on ? COL.gold : COL.dim, 'left', on); });
+  const u = G.team[G.sel];
+  if (!u) { wrap(edit ? 'Click one of your units to select it: move it, sell it between rounds, or choose which unit a new purchase replaces.' : G.phase === 'over' ? 'Your final line.' : 'Battle in progress.', px, 600, 490, 18, 14, COL.dim);
+    if (G.perkList.length) wrap('Upgrades: ' + G.perkList.map(p => p.name).join(', '), px, 644, 490, 17, 14, COL.player); }
+  else { txt('Selected: ' + u.name + (u.lvl ? ' Lv' + u.lvl : '') + (u.legend ? ' (LEGENDARY)' : '') + '  (ATK ' + u.atk + ' / HP ' + u.hp + ', paid ' + u.paid + ')', px, 598, 14, u.legend ? COL.gold : '#fff', 'left', true); wrap(KW[u.kw] || '', px, 616, 490, 17, 14, COL.dim);
+    btn(px, 640, 150, 26, '< MOVE TO FRONT', () => move(-1), { size: 14, off: G.sel <= 0 }); btn(px + 158, 640, 150, 26, 'MOVE BACK >', () => move(1), { size: 14, off: G.sel >= G.team.length - 1 });
+    btn(px + 316, 640, 174, 26, 'SELL for ' + sellValue(u) + ' gold (S)', sell, { size: 14, off: G.phase !== 'shop' }); }
+}
+function drawTipBar() {
+  if (G.tip) { const k = ease(G.tip.t / 0.25); ctx.globalAlpha = k; panel(12, 676, 880, 40, { stroke: COL.player, r: 10 }); txt('TIP', 28, 701, 14, COL.player, 'left', 2); setFont(14);
+    const long = ctx.measureText(G.tip.text).width > 810; if (long) wrap(G.tip.text, 62, 692, 820, 17, 14, COL.text); else txt(G.tip.text, 62, 701, 14, COL.text); ctx.globalAlpha = 1; }
+  txt('SPACE buy   H help   F fast   R restart   M mute   Esc menu', 1264, 702, 14, COL.dim, 'right');
+}
+
+// ============================ CENTRE PLAYFIELD ============================
+function callout(x, y, w, h, title, body) { glow(COL.player, 10); panel(x, y, w, h, { fill: '#0f1d26', stroke: COL.player, lw: 2 }); noGlow(); txt(title, x + 14, y + 24, 16, COL.player, 'left', 2); wrap(body, x + 14, y + 46, w - 28, 18, 14, COL.text); }
+function drawLot() {
+  const u = G.lot, inLot = G.phase === 'lot', b = inLot ? playerBonus(u, G.price) : { a: 0, h: 0 }, cx = 690;
+  drawCard(u, 330, 218, 240, 298, inLot ? { pa: b.a, ph: b.h, stroke: '#3a4560' } : {});
+  // left column: who bought what this round (or the walkthrough)
+  if (!G.guide) { txt('LOTS THIS ROUND', 28, 242, 14, COL.dim, 'left', true);
+    G.history.forEach((h, i) => txt((i + 1) + '. ' + h.name + ' - ' + (h.kind === 'pass' ? 'nobody bought it' : h.who + ' paid ' + h.price), 28, 268 + i * 24, 14, h.kind === 'sold' ? COL.player : h.kind === 'sniped' ? COL.danger : COL.dim, 'left', h.kind === 'sold'));
+    if (inLot) txt((G.history.length + 1) + '. ' + u.name + ' - on sale now', 28, 268 + G.history.length * 24, 14, COL.gold);
+    wrap('After lot ' + CFG.lots + ' your line fights ' + G.opp.name + (G.finale ? ' - ' + FINALE_NAME + ' (champion ' + G.opp.champion.name + ', +' + CFG.finaleBoost + '/+' + CFG.finaleBoost + ' on their units).' : '.'), 28, 470, 280, 18, 14, G.finale ? COL.danger : COL.dim);
+    if (has('slam') && inLot) btn(28, 410, 200, 32, G.slamUsed ? 'Gavel Slam used' : 'GAVEL SLAM -4 (Q)', slam, { size: 14, off: G.slamUsed }); }
+  if (inLot) {
+    const p = G.price, frac = G.guide ? 0 : (G.elapsed % CFG.tick) / CFG.tick, deny = G.time - G.deny < 0.3, can = G.gold >= p;
+    txt('LOT ' + (G.lotIdx + 1) + ' of ' + CFG.lots + (G.practice ? ' - PRACTICE' : ''), cx, 240, 16, COL.text, 'center', true); txt(G.guide ? 'PRICE (paused)' : 'PRICE - falling', cx, 262, 14, COL.dim, 'center');
+    if (can) glow(COL.gold, 12); txt(p + '', cx + (deny ? Math.sin(G.time * 70) * 4 : 0), 346 + ease(frac * 4) * 0 + (1 - ease(frac * 5)) * -6, 92, can ? COL.gold : COL.dim, 'center', 2); noGlow();
+    txt(can ? 'gold' : 'gold - you only have ' + Math.floor(G.gold), cx, 368, 14, COL.dim, 'center');
+    ctx.fillStyle = '#1d2333'; rr(610, 380, 160, 6, 3); ctx.fill(); ctx.fillStyle = COL.dim; rr(610, 380, Math.max(6, 160 * (1 - frac)), 6, 3); ctx.fill(); txt('drops by 1 every ' + CFG.tick + 's', cx, 406, 14, COL.dim, 'center');
+    if (G.guide) btn(590, 418, 200, 56, 'SPACE = BEGIN', beginAuction, { primary: true, size: 18 }); else btn(590, 418, 200, 56, can ? 'BUY  [SPACE]' : 'NOT ENOUGH GOLD', buy, { primary: can, off: !can, size: can ? 20 : 15 });
+    const lean = G.rivals.filter(r => r.lean); if (lean.length) txt(lean.length === 3 ? 'ALL 3 RIVALS ABOUT TO BUY!' : lean.length === 2 ? lean.map(r => r.name.toUpperCase()).join(' + ') + ' ABOUT TO BUY!' : lean[0].name.toUpperCase() + ' IS ABOUT TO BUY!', cx, 496, 14, COL.danger, 'center', 2);
+    else if (G.practice && !G.guide) txt('Rivals sit this one out', cx, 496, 14, COL.dim, 'center');
+    if (b.a + b.h > 0) txt('Buy now: +' + b.a + ' ATK +' + b.h + ' HP', cx, 514, 14, COL.gold, 'center', true);
+    if (G.guide) drawGuide(); else drawCompare(u, b);
+  } else if (G.banner) drawSoldBanner();
+}
+function drawCompare(u, b) {
+  const x = 810, full = G.team.length >= CFG.maxTeam; panel(x, 222, 446, 292, {});
+  if (!G.team.length) { txt('THIS UNIT vs YOUR WEAKEST UNIT', x + 223, 250, 16, COL.text, 'center', true); txt('Your line is empty.', x + 223, 330, 22, COL.gold, 'center', true); wrap('Any unit is better than an empty slot - make sure you buy something this round.', x + 223, 364, 380, 20, 15, COL.dim, 'center'); txt('Gold after buying: ' + Math.max(0, Math.floor(G.gold - G.price)), x + 223, 496, 14, G.gold >= G.price ? COL.gold : COL.dim, 'center'); return; }
+  const wi = replaceIdx(), wk = G.team[wi], a = u.atk + b.a, hp = u.hp + b.h, da = a - wk.atk, dh = hp - wk.hp;
+  txt(G.sel >= 0 ? 'THIS UNIT vs THE UNIT YOU SELECTED' : 'THIS UNIT vs YOUR WEAKEST UNIT', x + 223, 250, 16, COL.text, 'center', true);
+  txt('THIS UNIT (bought now)', x + 100, 276, 14, COL.dim, 'center'); txt(G.sel >= 0 ? 'SELECTED' : 'YOUR WEAKEST', x + 346, 276, 14, COL.dim, 'center');
+  txt(u.name, x + 100, 298, 16, '#fff', 'center', true); txt(wk.name, x + 346, 298, 16, '#fff', 'center', true);
+  [['ATK', a, wk.atk, da, 344, '#fff'], ['HP', hp, wk.hp, dh, 396, COL.safe]].forEach(r => { txt(r[1] + '', x + 100, r[4], 36, r[5], 'center', 2); txt(r[2] + '', x + 346, r[4], 36, r[5], 'center', 2);
+    txt(r[0], x + 223, r[4] - 20, 14, COL.dim, 'center'); txt((r[3] > 0 ? '+' : '') + r[3], x + 223, r[4] + 2, 22, r[3] > 0 ? COL.safe : COL.dim, 'center', true); });
+  const better = da + dh > 0 && da >= 0 && dh >= 0, worse = da + dh <= 0 && da <= 0 && dh <= 0;
+  txt(better ? 'STRONGER than ' + wk.name : worse ? 'NOT STRONGER than ' + wk.name : 'MIXED: ' + (da > 0 ? 'more ATK, less HP' : 'more HP, less ATK'), x + 223, 436, 18, better ? COL.safe : COL.dim, 'center', true);
+  txt(full ? 'Line full: buying REPLACES ' + wk.name + ' (click another unit to change)' : 'You have ' + (CFG.maxTeam - G.team.length) + ' empty slot' + (CFG.maxTeam - G.team.length === 1 ? '' : 's') + ': it simply joins your line.', x + 223, 464, 14, full ? COL.gold : COL.text, 'center');
+  txt('Gold after buying: ' + Math.max(0, Math.floor(G.gold - G.price)), x + 223, 496, 14, G.gold >= G.price ? COL.gold : COL.dim, 'center');
+}
+function drawGuide() {
+  const pulse = 0.5 + 0.5 * Math.sin(G.time * 4);
+  callout(810, 222, 446, 96, '1. THE PRICE FALLS', 'It starts at ' + CFG.startPrice + ' and drops by 1 every ' + CFG.tick + ' seconds. Press SPACE (or click BUY) to buy the unit at the price shown. Waiting = cheaper.'); arrow(810, 286, 758, 310, COL.player);
+  callout(600, 4, 312, 64, '2. YOUR GOLD', 'You can buy when the price is at or below it.'); arrow(912, 40, 926, 44, COL.player);
+  callout(20, 250, 300, 122, '3. WATCH THE RIVALS', 'Red ring + bigger face + ABOUT TO BUY means that rival will grab the unit within a few drops. (Example shown on Moss.)'); arrow(78, 250, 78, 212, COL.player);
+  callout(20, 388, 300, 122, '4. ATK AND HP', 'ATK = damage it deals per hit. HP = damage it can take. The text under the numbers is its special rule.'); arrow(320, 420, 346, 380, COL.player);
+  glow(COL.player, 8 + 10 * pulse); panel(810, 334, 446, 180, { fill: '#0f1d26', stroke: COL.player, lw: 2 }); noGlow();
+  txt('THE AUCTION IS PAUSED', 1033, 372, 18, COL.text, 'center', 2); txt('Press SPACE to begin', 1033, 420, 32, COL.player, 'center', 2);
+  wrap(G.practice ? 'This first lot is practice: the rivals will not bid. After you begin, SPACE = BUY.' : 'After you begin, SPACE = BUY.', 1033, 456, 400, 19, 15, COL.dim, 'center');
+}
+function drawSoldBanner() {
+  const bn = G.banner, k = ease((G.time - bn.t) / 0.25), you = bn.kind === 'sold', col = you ? COL.safe : bn.kind === 'sniped' ? COL.danger : COL.dim, x = 590, cx = 923;
+  ctx.globalAlpha = k; glow(col, 12); panel(x, 222 + (1 - k) * 12, 666, 292, { stroke: col, lw: 2 }); noGlow();
+  if (you) drawPlayerToken(cx, 268, 22); else if (bn.buyer) drawRivalFace(bn.buyer, cx, 268, 22, true, G.time);
+  txt(you ? 'YOU BOUGHT IT' : bn.buyer ? bn.buyer.name.toUpperCase() + ' BOUGHT IT' : 'NOBODY BOUGHT IT', cx, 340, 40, col, 'center', 2);
+  txt(bn.kind === 'pass' ? bn.name + ' is discarded' : bn.name + '  for  ' + bn.price + ' gold', cx, 382, 24, '#fff', 'center', true);
+  if (bn.bA + bn.bH > 0) txt('Keyword / upgrade bonus: +' + bn.bA + ' ATK  +' + bn.bH + ' HP', cx, 414, 16, COL.gold, 'center', true);
+  if (!you && bn.buyer) txt(bn.buyer.name + ' has ' + Math.floor(bn.buyer.gold) + ' gold left', cx, 442, 15, COL.dim, 'center');
+  const left = CFG.lots - G.lotIdx - 1; txt(left ? 'Next lot coming up  (' + left + ' left this round)' : 'Last lot done - battle preview next', cx, 478, 15, COL.dim, 'center');
+  ctx.fillStyle = '#1d2333'; rr(cx - 120, 490, 240, 6, 3); ctx.fill(); ctx.fillStyle = col; rr(cx - 120, 490, Math.max(6, 240 * (1 - G.pauseT / CFG.pause)), 6, 3); ctx.fill(); ctx.globalAlpha = 1;
+}
+function lineNote(f) { const tb = {}; f.forEach(u => { if (u.tb) tb[u.tribe] = 1; }); return 'ATK ' + f.reduce((s, u) => s + u.atk, 0) + '  HP ' + f.reduce((s, u) => s + u.hp, 0) + (Object.keys(tb).length ? '  tribe bonus: ' + Object.keys(tb).join(', ') : ''); }
+function drawPrebattle() {
+  const A = prepTeam(G.team, playerMods()), B = prepTeam(G.opp.team, oppMods()), f = forecast(G.team, G.opp.team, playerMods(), oppMods());
+  txt((G.finale ? FINALE_NAME : 'ROUND ' + G.round + ' BATTLE PREVIEW') + ':  YOU  vs  ' + G.opp.name.toUpperCase() + (G.finale ? ' THE CHAMPION (+' + CFG.finaleBoost + '/+' + CFG.finaleBoost + ')' : ''), 640, 242, 20, G.finale ? COL.danger : '#fff', 'center', 2);
+  A.forEach((u, i) => drawCard(u, BX('A', i), 254, 116, 118, { stroke: COL.player })); B.forEach((u, i) => drawCard(u, BX('B', i), 254, 116, 118, { stroke: COL.danger }));
+  if (!A.length) txt('You have no units!', 400, 320, 20, COL.dim, 'center', true);
+  txt('FRONT', 632, 390, 14, COL.player, 'right', true); txt('FRONT', 648, 390, 14, COL.danger, 'left', true);
+  txt('YOUR LINE   ' + lineNote(A), 28, 390, 14, COL.player, 'left', true); txt(lineNote(B) + '   ' + G.opp.name.toUpperCase() + '\'S LINE', 1252, 390, 14, COL.danger, 'right', true);
+  const bx = 240, bw = 800, sh = Math.max(0.06, Math.min(0.94, f.share)); ctx.fillStyle = COL.danger; rr(bx, 402, bw, 22, 8); ctx.fill(); glow(COL.player, 8); ctx.fillStyle = COL.player; rr(bx, 402, bw * sh, 22, 8); ctx.fill(); noGlow();
+  ctx.fillStyle = '#0b0d12'; ctx.fillRect(bx + bw / 2 - 1, 398, 2, 30); txt('YOU', bx - 10, 419, 14, COL.player, 'right', true); txt(G.opp.name.toUpperCase(), bx + bw + 10, 419, 14, COL.danger, 'left', true);
+  txt(f.winner === 'A' ? 'FORECAST: you should WIN with ' + f.left + ' unit' + (f.left === 1 ? '' : 's') + ' left standing' : f.winner === 'B' ? 'FORECAST: you would LOSE - ' + G.opp.name + ' keeps ' + f.left + ' unit' + (f.left === 1 ? '' : 's') + '. Try a different order below.' : 'FORECAST: a DRAW (no life lost)',
+    640, 452, 18, f.winner === 'A' ? COL.safe : f.winner === 'B' ? COL.danger : COL.gold, 'center', true);
+  btn(520, 466, 240, 46, 'FIGHT  [SPACE]', fight, { primary: true, size: 18 });
+}
+function drawBattle() {
+  const b = G.bt, off = Math.sin(b.lunge * Math.PI) * 12;
+  txt((G.finale ? FINALE_NAME : 'ROUND ' + G.round + ' BATTLE') + ':  YOU  vs  ' + G.opp.name.toUpperCase(), 640, 244, 20, '#fff', 'center', 2);
+  btn(1090, 224, 160, 30, G.ff ? 'FAST x6 ON (F)' : 'FAST-FORWARD (F)', () => { G.ff = !G.ff; }, { size: 14, on: G.ff });
+  b.A.forEach((u, i) => drawCard(u, BX('A', i) + (i === 0 ? off : 0), BY, 116, 118, { stroke: COL.player })); b.B.forEach((u, i) => drawCard(u, BX('B', i) - (i === 0 ? off : 0), BY, 116, 118, { stroke: COL.danger }));
+  txt('YOUR LINE', 28, 476, 14, COL.player, 'left', true); txt(G.opp.name.toUpperCase() + '\'S LINE', 1252, 476, 14, COL.danger, 'right', true);
+  if (G.phase === 'battleEnd') { const w = G.lastResult, k = ease(UI.fadeT / 0.25); ctx.globalAlpha = k; txt(w === 'A' ? 'YOU WON THE BATTLE' : w === 'B' ? 'YOU LOST  -  minus 1 life' : 'DRAW  -  no life lost', 640, 506 - (1 - k) * -8, 32, w === 'A' ? COL.safe : w === 'B' ? COL.danger : COL.gold, 'center', 2); ctx.globalAlpha = 1; }
+  else txt(b.log, 640, 502, 16, COL.text, 'center');
+}
+function drawPick() {
+  txt('CHOOSE AN UPGRADE', 640, 250, 24, '#fff', 'center', 2); txt((G.lastResult === 'A' ? 'Battle won. ' : G.lastResult === 'B' ? 'Battle lost. ' : 'Draw. ') + 'Pick 1 of 3 - it lasts the whole run.', 640, 274, 15, COL.dim, 'center');
+  G.offer.forEach((p, i) => { const w = 300, x = 640 - (G.offer.length * (w + 20) - 20) / 2 + i * (w + 20), hov = inside(x, 288, w, 222), y = 288 - (hov ? 4 : 0), ac = p.risk ? COL.gold : p.how ? COL.player : COL.safe;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(x + 2, y + 6, w, 222, 12); ctx.fill(); panel(x, y, w, 222, { stroke: hov ? COL.player : COL.line, lw: hov ? 2 : 1 }); BTNS.push({ x, y: 288, w, h: 222, fn: () => pickPerk(i) });
+    glow(ac, 10); ctx.fillStyle = '#0e1119'; ctx.beginPath(); ctx.arc(x + 44, y + 44, 26, 0, 7); ctx.fill(); ctx.strokeStyle = ac; ctx.lineWidth = 2.5; ctx.stroke(); noGlow(); txt(p.icon, x + 44, y + 50, p.icon.length > 2 ? 15 : 18, ac, 'center', 2);
+    txt(p.name, x + 82, y + 40, 20, '#fff', 'left', 2); txt(p.risk ? 'RISK NOW, REWARD LATER' : p.how ? 'CHANGES HOW YOU PLAY' : 'STAT BOOST', x + 82, y + 60, 14, ac, 'left', true);
+    let yy = wrap(p.fx, x + 18, y + 102, w - 36, 20, 16, COL.text); wrap('Why: ' + p.why, x + 18, yy + 8, w - 36, 18, 14, COL.dim); txt('press ' + (i + 1), x + w / 2, y + 208, 14, COL.dim, 'center'); });
+}
+function drawShop() { const w = G.lastResult, nxt = finaleAt(G.round + 1), u = G.team[G.sel], income = CFG.income + (has('pockets') ? 6 : 0) + (has('invest') ? 8 : 0);
+  txt('Round ' + G.round + ': you ' + (w === 'A' ? 'won' : w === 'B' ? 'lost' : 'drew') + ' against ' + G.opp.name, 640, 252, 26, w === 'A' ? COL.safe : w === 'B' ? COL.danger : COL.gold, 'center', 2);
+  txt(nxt ? 'NEXT: ' + FINALE_NAME + ' - the strongest rival brings a champion (+' + CFG.finaleBoost + '/+' + CFG.finaleBoost + ' on their line) and 2 LEGENDARY units go on sale.' : 'Next opponent: ' + (G.nextOpp || oppFor(G.round + 1)).name + '.  You get +' + income + ' gold next round (max ' + G.cap + ').', 640, 280, 15, nxt ? COL.danger : COL.text, 'center', nxt);
+  panel(240, 296, 800, 140, { fill: '#0e1119' }); txt('SPEND GOLD NOW - it does not fight by itself', 260, 320, 16, COL.gold, 'left', 2); txt('You have ' + Math.floor(G.gold) + ' gold', 1020, 320, 16, COL.gold, 'right', true);
+  if (!u) { wrap('Click one of your units below, then: LEVEL UP (+2 ATK +2 HP, costs 6 / 10 / 14 gold, max 3 levels)  or  MERGE it with a unit of the same name (free: one unit with both units\' ATK and HP, and a free slot). You can also move it or SELL it for ' + (has('scrap') ? 'its full price' : 'half its price') + '.', 260, 346, 760, 19, 14, COL.text);
+    const dups = G.team.filter((x, i) => dupIdx(i) >= 0).length; if (dups) txt('You have duplicates in your line - merging them is free!', 640, 424, 14, COL.safe, 'center', true); }
+  else { const maxed = u.lvl >= LEVEL_MAX, cost = levelCost(u), can = !maxed && G.gold >= cost, j = dupIdx(G.sel);
+    txt(u.name + (u.lvl ? '  Lv' + u.lvl : '') + ':  ATK ' + u.atk + '  HP ' + u.hp, 260, 348, 16, '#fff', 'left', true);
+    btn(260, 366, 370, 52, maxed ? 'MAX LEVEL' : 'LEVEL UP  +2 ATK +2 HP  for ' + cost + ' gold  [L]', levelUp, { primary: can, off: !can, size: 15 });
+    btn(650, 366, 370, 52, j >= 0 ? 'MERGE with your other ' + u.name + '  [D]' : 'MERGE - needs a duplicate', merge, { primary: j >= 0, off: j < 0, size: 15 });
+    if (!can && !maxed) txt('Need ' + cost + ' gold (you have ' + Math.floor(G.gold) + ')', 445, 431, 14, COL.dim, 'center'); }
+  btn(510, 450, 260, 56, 'NEXT ROUND  [SPACE]', nextRound, { primary: true, size: 18 }); }
+function drawMedal(cx, cy, r, m) { const c = MEDAL_COL[m] || '#2a3145'; ctx.fillStyle = m ? COL.player : '#2a3145'; ctx.beginPath(); ctx.moveTo(cx - r * 0.55, cy - r * 1.7); ctx.lineTo(cx + r * 0.55, cy - r * 1.7); ctx.lineTo(cx + r * 0.3, cy - r * 0.6); ctx.lineTo(cx - r * 0.3, cy - r * 0.6); ctx.closePath(); ctx.fill();
+  if (m) glow(c, 16); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill(); noGlow(); ctx.strokeStyle = 'rgba(11,13,18,0.45)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, r * 0.76, 0, 7); ctx.stroke();
+  txt(m ? m[0].toUpperCase() : '-', cx, cy + r * 0.32, r * 0.95, '#0b0d12', 'center', 2); }
+function drawOver() { const won = G.overWon, s = G.stats, sc = score(), m = G.medal, col = won ? COL.safe : COL.danger;
+  glow(col, 10); panel(140, 222, 1000, 292, { stroke: col, lw: 2 }); noGlow(); drawMedal(230, 330, 44, m); txt(m ? m.toUpperCase() + ' MEDAL' : 'NO MEDAL YET', 230, 402, 15, m ? MEDAL_COL[m] : COL.dim, 'center', true); txt('Bronze 200  Silver 500  Gold 650', 230, 424, 14, COL.dim, 'center');
+  txt(won ? 'YOU WON THE RUN!' : G.endless ? 'ENDLESS RUN OVER' : 'RUN OVER', 350, 266, 36, col, 'left', 2); txt('SCORE ' + sc + (G.newBest ? '   NEW BEST!' : '   best ' + best), 1116, 264, 20, COL.gold, 'right', true);
+  let y = wrap(G.cause, 350, 298, 770, 20, 16, '#fff', 'left', true); y = wrap('TIP: ' + G.advice, 350, y + 6, 770, 20, 15, COL.gold);
+  txt('Won ' + s.wins + ' / lost ' + s.losses + '   |   bought ' + s.bought + ' units, avg ' + (s.bought ? (s.spent / s.bought).toFixed(1) : '-') + ' gold   |   rivals took ' + s.sniped + ' of ' + s.lots + ' lots   |   levelled ' + s.leveled + ', merged ' + s.merged + ', legendaries ' + s.legends, 350, y + 12, 14, COL.dim);
+  wrap('Score = 100 per battle won + 50 per life left when you win the run.' + (G.perkList.length ? '  Upgrades: ' + G.perkList.map(p => p.name).join(', ') + '.' : ''), 350, y + 34, 770, 18, 14, COL.dim);
+  let bx = 350; btn(bx, 456, 190, 46, 'RETRY  [R]', startRun, { primary: true, size: 17 }); bx += 204;
+  if (won && !G.endless) { btn(bx, 456, 270, 46, 'KEEP GOING - endless  [E]', keepGoing, { size: 16 }); bx += 284; } btn(bx, 456, 150, 46, 'MENU  [Esc]', goMenu, { size: 16 }); }
+
+// ============================ START / HELP SCREEN ============================
+function openHelp() { if (UI.screen !== 'game') return; UI.help = !UI.help; UI.page = 0; UI.overT = 0; }
+function goMenu() { location.href = 'index.html'; }
+function drawStart() {
+  const inGame = UI.screen === 'game', M = MODES[UI.hard ? 'HARD' : 'NORMAL'], goal = M.goalType === 'wins' ? 'Win ' + M.goalN + ' battles' : 'Survive ' + (M.goalN - 1) + ' rounds and win the finale';
+  drawBackground(); try { ctx.letterSpacing = '2px'; } catch (e) { } txt('DUTCH DRAFT', 60, 84, 54, '#fff', 'left', 2); try { ctx.letterSpacing = '0px'; } catch (e) { }
+  txt(UI.page === 0 ? goal + ': buy each unit while its price FALLS - before a rival snipes it - then watch your line fight.' : 'Tribes, keywords and upgrades', 62, 118, 18, COL.dim);
+  if (inGame) txt('PAUSED', 1220, 84, 24, COL.gold, 'right', 2);
+  if (UI.page === 0) {
+    panel(60, 138, 1160, 200, { fill: COL.field, r: 14 });
+    drawCard({ name: 'War Hound', tribe: 'Beast', atk: 4, hp: 4, kw: 'Rally' }, 147, 152, 116, 118); arrow(290, 215, 392, 215, COL.dim);
+    txt('20', 500, 182, 22, COL.dim, 'center', true); txt('14', 500, 214, 28, COL.dim, 'center', true); glow(COL.gold, 10); txt('9', 500, 264, 48, COL.gold, 'center', 2); noGlow(); arrow(450, 166, 450, 262, COL.gold); arrow(580, 215, 682, 215, COL.dim);
+    glow(COL.player, 12); ctx.fillStyle = '#10404b'; rr(705, 190, 160, 50, 10); ctx.fill(); noGlow(); ctx.strokeStyle = COL.player; ctx.lineWidth = 2; ctx.stroke(); txt('BUY  [SPACE]', 785, 222, 17, '#fff', 'center', true); txt('cheaper = better', 785, 262, 14, COL.gold, 'center'); arrow(888, 215, 990, 215, COL.dim);
+    drawRivalFace(RIVALS[0], 1075, 200, 34, true, UI.overT); glow(COL.danger, 12); ctx.strokeStyle = COL.danger; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(1075, 200, 44, 0, 7); ctx.stroke(); noGlow(); ctx.fillStyle = COL.danger; rr(1019, 252, 112, 23, 8); ctx.fill(); txt('ABOUT TO BUY', 1075, 269, 14, '#fff', 'center', 2);
+    ['1. A unit goes up for auction', '2. Its price keeps falling', '3. Press SPACE to buy it...', '4. ...before a rival does!'].forEach((s, i) => txt(s, 205 + i * 290, 322, 15, i === 3 ? COL.danger : COL.text, 'center', true));
+    panel(60, 350, 570, 218, {}); txt('CONTROLS', 80, 378, 16, COL.player, 'left', 2);
+    [['SPACE / click BUY', 'buy the unit at the current price'], ['Click your unit', 'select it: move, replace, level, merge or sell'], ['Left / Right arrows', 'move the selected unit'], ['L   D   S', 'level up / merge duplicate / sell (between rounds)'], ['F', 'fast-forward the battle'], ['1  2  3', 'choose an upgrade after a battle'], ['Q', 'Gavel Slam (only if you own that upgrade)'], ['H   R   M   Esc', 'help / restart / mute / menu']]
+      .forEach((r, i) => { txt(r[0], 80, 403 + i * 22, 14, '#fff', 'left', true); txt(r[1], 250, 403 + i * 22, 14, COL.dim); });
+    panel(650, 350, 570, 218, {}); txt('HOW YOU WIN AND LOSE', 670, 378, 16, COL.player, 'left', 2);
+    let y = wrap('Each round 5 units are auctioned, then your line fights one rival. After every battle you pick 1 of 3 upgrades and can LEVEL or MERGE units for gold.', 670, 400, 530, 18, 14, COL.text);
+    y = wrap((M.goalType === 'wins' ? 'WIN: win ' + M.goalN + ' battles. The last is ' : 'WIN: reach round ' + M.goalN + ' and win it - ') + FINALE_NAME + ': the strongest rival brings a LEGENDARY champion (+' + M.finaleBoost + '/+' + M.finaleBoost + ' on their line) and 2 legendary units go on sale.', 670, y + 4, 530, 18, 14, COL.safe);
+    y = wrap('LOSE: every lost battle costs 1 life (you have ' + M.lives + '). No lives left = run over. The finale has no second chance: lose it and the run is over.', 670, y + 4, 530, 18, 14, COL.danger);
+    wrap('SCORE: 100 per battle won + 50 per life left when you win. Medals: Bronze 200, Silver 500, Gold 650.', 670, y + 4, 530, 18, 14, COL.gold);
+  } else {
+    panel(60, 138, 1160, 130, {}); txt('TRIBES - have 3 units of the same tribe in your line to switch its bonus on', 80, 164, 16, COL.player, 'left', 2);
+    ['Beast', 'Undead', 'Machine', 'Mage'].forEach((t, i) => { const x = 80 + (i % 2) * 580, yy = 196 + Math.floor(i / 2) * 40; drawToken(x + 12, yy - 6, 11, t); ctx.fillStyle = TRIBES[t]; rr(x + 34, yy - 18, 84, 24, 6); ctx.fill(); txt(t.toUpperCase(), x + 76, yy, 14, '#0b0d12', 'center', 2); txt(TRIBE_TXT[t], x + 130, yy, 15, COL.text); });
+    panel(60, 280, 1160, 200, {}); txt('KEYWORDS - the first five depend on the PRICE you pay; the last three work in battle', 80, 306, 16, COL.player, 'left', 2);
+    ['Bargain', 'Prestige', 'Patient', 'Impulse', 'Spite', 'Cleave', 'Deathrattle', 'Rally'].forEach((k, i) => wrap(KW[k], 80 + (i % 2) * 580, 332 + Math.floor(i / 2) * 38, 540, 17, 14, i < 5 ? COL.gold : COL.text));
+    panel(60, 490, 1160, 82, {}); let y2 = wrap('UPGRADES: after every battle pick 1 of 3 (13 exist). Blue ones change HOW you play (Haggler, Showman, Insider, Gavel Slam, Tribal Banner, Scrap Dealer); gold = risk now, reward later (Investment). Between rounds: LEVEL UP a unit (+2/+2 for 6, 10, 14 gold) or MERGE two units with the same name (free).', 80, 512, 1120, 18, 14, COL.text);
+    wrap('RIVALS: Moss waits for low prices, Vex pays fair, Blaze pays high and sometimes BLUFFS an "about to buy". A rival can never pay more gold than it has. ' + FINALE_NAME + ': the strongest rival brings a legendary champion and 2 LEGENDARY units go on sale at a start price of ' + LEGEND_START + '.', 80, y2 + 2, 1120, 18, 14, COL.danger);
+  }
+  btn(60, 584, 240, 64, inGame ? 'RESUME' : 'PLAY', inGame ? openHelp : startRun, { primary: true, size: 26 });
+  txt('DIFFICULTY' + (inGame ? ' (applies on restart)' : ''), 330, 600, 14, COL.dim, 'left', true); btn(330, 608, 130, 40, 'NORMAL', () => { UI.hard = false; SFX.click(); }, { on: !UI.hard, size: 15 }); btn(468, 608, 130, 40, 'HARD', () => { UI.hard = true; SFX.click(); }, { on: UI.hard, size: 15 });
+  txt(UI.hard ? 'HARD: price drops every 0.4s, 3 lives, richer rivals, 8 rounds, no practice lot.' : 'NORMAL: price drops every 0.6s, 4 lives, 5 rounds, keywords arrive one at a time.', 330, 668, 14, COL.dim);
+  btn(640, 608, 290, 40, UI.page === 0 ? 'TRIBES & KEYWORDS  [T]' : 'BACK TO HOW TO PLAY  [T]', () => { UI.page = 1 - UI.page; SFX.click(); }, { size: 15 });
+  if (inGame) btn(950, 608, 150, 40, 'RESTART [R]', startRun, { size: 15 });
+  if (bestMedal) drawMedal(1150, 640, 18, bestMedal); txt('Best score ' + best, 1220, 600, 14, COL.dim, 'right');
+  txt((inGame ? 'H or SPACE resume' : 'SPACE or click PLAY to start') + '     T tribes & keywords     R restart     M mute (' + (muted ? 'off' : 'on') + ')     Esc menu', 60, 704, 14, COL.dim);
+  const k = ease(UI.overT / 0.25); if (k < 1) { ctx.globalAlpha = 1 - k; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+}
+
+// ============================ MAIN RENDER ============================
+function render() {
+  BTNS = []; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; noGlow();
+  if (UI.screen === 'start' || UI.help) { drawStart(); return; }
+  drawBackground(); const sh = Math.min(6, G.shake); ctx.translate(rnd(-sh, sh) * 0.5, rnd(-sh, sh) * 0.5);
+  drawHUD(); G.rivals.forEach((r, i) => drawRival(r, i, 20 + i * 420, 74));
+  panel(12, 214, 1256, 306, { fill: COL.field, r: 14 }); ctx.strokeStyle = 'rgba(124,245,255,0.05)'; ctx.lineWidth = 3; rr(15, 217, 1250, 300, 12); ctx.stroke();
+  const p = G.phase; if (p === 'lot' || p === 'pause') drawLot(); else if (p === 'prebattle') drawPrebattle(); else if (p === 'battle' || p === 'battleEnd') drawBattle(); else if (p === 'pick') drawPick(); else if (p === 'shop') drawShop(); else if (p === 'over') drawOver();
+  const k = ease(UI.fadeT / 0.22); if (k < 1 && p !== 'pause' && p !== 'battleEnd') { ctx.globalAlpha = 1 - k; ctx.fillStyle = COL.field; rr(14, 216, 1252, 302, 13); ctx.fill(); ctx.globalAlpha = 1; }
+  drawStrip(); drawTipBar();
+  G.fx.forEach(f => { const q = f.t / f.life; ctx.globalAlpha = 1 - q * q;
+    if (f.ring) { ctx.strokeStyle = f.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(f.x, f.y, 20 + q * 50, 0, 7); ctx.stroke(); for (let i = 0; i < 5; i++) { const a = i * 1.26 + 0.4; ctx.fillStyle = f.color; ctx.fillRect(f.x + Math.cos(a) * (20 + q * 60) - 2, f.y + Math.sin(a) * (20 + q * 60) - 2, 4, 4); } }
+    else txt(f.text, f.x, f.y - (f.flat ? 0 : ease(q) * 26), f.size * (1 + 0.4 * Math.max(0, 0.12 - f.t) / 0.12), f.color, 'center', 2); ctx.globalAlpha = 1; });
+}
+
+// ============================ INPUT / BOOT ============================
+function fit() { const s = Math.min(window.innerWidth / W, window.innerHeight / H) || 1; canvas.style.width = W * s + 'px'; canvas.style.height = H * s + 'px'; }
+window.addEventListener('resize', fit);
+window.addEventListener('keydown', e => { initAudio(); const k = e.code;
+  if (k === 'Space' && e.preventDefault) e.preventDefault(); if (e.repeat) return;
+  if (k === 'Escape') return goMenu(); if (k === 'KeyM') return setMute(!muted);
+  if (UI.screen === 'start' || UI.help) { if (k === 'KeyT') UI.page = 1 - UI.page; else if (k === 'Space' || k === 'Enter') { if (UI.help) openHelp(); else startRun(); } else if (k === 'KeyH' && UI.help) openHelp(); else if (k === 'KeyR' && UI.help) startRun(); return; }
+  if (k === 'KeyH') return openHelp(); if (k === 'KeyR') return startRun();
+  if (k === 'Space') { const p = G.phase; if (p === 'lot') buy(); else if (p === 'prebattle') fight(); else if (p === 'shop') nextRound(); else if (p === 'over' && !G.overWon) startRun(); }
+  else if (k === 'KeyF') G.ff = !G.ff; else if (k === 'KeyE') keepGoing(); else if (k === 'KeyQ') slam();
+  else if (k === 'Digit1' || k === 'Digit2' || k === 'Digit3') pickPerk(+k.slice(5) - 1);
+  else if (k === 'ArrowLeft') move(-1); else if (k === 'ArrowRight') move(1); else if (k === 'KeyS') sell(); else if (k === 'KeyL') levelUp(); else if (k === 'KeyD') merge(); });
+function mpos(e) { const r = canvas.getBoundingClientRect(); mx = (e.clientX - r.left) * W / r.width; my = (e.clientY - r.top) * H / r.height; }
+canvas.addEventListener('mousemove', mpos);
+canvas.addEventListener('mouseup', () => { mouseDown = false; }); canvas.addEventListener('mouseleave', () => { mouseDown = false; mx = my = -1; });
+canvas.addEventListener('mousedown', e => { initAudio(); mpos(e); mouseDown = true;
+  for (let i = BTNS.length - 1; i >= 0; i--) { const b = BTNS[i]; if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) { b.fn(); return; } } });
+let last = 0;
+function frame(t) { const dt = Math.min(0.1, (t - last) / 1000 || 0); last = t; step(dt); render(); requestAnimationFrame(frame); }
+window.DD = { get G() { return G; }, get BTNS() { return BTNS; }, UI, CFG, MODES, UNITS, LEGENDS, PERKS, startRun, step, update, render, buy, beginAuction, fight, nextRound, keepGoing, pickPerk, sell, move, slam, levelUp, merge, dupIdx, levelCost, resolveBattle, forecast, prepTeam, purchaseBonus, playerBonus, makeUnit, score, medalFor, playerMods, oppMods, openHelp, setMute, rivalBuyPrice, get muted() { return muted; } };
+fit(); requestAnimationFrame(frame);
+</script></body></html>

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>PAN - greybox</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;cursor:crosshair;touch-action:none}</style>
+</head><body><canvas id="c"></canvas>
+<script>
+'use strict';
+// ================= CONFIG (all tuning lives here) =================
+const GAMEID = 'pan';
+const CFG = {
+  R: 220, N: 400,
+  wMax: 12, wLerp: 0.1, wDecay: 4,
+  drag: 4,          // rate at which grain velocity is pulled toward the water's velocity
+  kCent: 0.46,      // centrifugal accel = w^2 * r * kCent / density
+  grav: 600, slope: 0.6, // inward accel = grav*slope
+  jitter: 100,      // turbulence accel = jitter * w^2 / density (random, per step)
+  radDrag: 3, sep: 0.5, spawnR: 0.8, substeps: 2,
+  goldN: [5, 8],    // gold grains per pan before upgrades / stage multiplier
+  rimWarn: 0.85,    // gold beyond this fraction of the pan radius gets the "about to lose it" pulse
+  parBonus: 50, tutGrains: 40
+};
+// A run = a list of stages (one pan each); the last one is the named finale.
+// timer (seconds): the finale's clock - when it runs out the pan banks itself with whatever is in it.
+const ST = (name, par, black, fool, flake, nug, goldMul, extra, timer) => ({ name, par, black, fool, flake, nug: nug || 0, goldMul: goldMul || 1, extra: extra || 0, timer: timer || 0 });
+const MODES = {
+  // NORMAL = tuned for a first-time human: wide green zone, heavy gold, one new grain type per pan. The run always plays all 5 pans; win = total >= target.
+  normal: { name: 'NORMAL', target: 1500, lossW: 3, goldD: 7.5, bonusT: 60, medals: [1200, 1500, 2200], tutorial: true,
+    blurb: 'NORMAL: 5 pans, earn $1500 in total. Wide safe zone, one new grain type per pan.',
+    stages: [ST('QUIET CREEK', 150, 0, 0, 0, 0, 0.8), ST('GRAVEL BAR', 200, 0.15, 0, 0), ST('PYRITE GULCH', 220, 0.2, 4, 0), ST('FLAKE FLATS', 280, 0.22, 4, 8),
+             ST('THE GLORY HOLE', 480, 0.3, 8, 10, 1, 1, 80, 60)] },
+  // HARD = the original tuning: narrow sweet spot, lighter gold, black sand from pan 1, 8 pans.
+  hard: { name: 'HARD', target: 3000, lossW: 4, goldD: 6.5, bonusT: 45, medals: [2000, 3000, 4500], tutorial: false,
+    blurb: 'HARD: 8 pans, earn $3000 in total. Original tuning: narrow safe zone, lighter gold.',
+    stages: [ST('QUIET CREEK', 140, 0.25, 0, 0), ST('GRAVEL BAR', 150, 0.25, 0, 0), ST('PYRITE GULCH', 150, 0.25, 3, 0), ST('FLAKE FLATS', 180, 0.25, 3, 6),
+             ST('SLATE RUN', 200, 0.28, 4, 6), ST('GREEN CANYON', 220, 0.28, 5, 8), ST('LAST BEND', 240, 0.3, 5, 8), ST('THE GLORY HOLE', 800, 0.35, 10, 12, 1, 1.15, 80, 45)] }
+};
+// ENDLESS (after the victory): every pan must pay its quota, which climbs each pan.
+const endlessStage = k => ST('DEEP CLAIM ' + k, 150 + 40 * k, 0.28, 5 + k, 8, k % 2, 1.2, 40);
+const COL = { bg: '#0b0d12', player: '#7cf5ff', danger: '#ff5d73', reward: '#ffd166', safe: '#9dff8a', txt: '#e8ecf4', dim: '#aab3c5', card: '#121622', edge: '#232a3d' };
+// Grains are MATERIALS, not threats: told apart by shape first, colour second.
+// dm = density as a fraction of the mode's gold density (so black sand / fool's gold always sit just under gold's wash-out speed).
+const TYPES = {
+  sand:  { d: 1,   val: 0,   col: '#e2d2ab', edge: '#a8976f', r0: 6.0, r1: 7.4, label: 'sand' },
+  black: { d: 2.5, dm: 0.6,  val: 0,   col: '#1e242f', edge: '#0c0f15', r0: 5.6, r1: 6.8, label: 'black sand' },
+  fool:  { d: 4,   dm: 0.8,  val: -8,  col: '#b5d334', edge: '#55660c', r0: 5.6, r1: 6.2, label: "fool's -$8" },
+  flake: { d: 3.5, dm: 0.45, val: 5,   col: '#ffe08a', edge: '#7a5200', r0: 4.2, r1: 4.8, label: 'flake $5' },
+  gold:  { d: 6,   val: 10,  col: '#ffd166', edge: '#7a5200', r0: 6.0, r1: 7.0, label: 'gold $10' },
+  nug:   { d: 10,  val: 100, col: '#ffc233', edge: '#7a5200', r0: 12,  r1: 13,  label: 'nugget $100' }
+};
+const ORDER = ['sand', 'black', 'fool', 'flake', 'gold', 'nug'];
+// Upgrades: one data row + one rule hook each. how:true = changes HOW you play.
+const UPG = [
+  { id: 'riffle', name: 'Riffled Pan',  base: 90,  max: 2, desc: 'Gold grips the pan: the DANGER zone starts later.', why: 'Safer fast washing.' },
+  { id: 'bigger', name: 'Bigger Pan',   base: 120, max: 2, desc: '+60 grains of dirt and +1 gold in every pan.', why: 'More gold = more pay.' },
+  { id: 'deep',   name: 'Deeper Pan',   base: 110, max: 2, desc: 'Gold danger threshold +1 swirl speed.', why: 'Widens the green zone.' },
+  { id: 'rich',   name: 'Rich Dirt',    base: 90,  max: 2, desc: '+2 gold per pan, but gold is lighter and flies sooner.', why: 'Risky: big pay if you stay gentle.' },
+  { id: 'magnet', name: 'Magnet',       base: 260, max: 1, how: true, tool: true, desc: 'TOOL, once per pan: pulls out HALF the black sand.', why: 'Instant purity boost.' },
+  { id: 'sluice', name: 'Sluice Gate',  base: 160, max: 1, how: true, tool: true, desc: 'TOOL, once per pan: for 2s EVERYTHING in the outer third pours out.', why: 'Fast - but check no gold is out there.' },
+  { id: 'tap',    name: 'Tap the Pan',  base: 120, max: 1, how: true, tool: true, desc: 'TOOL, 3 per pan: a knock that jolts all gold toward the middle.', why: 'A rescue button for pulsing gold.' },
+  { id: 'brake',  name: 'Brake Paddle', base: 60,  max: 1, how: true, desc: 'Let go of the mouse and the water stops almost at once.', why: 'Bail out of the red zone instantly.' },
+  { id: 'net',    name: 'Catch Net',    base: 100, max: 2, how: true, desc: 'The first gold to fly out each pan is caught and put back.', why: 'Lets you push closer to red.' },
+  { id: 'watch',  name: 'Stopwatch',    base: 130, max: 1, desc: 'Speed bonus starts at x1.7 instead of x1.4.', why: 'Rewards quick pans.' },
+  { id: 'assay',  name: 'Assayer',      base: 170, max: 1, desc: 'Purity bonus goes up to x6.5 instead of x5.', why: 'Rewards clean pans.' },
+  { id: 'slurry', name: 'Wet Slurry',   base: 80,  max: 1, desc: 'Sand is lighter and washes out faster.', why: 'Saves time on every pan.' },
+  { id: 'stake',  name: 'Stake the Claim', base: 150, max: 1, desc: 'Pay now: THE GLORY HOLE (final pan) pays x1.5.', why: 'Spend now, cash in at the finale.' }
+];
+const TOOLS = ['magnet', 'sluice', 'tap'];
+const price = (u, lvl) => Math.round(u.base * Math.pow(1.8, lvl));
+
+// ================= STATE =================
+const G = { state: 'start', stAt: 0, help: false, mode: 'normal', pan: 1, stage: null, money: 0, earned: 0, best: 0, w: 0, phase: 0, t: 0, panT: 0, runT: 0,
+  R: CFG.R, lossW: 3, deep: 0, dW: 12, rimGold: 0, goldD: 6, gold0: 0, flake0: 0, shake: 0, up: {}, count: null, buttons: [], offer: [], rerolls: 0,
+  lostGold: 0, won: false, over: null, stat: null, everSwirled: false, tut: null, tools: {}, sluiceT: 0, netLeft: 0, muted: false, newMedal: false, pressId: null, pressT: 0 };
+let P = [], FX = [], TXT = [], RINGS = [];
+const inp = { down: false, lastA: null, acc: 0, override: null, x: -99, y: -99, total: 0 };
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let W = 800, H = 600, SC = 1, CX = 400, CY = 300, GA = 1;
+const L = { mw: 500, px: 0, py: 100, pw: 0, ph: 0 };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const ease = k => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
+const mode = () => MODES[G.mode];
+const nStages = () => mode().stages.length;
+const isGoldy = p => p.type === 'gold' || p.type === 'nug';
+function setState(s) { G.state = s; G.stAt = G.t; }
+const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} } };
+
+// ================= TIPS (first-time, fixed area, 6s or until the relevant action) =================
+const TIPS = { q: [], seen: {} };
+function tip(key, s, opt) {
+  if (TIPS.seen[key]) return; TIPS.seen[key] = 1;
+  const t = { key, s, t: 6 };
+  if (opt && opt.urgent) TIPS.q.unshift(t); else TIPS.q.push(t);
+  if (TIPS.q.length > 3) TIPS.q.length = 3;
+}
+function clearTip(key) { TIPS.q = TIPS.q.filter(t => t.key !== key); }
+function updateTips(dt) { if (TIPS.q.length && !(G.tut && G.tut.step < 2)) { TIPS.q[0].t -= dt; if (TIPS.q[0].t <= 0) TIPS.q.shift(); } }
+
+// ================= AUDIO (soft sine/triangle, master gain, M = mute) =================
+let ac = null, master = null, nGain = null, nFilt = null, lastTick = 0;
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+function initAudio() {
+  if (ac) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    ac = new AC(); master = ac.createGain(); master.gain.value = G.muted ? 0 : 0.5; master.connect(ac.destination);
+    const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+    nFilt = ac.createBiquadFilter(); nFilt.type = 'bandpass'; nFilt.frequency.value = 600; nFilt.Q.value = 0.7;
+    nGain = ac.createGain(); nGain.gain.value = 0;
+    src.connect(nFilt); nFilt.connect(nGain); nGain.connect(master); src.start();
+  } catch (e) { ac = null; }
+}
+function toggleMute() { G.muted = !G.muted; ls.set('proto_mute', G.muted ? '1' : '0'); if (master) master.gain.setTargetAtTime(G.muted ? 0 : 0.5, ac.currentTime, 0.02); }
+function blip(f0, f1, dur, type, vol, delay) {
+  if (!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + (delay || 0);
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.03);
+}
+const note = i => 330 * Math.pow(2, PENTA[clamp(i, 0, PENTA.length - 1)] / 12);
+function sndTick(d) { if (G.t - lastTick < 0.04) return; lastTick = G.t; blip(rnd(1200, 1800) / Math.sqrt(d), 600, 0.05, 'sine', 0.05); }
+function sndGoldLost() { blip(392, 196, 0.4, 'triangle', 0.2); blip(294, 147, 0.5, 'sine', 0.16, 0.08); }
+function sndGood() { blip(660, 990, 0.15, 'sine', 0.12); }
+function sndChime(i) { blip(note(i), note(i), 0.22, 'sine', 0.12); }
+function sndBuy() { blip(note(2), note(2), 0.12, 'triangle', 0.12); blip(note(5), note(5), 0.18, 'triangle', 0.12, 0.08); }
+function sndClick() { blip(520, 480, 0.06, 'sine', 0.08); }
+function sndClear() { [0, 2, 4, 5, 7].forEach((n, i) => blip(note(n), note(n), 0.3, 'triangle', 0.13, i * 0.08)); }
+function sndWin() { [0, 2, 4, 5, 7, 9, 10].forEach((n, i) => blip(note(n), note(n), 0.45, 'triangle', 0.13, i * 0.1)); }
+function sndDefeat() { [4, 2, 1, 0].forEach((n, i) => blip(note(n) / 2, note(n) / 2, 0.5, 'sine', 0.12, i * 0.16)); }
+function updateAudio() {
+  if (!ac) return;
+  const live = G.state === 'pan' && !G.help;
+  const a = live || G.state === 'count' ? Math.abs(G.w) / CFG.wMax : 0, on = live ? 1 : 0.3;
+  nGain.gain.setTargetAtTime(a * a * 0.35 * on + a * 0.04, ac.currentTime, 0.05);
+  nFilt.frequency.setTargetAtTime(350 + a * 1800, ac.currentTime, 0.05);
+}
+
+// ================= RUN / PAN SETUP =================
+function loadBest() { G.best = +ls.get('proto_' + GAMEID + '_best') || 0; }
+function saveProgress() {
+  if (G.earned > G.best) { G.best = G.earned; ls.set('proto_' + GAMEID + '_best', G.best); }
+  const names = ['', 'bronze', 'silver', 'gold'], cur = names.indexOf(ls.get('proto_' + GAMEID + '_medal') || ''), m = medal();
+  if (m > Math.max(0, cur)) { ls.set('proto_' + GAMEID + '_medal', names[m]); G.newMedal = true; }
+}
+function setMode(m) { if (MODES[m] && G.state === 'start') G.mode = m; }
+function startRun() {
+  G.pan = 1; G.money = 0; G.earned = 0; G.runT = 0; G.up = {}; UPG.forEach(u => G.up[u.id] = 0);
+  G.won = false; G.over = null; G.help = false; G.rerolls = 0; G.newMedal = false;
+  G.stat = { gold0: 0, goldLost: 0, puritySum: 0, tbSum: 0, pans: 0, foolBanked: 0, cleared: 0, bestPan: 0 };
+  TIPS.q = [];
+  G.tut = mode().tutorial && ls.get('proto_' + GAMEID + '_tut') !== '1' ? { step: 0, washed: 0, hold: 0 } : null;
+  loadBest(); newPan();
+}
+function addGrain(type, d, rScale) {
+  const T = TYPES[type], a = rnd(0, Math.PI * 2), r = Math.sqrt(Math.random()) * G.R * CFG.spawnR * (type === 'nug' ? 0.4 : 1);
+  P.push({ type, d: d || T.d, r: rnd(T.r0, T.r1) * (rScale || 1), x: Math.cos(a) * r, y: Math.sin(a) * r,
+    vx: 0, vy: 0, ph: rnd(0, 6.28), mag: false, cell: -1, dead: false });
+}
+function stageFor(pan) { const s = mode().stages; return pan <= s.length ? s[pan - 1] : endlessStage(pan - s.length); }
+function newPan() {
+  const up = G.up, M = mode(), S = G.stage = stageFor(G.pan); P = []; FX = []; TXT = []; RINGS = [];
+  G.R = CFG.R + 20 * up.bigger; G.lossW = M.lossW; G.deep = up.deep; G.goldD = M.goldD * (up.rich ? 0.85 : 1);   // Rich Dirt: gold lighter, dirt unchanged
+  const n = CFG.N + 60 * up.bigger + S.extra, nGold = Math.round((Math.round(rnd(CFG.goldN[0], CFG.goldN[1])) + 1 * up.bigger + 2 * up.rich) * S.goldMul);
+  const nBlack = Math.round(n * S.black), rest = Math.max(0, n - nGold - S.fool - S.flake - S.nug - nBlack);
+  for (let i = 0; i < rest; i++) addGrain('sand', up.slurry ? 0.7 : 1);
+  for (let i = 0; i < nBlack; i++) addGrain('black', M.goldD * TYPES.black.dm);
+  for (let i = 0; i < S.fool; i++) addGrain('fool', M.goldD * TYPES.fool.dm);
+  for (let i = 0; i < S.flake; i++) addGrain('flake', M.goldD * TYPES.flake.dm);
+  for (let i = 0; i < nGold; i++) addGrain('gold', G.goldD, up.rich ? 0.9 : 1);
+  for (let i = 0; i < S.nug; i++) addGrain('nug', G.goldD * 1.5);
+  G.gold0 = nGold + S.nug; G.flake0 = S.flake; G.lostGold = 0; G.panT = 0; G.w = 0; G.shake = 0; G.count = null; G.sluiceT = 0; G.timeUp = false;
+  G.tools = { magnet: up.magnet ? 1 : 0, sluice: up.sluice ? 1 : 0, tap: up.tap ? 3 : 0 }; G.netLeft = up.net;
+  setState('pan'); resize();
+  for (let i = 0; i < 400; i++) physics(1 / 120);   // let the dirt settle
+  G.dW = computeDanger();
+  if (S.timer) tip('finale', 'FINALE: ' + S.name + ' - fine gold, lots of fool\'s gold, and a ' + S.timer + ' second clock. When it runs out the pan banks itself.', { urgent: true });
+  if (S.black && G.pan > 1) tip('black', 'NEW: Black sand (dark grains) - heavier than sand, it needs a faster swirl to wash out.');
+  if (S.fool) tip('fool', "NEW: Fool's gold (green SQUARES) - costs $8 each if banked. Wash it out near the top of the green zone.");
+  if (S.flake) tip('flake', 'NEW: Gold flakes (small diamonds) - $5 each, but light: they wash out high in the green zone. Your call.');
+  if (S.nug) tip('nug', 'NEW: A NUGGET - worth $100. It is heavy, but do not let it reach the rim!');
+  if (G.pan > nStages()) tip('endless', 'ENDLESS: every pan must now pay at least its quota (top-left) or the run ends.');
+}
+const goldHold = () => CFG.grav * CFG.slope * (1 + 0.35 * G.up.riffle);
+// Swirl speed at which the OUTERMOST gold grain starts to slide outward = where the gauge's DANGER zone begins.
+function computeDanger() {
+  const hold = goldHold(); let m = CFG.wMax, rim = 0;
+  for (const p of P) if (isGoldy(p) && !p.dead) {
+    const r0 = Math.hypot(p.x, p.y), r = Math.max(r0, 0.25 * G.R), wd = G.deep + Math.sqrt(hold * p.d / (CFG.kCent * r));
+    if (wd < m) m = wd; if (r0 > CFG.rimWarn * G.R) rim++;
+  }
+  G.rimGold = rim;
+  return clamp(m, G.lossW + 0.6, CFG.wMax);
+}
+const zone = () => { const aw = Math.abs(G.w); return aw < G.lossW ? 0 : aw < G.dW ? 1 : 2; };
+function counts() {
+  const c = { sand: 0, black: 0, fool: 0, flake: 0, gold: 0, nug: 0, total: 0 };
+  for (const p of P) if (!p.mag) { c[p.type]++; c.total++; }
+  c.goldy = c.gold + c.nug; c.purity = c.total ? (c.goldy + c.flake) / c.total : 0; return c;
+}
+function timeBonus() { const t0 = G.up.watch ? 1.7 : 1.4; return Math.max(1, t0 - (t0 - 1) * G.panT / mode().bonusT); }
+function payoutNow() {
+  const c = counts(); let value = 0; for (const k of ORDER) value += c[k] * TYPES[k].val;
+  const pm = 1 + c.purity * (G.up.assay ? 5.5 : 4), tb = timeBonus(), sk = G.up.stake && G.pan === nStages() ? 1.5 : 1;
+  return { c, value, pm, tb, sk, total: Math.max(0, Math.round(value * pm * tb * sk)) };
+}
+
+// ================= PHYSICS =================
+const CELL = 26; let gridW = 0, head = null, next = null;
+function buildGrid() {
+  const off = G.R + 20, n = P.length; gridW = Math.ceil(off * 2 / CELL) + 1;
+  if (!head || head.length !== gridW * gridW) head = new Int32Array(gridW * gridW);
+  if (!next || next.length < n) next = new Int32Array(n + 64);
+  head.fill(-1);
+  for (let i = 0; i < n; i++) {
+    const p = P[i]; if (p.mag) { p.cell = -1; continue; }
+    const gx = clamp(((p.x + off) / CELL) | 0, 0, gridW - 1), gy = clamp(((p.y + off) / CELL) | 0, 0, gridW - 1);
+    p.cell = gy * gridW + gx; next[i] = head[p.cell]; head[p.cell] = i;
+  }
+}
+function separate() {
+  for (let i = 0; i < P.length; i++) {
+    const p = P[i]; if (p.cell < 0) continue;
+    const gx = p.cell % gridW, gy = (p.cell / gridW) | 0;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const x = gx + ox, y = gy + oy; if (x < 0 || y < 0 || x >= gridW || y >= gridW) continue;
+      for (let j = head[y * gridW + x]; j >= 0; j = next[j]) {
+        if (j <= i) continue;
+        const q = P[j], dx = q.x - p.x, dy = q.y - p.y, min = p.r + q.r, d2 = dx * dx + dy * dy;
+        if (d2 >= min * min) continue;
+        const d = Math.sqrt(d2) || 0.01, nx = dx / d, ny = dy / d, ov = (min - d) * CFG.sep;
+        const wi = q.d / (p.d + q.d), wj = 1 - wi;      // light grains yield to heavy ones
+        p.x -= nx * ov * wi; p.y -= ny * ov * wi; q.x += nx * ov * wj; q.y += ny * ov * wj;
+        const rv = (q.vx - p.vx) * nx + (q.vy - p.vy) * ny;
+        if (rv < 0) { const im = rv * 0.6; p.vx += nx * im * wi; p.vy += ny * im * wi; q.vx -= nx * im * wj; q.vy -= ny * im * wj; }
+      }
+    }
+  }
+}
+function physics(dt) {
+  const R = G.R, w = G.w, w2 = w * w, aw = Math.abs(w), fast = aw > G.lossW, tutSafe = G.tut && G.tut.step < 2, sluice = G.sluiceT > 0;
+  const wg = Math.max(0, aw - G.deep), w2g = wg * wg;      // Deeper Pan: gold feels the swirl as if it were slower
+  const baseIn = CFG.grav * CFG.slope, rif = 1 + 0.35 * G.up.riffle, damp = Math.exp(-0.5 * dt);
+  for (const p of P) {
+    if (p.mag) {  // being dragged out by the magnet
+      const mx = R * 0.85 - p.x, my = -R * 0.85 - p.y, m = Math.hypot(mx, my) || 1;
+      p.vx += mx / m * 1800 * dt; p.vy += my / m * 1800 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (m < 24) { p.dead = true; splash(p, 1); sndTick(1); }
+      continue;
+    }
+    const gy = isGoldy(p);
+    const r = Math.hypot(p.x, p.y), jit = w2 * CFG.jitter / p.d;
+    if (r < 1) {   // at the very centre the angle is meaningless: plain cartesian step
+      p.vx += ((-p.vx) * CFG.drag + (Math.random() - 0.5) * jit) * dt; p.vy += ((-p.vy) * CFG.drag + (Math.random() - 0.5) * jit) * dt;
+      p.vx *= damp; p.vy *= damp; p.x += p.vx * dt; p.y += p.vy * dt; continue;
+    }
+    const nx = p.x / r, ny = p.y / r, tx = -ny, ty = nx;
+    let vr = p.vx * nx + p.vy * ny, vt = p.vx * tx + p.vy * ty;
+    const ar = (gy ? w2g : w2) * r * CFG.kCent / p.d                      // centrifugal (density-scaled): this is what washes grains outward
+      - baseIn * (gy ? rif : 1) * Math.min(1, r / 14)                     // pan slope pulls everything to the middle
+      - vr * (CFG.drag + CFG.radDrag);                                    // water has no radial flow + grains creep radially through the bed
+    vr += (ar + (Math.random() - 0.5) * jit) * dt;
+    vt += ((w * r - vt) * CFG.drag + (Math.random() - 0.5) * jit) * dt;   // dragged round with the water
+    vr *= damp; vt *= damp;
+    // integrate in polar form: the tangential motion follows the arc, so there is no chord drift to cancel
+    const r2 = Math.max(0.5, r + vr * dt), a2 = Math.atan2(ny, nx) + vt / r * dt, cx2 = Math.cos(a2), sx2 = Math.sin(a2);
+    p.x = cx2 * r2; p.y = sx2 * r2; p.vx = vr * cx2 - vt * sx2; p.vy = vr * sx2 + vt * cx2;
+  }
+  buildGrid(); separate();
+  let anyDead = false;
+  for (const p of P) {
+    if (p.dead) { anyDead = true; continue; }
+    if (p.mag) continue;
+    const r = Math.hypot(p.x, p.y), lim = R - p.r, keep = tutSafe && p.type !== 'sand';
+    if (sluice && r > R * 0.68 && !keep) { p.dead = anyDead = true; lose(p); }
+    else if (r > R && fast && !keep) { p.dead = anyDead = true; lose(p); }
+    else if (r > lim && (!fast || keep)) {
+      const nx = p.x / r, ny = p.y / r, vn = p.vx * nx + p.vy * ny;
+      p.x = nx * lim; p.y = ny * lim; if (vn > 0) { p.vx -= nx * vn; p.vy -= ny * vn; }
+    }
+  }
+  if (anyDead) P = P.filter(p => !p.dead);
+}
+function splash(p, n) {
+  const r = Math.hypot(p.x, p.y) || 1, nx = p.x / r, ny = p.y / r, col = TYPES[p.type].col;
+  for (let i = 0; i < n; i++) FX.push({ x: p.x, y: p.y, vx: p.vx * 0.5 + nx * rnd(60, 220) + rnd(-60, 60), vy: p.vy * 0.5 + ny * rnd(60, 220) + rnd(-60, 60),
+    life: rnd(0.2, 0.4), r: p.r * rnd(0.25, 0.5), col });
+  if (FX.length > 200) FX.splice(0, FX.length - 200);
+}
+function lose(p) {
+  if (G.state !== 'pan' && G.state !== 'count') return;
+  const r = Math.hypot(p.x, p.y) || 1, tx = p.x / r * G.R * 0.74, ty = p.y / r * G.R * 0.74;
+  if (isGoldy(p) && G.netLeft > 0 && G.state === 'pan') {   // Catch Net
+    G.netLeft--; p.dead = false; p.x = rnd(-8, 8); p.y = rnd(-8, 8); p.vx = p.vy = 0; sndGood();
+    TXT.push({ x: tx, y: ty, s: 'caught by the net!', col: COL.safe, life: 1.4 }); RINGS.push({ x: 0, y: 0, r: 10, life: 0.4, col: COL.safe }); return;
+  }
+  splash(p, isGoldy(p) ? 6 : 1);
+  if (isGoldy(p)) {
+    if (G.state === 'pan') G.lostGold++;
+    G.shake = 6; sndGoldLost(); RINGS.push({ x: p.x, y: p.y, r: p.r, life: 0.45, col: COL.danger });
+    TXT.push({ x: tx, y: ty, s: p.type === 'nug' ? '-NUGGET!' : '-1 GOLD', col: COL.danger, life: 1.4, big: true });
+    tip('lost', 'Gold lost over the rim! Gold only slides outward while the needle is in the red DANGER zone.', { urgent: true });
+  } else if (p.type === 'fool') { sndGood(); TXT.push({ x: tx, y: ty, s: "fool's gold out", col: COL.safe, life: 1.0 }); }
+  else { sndTick(p.d); if (G.tut && G.tut.step === 1 && p.type === 'sand') G.tut.washed++; }
+}
+function useTool(id) {
+  if (G.state !== 'pan' || G.help || !G.tools[id]) return false;
+  G.tools[id]--; sndBuy();
+  if (id === 'magnet') { let i = 0; for (const p of P) if (p.type === 'black' && (i++ & 1) === 0) p.mag = true; }
+  else if (id === 'sluice') G.sluiceT = 2;
+  else if (id === 'tap') {
+    G.shake = 4; RINGS.push({ x: 0, y: 0, r: G.R, life: 0.35, col: COL.player, shrink: true });
+    for (const p of P) if (isGoldy(p) || p.type === 'flake') { const r = Math.hypot(p.x, p.y) || 1; if (r > 20) { p.vx -= p.x / r * 330; p.vy -= p.y / r * 330; } }
+  }
+  clearTip('tool'); return true;
+}
+const useMagnet = () => useTool('magnet');
+
+// ================= UPDATE =================
+function setSwirl(v) { inp.override = v; }
+function updateSwirl(dt) {
+  let raw = null;
+  if (inp.override !== null) raw = inp.override;
+  else if (inp.down && G.state === 'pan') raw = inp.acc / dt;
+  inp.acc = 0;
+  if (raw !== null && G.state === 'pan') G.w += (clamp(raw, -CFG.wMax, CFG.wMax) - G.w) * (1 - Math.pow(1 - CFG.wLerp, dt * 60));
+  else { G.w *= Math.exp(-(G.up.brake ? 16 : CFG.wDecay) * dt); if (Math.abs(G.w) < 0.03) G.w = 0; }
+  G.phase += G.w * dt;
+}
+function updateTutorial(dt) {
+  const T = G.tut; if (!T || T.step >= 2) return;
+  if (T.step === 0) { T.hold = zone() >= 1 ? T.hold + dt : 0; if (T.hold > 0.5) { T.step = 1; sndGood(); } }
+  else if (T.washed >= CFG.tutGrains) {
+    T.step = 2; ls.set('proto_' + GAMEID + '_tut', '1'); sndClear(); RINGS.push({ x: 0, y: 0, r: 20, life: 0.6, col: COL.safe });
+    TIPS.seen.tutdone = 0; tip('tutdone', 'Tutorial done! From now on gold CAN fly out in the red zone, and the speed-bonus clock is running.', { urgent: true });
+  }
+}
+function update(dt) {
+  dt = Math.min(dt, 0.05); G.t += dt; G.pressT = Math.max(0, G.pressT - dt);
+  for (const m of MOTES) { m.x += m.vx * dt; m.y += m.vy * dt; if (m.x < 0) m.x += 1; if (m.x > 1) m.x -= 1; if (m.y < 0) m.y += 1; if (m.y > 1) m.y -= 1; }
+  if (G.state === 'start' || G.help) { updateAudio(); return; }   // start screen / help = paused
+  updateSwirl(dt); updateTips(dt);
+  if (G.state === 'pan') {
+    const tutOn = G.tut && G.tut.step < 2;
+    if (!tutOn) G.panT += dt; G.runT += dt; G.sluiceT = Math.max(0, G.sluiceT - dt);
+    if (!G.everSwirled && (inp.total > 6.28 || Math.abs(G.w) > G.lossW)) G.everSwirled = true;
+    updateTutorial(dt);
+    const z = zone();
+    if (!tutOn) {
+      if (z === 1) tip('wash', 'Green zone: sand washes over the rim while heavy gold sinks to the middle. Keep circling!');
+      if (z === 2) tip('danger', 'DANGER zone: gold is sliding outward. Ease off until the needle is back in the green.', { urgent: true });
+      if (z < 2) clearTip('danger');
+      if (timeBonus() <= 1) tip('time', 'Speed bonus is used up - BANK once the purity stops climbing.');
+      if (G.everSwirled && counts().purity >= 0.5) tip('bank', 'This pan is over 50% gold - press SPACE to BANK it whenever you like (waiting for more purity pays more).');
+      if (G.stage.timer && G.panT >= G.stage.timer) { G.timeUp = true; bank(); }   // finale clock ran out
+    }
+  }
+  if (G.state === 'pan' || G.state === 'count') {
+    for (let i = 0; i < CFG.substeps; i++) physics(dt / CFG.substeps);
+    const target = computeDanger(); G.dW += (target - G.dW) * Math.min(1, dt * 6);
+  }
+  if (G.state === 'count') {
+    const c = G.count; c.t += dt;
+    const shownLines = Math.min(c.lines.length, Math.floor(c.t / c.step));
+    if (shownLines > c.n) { c.n = shownLines; sndChime(c.n); }
+    const k = clamp((c.t - c.lines.length * c.step) / 0.9, 0, 1); c.shown = Math.round(c.total * ease(k));
+    if (k > 0 && k < 1 && c.t > c.nextChime && c.total > 0) { sndChime(4 + (c.ch++ % 6)); c.nextChime = c.t + 0.09; }
+    if (k >= 1 && !c.done) { c.done = true; if (c.cleared) sndClear(); }
+  }
+  for (const f of FX) { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.94; f.vy *= 0.94; f.life -= dt; }
+  for (const t of TXT) t.life -= dt;
+  for (const r of RINGS) { r.life -= dt; r.r += (r.shrink ? -420 : 160) * dt; }
+  FX = FX.filter(f => f.life > 0); TXT = TXT.filter(t => t.life > 0); RINGS = RINGS.filter(r => r.life > 0 && r.r > 0);
+  G.shake = Math.max(0, G.shake - 30 * dt);
+  updateAudio();
+}
+function bank() {
+  if (G.state !== 'pan' || G.help || (G.tut && G.tut.step < 2)) return 0;
+  const p = payoutNow(), c = p.c, lines = [], S = G.stage, endless = G.pan > nStages();
+  lines.push({ l: 'Gold kept  ' + c.gold + '  x $10', v: '$' + c.gold * 10, col: COL.reward });
+  if (S.nug) lines.push({ l: 'Nuggets kept  ' + c.nug + '  x $100', v: '$' + c.nug * 100, col: COL.reward });
+  if (S.flake) lines.push({ l: 'Flakes kept  ' + c.flake + ' of ' + G.flake0 + '  x $5', v: '$' + c.flake * 5, col: COL.reward });
+  if (c.fool) lines.push({ l: "Fool's gold left in  " + c.fool + '  x -$8', v: '-$' + c.fool * 8, col: COL.danger });
+  lines.push({ l: 'Purity ' + Math.round(c.purity * 100) + '%  (' + (c.goldy + c.flake) + ' gold in ' + c.total + ' grains)', v: 'x' + p.pm.toFixed(2), col: COL.txt });
+  lines.push({ l: 'Speed bonus  (' + Math.round(G.panT) + ' seconds)', v: 'x' + p.tb.toFixed(2), col: COL.txt });
+  if (p.sk > 1) lines.push({ l: 'Staked claim', v: 'x1.50', col: COL.txt });
+  if (G.timeUp) lines.push({ l: 'Clock ran out - banked automatically', v: '', col: COL.danger });
+  const cleared = p.total >= S.par, bonus = cleared && !endless ? CFG.parBonus : 0;
+  if (bonus) lines.push({ l: 'Beat the par of $' + S.par + ' - PAN CLEARED', v: '+$' + bonus, col: COL.safe });
+  const total = p.total + bonus;
+  G.count = { total, pay: p.total, shown: 0, t: 0, step: 0.4, n: 0, ch: 0, nextChime: 0, lines, done: false, cleared };
+  G.money += total; G.earned += total; setState('count'); inp.down = false;
+  const s = G.stat; s.gold0 += G.gold0; s.goldLost += G.lostGold; s.puritySum += c.purity; s.tbSum += p.tb; s.pans++; s.foolBanked += c.fool;
+  if (cleared) { s.cleared++; RINGS.push({ x: 0, y: 0, r: 30, life: 0.7, col: COL.safe }); } s.bestPan = Math.max(s.bestPan, total);
+  TIPS.q = [];
+  return total;
+}
+// count screen: first press skips the count-up, second press continues
+function proceed() {
+  if (G.state !== 'count') return;
+  const c = G.count, M = mode();
+  if (!c.done) { c.t = c.lines.length * c.step + 1; c.shown = c.total; c.done = true; return; }
+  if (G.pan > nStages() && c.pay < G.stage.par) return endRun('quota');
+  // the run always plays every pan; the target is judged on the total after the finale
+  if (!G.won && G.pan >= nStages()) {
+    if (G.earned < M.target) return endRun('pans');
+    G.won = true; ls.set('proto_' + GAMEID + '_wins', (+ls.get('proto_' + GAMEID + '_wins') || 0) + 1); saveProgress(); sndWin(); setState('win'); return;
+  }
+  openShop();
+}
+function rollOffer() {
+  const pool = UPG.filter(u => G.up[u.id] < u.max && !(u.id === 'stake' && G.pan >= nStages()));
+  G.offer = []; while (G.offer.length < 3 && pool.length) G.offer.push(pool.splice((Math.random() * pool.length) | 0, 1)[0].id);
+}
+function openShop() { rollOffer(); setState('shop'); tip('shop', 'Buy any cards you can afford. Spending CASH never reduces your EARNED total (the goal).'); }
+const rerollCost = () => 20 + 20 * G.rerolls;
+function reroll() { if (G.state !== 'shop' || G.help || G.money < rerollCost()) return false; G.money -= rerollCost(); G.rerolls++; rollOffer(); sndClick(); return true; }
+function keepGoing() { if (G.state !== 'win') return; openShop(); }
+function buy(i) {   // i = index into the 3 offered cards
+  const u = UPG.find(q => q.id === G.offer[i]); if (G.state !== 'shop' || G.help || !u) return false;
+  const lvl = G.up[u.id], pr = price(u, lvl);
+  if (lvl >= u.max || G.money < pr) return false;
+  G.money -= pr; G.up[u.id]++; sndBuy(); clearTip('shop');
+  if (u.tool) tip('tool', 'Tool bought: its button sits in a corner of the pan panel, or press ' + (TOOLS.indexOf(u.id) + 1) + ' while panning.');
+  return true;
+}
+function nextPan() { if (G.state !== 'shop' || G.help) return; clearTip('shop'); clearTip('tool'); G.pan++; newPan(); }
+function medal() { const m = mode().medals, e = G.earned; return e >= m[2] ? 3 : e >= m[1] ? 2 : e >= m[0] ? 1 : 0; }
+function endRun(why) {
+  const s = G.stat, M = mode(), lostFrac = s.gold0 ? s.goldLost / s.gold0 : 0, pur = s.pans ? s.puritySum / s.pans : 0, tb = s.pans ? s.tbSum / s.pans : 1;
+  let cause, hint;
+  if (why === 'quota') cause = G.stage.name + ' paid only $' + G.count.pay + ' - under its $' + G.stage.par + ' endless quota.';
+  else cause = 'Out of pans: you earned $' + G.earned + ' of the $' + M.target + ' target in ' + nStages() + ' pans.';
+  if (lostFrac > 0.2) hint = 'You lost ' + s.goldLost + ' of ' + s.gold0 + ' gold over the rim. Ease off the moment the needle touches red or a gold grain pulses.';
+  else if (pur < 0.35) hint = 'Your pans averaged only ' + Math.round(pur * 100) + '% purity. Keep washing near the top of the green zone - purity multiplies pay up to x5.';
+  else if (s.foolBanked > 2) hint = "You banked " + s.foolBanked + " fool's gold (green squares) at -$8 each. Wash them out before banking.";
+  else if (tb < 1.15) hint = 'Your speed bonus averaged x' + tb.toFixed(2) + '. Swirl faster early and bank sooner to keep the bonus.';
+  else hint = 'Buy Rich Dirt and Bigger Pan early - more gold per pan is the biggest multiplier.';
+  G.over = { cause, hint }; saveProgress(); if (!G.won) sndDefeat(); setState('over');
+}
+function toggleHelp() { if (G.state === 'start') return; G.help = !G.help; G.stAt = G.t; inp.down = false; inp.lastA = null; }
+function startGame() { if (G.state === 'start') startRun(); }
+function toMenu() { window.location.href = 'index.html'; }
+
+// ================= RENDER HELPERS =================
+const FONT = '"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+const MOTES = []; for (let i = 0; i < 26; i++) MOTES.push({ x: Math.random(), y: Math.random(), vx: rnd(-0.006, 0.006), vy: rnd(-0.008, -0.002), r: rnd(1, 2.2) });
+function resize() {
+  W = cv.width = window.innerWidth || 800; H = cv.height = window.innerHeight || 600;
+  L.mw = Math.min(520, W - 300);
+  const top = 146, below = 162;
+  const RS = Math.max(80, Math.min((H - top - below) / 2, L.mw / 2 - 10));
+  SC = RS / G.R; CX = W / 2; CY = top + RS;
+  L.pw = L.mw + 32; L.px = CX - L.pw / 2; L.py = 104; L.ph = CY + RS + 102 - L.py;
+}
+function setA(k) { ctx.globalAlpha = GA * k; }
+function setFont(size, weight) { ctx.font = (weight === 'x' ? '800 ' : weight ? '700 ' : '') + size + 'px ' + FONT; }
+function text(s, x, y, size, col, align, weight) {
+  setFont(size, weight); ctx.fillStyle = col; ctx.textAlign = align || 'left';
+  if (weight === 'x' && 'letterSpacing' in ctx) ctx.letterSpacing = '1.5px';
+  ctx.fillText(s, x, y); if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+function wrap(s, x, y, maxW, size, col, align, weight, lh) {
+  setFont(size, weight);
+  const words = s.split(' '); let line = '', n = 0;
+  for (const wd of words) {
+    const t = line ? line + ' ' + wd : wd;
+    if (line && ctx.measureText(t).width > maxW) { text(line, x, y + n * lh, size, col, align, weight); n++; line = wd; setFont(size, weight); } else line = t;
+  }
+  if (line) { text(line, x, y + n * lh, size, col, align, weight); n++; }
+  return n;
+}
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+const hover = (x, y, w, h) => inp.x >= x && inp.x <= x + w && inp.y >= y && inp.y <= y + h;
+function card(x, y, w, h, hot) { rr(x, y, w, h, 12); ctx.fillStyle = COL.card; ctx.fill(); ctx.strokeStyle = hot ? COL.player : COL.edge; ctx.lineWidth = hot ? 1.5 : 1; ctx.stroke(); }
+// kind: 'go' (green primary) | 'gold' (buy) | 'alt' (secondary) | 'sel' (selected toggle)
+function button(id, label, x, y, w, h, fn, enabled, kind, size) {
+  const K = { go: ['#1f5a3a', COL.safe], gold: ['#5e4c18', COL.reward], alt: ['#1a2030', '#5a6480'], sel: ['#1d4f58', COL.player] }[kind || 'go'];
+  const hot = enabled && hover(x, y, w, h), down = G.pressId === id && G.pressT > 0, oy = down ? 1 : hot ? -1 : 0;
+  rr(x, y + oy, w, h, 9); ctx.fillStyle = enabled ? K[0] : '#1a1e29'; ctx.fill();
+  if (down) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill(); }
+  ctx.strokeStyle = !enabled ? '#3a4356' : hot ? COL.player : K[1]; ctx.lineWidth = 1.5; ctx.stroke();
+  text(label, x + w / 2, y + oy + h / 2 + (size || 15) * 0.36, size || 15, enabled ? '#fff' : COL.dim, 'center', true);
+  if (enabled) G.buttons.push({ id, x, y, w, h, fn });
+}
+function overlayIn() { const a = ease((G.t - G.stAt) / 0.25); GA = a; ctx.globalAlpha = a; ctx.save(); ctx.translate(0, (1 - a) * 18); }
+function overlayOut() { ctx.restore(); GA = 1; ctx.globalAlpha = 1; }
+function drawBackdrop() {
+  const g = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.7);
+  g.addColorStop(0, '#121726'); g.addColorStop(1, COL.bg); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(170,190,230,0.07)';
+  for (let y = 18; y < H; y += 36) for (let x = 18 + ((y / 36) & 1) * 18; x < W; x += 36) ctx.fillRect(x, y, 2, 2);
+  ctx.fillStyle = 'rgba(200,215,255,0.16)';
+  for (const m of MOTES) { ctx.beginPath(); ctx.arc(m.x * W, m.y * H, m.r, 0, 6.2832); ctx.fill(); }
+}
+function grainPath(type, x, y, r, ph) {
+  if (type === 'fool') ctx.rect(x - r * 0.9, y - r * 0.9, r * 1.8, r * 1.8);
+  else if (type === 'flake') { ctx.moveTo(x, y - r * 1.35); ctx.lineTo(x + r * 1.1, y); ctx.lineTo(x, y + r * 1.35); ctx.lineTo(x - r * 1.1, y); ctx.closePath(); }
+  else if (type === 'nug') { for (let i = 0; i <= 7; i++) { const a = i / 7 * 6.2832 + (ph || 0), k = r * (i % 2 ? 1.08 : 0.86); if (i) ctx.lineTo(x + Math.cos(a) * k, y + Math.sin(a) * k); else ctx.moveTo(x + Math.cos(a) * k, y + Math.sin(a) * k); } ctx.closePath(); }
+  else { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 6.2832); }
+}
+function drawGrains(type) {
+  const T = TYPES[type], shiny = type === 'gold' || type === 'nug' || type === 'flake';
+  ctx.fillStyle = T.col; ctx.strokeStyle = T.edge; ctx.lineWidth = shiny || type === 'fool' ? 1.6 : 1; ctx.beginPath();
+  let any = false; for (const p of P) if (p.type === type) { any = true; const bob = shiny ? Math.sin(G.t * 3 + p.ph) * 0.6 : 0; grainPath(type, p.x, p.y + bob, p.r, p.ph); }
+  if (!any) return;
+  if (shiny) { ctx.save(); ctx.shadowColor = COL.reward; ctx.shadowBlur = 10 * SC; ctx.fill(); ctx.restore(); } else ctx.fill();
+  ctx.stroke();
+  if (type === 'fool' || type === 'nug') {   // a little character: eyes
+    ctx.fillStyle = '#1b1f08'; ctx.beginPath();
+    for (const p of P) if (p.type === type) { const e = p.r * 0.3, s = Math.max(1.1, p.r * 0.13); ctx.moveTo(p.x - e + s, p.y - e * 0.4); ctx.arc(p.x - e, p.y - e * 0.4, s, 0, 6.2832); ctx.moveTo(p.x + e + s, p.y - e * 0.4); ctx.arc(p.x + e, p.y - e * 0.4, s, 0, 6.2832); }
+    ctx.fill();
+  }
+}
+function drawGlints(list, t, phase) {
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4; ctx.beginPath();
+  for (const p of list) { const s = Math.sin(t * 4 + p.ph * 3 + phase); if (s > 0.5) { const l = (s - 0.5) * 12; ctx.moveTo(p.x - l, p.y - 1); ctx.lineTo(p.x + l, p.y - 1); ctx.moveTo(p.x, p.y - 1 - l); ctx.lineTo(p.x, p.y - 1 + l); } }
+  ctx.stroke();
+}
+function arrowArc(r, a0, a1, col, lw, dash) {   // circular arrow (the swirl gesture)
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []);
+  ctx.beginPath(); ctx.arc(0, 0, r, a0, a1); ctx.stroke(); ctx.setLineDash([]);
+  const hx = Math.cos(a1) * r, hy = Math.sin(a1) * r, s = lw * 3.2;
+  ctx.save(); ctx.translate(hx, hy); ctx.rotate(a1 + Math.PI / 2);
+  ctx.beginPath(); ctx.moveTo(s * 1.3, 0); ctx.lineTo(-s * 0.4, -s); ctx.lineTo(-s * 0.4, s); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function paddle(x, y, s, ang) {   // the player: a white stirring paddle with a cyan glow, breathing when idle
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); const b = s * (1 + 0.05 * Math.sin(G.t * 3)); ctx.scale(b, b);
+  ctx.shadowColor = COL.player; ctx.shadowBlur = 12; ctx.fillStyle = '#fff'; ctx.strokeStyle = COL.player; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(-3, 4); ctx.lineTo(-3, 22); ctx.lineTo(3, 22); ctx.lineTo(3, 4); ctx.bezierCurveTo(10, 2, 10, -12, 0, -13); ctx.bezierCurveTo(-10, -12, -10, 2, -3, 4); ctx.closePath();
+  ctx.fill(); ctx.stroke(); ctx.restore();
+}
+function icon(id, x, y, s) {   // tiny code-drawn upgrade icons
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  const u = UPG.find(q => q.id === id), c = u && u.tool ? COL.player : id === 'rich' || id === 'stake' || id === 'assay' ? COL.reward : '#c3cad8';
+  ctx.beginPath(); ctx.arc(0, 0, 17, 0, 6.2832); ctx.fillStyle = '#0b0d12'; ctx.fill(); ctx.strokeStyle = COL.edge; ctx.stroke();
+  ctx.strokeStyle = c; ctx.fillStyle = c; ctx.beginPath();
+  if (id === 'riffle') { for (const r of [4, 8, 12]) { ctx.moveTo(r, 0); ctx.arc(0, 0, r, 0, 6.2832); } ctx.stroke(); }
+  else if (id === 'bigger') { ctx.arc(0, 0, 6, 0, 6.2832); ctx.stroke(); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(0, 0, 12, 0, 6.2832); ctx.stroke(); }
+  else if (id === 'deep') { ctx.moveTo(-11, -5); ctx.quadraticCurveTo(0, 16, 11, -5); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(0, 2); ctx.moveTo(-4, -2); ctx.lineTo(0, 3); ctx.lineTo(4, -2); ctx.stroke(); }
+  else if (id === 'rich') { for (const [a, b] of [[-5, 3], [4, 5], [0, -5], [7, -3], [-7, -4]]) { ctx.moveTo(a + 3, b); ctx.arc(a, b, 3, 0, 6.2832); } ctx.fill(); }
+  else if (id === 'magnet') { ctx.lineWidth = 4.5; ctx.arc(0, -1, 7, Math.PI, 0); ctx.moveTo(-7, -1); ctx.lineTo(-7, 8); ctx.moveTo(7, -1); ctx.lineTo(7, 8); ctx.stroke(); }
+  else if (id === 'sluice') { ctx.arc(0, 0, 11, 0.6, 5.7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(15, 0); ctx.moveTo(11, -4); ctx.lineTo(15, 0); ctx.lineTo(11, 4); ctx.stroke(); }
+  else if (id === 'tap') { ctx.arc(0, 3, 7, 0, 6.2832); ctx.stroke(); ctx.beginPath(); for (const a of [-2.3, -1.57, -0.84]) { ctx.moveTo(Math.cos(a) * 10, 3 + Math.sin(a) * 10); ctx.lineTo(Math.cos(a) * 14, 3 + Math.sin(a) * 14); } ctx.stroke(); }
+  else if (id === 'brake') { ctx.rect(-6, -6, 12, 12); ctx.fill(); }
+  else if (id === 'net') { ctx.arc(0, -2, 10, 0, Math.PI); ctx.moveTo(-10, -2); ctx.lineTo(10, -2); ctx.moveTo(-4, -2); ctx.lineTo(-3, 7); ctx.moveTo(4, -2); ctx.lineTo(3, 7); ctx.moveTo(-8, 3); ctx.lineTo(8, 3); ctx.stroke(); }
+  else if (id === 'watch') { ctx.arc(0, 1, 10, 0, 6.2832); ctx.moveTo(0, 1); ctx.lineTo(0, -5); ctx.moveTo(0, 1); ctx.lineTo(4, 3); ctx.moveTo(-2, -12); ctx.lineTo(2, -12); ctx.stroke(); }
+  else if (id === 'assay') { ctx.moveTo(-8, 8); ctx.lineTo(8, -8); ctx.stroke(); ctx.beginPath(); ctx.arc(-6, -6, 3, 0, 6.2832); ctx.moveTo(9, 6); ctx.arc(6, 6, 3, 0, 6.2832); ctx.stroke(); }
+  else if (id === 'slurry') { for (const [a, b] of [[-6, 0], [5, -3], [1, 6]]) { ctx.moveTo(a, b - 6); ctx.quadraticCurveTo(a + 5, b + 2, a, b + 4); ctx.quadraticCurveTo(a - 5, b + 2, a, b - 6); } ctx.fill(); }
+  else if (id === 'stake') { ctx.moveTo(-5, 11); ctx.lineTo(-5, -11); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5, -11); ctx.lineTo(9, -6); ctx.lineTo(-5, -1); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+}
+function badge(x, y, r, m) {   // code-drawn medal badge (m: 0 none, 1-3)
+  const cols = ['#4a5262', '#cd8a4b', '#d5dce8', '#ffd166'], c = cols[m];
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = m ? COL.player : '#2a3140'; ctx.beginPath(); ctx.moveTo(-r * 0.55, r * 0.5); ctx.lineTo(-r * 0.8, r * 1.7); ctx.lineTo(-r * 0.2, r * 1.35); ctx.lineTo(0, r * 0.9); ctx.lineTo(r * 0.2, r * 1.35); ctx.lineTo(r * 0.8, r * 1.7); ctx.lineTo(r * 0.55, r * 0.5); ctx.closePath(); ctx.fill();
+  if (m) { ctx.shadowColor = c; ctx.shadowBlur = 14; }
+  ctx.fillStyle = c; ctx.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * 6.2832, k = r * (i % 2 ? 0.9 : 1.04); ctx.lineTo(Math.cos(a) * k, Math.sin(a) * k); } ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(11,13,18,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r * 0.66, 0, 6.2832); ctx.stroke();
+  ctx.restore(); text(m ? ['', 'B', 'S', 'G'][m] : '-', x, y + r * 0.3, r * 0.85, '#0b0d12', 'center', 'x');
+}
+const ZONES = [
+  { name: 'TOO SLOW', sub: 'nothing leaves', col: '#c3cad8', fill: '#39404f', rim: '#8a93a6' },
+  { name: 'WASHING SAND', sub: 'sweet spot', col: COL.safe, fill: '#2c6a3a', rim: COL.safe },
+  { name: 'DANGER', sub: 'gold flies', col: COL.danger, fill: '#8a2a3a', rim: COL.danger }
+];
+
+// ================= RENDER: PLAY =================
+function drawPan() {
+  const R = G.R, aw = Math.abs(G.w), wob = aw * 0.4, z = G.state === 'pan' ? zone() : 0;
+  // playfield panel
+  rr(L.px, L.py, L.pw, L.ph, 14); ctx.fillStyle = '#0e121c'; ctx.fill();
+  ctx.save(); rr(L.px, L.py, L.pw, L.ph, 14); ctx.clip(); ctx.shadowColor = 'rgba(124,245,255,0.35)'; ctx.shadowBlur = 22; ctx.strokeStyle = COL.edge; ctx.lineWidth = 2; rr(L.px, L.py, L.pw, L.ph, 14); ctx.stroke(); ctx.restore();
+  ctx.save();
+  ctx.translate(CX + Math.cos(G.phase) * wob * SC + rnd(-1, 1) * G.shake, CY + Math.sin(G.phase) * wob * SC + rnd(-1, 1) * G.shake);
+  ctx.scale(SC, SC);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);   // pan floor: mid grey so dark slate AND pale sand both read
+  g.addColorStop(0, '#545d70'); g.addColorStop(0.7, '#667087'); g.addColorStop(1, '#78839b');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, 6.2832); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1.5;   // riffles
+  for (let i = 1; i <= G.up.riffle * 2; i++) { ctx.beginPath(); ctx.arc(0, 0, R * (0.12 + i * 0.09), 0, 6.2832); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(220,235,255,' + Math.min(0.25, aw / 36) + ')'; ctx.lineWidth = 2;   // water streaks
+  for (let i = 0; i < 7; i++) { const a = G.phase * (0.9 + i * 0.07) + i * 2.4, rr2 = R * (0.25 + i * 0.1); ctx.beginPath(); ctx.arc(0, 0, rr2, a, a + 0.5 + aw * 0.06); ctx.stroke(); }
+  if (G.sluiceT > 0) { ctx.fillStyle = 'rgba(124,245,255,0.16)'; ctx.beginPath(); ctx.arc(0, 0, R, 0, 6.2832); ctx.arc(0, 0, R * 0.68, 0, 6.2832, true); ctx.fill(); }
+  // "about to lose it" line at 85% of the radius, only while it matters
+  if (G.rimGold && G.state === 'pan') { ctx.strokeStyle = 'rgba(255,93,115,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.arc(0, 0, R * CFG.rimWarn, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); }
+  for (const ty of ORDER) drawGrains(ty);
+  const golds = P.filter(isGoldy); drawGlints(golds, G.t, G.phase);
+  // gold within 15% of the rim: pulsing red outline
+  const pulse = 0.5 + 0.5 * Math.sin(G.t * 9);
+  ctx.strokeStyle = 'rgba(255,93,115,' + (0.55 + 0.45 * pulse) + ')'; ctx.lineWidth = 2.5; ctx.beginPath();
+  for (const p of golds) if (Math.hypot(p.x, p.y) > R * CFG.rimWarn) { const r2 = p.r + 4 + pulse * 4; ctx.moveTo(p.x + r2, p.y); ctx.arc(p.x, p.y, r2, 0, 6.2832); }
+  ctx.stroke();
+  // rim glows by zone
+  const Z = ZONES[z];
+  ctx.save();
+  if (z > 0) { ctx.shadowColor = Z.rim; ctx.shadowBlur = (z === 2 ? 26 + 10 * Math.sin(G.t * 14) : 16) * SC; }
+  ctx.strokeStyle = Z.rim; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(0, 0, R + 4, 0, 6.2832); ctx.stroke();
+  ctx.restore();
+  // finale clock: a ring outside the rim that empties clockwise from the top
+  if (G.stage.timer && G.state === 'pan') {
+    const left = clamp(1 - G.panT / G.stage.timer, 0, 1), hurry = G.stage.timer - G.panT < 10;
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, R + 14, 0, 6.2832); ctx.stroke();
+    ctx.strokeStyle = hurry ? COL.danger : COL.reward; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, 0, R + 14, -Math.PI / 2, -Math.PI / 2 + left * 6.2832); ctx.stroke(); ctx.lineCap = 'butt';
+  }
+  for (const f of FX) { ctx.globalAlpha = clamp(f.life * 3, 0, 1); ctx.fillStyle = f.col; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.2832); ctx.fill(); }
+  for (const r of RINGS) { ctx.globalAlpha = clamp(r.life * 2.5, 0, 1); ctx.strokeStyle = r.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, 6.2832); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // ghost gesture arrow until the player has swirled once
+  if (!G.everSwirled && G.state === 'pan') {
+    const a0 = G.t * 1.6; ctx.globalAlpha = 0.9;
+    arrowArc(R * 0.72, a0, a0 + 4.6, COL.player, 5, [16, 10]);
+    paddle(Math.cos(a0 + 4.6) * R * 0.72, Math.sin(a0 + 4.6) * R * 0.72, 1.5, 0.4);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+  // loss / gain callouts sit just inside the rim, in screen space so the font stays >= 14px
+  for (const t of TXT) { ctx.globalAlpha = clamp(t.life * 2, 0, 1); text(t.s, CX + t.x * SC, CY + t.y * SC, t.big ? 20 : 14, t.col, 'center', true); }
+  ctx.globalAlpha = 1;
+  // the player's paddle follows the pointer inside the panel
+  if (G.state === 'pan' && !G.help && hover(L.px, L.py, L.pw, L.ph) && Math.hypot(inp.x - CX, inp.y - CY) < G.R * SC + 30) {
+    if (inp.down) { ctx.strokeStyle = 'rgba(124,245,255,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(inp.x, inp.y); ctx.stroke(); }
+    paddle(inp.x, inp.y, inp.down ? 0.95 : 0.8, Math.atan2(inp.y - CY, inp.x - CX) + Math.PI / 2);
+  }
+}
+function drawGauge() {
+  const RS = G.R * SC, mw = L.mw, mx = CX - mw / 2, gy = CY + RS + 14, k = mw / CFG.wMax, aw = Math.abs(G.w), lw = G.lossW, dw = G.dW;
+  const live = G.state === 'pan', z = live ? zone() : 0, by = gy + 20, bh = 22;
+  text('SWIRL SPEED', mx, gy + 13, 14, COL.dim, 'left', true);
+  if (live) text(aw < 0.2 ? 'not swirling' : ZONES[z].name + ' - ' + ZONES[z].sub, mx + mw, gy + 13, 14, ZONES[z].col, 'right', true);
+  const zx = [0, lw * k, dw * k, mw];
+  ctx.save(); rr(mx, by, mw, bh, 6); ctx.clip();
+  for (let i = 0; i < 3; i++) {
+    ctx.globalAlpha = live && z === i && aw > 0.2 ? 1 : 0.6; ctx.fillStyle = ZONES[i].fill; ctx.fillRect(mx + zx[i], by, zx[i + 1] - zx[i], bh);
+    ctx.globalAlpha = 1; ctx.fillStyle = ZONES[i].rim; ctx.fillRect(mx + zx[i], by + bh - 4, zx[i + 1] - zx[i], 4);
+  }
+  ctx.strokeStyle = '#0b0d12'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mx + zx[1], by); ctx.lineTo(mx + zx[1], by + bh); ctx.moveTo(mx + zx[2], by); ctx.lineTo(mx + zx[2], by + bh); ctx.stroke();
+  ctx.restore();
+  rr(mx, by, mw, bh, 6); ctx.strokeStyle = '#5a6480'; ctx.lineWidth = 1; ctx.stroke();
+  // zone names under the bar
+  text(ZONES[0].name, mx, by + bh + 17, 14, ZONES[0].col, 'left', true); text(ZONES[0].sub, mx, by + bh + 34, 14, COL.dim, 'left');
+  const wc = clamp(mx + (zx[1] + zx[2]) / 2, mx + 170, mx + mw - 150);
+  text(ZONES[1].name, wc, by + bh + 17, 14, ZONES[1].col, 'center', true); text(ZONES[1].sub, wc, by + bh + 34, 14, COL.dim, 'center');
+  text(ZONES[2].name, mx + mw, by + bh + 17, 14, ZONES[2].col, 'right', true); text(ZONES[2].sub, mx + mw, by + bh + 34, 14, COL.dim, 'right');
+  // needle (player colour, glowing)
+  const nx = mx + clamp(aw, 0, CFG.wMax) * k;
+  ctx.save(); ctx.shadowColor = COL.player; ctx.shadowBlur = 10;
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(nx, by - 3); ctx.lineTo(nx, by + bh + 3); ctx.stroke();
+  ctx.fillStyle = COL.player; ctx.beginPath(); ctx.moveTo(nx, by - 1); ctx.lineTo(nx - 7, by - 11); ctx.lineTo(nx + 7, by - 11); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function drawHUD() {
+  const M = mode(), p = payoutNow(), c = p.c, S = G.stage, endless = G.pan > nStages(), RS = G.R * SC;
+  // top-left: goal + progress + score
+  const bx = 20, bw = 230, k = endless ? clamp(p.total / S.par, 0, 1) : clamp(G.earned / M.target, 0, 1);
+  const hit = !endless && G.earned >= M.target;
+  text(endless ? 'ENDLESS: THIS PAN MUST PAY $' + S.par : hit ? 'TARGET $' + M.target + ' REACHED - FINISH THE RUN' : 'GOAL: EARN $' + M.target + ' IN ' + nStages() + ' PANS', bx, 24, 14, hit ? COL.safe : COL.dim, 'left', true);
+  rr(bx, 31, bw, 14, 5); ctx.fillStyle = '#1a1e29'; ctx.fill();
+  if (k > 0.02) { ctx.save(); rr(bx, 31, bw, 14, 5); ctx.clip(); ctx.fillStyle = k >= 1 ? COL.safe : COL.reward; ctx.fillRect(bx, 31, bw * k, 14); ctx.restore(); }
+  rr(bx, 31, bw, 14, 5); ctx.strokeStyle = '#5a6480'; ctx.lineWidth = 1; ctx.stroke();
+  text('EARNED $' + G.earned, bx, 70, 22, COL.reward, 'left', true);
+  text('PAN ' + G.pan + (endless ? '' : ' of ' + nStages()) + '  -  ' + S.name, bx, 92, 15, G.pan === nStages() ? COL.reward : COL.txt, 'left', true);
+  // top-right: cash + par
+  text('CASH $' + G.money, W - 20, 30, 22, COL.reward, 'right', true);
+  text('to spend in the shop', W - 20, 50, 14, COL.dim, 'right');
+  const left = S.timer ? Math.max(0, S.timer - G.panT) : 0, hurry = S.timer && left < 10;
+  if (S.timer && (G.state === 'pan' || G.state === 'count')) text('TIME LEFT ' + Math.floor(left / 60) + ':' + String(Math.ceil(left % 60)).padStart(2, '0'), W - 20, 78, 22, hurry && Math.sin(G.t * 12) > 0 ? '#fff' : hurry ? COL.danger : COL.txt, 'right', true);
+  if (G.state === 'pan' && !endless) text(p.total >= S.par ? 'PAR $' + S.par + ' BEATEN  +$' + CFG.parBonus : 'par for this pan: $' + S.par, W - 20, S.timer ? 98 : 78, 15, p.total >= S.par ? COL.safe : COL.txt, 'right', true);
+  // legend in the right margin
+  const lx0 = L.px + L.pw + 16;
+  if (W - lx0 >= 100) ORDER.filter(ty => ty === 'sand' || ty === 'gold' || c[ty] || (ty === 'black' && S.black) || (ty !== 'black' && S[ty])).reverse().forEach((ty, i) => {
+    const y = 128 + i * 24, T = TYPES[ty];
+    rr(lx0 - 2, y - 15, 22, 21, 5); ctx.fillStyle = '#667087'; ctx.fill();
+    ctx.fillStyle = T.col; ctx.strokeStyle = T.edge; ctx.lineWidth = 1.5; ctx.beginPath(); grainPath(ty, lx0 + 9, y - 4.5, ty === 'nug' ? 8 : ty === 'flake' ? 5 : 6, 0); ctx.fill(); ctx.stroke();
+    text(T.label, lx0 + 27, y, 14, COL.txt);
+  });
+  // live readout, plain words, inside the panel right above the pan
+  const ry = L.py + 24;
+  if (G.state === 'pan') {
+    if (G.rimGold && zone() > 0 && !(G.tut && G.tut.step < 2)) text('GOLD NEAR THE RIM - ABOUT TO LOSE IT!  SLOW DOWN', CX, ry, 16, COL.danger, 'center', true);
+    else text('GOLD ' + c.goldy + '/' + G.gold0 + ' kept  -  PURITY ' + Math.round(c.purity * 100) + '%  ->  payout x' + p.pm.toFixed(1), CX, ry, 16, G.lostGold ? '#ffb38a' : COL.reward, 'center', true);
+  }
+  drawGauge();
+  if (G.state === 'pan') {
+    // BANK button: bottom-right corner of the panel
+    const bw2 = Math.min(150, L.px + L.pw - 12 - (CX + RS * 0.8)), bx2 = L.px + L.pw - 12 - bw2, by2 = CY + RS - 46, tutOn = G.tut && G.tut.step < 2;
+    if (bw2 >= 96) { button('bank', tutOn ? 'BANK (later)' : 'BANK  $' + p.total, bx2, by2, bw2, 40, bank, !tutOn, 'go', 15); text('[Space]  speed x' + p.tb.toFixed(2), bx2 + bw2 / 2, by2 - 8, 14, COL.dim, 'center'); }
+    // tools: other corners of the panel
+    const owned = TOOLS.filter(id => G.up[id]), tw = Math.min(150, bw2), pos = [[L.px + 12, L.py + 40], [L.px + L.pw - 12 - tw, L.py + 40], [L.px + 12, by2]];
+    owned.forEach((id, i) => { const n = G.tools[id], nm = id.toUpperCase(); button('tool' + id, (TOOLS.indexOf(id) + 1) + ' ' + nm + (id === 'tap' ? ' x' + n : n ? '' : ' -'), pos[i][0], pos[i][1], tw, 34, () => useTool(id), n > 0, 'sel', 14); });
+  }
+  // bottom-right: help button + key reminders (small)
+  button('help', '? HELP', W - 100, H - 116, 84, 26, toggleHelp, true, 'alt', 14);
+  ['H help', 'R restart', 'M ' + (G.muted ? 'unmute' : 'mute'), 'Esc menu'].forEach((q, i) => text(q, W - 16, H - 70 + i * 18, 14, COL.dim, 'right'));
+}
+// bottom-centre: tutorial / tip area (drawn above overlays so shop tips stay readable)
+function drawTipArea() {
+  const tw3 = Math.min(600, W - 2 * 130), tx = CX - tw3 / 2, ty = H - 56, tut = G.tut && G.tut.step < 2 && G.state === 'pan';
+  let s = null;
+  if (tut) s = G.tut.step === 0 ? 'TUTORIAL 1/2:  Hold the mouse button and draw circles around the pan until the needle turns GREEN.'
+    : 'TUTORIAL 2/2:  Keep circling - wash ' + CFG.tutGrains + ' grains of sand over the rim (' + Math.min(G.tut.washed, CFG.tutGrains) + '/' + CFG.tutGrains + '). Your gold is safe for now.';
+  else if (!G.everSwirled && G.state === 'pan') s = 'Hold the mouse button and draw circles around the pan to swirl the water.';
+  else if (TIPS.q.length) s = TIPS.q[0].s;
+  if (!s) return;
+  rr(tx, ty, tw3, 48, 10); ctx.fillStyle = COL.card; ctx.fill(); ctx.strokeStyle = tut ? COL.player : COL.edge; ctx.lineWidth = tut ? 1.5 : 1; ctx.stroke();
+  wrap(s, CX, ty + 20, tw3 - 24, 14, COL.txt, 'center', tut, 18);
+}
+function drawCount() {
+  const c = G.count, pw = Math.min(470, W - 24), ph = 150 + c.lines.length * 30, px = CX - pw / 2, py = Math.max(8, CY - ph / 2);
+  card(px, py, pw, ph);
+  text('PAN ' + G.pan + '  -  ' + G.stage.name, CX, py + 32, 16, COL.dim, 'center', 'x');
+  c.lines.forEach((ln, i) => { const a = c.done ? 1 : ease((c.t - (i + 1) * c.step) / 0.2); if (a > 0) { setA(a); text(ln.l, px + 22 + (1 - a) * 12, py + 66 + i * 30, 15, COL.txt); text(ln.v, px + pw - 22, py + 66 + i * 30, 18, ln.col, 'right', true); setA(1); } });
+  const ty = py + 66 + c.lines.length * 30;
+  ctx.strokeStyle = COL.edge; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 22, ty - 16); ctx.lineTo(px + pw - 22, ty - 16); ctx.stroke();
+  if (c.t >= c.lines.length * c.step) { text('PAYOUT', px + 22, ty + 22, 18, COL.txt, 'left', true); ctx.save(); ctx.shadowColor = COL.reward; ctx.shadowBlur = 12; text('$' + c.shown, px + pw - 22, ty + 26, 38, COL.reward, 'right', 'x'); ctx.restore(); }
+  if (c.done) {
+    if (G.pan > nStages()) text(c.pay >= G.stage.par ? 'Quota $' + G.stage.par + ' met' : 'Below the $' + G.stage.par + ' quota', px + 22, ty + 52, 14, c.pay >= G.stage.par ? COL.safe : COL.danger, 'left', true);
+    else if (!c.cleared) text('Par was $' + G.stage.par + ' - no clear bonus this time', px + 22, ty + 52, 14, COL.dim, 'left');
+    text('Space / click to continue', CX, py + ph - 14, 14, COL.dim, 'center');
+  } else text('Space / click to skip', CX, py + ph - 14, 14, COL.dim, 'center');
+  G.buttons.push({ id: 'proceed', x: 0, y: 0, w: W, h: H - 124, fn: proceed });
+}
+function drawShop() {
+  const n = G.offer.length, gap = 14, cwid = Math.min(230, (W - 40 - gap * 2) / 3), tot = cwid * n + gap * (n - 1), ch = 276, top = Math.max(96, Math.min(CY - 190, H - 470));
+  ctx.fillStyle = 'rgba(11,13,18,0.86)'; ctx.fillRect(0, 0, W, H);
+  text('SUPPLY SHACK', CX - Math.max(tot, 480) / 2, top, 26, '#fff', 'left', 'x');
+  text('CASH $' + G.money, CX + Math.max(tot, 480) / 2, top, 24, COL.reward, 'right', true);
+  const nxt = stageFor(G.pan + 1);
+  text('Next: pan ' + (G.pan + 1) + ' - ' + nxt.name + '.   Earned $' + G.earned + ' of $' + mode().target + ' (spending cash does NOT reduce this).', CX, top + 26, 14, COL.dim, 'center');
+  G.offer.forEach((id, i) => {
+    const u = UPG.find(q => q.id === id), lvl = G.up[id], maxed = lvl >= u.max, pr = price(u, lvl), x = CX - tot / 2 + i * (cwid + gap), hot = hover(x, top + 44, cwid, ch), y = top + 44 - (hot ? 4 : 0);
+    card(x, y, cwid, ch, hot);
+    icon(id, x + 34, y + 36, 1.15);
+    text((i + 1) + '', x + cwid - 18, y + 28, 15, COL.dim, 'right', true);
+    if (u.how) text(u.tool ? 'TOOL' : 'NEW TRICK', x + 62, y + 28, 14, COL.player, 'left', true);
+    text(u.name, x + 16, y + 84, 18, '#fff', 'left', true);
+    text(u.max > 1 ? 'level ' + lvl + ' of ' + u.max : lvl ? 'owned' : 'not owned yet', x + 16, y + 104, 14, lvl ? COL.safe : COL.dim);
+    const ln = wrap(u.desc, x + 16, y + 130, cwid - 30, 14, COL.txt, 'left', false, 18);
+    wrap(u.why, x + 16, y + 138 + ln * 18, cwid - 30, 14, COL.dim, 'left', false, 18);
+    button('buy' + i, maxed ? 'OWNED' : G.money >= pr ? 'BUY  $' + pr : '$' + pr + '  (too dear)', x + 14, y + ch - 50, cwid - 28, 36, () => buy(i), !maxed && G.money >= pr, 'gold');
+  });
+  const by = top + 44 + ch + 18;
+  button('reroll', 'REROLL  $' + rerollCost(), CX - 230, by, 170, 42, reroll, G.money >= rerollCost(), 'alt');
+  button('next', 'NEXT PAN  [Enter]', CX - 40, by, 270, 42, nextPan, true, 'go', 17);
+}
+function drawResult() {
+  const win = G.state === 'win', M = mode(), s = G.stat, pw = Math.min(580, W - 24), ph = win ? 376 : 420, px = CX - pw / 2, py = Math.max(8, H / 2 - ph / 2), m = medal();
+  ctx.fillStyle = 'rgba(11,13,18,0.86)'; ctx.fillRect(0, 0, W, H);
+  card(px, py, pw, ph);
+  text(win ? 'TARGET REACHED!' : G.won ? 'ENDLESS RUN OVER' : 'RUN OVER - TARGET MISSED', CX, py + 44, 26, win ? COL.safe : G.won ? COL.txt : COL.danger, 'center', 'x');
+  wrap(win ? 'You earned $' + G.earned + ' across all ' + nStages() + ' pans  (goal $' + M.target + ').' : G.over.cause, CX, py + 72, pw - 40, 15, COL.txt, 'center', false, 18);
+  badge(px + 86, py + 146, 30, m);
+  text(['NO MEDAL YET', 'BRONZE', 'SILVER', 'GOLD'][m], px + 86, py + 216, 15, ['#aab3c5', '#cd8a4b', '#d5dce8', '#ffd166'][m], 'center', 'x');
+  ctx.save(); ctx.shadowColor = COL.reward; ctx.shadowBlur = 14; text('$' + Math.round(G.earned * ease((G.t - G.stAt) / 0.9)), px + 170, py + 150, 50, COL.reward, 'left', 'x'); ctx.restore();
+  text(G.earned >= G.best && G.earned > 0 ? 'NEW BEST!' : 'best $' + G.best, px + 172, py + 176, 15, COL.player, 'left', true);
+  text('Bronze $' + M.medals[0] + '    Silver $' + M.medals[1] + '    Gold $' + M.medals[2], px + 172, py + 200, 14, COL.dim, 'left');
+  const sy = py + 246, stats = [['pans cleared', s.cleared + '/' + s.pans], ['gold kept', (s.gold0 - s.goldLost) + '/' + s.gold0], ['avg purity', Math.round(100 * s.puritySum / Math.max(1, s.pans)) + '%'], ['best pan', '$' + s.bestPan]];
+  stats.forEach(([a, b], i) => { const x = px + 24 + i * (pw - 48) / 4; text(b, x, sy, 20, COL.txt, 'left', true); text(a, x, sy + 20, 14, COL.dim); });
+  if (!win) wrap('TIP: ' + G.over.hint, CX, sy + 52, pw - 48, 14, COL.safe, 'center', false, 18);
+  const by = py + ph - 58;
+  if (win) { button('keep', 'KEEP GOING  [K]', px + 24, by, 210, 42, keepGoing, true, 'go'); button('retry', 'NEW RUN  [R]', px + 246, by, 160, 42, startRun, true, 'alt'); button('menu', 'MENU', px + pw - 24 - 130, by, 130, 42, toMenu, true, 'alt'); }
+  else { button('retry', 'RETRY  [R]', CX - 190, by, 220, 42, startRun, true, 'go', 17); button('menu', 'MENU  [Esc]', CX + 44, by, 146, 42, toMenu, true, 'alt'); }
+}
+
+// ================= RENDER: START / HELP =================
+const DIA = (() => { // fixed pseudo-random diagram grains (so the picture never flickers)
+  const out = []; let s = 7; const r01 = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 46; i++) { const a = r01() * 6.28, r = 0.36 + r01() * 0.54; out.push({ t: i % 5 === 0 ? 'black' : 'sand', x: Math.cos(a) * r, y: Math.sin(a) * r }); }
+  [[0, 0], [0.17, 0.05], [-0.14, 0.1], [0.04, -0.18], [-0.11, -0.11]].forEach((g, i) => out.push({ t: 'gold', x: g[0], y: g[1], ph: i * 1.7 }));
+  out.push({ t: 'fool', x: 0.24, y: -0.2 });
+  return out;
+})();
+function drawDiagram(dx, dy, r) {
+  ctx.save(); ctx.translate(dx, dy);
+  ctx.fillStyle = '#667087'; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
+  ctx.save(); ctx.shadowColor = COL.safe; ctx.shadowBlur = 12; ctx.strokeStyle = COL.safe; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, r + 2, 0, 6.2832); ctx.stroke(); ctx.restore();
+  for (const ty of ['sand', 'black', 'fool', 'gold']) {
+    const T = TYPES[ty]; ctx.fillStyle = T.col; ctx.strokeStyle = T.edge; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (const g of DIA) if (g.t === ty) grainPath(ty, g.x * r, g.y * r, 5); ctx.fill(); ctx.stroke();
+  }
+  drawGlints(DIA.filter(g => g.t === 'gold').map(g => ({ x: g.x * r, y: g.y * r, ph: g.ph })), G.t, 0);
+  const T = TYPES.sand; [[-0.5, 1.16], [-0.3, 1.34], [-0.75, 1.26], [2.5, 1.18], [2.75, 1.32]].forEach(([a, k], i) => {   // sand flying over the rim
+    const kk = k + 0.06 * Math.sin(G.t * 3 + i), x = Math.cos(a) * r * kk, y = Math.sin(a) * r * kk;
+    ctx.strokeStyle = T.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 1.0, Math.sin(a) * r * 1.0); ctx.lineTo(Math.cos(a) * r * (kk - 0.1), Math.sin(a) * r * (kk - 0.1)); ctx.stroke();
+    ctx.fillStyle = T.col; ctx.strokeStyle = T.edge; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill(); ctx.stroke();
+  });
+  const a0 = G.t * 1.6; arrowArc(r * 0.66, a0, a0 + 4.4, COL.player, 4, [10, 7]);
+  paddle(Math.cos(a0 + 4.4) * r * 0.66, Math.sin(a0 + 4.4) * r * 0.66, 0.85, 0.4);
+  ctx.restore();
+}
+function drawStart(isHelp) {
+  const M = mode(), a = ease((G.t - G.stAt) / 0.3);
+  if (isHelp) { ctx.fillStyle = 'rgba(11,13,18,0.95)'; ctx.fillRect(0, 0, W, H); }
+  GA = a; ctx.globalAlpha = a; ctx.save(); ctx.translate(0, (1 - a) * 14);
+  const cw = Math.min(900, W - 48), x0 = W / 2 - cw / 2, y0 = Math.max(0, (H - 600) / 2);
+  // title top-left + tagline
+  ctx.save(); ctx.shadowColor = COL.reward; ctx.shadowBlur = 16; text('PAN', x0, y0 + 56, 46, '#fff', 'left', 'x'); ctx.restore();
+  text(isHelp ? 'PAUSED - how to play' : 'Swirl the dirt away. Keep the gold.', x0 + 118, y0 + 40, 16, COL.dim, 'left');
+  text('GOAL: earn $' + M.target + ' from ' + M.stages.length + ' pans of dirt.', x0 + 118, y0 + 62, 16, COL.reward, 'left', true);
+  // diagram centre, labels either side
+  const dr = 58, dx = W / 2, dy = y0 + 160;
+  drawDiagram(dx, dy, dr);
+  text('hold mouse + draw circles', dx - dr - 44, dy - 8, 14, COL.player, 'right', true); text('= swirl the water', dx - dr - 44, dy + 12, 14, COL.player, 'right', true);
+  text('light sand washes over the rim', dx + dr + 44, dy - 18, 14, TYPES.sand.col, 'left', true); text('heavy gold stays in the middle', dx + dr + 44, dy + 2, 14, COL.reward, 'left', true); text('too fast and gold flies out too', dx + dr + 44, dy + 22, 14, COL.danger, 'left', true);
+  // legend strip
+  const lg = [['gold', 'gold +$10'], ['sand', 'sand'], ['black', 'black sand'], ['fool', "fool's gold -$8"], ['flake', 'flake +$5'], ['nug', 'nugget +$100']];
+  setFont(14, true); let lw = 0; lg.forEach(q => lw += 30 + ctx.measureText(q[1]).width + 14); let lx = W / 2 - lw / 2 + 8; const ly = y0 + 258;
+  rr(W / 2 - lw / 2 - 6, ly - 18, lw + 12, 28, 8); ctx.fillStyle = '#667087'; ctx.fill();
+  lg.forEach(([ty, lab]) => { const T = TYPES[ty]; ctx.fillStyle = T.col; ctx.strokeStyle = T.edge; ctx.lineWidth = 1.5; ctx.beginPath(); grainPath(ty, lx + 6, ly - 4, ty === 'nug' ? 8 : ty === 'flake' ? 5 : 6, 0); ctx.fill(); ctx.stroke(); text(lab, lx + 19, ly + 1, 14, '#0b0d12', 'left', true); setFont(14, true); lx += 30 + ctx.measureText(lab).width + 14; });
+  // two cards: controls + scoring
+  const cy = y0 + 282, chh = 186, cwd = (cw - 16) / 2;
+  card(x0, cy, cwd, chh); card(x0 + cwd + 16, cy, cwd, chh);
+  text('CONTROLS', x0 + 16, cy + 26, 14, COL.dim, 'left', 'x'); let ry = cy + 52;
+  [['Hold mouse + circle', 'swirl (faster circles = faster swirl)'], ['Space', 'BANK the pan and get paid'], ['1  2  3', 'use tools / buy shop cards'], ['Enter', 'next pan'], ['H   R   M   Esc', 'help, restart, mute, menu']].forEach(([k2, d]) => {
+    text(k2, x0 + 16, ry, 14, COL.player, 'left', true); text(d, x0 + 16 + Math.min(150, cwd * 0.42), ry, 14, COL.txt); ry += 25;
+  });
+  const sx = x0 + cwd + 32; text('HOW YOU SCORE / HOW YOU LOSE', sx, cy + 26, 14, COL.dim, 'left', 'x'); ry = cy + 50;
+  ry += 19 * wrap('Payout = gold kept x purity bonus (up to x5 when only gold is left) x speed bonus. Beat a pan\'s par for +$50.', sx, ry, cwd - 32, 14, COL.txt, 'left', false, 19) + 5;
+  ry += 19 * wrap('Keep the SWIRL SPEED needle in the green. In the red DANGER zone gold slides out and is lost for good.', sx, ry, cwd - 32, 14, COL.txt, 'left', false, 19) + 5;
+  wrap('You always get ' + M.stages.length + ' pans; the last one, THE GLORY HOLE, is on a clock. Total under $' + M.target + ' at the end = run over.', sx, ry, cwd - 32, 14, COL.txt, 'left', false, 19);
+  // buttons
+  const by = cy + chh + 16;
+  if (!isHelp) {
+    ['normal', 'hard'].forEach((m, i) => { const sel = G.mode === m; button('mode' + m, MODES[m].name, x0 + i * 118, by + 6, 110, 38, () => setMode(m), true, sel ? 'sel' : 'alt'); });
+    ctx.save(); ctx.shadowColor = COL.safe; ctx.shadowBlur = 10 + 6 * Math.sin(G.t * 4); button('play', 'PLAY', W / 2 - 110, by, 220, 50, startGame, true, 'go', 22); ctx.restore();
+    wrap(M.blurb, x0 + cw, by + 20, cw / 2 - 130, 14, COL.dim, 'right', false, 18);
+    const md = ls.get('proto_' + GAMEID + '_medal'), bs = +ls.get('proto_' + GAMEID + '_best') || 0;
+    if (bs) text('best $' + bs + (md ? '  -  ' + md + ' medal' : ''), W / 2, by + 72, 14, COL.reward, 'center');
+  } else button('resume', 'RESUME  [H]', W / 2 - 110, by, 220, 50, toggleHelp, true, 'go', 20);
+  text('H help    R restart    M ' + (G.muted ? 'unmute' : 'mute') + '    Esc menu', W / 2, Math.min(H - 10, by + 96), 14, COL.dim, 'center');
+  ctx.restore(); GA = 1; ctx.globalAlpha = 1;
+}
+function render() {
+  G.buttons = [];
+  drawBackdrop();
+  if (G.state === 'start') { drawStart(false); return; }
+  drawPan(); drawHUD();
+  if (G.state !== 'pan') { overlayIn(); if (G.state === 'count') drawCount(); else if (G.state === 'shop') drawShop(); else drawResult(); overlayOut(); }
+  if (G.state === 'pan' || G.state === 'shop') drawTipArea();
+  if (G.help) { G.buttons = []; drawStart(true); }
+}
+
+// ================= INPUT =================
+function pointerAngle(e) {
+  const dx = e.clientX - CX, dy = e.clientY - CY;
+  return Math.hypot(dx, dy) < 18 * SC ? null : Math.atan2(dy, dx);   // too close to the centre: angle is noise
+}
+window.addEventListener('pointerdown', e => {
+  initAudio(); if (ac && ac.state === 'suspended') ac.resume();
+  inp.x = e.clientX; inp.y = e.clientY;
+  for (let i = G.buttons.length - 1; i >= 0; i--) { const b = G.buttons[i]; if (hover(b.x, b.y, b.w, b.h)) { G.pressId = b.id; G.pressT = 0.14; if (b.id !== 'proceed') sndClick(); b.fn(); return; } }
+  if (G.help || G.state !== 'pan') return;
+  if (e.button === 0 || e.button === undefined) { inp.down = true; inp.lastA = pointerAngle(e); inp.acc = 0; inp.total = 0; }
+});
+window.addEventListener('pointermove', e => {
+  inp.x = e.clientX; inp.y = e.clientY;
+  if (!inp.down) return;
+  const a = pointerAngle(e);
+  if (a !== null && inp.lastA !== null) { let da = a - inp.lastA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; inp.acc += da; inp.total += Math.abs(da); }
+  inp.lastA = a;
+});
+const release = () => { inp.down = false; inp.lastA = null; };
+window.addEventListener('pointerup', release); window.addEventListener('pointercancel', release); window.addEventListener('blur', release);
+window.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('keydown', e => {
+  const k = e.key;
+  if (k === 'Escape') { toMenu(); return; }
+  if (k === 'm' || k === 'M') { toggleMute(); return; }
+  if (k === 'h' || k === 'H' || k === '?') { toggleHelp(); return; }
+  if (k === 'r' || k === 'R') { initAudio(); startRun(); return; }
+  if (G.help) return;
+  if (k === ' ' || k === 'Enter') {
+    e.preventDefault(); initAudio();
+    if (G.state === 'start') startGame();
+    else if (G.state === 'pan') { if (k === ' ') bank(); }
+    else if (G.state === 'count') proceed();
+    else if (G.state === 'shop') nextPan();
+  }
+  else if (k === 'k' || k === 'K') keepGoing();
+  else if (k >= '1' && k <= '3') { if (G.state === 'shop') buy(+k - 1); else useTool(TOOLS[+k - 1]); }
+});
+window.addEventListener('resize', resize);
+
+// ================= BOOT =================
+let lastT = 0;
+function frame(ts) {
+  const dt = lastT ? (ts - lastT) / 1000 : 1 / 60; lastT = ts;
+  update(dt); render(); window.requestAnimationFrame(frame);
+}
+UPG.forEach(u => G.up[u.id] = 0); G.stage = MODES.normal.stages[0]; G.muted = ls.get('proto_mute') === '1';
+G.stat = { gold0: 0, goldLost: 0, puritySum: 0, tbSum: 0, pans: 0, foolBanked: 0, cleared: 0, bestPan: 0 };
+window.PAN = { G, CFG, MODES, UPG, TOOLS, TIPS, price, startRun, startGame, setMode, update, render, bank, proceed, keepGoing, buy, reroll, nextPan, toggleHelp, toggleMute,
+  setSwirl, useTool, useMagnet, counts, payoutNow, medal, zone, getP: () => P };
+resize(); loadBest(); window.requestAnimationFrame(frame);
+</script></body></html>

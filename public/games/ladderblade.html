@@ -1,0 +1,541 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>LADDERBLADE</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;touch-action:none;cursor:crosshair}</style>
+</head><body><canvas id="c"></canvas><script>
+'use strict';
+// ============ LADDERBLADE — drag a chain through monsters. The blade climbs a STAIRCASE (it only grows on kills near its power). ============
+// ============ You stop on the last cell; the monsters beside it hit you and ENRAGE. Descend 5 floors, then cut the Hydra's heads in order. ============
+const GID = 'ladderblade', N = 6, NC = N * N;
+const FONT = '"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+const C = { bg:'#0b0d12', bg2:'#121726', panel:'#121622', border:'#232a3d', player:'#7cf5ff', danger:'#ff5d73', gold:'#ffd166', safe:'#9dff8a', text:'#e8ecf5', dim:'#aab3c5', ink:'#0b0d12' };
+const NAMES = ['', 'Imp', 'Rat', 'Goblin', 'Orc', 'Ogre', 'Troll', 'Giant', 'Drake', 'Titan'];
+// Spawn values are bimodal: fodder (1-2) the blade always cuts, a rare rung (3), and big monsters (4+) that only an ascending staircase reaches.
+// The board "director" keeps the number of big monsters near wallCap: that density is what makes the end cell a real decision (see test notes).
+const CFG = { weights:[26,18,1,1,16,12,6,4,2], bigFrom:5, maxVal:9, startFill:16, bossWeights:[20,16,10,8], healFrom:6, healCap:3, thiefSteal:5, bombDmg:2, thornDmg:2, headBonus:10, headsPerTurn:2,
+  gentleTurns:5, gentleMax:4, shoveCd:3, floorBonus:20, bossBonus:100, dfsCap:4000, hpValue:10, minBoard:11 };
+const MODES = {                                                        // HARD = the old bot-tuned pressure: less HP, fewer turns, denser walls, bigger heads
+  normal:{ label:'NORMAL', hp:25, refill:6, turns:8, quotaMul:1,   modChance:.16, wallAdd:0, bossTurns:13, heads:[2,3,3,4,4,5,5,6,6] },
+  hard:  { label:'HARD',   hp:18, refill:6, turns:7, quotaMul:1.1, modChance:.24, wallAdd:2, bossTurns:10, heads:[3,3,4,4,5,5,6,6,7] } };
+// ---------- run structure: 5 floors (kill quota within N turns, one new piece per floor) then the boss ----------
+const FLOORS = [
+  { name:'THE CELLAR',  quota:24, maxVal:6, wallCap:5, mods:'' },
+  { name:'THE VAULT',   quota:28, maxVal:7, wallCap:6, mods:'A',   intro:'A' },
+  { name:'THE FURNACE', quota:30, maxVal:8, wallCap:7, mods:'AB',  intro:'B' },
+  { name:'THE MARKET',  quota:32, maxVal:9, wallCap:8, mods:'ABT', intro:'T' },
+  { name:'THE PIT',     quota:34, maxVal:9, wallCap:9, mods:'ABT' },
+  { name:'THE HYDRA',   boss:true, maxVal:5, wallCap:5, mods:'A' } ];
+const INTRO = { A:'NEW: ARMOURED (shield) - it needs blade power = value + 1.', B:'NEW: BOMB - killing it deals 2 to all 8 neighbours (they score +1 each). Do not END next to the blast.',
+  T:'NEW: THIEF ($) - beside your end cell it steals 5 points instead of hurting you.', H:'THE HYDRA: cut its 9 heads in ascending order - lowest number first, at most 2 per turn. Locked heads cannot be cut yet.' };
+const MEDALS = [['gold', 3000], ['silver', 1200], ['bronze', 400]];        // score thresholds: Bronze = median run of the short-chain human-ish bot, Gold = a winning run
+const medalFor = s => (MEDALS.find(m => s >= m[1]) || [null])[0];
+// ---------- data: perks (data row + one rule hook). 'how' perks change how you path ----------
+const PERKS = [
+  { id:'start2',   glyph:'2', name:'KEEN EDGE',    desc:'The blade starts every turn at power 2.',                              why:'Rats die first; the staircase begins one step higher.', how:1 },
+  { id:'temper',   glyph:'S', name:'TEMPER',       desc:'The blade grows on kills of value >= power - 2 (a wider staircase).', why:'Twice as many monsters count as steps.', how:1 },
+  { id:'ghost',    glyph:'G', name:'GHOST STEP',   desc:'Your chain may cross ONE empty cell per turn.',                        why:'Reach clusters that are not touching.', how:1 },
+  { id:'lockpick', glyph:'K', name:'LOCKPICK',     desc:'Armoured monsters need no extra power.',                              why:'Shields stop being walls in your staircase.', how:1 },
+  { id:'bombsuit', glyph:'B', name:'BOMB SUIT',    desc:'Bomb blasts no longer hurt you.',                                     why:'Stand in the blast and let it clear the neighbours.', how:1 },
+  { id:'thorns',   glyph:'!', name:'SHOCKWAVE',    desc:'Your end cell deals 2 to its orthogonal neighbours before they hit.', why:'Ending beside 1s and 2s becomes safe and thins the board.', how:1 },
+  { id:'fourth',   glyph:'4', name:'WHETSTONE',    desc:'Every 4th kill in a chain grows the blade even if it is small.',      why:'Hoovering Imps still climbs the staircase.', how:1 },
+  { id:'bull',     glyph:'>', name:'BULLRUSH',     desc:'SHOVE recharges in 2 turns and deals 1 damage to the shoved monster.', why:'Reposition twice as often.', how:1 },
+  { id:'ones',     glyph:'1', name:'THICK BOOTS',  desc:'Value-1 monsters beside you deal no damage (and do not enrage).',     why:'Imps become free to stop beside.' },
+  { id:'leech',    glyph:'+', name:'LEECH',        desc:'Killing a 1 heals 1 HP (max 3 per turn).',                           why:'Steady healing from the monsters you kill most.' },
+  { id:'patience', glyph:'R', name:'PATIENCE',     desc:'REST heals 3 instead of 1.',                                          why:'A safe corner becomes a real recovery.' },
+  { id:'vital',    glyph:'H', name:'VITALITY',     desc:'+6 max HP and heal 6 now.',                                           why:'Simple and strong.' },
+  { id:'wind',     glyph:'W', name:'SECOND WIND',  desc:'Once per floor, a lethal hit leaves you at 1 HP instead.',            why:'One free mistake per floor.' },
+  { id:'pact',     glyph:'$', name:'DARK BARGAIN', desc:'Lose 6 HP now. Every kill scores +1 for the rest of the run.',        why:'Risk now, a big score later.', risk:1 } ];
+const DELAY = { move:170, boom:230, thorn:200, score:330, hit:280, steal:280, rage:240, rest:220, shove:240, shoveHit:160, end:0 };
+
+// ---------- grid helpers / rng / storage ----------
+const X = c => c % N, Y = c => (c / N) | 0, NB8 = [], NB4 = [];
+for (let c = 0; c < NC; c++) { NB8[c] = []; NB4[c] = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const x = X(c) + dx, y = Y(c) + dy;
+    if (x < 0 || y < 0 || x >= N || y >= N) continue; NB8[c].push(y * N + x); if (!dx || !dy) NB4[c].push(y * N + x); } }
+const cheb = (a, b) => Math.max(Math.abs(X(a) - X(b)), Math.abs(Y(a) - Y(b)));
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function dailySeed() { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+let rng = Math.random;
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const store = { get:(k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }, set:(k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+let best = +store.get('proto_' + GID + '_best', 0) || 0, bestMedal = store.get('proto_' + GID + '_medal', ''), wins = +store.get('proto_' + GID + '_wins', 0) || 0;
+const UI = { screen:'start', help:false, hard:false, daily:false, t0:0, now:0, mx:-1, my:-1, down:null, btns:[], tutDone: store.get('proto_' + GID + '_tut', '') === '1', motes:[], instant:false };
+for (let i = 0; i < 28; i++) UI.motes.push({ x:Math.random(), y:Math.random(), v:.004 + Math.random() * .008, r:1 + Math.random() * 1.6, a:.05 + Math.random() * .1, p:Math.random() * 6.28 });
+let G = null;
+
+// ---------- audio: soft synth, master gain, shared mute ----------
+let AC = null, MG = null, muted = store.get('proto_mute', '0') === '1';
+function initAudio() { if (AC || typeof window === 'undefined') return; const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+  try { AC = new A(); MG = AC.createGain(); MG.gain.value = muted ? 0 : .5; MG.connect(AC.destination); } catch (e) { AC = null; } }
+function setMute(m) { muted = m; store.set('proto_mute', m ? '1' : '0'); if (MG) MG.gain.value = m ? 0 : .5; }
+function tone(f, d = .12, type = 'sine', v = .12, slide = 0, delay = 0) { if (!AC || (G && G.instant)) return;
+  const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+  g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g); g.connect(MG); o.start(t); o.stop(t + d + .03); }
+function noise(d = .12, freq = 900, v = .1) { if (!AC || (G && G.instant)) return; const n = Math.floor(AC.sampleRate * d), b = AC.createBuffer(1, n, AC.sampleRate), ch = b.getChannelData(0);
+  for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = b; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = v; s.connect(f); f.connect(g); g.connect(MG); s.start(); }
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26], pent = i => 330 * Math.pow(2, PENTA[Math.min(i, 11)] / 12);
+const jingle = (notes, type = 'triangle', v = .1) => notes.forEach((n, i) => tone(pent(n), .26, type, v, 0, i * .09));
+
+// ---------- run setup ----------
+function floorDef(f = G.floor) { if (f < FLOORS.length) { const F = FLOORS[f]; return Object.assign({ turns:F.boss ? G.M.bossTurns : G.M.turns, quota:F.quota ? Math.round(F.quota * G.M.quotaMul) : 0 }, F); }
+  const e = f - FLOORS.length + 1; return { name:'ENDLESS ' + e, quota:Math.round((34 + 2 * e) * G.M.quotaMul), turns:G.M.turns, maxVal:9, wallCap:Math.min(13, 9 + e), mods:'ABT', endless:true }; }
+function startRun(opts = {}) {
+  const hard = UI.hard, M = MODES[hard ? 'hard' : 'normal'];
+  const seed = opts.seed != null ? opts.seed : UI.daily ? dailySeed() : (Math.random() * 2147483647) | 0; rng = mulberry(seed);
+  UI.screen = 'game'; UI.help = false; UI.t0 = UI.now;
+  G = { hard, M, seed, daily:UI.daily, instant:UI.instant, grid:Array(NC).fill(null), hero:14, hx:2, hy:2, state:'play',
+    hp:M.hp, maxHp:M.hp, score:0, shown:0, turn:0, floor:0, floorTurn:0, floorKills:0, kills:0, perks:{}, offer:[], queue:[], qt:0, freeze:0,
+    path:[], sim:null, blade:1, shoveCd:0, shoveMode:false, hover:-1, killer:-1, killerV:0, killerRage:0, lastDmg:0, deadT:0, cause:'', endless:false, won:false, ended:false, screenT:0, windUsed:false, headsTotal:0,
+    parts:[], pops:[], shake:0, time:0, stats:{ longest:0, chains:0, chainSum:0, rests:0, shoves:0, hits:0, dmg:0, heads:0, floors:0 }, seen:{}, tip:null, banner:null, tut:opts.tutorial ? { step:1 } : null, lastNodes:0 };
+  if (G.tut) tutBoard(); else { newBoard(); floorBanner(); }
+}
+function floorBanner() { const F = floorDef(); G.banner = { text:F.boss ? 'FINALE - ' + F.name : (F.endless ? F.name : 'FLOOR ' + (G.floor + 1) + ' - ' + F.name), sub:F.boss ? 'Cut all 9 heads in ' + F.turns + ' turns' : 'Kill ' + F.quota + ' in ' + F.turns + ' turns', t0:UI.now };
+  if (F.boss) tip(INTRO.H, 'H'); else if (F.intro) tip(INTRO[F.intro], F.intro); else if (G.floor === 0) tip('Drag from a bright monster beside you through its neighbours. Release to strike.', 'first'); }
+function newBoard() { const F = floorDef(); G.grid.fill(null); G.floorTurn = 0; G.floorKills = 0; G.windUsed = false; G.headsTotal = 0; G.shoveCd = 0; G.shoveMode = false;
+  if (F.boss) {                                                          // 3x3 Hydra inset one cell from every edge so each ring head touches open board; the biggest head sits in the centre
+    const corner = (rng() * 4) | 0, bx = corner & 1 ? 2 : 1, by = corner & 2 ? 2 : 1; G.hero = (by === 1 ? 5 : 0) * N + (bx === 1 ? 5 : 0);
+    const vals = G.M.heads.slice().sort((a, b) => a - b), centre = vals.pop(); shuffle(vals); let i = 0;
+    for (let y = by; y < by + 3; y++) for (let x = bx; x < bx + 3; x++) G.grid[y * N + x] = { v:(x === bx + 1 && y === by + 1) ? centre : vals[i++], mod:'', head:1, s:0, sh:0, rage:0 }; G.headsTotal = 9; }
+  G.hx = X(G.hero); G.hy = Y(G.hero); refill(true); }
+function tutBoard() { G.grid.fill(null); G.hero = 14; G.hx = 2; G.hy = 2; const put = (c, v) => { G.grid[c] = { v, mod:'', s:0, sh:0, rage:0 }; };
+  put(15, 1); put(22, 1); put(29, 2); put(34, 3); put(7, 1); put(0, 1); put(1, 2); put(2, 2); put(21, 5); put(18, 4); put(33, 4); put(11, 3); put(5, 1); put(30, 1);
+  tip('TUTORIAL 1/2: drag from the Imp 1 beside you, through 1 - 2 - 3, then release. Nothing can hurt you here.', 'tut1'); }
+const isBig = m => m && !m.head && m.v >= (G.turn < CFG.gentleTurns ? CFG.gentleMax : CFG.bigFrom);
+function spawn(wall) { const F = floorDef(); let max = F.maxVal; if (G.turn < CFG.gentleTurns) max = Math.min(max, CFG.gentleMax);
+  let lo = wall ? CFG.bigFrom : 1, hi = wall ? max : Math.min(max, CFG.bigFrom - 1); if (lo > hi) lo = hi = max;   // gentle opening: the "big" monsters are soft 4s
+  const w = (F.boss && !wall ? CFG.bossWeights : CFG.weights).slice(lo - 1, hi), tot = w.reduce((a, b) => a + b, 0);   // the Hydra floor spawns staircase rungs (3s, 4s) so heads of 5+ are reachable
+  let r = rng() * tot, v = hi; for (let i = 0; i < w.length; i++) { r -= w[i]; if (r < 0) { v = lo + i; break; } }
+  let mod = ''; if (F.mods && rng() < G.M.modChance) mod = F.mods[(rng() * F.mods.length) | 0]; return { v, mod, s:0, sh:0, rage:0 }; }
+function refill(all) {                                                   // limited refill: only M.refill cells come back per turn
+  const F = floorDef(), empty = []; for (let c = 0; c < NC; c++) if (!G.grid[c] && c !== G.hero) empty.push(c); shuffle(empty);
+  const base = G.M.refill + (F.boss ? 3 : 0), minB = CFG.minBoard + (F.boss ? 5 : 0);                                   // the Hydra floor feeds more fodder: heads need a staircase every turn
+  const n = all ? CFG.startFill + (F.boss ? 4 : 0) : Math.max(base, minB - (NC - 1 - empty.length)), fresh = empty.slice(0, n), cap = F.wallCap + G.M.wallAdd;   // limited refill, but never below a playable board
+  let walls = Math.max(0, cap - G.grid.filter(isBig).length); if (!all) walls = Math.min(walls, Math.ceil(n / 2));    // director: restock big monsters toward the floor cap, at most half a refill
+  for (const c of fresh) { const wall = walls > 0; if (wall) walls--; G.grid[c] = spawn(wall); }
+  // guarantee: a killable 1 beside the hero, plus a second 1 touching the first, so a 2-chain always exists
+  const isOne = c => G.grid[c] && G.grid[c].v === 1 && !G.grid[c].head && G.grid[c].mod !== 'A' && G.grid[c].mod !== 'B';
+  const force = cands => { let pool = cands.filter(c => !G.grid[c]); if (!pool.length) pool = cands.filter(c => fresh.includes(c)); if (!pool.length) pool = cands.filter(c => G.grid[c] && !G.grid[c].head);
+    if (!pool.length) return -1; const c = pool[(rng() * pool.length) | 0]; G.grid[c] = { v:1, mod:'', s:0, sh:0, rage:0 }; return c; };
+  let a = NB8[G.hero].find(c => isOne(c) && NB8[c].some(d => d !== G.hero && isOne(d))); if (a == null) a = NB8[G.hero].find(isOne); if (a == null) a = force(NB8[G.hero]);
+  if (a >= 0) { const zone = NB8[a].filter(c => c !== G.hero); if (!zone.some(isOne)) force(zone); } }
+
+// ---------- rules ----------
+const need = m => m.v + (m.mod === 'A' && !G.perks.lockpick ? 1 : 0);
+const bladeStart = () => G.perks.start2 ? 2 : 1;
+const stairWidth = () => G.perks.temper ? 2 : 1;
+const grows = (pw, val, k) => val >= pw - stairWidth() || (G.perks.fourth && k % 4 === 0);   // STAIRCASE: only kills near the blade's power grow it
+function headCounts(g) { const a = new Array(12).fill(0); for (const m of g) if (m && m.head) a[m.v]++; return a; }
+function minHead(a) { for (let v = 1; v < 12; v++) if (a[v]) return v; return 99; }
+const killable = (m, pw, hm, hk = 0) => need(m) <= pw && (!m.head || (m.v <= hm && hk < CFG.headsPerTurn));   // Hydra: ascending order, at most headsPerTurn cuts per turn
+function stepsFor(path) { const g = G.grid, out = []; let pw = bladeStart(), k = 0; for (const c of path) { const m = g[c];
+  if (m) { k++; const val = need(m), grow = grows(pw, m.v, k); if (grow) pw++; out.push({ c, kill:1, val, v:m.v, pw, grow, head:!!m.head }); } else out.push({ c, kill:0, pw, grow:0 }); } return out; }
+function pathLegal(path) { if (!path.length) return false; const g = G.grid, alive = headCounts(g), used = new Set([G.hero]); let pw = bladeStart(), k = 0, ghost = 0, prev = G.hero, hk = 0;
+  for (const c of path) { if (c < 0 || c >= NC || used.has(c) || !NB8[prev].includes(c)) return false; used.add(c); const m = g[c];
+    if (!m) { if (!G.perks.ghost || ghost) return false; ghost++; } else { if (!killable(m, pw, minHead(alive), hk)) return false; k++; if (grows(pw, m.v, k)) pw++; if (m.head) { alive[m.v]--; hk++; } } prev = c; }
+  return k > 0; }
+function simulate(act) {                                                 // pure: state -> event list + summary. Shared by preview, bots and playback
+  const g = G.grid.map(m => m ? { v:m.v, mod:m.mod, head:m.head, rage:m.rage } : null), ev = [], P = G.perks, booms = [], safeMode = !!G.tut, alive = headCounts(g);
+  let pos = G.hero, k = 0, pw = bladeStart(), heals = 0, coll = 0, headsK = 0, ghost = 0, heal = 0;
+  const hurt = (list, c0, type) => { const q = [[list, c0, type]];
+    while (q.length) { const [cells, src, t] = q.shift(), vic = [];
+      for (const c of cells) { const m = g[c]; if (!m || m.head) continue; m.v -= (t === 'thorn' ? CFG.thornDmg : CFG.bombDmg);
+        if (m.v <= 0) { g[c] = null; coll++; if (m.mod === 'B') { booms.push(c); q.push([NB8[c], c, 'boom']); } } vic.push({ c, v:Math.max(0, m.v) }); }
+      ev.push({ t, c:src, vic }); } };
+  if (act.type === 'chain') {
+    for (const c of act.path) { const m = g[c];
+      if (m) { if (!killable(m, pw, minHead(alive), headsK)) break; g[c] = null; k++; const grow = grows(pw, m.v, k); if (grow) pw++; pos = c;
+        let h = 0; if (P.leech && m.v === 1 && heals < 3) { heals++; h = 1; heal++; } if (m.head) { headsK++; alive[m.v]--; }
+        ev.push({ t:'move', c, kill:1, k, pw, grow, heal:h, v:m.v, head:!!m.head }); if (m.mod === 'B') { booms.push(c); hurt(NB8[c], c, 'boom'); } }
+      else { if (!P.ghost || ghost) break; ghost++; pos = c; ev.push({ t:'move', c, kill:0, k, pw, grow:0, heal:0 }); } }
+    if (P.thorns && k) hurt(NB4[pos], pos, 'thorn');
+  } else if (act.type === 'rest') { heal += P.patience ? 3 : 1; ev.push({ t:'rest', heal }); }
+  else if (act.type === 'shove') { const c = act.c, m = g[c]; g[c] = null; g[G.hero] = m; pos = c; ev.push({ t:'shove', from:G.hero, to:c });
+    if (P.bull && m) { m.v -= 1; if (m.v <= 0) { g[G.hero] = null; coll++; } ev.push({ t:'shoveHit', c:G.hero, v:Math.max(0, m.v) }); } }
+  const chainHeal = k >= CFG.healFrom ? Math.min(CFG.healCap, k - CFG.healFrom + 1) : 0; heal += chainHeal;
+  const pts = k * k + coll + headsK * CFG.headBonus + (P.pact ? k + coll : 0);
+  ev.push({ t:'score', n:k, pts, heal:chainHeal, coll, c:pos, heads:headsK });
+  let dmg = 0, steal = 0; const hits = [], rage = [];
+  if (!safeMode) {
+    for (const b of booms) if (cheb(b, pos) <= 1 && !P.bombsuit) { dmg += CFG.bombDmg; hits.push({ c:b, dmg:CFG.bombDmg, bomb:1 }); ev.push({ t:'hit', c:b, dmg:CFG.bombDmg, bomb:1 }); }
+    for (const c of NB4[pos]) { const m = g[c]; if (!m) continue;
+      if (m.mod === 'T') { steal++; hits.push({ c, steal:1 }); ev.push({ t:'steal', c }); }
+      else if (P.ones && m.v === 1) continue;
+      else { dmg += m.v; hits.push({ c, dmg:m.v, v:m.v, head:!!m.head, rage:!!m.rage }); ev.push({ t:'hit', c, dmg:m.v }); if (!m.head && m.v < CFG.maxVal) rage.push(c); } } }
+  if (rage.length) ev.push({ t:'rage', cells:rage }); ev.push({ t:'end' });
+  const lethal = dmg >= G.hp + heal && !(P.wind && !G.windUsed);
+  const util = pts + 5 * heal - CFG.hpValue * dmg - CFG.thiefSteal * steal - 4 * rage.length - (lethal ? 1000 : 0) - (act.type === 'shove' ? 1 : 0);   // risk-adjusted value used by previews' colour and by bots
+  return { type:act.type, path:act.path || [], c:act.c, ev, n:k, pts, heal, dmg, steal, hits, rage:rage.length, end:pos, coll, headsK, lethal, util }; }
+const canAct = () => G && G.state === 'play' && !G.queue.length && UI.screen === 'game' && !UI.help;
+function run(sim) { G.queue = sim.ev; G.qt = 0; G.path = []; G.sim = null; G.shoveMode = false; G.blade = bladeStart(); if (G.instant) flush(); return true; }
+function flush() { while (G.queue.length) doEvent(G.queue.shift()); G.freeze = 0; }
+function act(a) { if (!canAct()) return false;
+  if (a.type === 'chain') { if (!pathLegal(a.path)) return false; }
+  else if (a.type === 'shove') { if (G.shoveCd > 0 || !NB8[G.hero].includes(a.c) || !G.grid[a.c] || G.grid[a.c].head) return false; }
+  else if (a.type !== 'rest') return false; return run(simulate(a)); }
+// bounded DFS: longest + safest-looking chain per end cell, then exact sim
+function legalChains(cap = CFG.dfsCap) { const g = G.grid, P = G.perks, best = new Map(), used = new Uint8Array(NC), path = [], alive = headCounts(g); used[G.hero] = 1; let nodes = 0, budget = 0, total = 0;
+  const rec = (c, pw, k, ghost, hk) => { nodes++; let q = 0, hitters = 0; for (const nb of NB4[c]) { const m = g[nb]; if (m && !used[nb] && m.mod !== 'T' && !(P.ones && m.v === 1)) { q += m.v; hitters++; } }
+    const u = k * k + CFG.headBonus * hk - CFG.hpValue * q - 4 * hitters, b = best.get(c); if (!b) best.set(c, { L:path.slice(), S:path.slice(), u, n:k, hk, H:hk ? path.slice() : null }); else { if (k > b.n) { b.L = path.slice(); b.n = k; } if (u > b.u) { b.u = u; b.S = path.slice(); } if (hk > b.hk) { b.hk = hk; b.H = path.slice(); } }
+    if (nodes >= budget) return; const hm = minHead(alive);
+    const nbs = NB8[c].filter(nb => !used[nb] && (g[nb] ? killable(g[nb], pw, hm, hk) : (P.ghost && !ghost))).sort((a, b) => (g[a] ? (g[a].head ? -9 : g[a].v) : 0) - (g[b] ? (g[b].head ? -9 : g[b].v) : 0));   // heads first, then small to large
+    for (const nb of nbs) { if (nodes >= budget) return; const m = g[nb]; used[nb] = 1; path.push(nb);
+      if (m) { const k2 = k + 1, pw2 = grows(pw, m.v, k2) ? pw + 1 : pw; if (m.head) alive[m.v]--; rec(nb, pw2, k2, ghost, hk + (m.head ? 1 : 0)); if (m.head) alive[m.v]++; } else rec(nb, pw, k, 1, hk);
+      path.pop(); used[nb] = 0; } };
+  const p0 = bladeStart(), hm0 = minHead(alive), starts = NB8[G.hero].filter(c => g[c] ? killable(g[c], p0, hm0) : P.ghost);
+  for (const s of starts) { nodes = 0; budget = Math.ceil(cap / starts.length); const m = g[s]; used[s] = 1; path.push(s);
+    if (m) { const pw2 = grows(p0, m.v, 1) ? p0 + 1 : p0; if (m.head) alive[m.v]--; rec(s, pw2, 1, 0, m.head ? 1 : 0); if (m.head) alive[m.v]++; } else rec(s, p0, 0, 1, 0); path.pop(); used[s] = 0; total += nodes; }
+  G.lastNodes = total; const out = [], seen = new Set();
+  for (const b of best.values()) for (const p of [b.L, b.S, b.H]) { if (!p) continue; if (!p.length) continue; const key = p.join(','); if (seen.has(key)) continue; seen.add(key); const s = simulate({ type:'chain', path:p }); if (s.n > 0) out.push(s); }
+  return out; }
+
+// ---------- event playback (shared by headless + animated) ----------
+function applyVictims(vic) { for (const o of vic) { const m = G.grid[o.c]; if (!m) continue; m.v = o.v; m.sh = 1; if (o.v <= 0) { G.grid[o.c] = null; countKill(); burst(o.c, '#ffb070', 8); } } }
+function countKill(head) { G.kills++; if (!head) G.floorKills++; else G.stats.heads++; }
+function doEvent(e) {
+  switch (e.t) {
+    case 'move': G.hero = e.c;
+      if (e.kill) { G.grid[e.c] = null; countKill(e.head); G.blade = e.pw; if (e.heal) G.hp = Math.min(G.maxHp, G.hp + 1);
+        burst(e.c, e.head ? C.danger : valColor(e.v), 8 + e.k * 2); tone(pent(Math.min(e.k - 1, 11)), .14, 'triangle', .1);
+        pop(cx(e.c), cy(e.c) - L.cs * .62, e.grow ? 'power ' + e.pw : 'no growth', .7, 14, e.grow ? C.gold : C.dim); G.freeze = .01 * Math.min(e.k, 6); G.shake = Math.max(G.shake, Math.min(e.k, 6) * .5); }
+      break;
+    case 'boom': burst(e.c, '#ffb070', 22); noise(.2, 500, .18); G.shake = Math.max(G.shake, 6); applyVictims(e.vic); break;
+    case 'thorn': burst(e.c, C.player, 16); tone(520, .12, 'triangle', .1); applyVictims(e.vic); break;
+    case 'rest': G.hp = Math.min(G.maxHp, G.hp + e.heal); G.stats.rests++; pop(cx(G.hero), cy(G.hero) - L.cs * .6, '+' + e.heal + ' HP', 1, 16, C.safe); tone(440, .2, 'sine', .08); break;
+    case 'shove': { const m = G.grid[e.to]; G.grid[e.to] = null; G.grid[e.from] = m; if (m) m.sh = 1; G.hero = e.to; G.stats.shoves++; G.shoveCd = G.perks.bull ? 2 : CFG.shoveCd; noise(.1, 1200, .12); break; }
+    case 'shoveHit': { const m = G.grid[e.c]; if (m) { m.v = e.v; m.sh = 1; if (e.v <= 0) { G.grid[e.c] = null; countKill(); burst(e.c, '#fff', 8); } } break; }
+    case 'score':
+      G.score += e.pts; if (e.heal) { G.hp = Math.min(G.maxHp, G.hp + e.heal); pop(cx(e.c), cy(e.c) - L.cs * .35, '+' + e.heal + ' HP', 1.2, 18, C.safe); }
+      if (e.n) { G.stats.chains++; G.stats.chainSum += e.n; G.stats.longest = Math.max(G.stats.longest, e.n); }
+      if (e.n >= 2) pop(L.ox + L.bw / 2, L.oy + L.cs * 1.2, 'CHAIN ' + e.n + ' = ' + e.n * e.n + (e.coll ? ' +' + e.coll : '') + (e.heads ? '  HEAD +' + e.heads * CFG.headBonus : ''), 1.1 + Math.min(e.n, 12) * .05, 20 + Math.min(e.n, 12) * 1.5, C.gold);
+      if (e.n >= 6) { jingle([0, 2, 4, 7]); burst(e.c, C.gold, 30); }
+      if (G.tut) tutAfterChain(e.n); break;
+    case 'hit': if (G.hp <= 0) break;
+      { let d = e.dmg; if (G.hp - d <= 0 && G.perks.wind && !G.windUsed) { G.windUsed = true; d = G.hp - 1; pop(cx(G.hero), cy(G.hero) - L.cs * .9, 'SECOND WIND!', 1.4, 18, C.safe); }
+        G.hp = Math.max(0, G.hp - d); G.stats.hits++; G.stats.dmg += d; G.killer = e.c; const m = G.grid[e.c]; if (m) { m.sh = 1; G.killerV = m.v; G.killerRage = m.rage; } G.lastDmg = e.dmg;
+        G.shake = Math.max(G.shake, Math.min(6, 3 + e.dmg)); tone(110, .18, 'triangle', .14, .6); noise(.12, 400, .1);
+        pop(cx(G.hero), cy(G.hero) - L.cs * .62, '-' + e.dmg + ' HP', .9, 18, C.danger); } break;
+    case 'steal': if (G.hp <= 0) break; G.score = Math.max(0, G.score - CFG.thiefSteal); if (G.grid[e.c]) G.grid[e.c].sh = 1; tone(700, .1, 'sine', .07); tone(500, .1, 'sine', .07, 0, .08);
+      pop(cx(e.c), cy(e.c) - L.cs * .5, '-' + CFG.thiefSteal + ' pts', .9, 15, C.gold); break;
+    case 'rage': for (const c of e.cells) { const m = G.grid[c]; if (!m) continue; m.v = Math.min(CFG.maxVal, m.v + 1); m.rage = (m.rage || 0) + 1; m.sh = 1; pop(cx(c), cy(c) - L.cs * .5, 'ENRAGED +1', .9, 14, '#ff9a5c'); }
+      tone(160, .25, 'sawtooth', .05, 1.4); tip('ENRAGED: a monster that hits you grows +1. Do not park beside the same monster twice.', 'rage'); break;
+    case 'end': {
+      if (G.hp <= 0) { die('slain'); break; }
+      if (G.tut) { G.blade = bladeStart(); refill(); break; }
+      G.turn++; G.floorTurn++; if (G.shoveCd > 0) G.shoveCd--; G.blade = bladeStart(); const F = floorDef();
+      if (F.boss) { if (!G.grid.some(m => m && m.head)) { winRun(); break; } if (G.floorTurn >= F.turns) { die('boss'); break; } }
+      else if (G.floorKills >= F.quota) { floorClear(); break; }
+      else if (G.floorTurn >= F.turns) { die('quota'); break; }
+      refill(); if (F.turns - G.floorTurn === 2 && !F.boss && G.floorKills < F.quota) tip('2 turns left on this floor: ' + (F.quota - G.floorKills) + ' more kills needed.', 'hurry' + G.floor);
+      break; } } }
+function floorClear() { G.score += CFG.floorBonus * (G.floor + 1); G.stats.floors++; G.state = 'clear'; G.screenT = UI.now; jingle([0, 4, 7, 9, 12], 'triangle', .1); burst(G.hero, C.safe, 30); if (G.instant) openPick(); }
+function openPick() { const pool = shuffle(PERKS.filter(p => !G.perks[p.id])); G.offer = pool.slice(0, 3); if (!G.offer.length) { nextFloor(); return; } G.state = 'pick'; G.screenT = UI.now; }
+function choosePerk(i) { if (G.state !== 'pick' || !G.offer[i]) return false; const p = G.offer[i]; G.perks[p.id] = true;
+  if (p.id === 'vital') { G.maxHp += 6; G.hp = Math.min(G.maxHp, G.hp + 6); } if (p.id === 'pact') G.hp = Math.max(1, G.hp - 6);
+  tone(660, .2, 'triangle', .1); nextFloor(); return true; }
+function nextFloor() { G.floor++; G.state = 'play'; G.blade = bladeStart(); newBoard(); floorBanner(); }
+function winRun() { G.score += CFG.bossBonus; G.won = true; G.state = 'won'; G.screenT = UI.now; endRun(true); jingle([0, 4, 7, 12, 16, 19], 'triangle', .12); burst(G.hero, C.gold, 50); }
+function keepGoing() { if (!G || G.state !== 'won') return; G.endless = true; nextFloor(); tip('ENDLESS: quotas keep rising and every modifier spawns. How deep can you go?', 'endless'); }
+function die(cause) { G.cause = cause; G.state = 'dead'; G.deadT = 0; G.screenT = UI.now; endRun(false); tone(90, .7, 'sawtooth', .08, .5); }
+function endRun(win) { if (G.ended) return; G.ended = true; const m = medalFor(G.score), rank = x => ['', 'bronze', 'silver', 'gold'].indexOf(x || '');
+  if (G.score > best) { best = G.score; store.set('proto_' + GID + '_best', best); G.newBest = true; }
+  if (rank(m) > rank(bestMedal)) { bestMedal = m; store.set('proto_' + GID + '_medal', m); }
+  if (win) { wins++; store.set('proto_' + GID + '_wins', wins); } }
+function tip(text, key) { if (key && G.seen[key]) return; if (key) G.seen[key] = 1; G.tip = { text, t0:UI.now }; }
+function tutAfterChain(n) { if (!G.tut) return;
+  if (G.tut.step === 1) { if (n >= 3) { G.tut.step = 2; G.tip = null; tip('TUTORIAL 2/2: ' + n + ' kills = ' + n * n + ' points. In the dungeon, monsters BESIDE your last cell hit you - read the red preview before releasing. One more chain to begin.', 'tut2'); }
+    else tip('Good. Now do 3 kills in ONE drag: small kills are always allowed, and the blade grows on kills near its power.', 'tut1b'); }
+  else { G.tut.done = 1; UI.tutDone = true; store.set('proto_' + GID + '_tut', '1'); } }
+
+// ---------- juice ----------
+function burst(c, col, n) { if (G.instant) return; for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, s = (.5 + Math.random()) * L.cs * 3; G.parts.push({ x:cx(c), y:cy(c), vx:Math.cos(a) * s, vy:Math.sin(a) * s, life:.2 + Math.random() * .25, col }); } }
+function pop(x, y, txt, life, size, col) { if (!G.instant) G.pops.push({ x, y, txt, life, max:life, size, col }); }
+function update(dt) { UI.now += dt * 1000; if (!G || UI.screen !== 'game') return; G.time += dt; if (UI.help) return;
+  if (G.freeze > 0) { G.freeze -= dt; } else if (G.queue.length) { G.qt -= dt * 1000;
+    while (G.queue.length && G.qt <= 0) { const e = G.queue.shift(); doEvent(e); G.qt += DELAY[e.t] + (e.t === 'score' && e.n >= 6 ? 300 : 0); if (G.freeze > 0) break; } }
+  if (G.state === 'clear' && UI.now - G.screenT > 1300) openPick();
+  if (G.tut && G.tut.done && !G.queue.length) { UI.instant = G.instant; startRun(); return; }
+  if (G.tip && UI.now - G.tip.t0 > 6000) G.tip = null; if (G.banner && UI.now - G.banner.t0 > 2200) G.banner = null;
+  const k = Math.min(1, dt * 14); G.hx += (X(G.hero) - G.hx) * k; G.hy += (Y(G.hero) - G.hy) * k;
+  for (const m of G.grid) if (m) { m.s += (1 - m.s) * Math.min(1, dt * 10); m.sh = Math.max(0, m.sh - dt * 3); }
+  for (const p of G.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .9; p.vy *= .9; p.life -= dt; } G.parts = G.parts.filter(p => p.life > 0);
+  for (const p of G.pops) { p.y -= dt * 28; p.life -= dt; } G.pops = G.pops.filter(p => p.life > 0);
+  G.shake = Math.max(0, G.shake - dt * 30); G.shown += (G.score - G.shown) * Math.min(1, dt * 6); if (Math.abs(G.score - G.shown) < .6) G.shown = G.score;
+  if (G.state === 'dead') G.deadT += dt; }
+
+// ---------- drawing helpers (house style) ----------
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), L = { W:800, H:600, cs:60, ox:0, oy:0, bw:360, px:0, py:0, pw:300, ph:360 };
+function resize() { const W = L.W = cv.width = window.innerWidth || 800, H = L.H = cv.height = window.innerHeight || 600, topH = 98, botH = 132;
+  const cs = L.cs = Math.max(34, Math.min(88, Math.floor(Math.min((H - topH - botH) / N, (W - 48 - 240) / N)))); L.bw = cs * N; L.pw = Math.min(340, W - L.bw - 48);
+  const tot = L.bw + 16 + L.pw; L.ox = Math.floor((W - tot) / 2); L.oy = topH + Math.max(0, Math.floor((H - topH - botH - L.bw) / 2)); L.px = L.ox + L.bw + 16; L.py = L.oy; L.ph = L.bw; }
+const cx = c => L.ox + (X(c) + .5) * L.cs, cy = c => L.oy + (Y(c) + .5) * L.cs;
+function valColor(v) { const t = Math.min(1, (v - 1) / 8), a = [255, 184, 194], b = [122, 11, 31]; return 'rgb(' + a.map((x, i) => Math.round(x + (b[i] - x) * Math.pow(t, .85))).join(',') + ')'; }
+const ease = t => { t = Math.max(0, Math.min(1, t)); return 1 - Math.pow(1 - t, 3); };
+function setFont(size, weight = 700) { ctx.font = `${weight} ${Math.max(14, Math.round(size))}px ${FONT}`; }
+function txt(s, x, y, size, col, align = 'center', weight = 700) { setFont(size, weight); ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(s, x, y); }
+function txtFit(s, x, y, size, col, maxW, align = 'center', weight = 700) { setFont(size, weight); while (size > 14 && ctx.measureText(s).width > maxW) { size--; setFont(size, weight); } txt(s, x, y, size, col, align, weight); }
+function wrapLines(s, w, size, weight = 500) { setFont(size, weight); const out = []; let line = '';
+  for (const wd of s.split(' ')) { if (line && ctx.measureText(line + ' ' + wd).width > w) { out.push(line); line = wd; } else line = line ? line + ' ' + wd : wd; } if (line) out.push(line); return out; }
+function wrap(s, x, y, w, size, col, align = 'left', weight = 500, lh = size + 6) { for (const l of wrapLines(s, w, size, weight)) { txt(l, x, y, size, col, align, weight); y += lh; } return y; }
+function rr(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function panel(x, y, w, h, r = 12, border = C.border, fill = C.panel) { rr(x, y, w, h, r); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = border; ctx.lineWidth = 1; ctx.stroke(); }
+function glow(col, blur) { ctx.shadowColor = col; ctx.shadowBlur = blur; } const noGlow = () => { ctx.shadowBlur = 0; };
+function button(id, label, x, y, w, h, o = {}) { const hot = UI.mx >= x && UI.mx <= x + w && UI.my >= y && UI.my <= y + h, dn = hot && UI.down === id, yy = y + (dn ? 2 : hot ? -1 : 0);
+  UI.btns.push({ id, x, y, w, h }); rr(x, yy, w, h, o.r || 10);
+  if (o.primary) { glow(C.player, hot ? 18 : 10); ctx.fillStyle = dn ? '#5fd0da' : C.player; ctx.fill(); noGlow(); txt(label, x + w / 2, yy + h / 2 + 1, o.size || 18, C.ink, 'center', 800); }
+  else { ctx.fillStyle = o.on ? '#1c2a3a' : o.disabled ? '#0f1219' : C.panel; ctx.fill(); ctx.strokeStyle = o.on || (hot && !o.disabled) ? C.player : C.border; ctx.lineWidth = o.on ? 2 : 1; ctx.stroke();
+    txt(label, x + w / 2, yy + h / 2 + 1, o.size || 14, o.disabled ? '#5a6178' : o.on || hot ? C.text : C.dim); } }
+function background() { const W = L.W, H = L.H, g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * .65); g.addColorStop(0, C.bg2); g.addColorStop(1, C.bg); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(170,179,197,.07)'; for (let y = 14; y < H; y += 28) for (let x = 14; x < W; x += 28) ctx.fillRect(x, y, 2, 2);
+  for (const m of UI.motes) { const x = (m.x * W + UI.now * m.v) % W, y = m.y * H + Math.sin(UI.now / 3000 + m.p) * 20; ctx.fillStyle = `rgba(170,190,230,${m.a})`; ctx.beginPath(); ctx.arc(x, y, m.r, 0, 6.283); ctx.fill(); } }
+function medalBadge(x, y, r, m) { const col = { gold:C.gold, silver:'#cfd6e6', bronze:'#d08a4e' }[m];
+  ctx.fillStyle = m ? '#3a4a78' : '#1b2131'; ctx.beginPath(); ctx.moveTo(x - r * .55, y + r * .5); ctx.lineTo(x - r * .75, y + r * 1.7); ctx.lineTo(x - r * .2, y + r * 1.35); ctx.lineTo(x, y + r * 1.7); ctx.lineTo(x + r * .2, y + r * 1.35); ctx.lineTo(x + r * .75, y + r * 1.7); ctx.lineTo(x + r * .55, y + r * .5); ctx.closePath(); ctx.fill();
+  if (m) glow(col, 14); ctx.fillStyle = m ? col : '#1b2131'; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill(); noGlow();
+  ctx.strokeStyle = m ? 'rgba(11,13,18,.35)' : C.border; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r * .76, 0, 6.283); ctx.stroke(); txt(m ? m[0].toUpperCase() : '-', x, y + 1, r * .9, m ? C.ink : C.dim, 'center', 800); }
+function lockIcon(x, y, r, col = '#e8ecf5') { ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, r * .3); ctx.beginPath(); ctx.arc(x, y - r * .45, r * .5, Math.PI, 0); ctx.stroke(); ctx.fillStyle = col; rr(x - r * .85, y - r * .45, r * 1.7, r * 1.3, r * .2); ctx.fill();
+  ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(x, y + r * .05, r * .22, 0, 6.283); ctx.fill(); ctx.fillRect(x - r * .1, y + r * .05, r * .2, r * .45); }
+function shieldIcon(x, y, r, col = '#c7d2e8') { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y - r); ctx.lineTo(x + r, y + r * .2); ctx.lineTo(x, y + r * 1.2); ctx.lineTo(x - r, y + r * .2); ctx.closePath(); ctx.fill(); }
+function bombIcon(x, y, r) { ctx.fillStyle = '#15181f'; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill(); ctx.strokeStyle = '#ffb070'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + r * .4, y - r * .6); ctx.lineTo(x + r * .9, y - r * 1.2); ctx.stroke(); ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(x + r * .95, y - r * 1.25, r * .35, 0, 6.283); ctx.fill(); }
+function coinIcon(x, y, r) { ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill(); ctx.strokeStyle = C.danger; ctx.lineWidth = 2; ctx.stroke(); txt('$', x, y + 1, r * 1.5, '#5a4300', 'center', 800); }
+function flameIcon(x, y, r) { ctx.fillStyle = '#ff9a5c'; ctx.beginPath(); ctx.moveTo(x, y - r * 1.3); ctx.quadraticCurveTo(x + r * 1.1, y - r * .2, x + r * .6, y + r * .6); ctx.quadraticCurveTo(x, y + r * 1.1, x - r * .6, y + r * .6); ctx.quadraticCurveTo(x - r * 1.1, y - r * .2, x, y - r * 1.3); ctx.fill(); ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(x, y + r * .3, r * .35, 0, 6.283); ctx.fill(); }
+function crownIcon(x, y, r) { ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(x - r, y + r * .5); ctx.lineTo(x - r, y - r * .5); ctx.lineTo(x - r * .5, y); ctx.lineTo(x, y - r); ctx.lineTo(x + r * .5, y); ctx.lineTo(x + r, y - r * .5); ctx.lineTo(x + r, y + r * .5); ctx.closePath(); ctx.fill(); }
+// monster token: rounded, drop shadow, big number, eyes toward the hero, modifier icons, lock when the blade cannot cut it
+function drawToken(x, y, r, m, o = {}) { ctx.save(); ctx.translate(x, y); const sq = o.sq || 0, s = o.scale == null ? 1 : o.scale; ctx.scale((1 + .12 * sq) * s, (1 - .1 * sq) * s); ctx.globalAlpha *= o.alpha == null ? 1 : o.alpha;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(0, r * 1.02, r * .85, r * .2, 0, 0, 6.283); ctx.fill();
+  const col = m.head ? '#c8102e' : valColor(m.v);
+  if (o.glow) glow(o.glow, 14); if (m.head) { ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4; ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r * 1.06, Math.sin(a) * r * 1.06); } ctx.closePath(); } else rr(-r, -r, 2 * r, 2 * r, r * .34);
+  ctx.fillStyle = col; ctx.fill(); noGlow();
+  if (m.mod === 'A') { ctx.strokeStyle = '#c7d2e8'; ctx.lineWidth = Math.max(3, r * .16); ctx.stroke(); }
+  if (m.rage) { ctx.strokeStyle = `rgba(255,154,92,${.6 + .4 * Math.sin(UI.now / 120)})`; ctx.lineWidth = 3; ctx.stroke(); }
+  if (o.ring) { ctx.strokeStyle = o.ring; ctx.lineWidth = 3; rr(-r * 1.12, -r * 1.12, r * 2.24, r * 2.24, r * .4); ctx.stroke(); }
+  const dark = m.head || m.v >= 4, ink = dark ? '#fff' : '#3a1418', lk = o.look || [0, 0], er = Math.max(2.5, r * .13);
+  for (const sx of [-1, 1]) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sx * r * .34, -r * .5, er, 0, 6.283); ctx.fill(); ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(sx * r * .34 + lk[0] * er * .45, -r * .5 + lk[1] * er * .45, er * .55, 0, 6.283); ctx.fill(); }
+  txt(String(m.v), 0, r * .18, r * 1.05, ink, 'center', 800);
+  const ir = Math.max(4, r * .2); if (m.mod === 'A') shieldIcon(r * .66, -r * .66, ir); if (m.mod === 'B') bombIcon(r * .64, -r * .64, ir); if (m.mod === 'T') coinIcon(r * .64, -r * .64, ir);
+  if (m.rage) flameIcon(-r * .66, r * .62, ir * .9); if (m.head) crownIcon(-r * .62, -r * .72, ir * .9);
+  if (o.locked) { ctx.fillStyle = 'rgba(11,13,18,.45)'; if (m.head) { ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4; ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r * 1.06, Math.sin(a) * r * 1.06); } ctx.closePath(); } else rr(-r, -r, 2 * r, 2 * r, r * .34); ctx.fill(); lockIcon(0, r * .05, Math.max(5, r * .32)); }
+  ctx.restore(); }
+// the hero: a white pawn with a cyan visor and a blade badge showing power
+function drawHero(x, y, r, pw, o = {}) { const b = 1 + .03 * Math.sin(UI.now / 420); ctx.save(); ctx.translate(x, y); ctx.scale(2 - b, b); if (o.ghost) ctx.globalAlpha = .5;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(0, r * .98, r * .8, r * .2, 0, 0, 6.283); ctx.fill();
+  if (!o.ghost) glow(C.player, 14); ctx.fillStyle = o.hurt ? '#ffc2cb' : '#fff'; ctx.beginPath(); ctx.moveTo(-r * .78, r * .92); ctx.quadraticCurveTo(-r * .7, -r * .1, -r * .28, -r * .12); ctx.lineTo(r * .28, -r * .12); ctx.quadraticCurveTo(r * .7, -r * .1, r * .78, r * .92); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, -r * .42, r * .56, 0, 6.283); ctx.fill(); noGlow();
+  ctx.fillStyle = C.player; rr(-r * .42, -r * .6, r * .84, r * .34, r * .17); ctx.fill(); ctx.fillStyle = C.ink; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(sx * r * .18, -r * .43, r * .075, 0, 6.283); ctx.fill(); }
+  // blade badge
+  const br = Math.max(11, r * .5); glow(C.gold, 8); ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(r * .8, r * .7, br, 0, 6.283); ctx.fill(); noGlow(); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.stroke();
+  txt(String(pw), r * .8, r * .72, br * 1.3, C.ink, 'center', 800); ctx.restore(); }
+
+// ---------- render: game ----------
+function look(from, to) { const dx = X(to) - X(from), dy = Y(to) - Y(from), l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; }
+function currentSim() { if (!G) return null; if (G.path.length) return G.sim; if (!canAct()) return null;
+  const b = UI.btns.find(b => UI.mx >= b.x && UI.mx <= b.x + b.w && UI.my >= b.y && UI.my <= b.y + b.h);
+  if (b && b.id === 'rest') return simulate({ type:'rest' });
+  if (G.shoveMode && G.hover >= 0 && G.shoveCd === 0 && NB8[G.hero].includes(G.hover) && G.grid[G.hover] && !G.grid[G.hover].head) return simulate({ type:'shove', c:G.hover });
+  return null; }
+function sentence(sim) { const F = floorDef();
+  if (!sim) { if (G.tut) return 'Tutorial: drag a chain. Nothing can hurt you.'; if (G.shoveMode) return G.shoveCd ? 'SHOVE recharges in ' + G.shoveCd + ' turn(s).' : 'SHOVE: click a monster beside you to swap places with it (no kill). Diagonal shoves keep it off your sides.';
+    return 'Drag from a bright monster beside you through its neighbours, then release. Cyan rings = what the blade can cut right now.'; }
+  const parts = [];
+  if (sim.type === 'chain') parts.push('Chain ' + sim.n + ' = ' + sim.n * sim.n + ' pts' + (sim.coll ? ' +' + sim.coll + ' blast' : '') + (sim.headsK ? ' +' + sim.headsK * CFG.headBonus + ' head' : '') + (sim.heal ? ', heal ' + sim.heal : '') + '.');
+  else if (sim.type === 'rest') parts.push('REST: heal ' + sim.heal + ' HP, no kill.'); else parts.push('SHOVE ' + (G.grid[sim.c] ? NAMES[G.grid[sim.c].v] + ' ' + G.grid[sim.c].v : '') + ': swap places, no kill.');
+  if (G.tut) { parts.push('Tutorial: nobody hits back.'); return parts.join(' '); }
+  const hitters = sim.hits.filter(h => h.dmg && !h.bomb), thieves = sim.hits.filter(h => h.steal), bombs = sim.hits.filter(h => h.bomb);
+  const where = sim.type === 'rest' ? 'You stay here:' : "You'll stop here:";
+  if (!hitters.length && !thieves.length && !bombs.length) parts.push(where + ' nothing hits you. SAFE.');
+  else { const names = hitters.map(h => (h.head ? 'Head ' : NAMES[h.v] + ' ') + h.v); let s = where + ' ' + (names.length ? names.join(' + ') + ' hit you = -' + sim.dmg + ' HP' : '');
+    if (bombs.length) s += (names.length ? ', ' : ' ') + 'blast -' + bombs.length * CFG.bombDmg; if (thieves.length) s += (names.length || bombs.length ? ', ' : ' ') + thieves.length + ' thief steals ' + thieves.length * CFG.thiefSteal + ' pts';
+    if (sim.lethal) s += '. LETHAL!'; else if (sim.rage) s += '. Survivors enrage +1.'; parts.push(s); }
+  return parts.join(' '); }
+function drawStair(x, y, w, h) { const steps = G.path.length ? stepsFor(G.path) : [], p0 = bladeStart();
+  const bars = [{ label:'start', pw:p0, grow:1, start:1 }].concat(steps.map(s => ({ label:s.kill ? String(s.val) : 'step', pw:s.pw, grow:s.grow, kill:s.kill })));
+  const maxP = Math.max(6, ...bars.map(b => b.pw)), n = bars.length, bwid = Math.min(36, (w - 6) / Math.max(n, 7)), base = y + h - 24;
+  ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, base + .5); ctx.lineTo(x + w, base + .5); ctx.stroke();
+  bars.forEach((b, i) => { const bx = x + i * bwid + 3, bh = Math.max(6, (b.pw / maxP) * (h - 50)), col = b.start ? C.player : b.grow ? C.gold : '#4a5168';
+    if (b.grow && !b.start) glow(C.gold, 8); rr(bx, base - bh, bwid - 6, bh, 4); ctx.fillStyle = col; ctx.fill(); noGlow();
+    txt(String(b.pw), bx + (bwid - 6) / 2, base - bh - 10, 14, b.grow ? C.text : C.dim, 'center', 800);
+    txt(b.label, bx + (bwid - 6) / 2, base + 12, 14, b.start ? C.dim : b.grow ? C.gold : C.dim, 'center', b.start ? 500 : 700); });
+  return bars[n - 1].pw; }
+function drawSide() { const x = L.px, y = L.py, w = L.pw, h = L.ph; panel(x, y, w, h); const sim = currentSim(), pad = 14;
+  txt('BLADE STAIRCASE', x + pad, y + 20, 14, C.player, 'left', 800); const stairH = Math.min(150, h * .36);
+  const pw = drawStair(x + pad, y + 32, w - 2 * pad, stairH); let yy = y + 32 + stairH + 10;
+  const cap = G.path.length ? 'Next kill grows the blade if its value is >= ' + (pw - stairWidth()) + '. Anything <= ' + pw + ' can be cut.' : 'Bars = blade power after each kill. Grey bar = kill too small to grow it (still scores).';
+  yy = wrap(cap, x + pad, yy, w - 2 * pad, 14, C.dim, 'left', 500, 18) + 6;
+  txt('WHAT HAPPENS', x + pad, yy + 6, 14, C.gold, 'left', 800); yy += 26;
+  const s = sentence(sim), col = !sim ? C.dim : sim.lethal ? C.danger : sim.dmg || sim.steal ? '#ffb0a0' : C.safe;
+  yy = wrap(s, x + pad, yy, w - 2 * pad, 15, col, 'left', 600, 19) + 8;
+  // legend
+  const ly = Math.max(yy + 4, y + h - 132); txt('LEGEND', x + pad, ly, 14, C.dim, 'left', 800); let r = 7, lx = x + pad + 9, ty = ly + 24;
+  for (let v = 1; v <= 9; v += 2) { ctx.fillStyle = valColor(v); rr(lx - 8 + (v - 1) / 2 * 18, ty - 8, 16, 16, 4); ctx.fill(); }
+  txt('value 1 - 9 = damage it deals', lx + 88, ty, 14, C.dim, 'left', 500);
+  ty += 24; shieldIcon(lx, ty, r); txt('Armoured: needs power +1', lx + 14, ty, 14, C.dim, 'left', 500);
+  ty += 22; bombIcon(lx, ty + 1, r); txt('Bomb: kill = 2 dmg to all 8 around', lx + 14, ty, 14, C.dim, 'left', 500);
+  ty += 22; coinIcon(lx, ty, r); txt('Thief: steals 5 pts instead of hitting', lx + 14, ty, 14, C.dim, 'left', 500);
+  ty += 22; flameIcon(lx, ty, r); txt('Enraged: hit you, grew +1', lx + 14, ty, 14, C.dim, 'left', 500); lockIcon(x + w - pad - 60, ty, 6); txt('too strong', x + w - pad - 48, ty, 14, C.dim, 'left', 500); }
+function drawHUD() { const F = floorDef(), x = L.ox, W = L.W;
+  const title = G.tut ? 'TUTORIAL' : F.boss ? 'FINALE - ' + F.name : (F.endless ? F.name : 'FLOOR ' + (G.floor + 1) + ' / ' + (FLOORS.length - 1) + ' - ' + F.name);
+  txt(title + (G.daily ? '   DAILY ' + G.seed : ''), x, 22, 14, C.dim, 'left', 800);
+  const bw = Math.min(300, L.bw), by = 38; panel(x, by, bw, 18, 6, C.border, '#0f1219');
+  const prog = G.tut ? 0 : F.boss ? 1 - G.grid.filter(m => m && m.head).length / 9 : Math.min(1, G.floorKills / F.quota);
+  if (prog > 0) { rr(x + 1, by + 1, Math.max(4, (bw - 2) * prog), 16, 5); ctx.fillStyle = C.gold; ctx.fill(); }
+  const ptxt = G.tut ? 'kill chains to learn' : F.boss ? (9 - G.grid.filter(m => m && m.head).length) + ' / 9 heads   ·   ' + Math.max(0, F.turns - G.floorTurn) + ' turns left' : G.floorKills + ' / ' + F.quota + ' kills   ·   ' + Math.max(0, F.turns - G.floorTurn) + ' turns left';
+  txt(ptxt, x + bw / 2, by + 10, 14, prog > .5 ? C.ink : C.text, 'center', 700);
+  txt('SCORE', x, 78, 14, C.dim, 'left', 700); txt(String(Math.round(G.shown)), x + 58, 77, 26, C.gold, 'left', 800); txt('best ' + best, x + bw, 78, 14, C.dim, 'right', 500);
+  // right: HP + resources
+  const rx = L.px + L.pw, hw = Math.min(260, L.pw); panel(rx - hw, by, hw, 18, 6, C.border, '#0f1219'); rr(rx - hw + 1, by + 1, Math.max(4, (hw - 2) * G.hp / G.maxHp), 16, 5); ctx.fillStyle = G.hp <= 6 ? C.danger : C.safe; ctx.fill();
+  txt('HP ' + G.hp + ' / ' + G.maxHp, rx - hw / 2, by + 10, 14, C.ink, 'center', 800); txt('HP', rx, 22, 14, C.dim, 'right', 800);
+  const sh = G.shoveCd ? 'SHOVE in ' + G.shoveCd : 'SHOVE ready'; txt('BLADE starts at ' + bladeStart() + '     ' + sh, rx, 72, 14, C.dim, 'right', 600);
+  const owned = PERKS.filter(p => G.perks[p.id]).map(p => p.name).join(' · '); if (owned) txtFit(owned, rx, 90, 14, C.gold, hw + 80, 'right', 600); }
+function drawBoard() { const cs = L.cs, r = cs * .4, inPath = new Set(G.path), sim = currentSim(), steps = G.path.length ? stepsFor(G.path) : [], pwNow = steps.length ? steps[steps.length - 1].pw : bladeStart();
+  const endC = G.path.length ? G.path[G.path.length - 1] : G.hero, hm = minHead(headCounts(G.grid)), alive = headCounts(G.grid); for (const st of steps) if (st.head) alive[st.v]--; const hmPath = minHead(alive);
+  panel(L.ox - 8, L.oy - 8, L.bw + 16, L.bw + 16, 14); ctx.save(); rr(L.ox - 8, L.oy - 8, L.bw + 16, L.bw + 16, 14); ctx.clip(); ctx.strokeStyle = 'rgba(124,245,255,.05)'; ctx.lineWidth = 10; ctx.stroke(); ctx.restore();
+  for (let c = 0; c < NC; c++) { const x = L.ox + X(c) * cs, y = L.oy + Y(c) * cs; ctx.fillStyle = (X(c) + Y(c)) % 2 ? '#141926' : '#181e2d'; rr(x + 2, y + 2, cs - 4, cs - 4, 8); ctx.fill(); }
+  const idle = canAct() && !G.path.length && !G.shoveMode;
+  for (let c = 0; c < NC; c++) { const m = G.grid[c]; if (!m) continue; const inP = inPath.has(c);
+    const adjEnd = NB8[endC].includes(c) && !inP, kill = killable(m, pwNow, G.path.length ? hmPath : hm), locked = !inP && !kill && (G.path.length || adjEnd);
+    const ring = idle && NB8[G.hero].includes(c) && kill ? C.player : G.path.length && adjEnd && kill ? 'rgba(124,245,255,.6)' : G.shoveMode && NB8[G.hero].includes(c) && !m.head && !G.shoveCd ? C.player : null;
+    const sh = m.sh > 0 ? Math.sin(UI.now / 18) * m.sh * 3 : 0;
+    drawToken(cx(c) + sh, cy(c), r, m, { scale:(G.instant ? 1 : m.s), alpha:inP ? .35 : locked ? .5 : 1, locked, ring, look:look(c, G.hero), sq:m.sh * .5 });
+    if (locked && adjEnd) txt(m.head && m.v > (G.path.length ? hmPath : hm) ? 'in order' : 'needs ' + need(m), cx(c), cy(c) + r * 1.12, 14, C.text, 'center', 700); }
+  // path
+  if (G.path.length) { ctx.strokeStyle = C.gold; ctx.lineWidth = cs * .1; ctx.lineJoin = ctx.lineCap = 'round'; glow(C.gold, 10); ctx.beginPath(); ctx.moveTo(L.ox + (G.hx + .5) * cs, L.oy + (G.hy + .5) * cs);
+    for (const c of G.path) ctx.lineTo(cx(c), cy(c)); ctx.stroke(); noGlow();
+    steps.forEach((s, i) => { ctx.fillStyle = s.grow ? C.gold : '#4a5168'; ctx.beginPath(); ctx.arc(cx(s.c), cy(s.c), cs * .17, 0, 6.283); ctx.fill(); txt(String(s.pw), cx(s.c), cy(s.c) + 1, cs * .2, s.grow ? C.ink : C.text, 'center', 800); });
+    const e = G.path[G.path.length - 1]; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.setLineDash([6, 5]); rr(L.ox + X(e) * cs + 3, L.oy + Y(e) * cs + 3, cs - 6, cs - 6, 9); ctx.stroke(); ctx.setLineDash([]); }
+  // preview of hits at the end cell
+  if (sim) { const pulse = .6 + .4 * Math.sin(UI.now / 100), endCell = sim.end;
+    for (const h of sim.hits) { const col = h.steal ? C.gold : h.bomb ? '#ffb070' : C.danger; ctx.strokeStyle = col; ctx.globalAlpha = pulse; ctx.lineWidth = 4; glow(col, 10); rr(L.ox + X(h.c) * cs + 3, L.oy + Y(h.c) * cs + 3, cs - 6, cs - 6, 9); ctx.stroke(); noGlow(); ctx.globalAlpha = 1;
+      if (!h.bomb) { ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx(h.c), cy(h.c)); ctx.lineTo(cx(endCell) + (cx(h.c) - cx(endCell)) * .38, cy(endCell) + (cy(h.c) - cy(endCell)) * .38); ctx.stroke(); }
+      const lab = h.steal ? '-' + CFG.thiefSteal + ' pts' : '-' + h.dmg + ' HP'; ctx.fillStyle = C.ink; rr(cx(h.c) - 26, cy(h.c) + r * .78, 52, 18, 6); ctx.fill(); txt(lab, cx(h.c), cy(h.c) + r * .78 + 9, 14, col, 'center', 800); }
+    if (sim.type === 'shove') drawHero(cx(sim.end), cy(sim.end), r * .9, bladeStart(), { ghost:1 });
+    if (sim.type !== 'rest') { ctx.strokeStyle = sim.lethal ? C.danger : sim.dmg ? '#ffb0a0' : C.safe; ctx.lineWidth = 3; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(cx(endCell), cy(endCell), r * 1.15, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); } }
+  drawHero(L.ox + (G.hx + .5) * cs, L.oy + (G.hy + .5) * cs, r * .9, G.path.length ? pwNow : G.blade, { hurt:G.shake > 2 });
+  if (G.state === 'dead' && G.killer >= 0 && G.cause === 'slain') { ctx.strokeStyle = `rgba(255,93,115,${.6 + .4 * Math.sin(UI.now / 120)})`; ctx.lineWidth = 5; rr(L.ox + X(G.killer) * cs + 2, L.oy + Y(G.killer) * cs + 2, cs - 4, cs - 4, 9); ctx.stroke(); }
+  for (const p of G.parts) { ctx.globalAlpha = Math.min(1, p.life * 4); ctx.fillStyle = p.col; ctx.fillRect(p.x - 2.5, p.y - 2.5, 5, 5); } ctx.globalAlpha = 1;
+  for (const p of G.pops) { const a = Math.min(1, p.life / p.max * 2.5), sc = 1 + Math.max(0, p.life / p.max - .8) * 1.5; ctx.globalAlpha = a; setFont(p.size * sc, 800); ctx.lineWidth = 4; ctx.strokeStyle = C.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.strokeText(p.txt, p.x, p.y); txt(p.txt, p.x, p.y, p.size * sc, p.col, 'center', 800); } ctx.globalAlpha = 1;
+  if (G.banner && !G.instant && !G.path.length) { const t = (UI.now - G.banner.t0) / 2200, a = t < .12 ? t / .12 : t > .8 ? (1 - t) / .2 : 1; ctx.globalAlpha = Math.max(0, a); const bx = L.ox + L.bw / 2, byy = L.oy + L.bw * .42; panel(bx - L.bw / 2 + 10, byy - 34, L.bw - 20, 68, 12, C.gold, 'rgba(18,22,34,.94)');
+    txtFit(G.banner.text, bx, byy - 10, 22, C.gold, L.bw - 40, 'center', 800); txt(G.banner.sub, bx, byy + 16, 14, C.text, 'center', 600); ctx.globalAlpha = 1; } }
+function drawBottom() { const y = L.oy + L.bw + 12, x = L.ox; const restLab = 'REST  +' + (G.perks.patience ? 3 : 1) + ' HP  (Space)'; button('rest', restLab, x, y, Math.min(210, L.bw * .45), 36, { disabled:!canAct() });
+  button('shove', G.shoveCd ? 'SHOVE in ' + G.shoveCd + ' turn' + (G.shoveCd > 1 ? 's' : '') : 'SHOVE  (S / right-click)', x + Math.min(210, L.bw * .45) + 10, y, Math.min(230, L.bw * .5), 36, { on:G.shoveMode, disabled:!canAct() || G.shoveCd > 0 });
+  const H = L.H, tw = Math.min(760, L.W - 40); if (G.tip) { const lines = wrapLines(G.tip.text, tw - 28, 15, 600), th = 12 + lines.length * 20; panel(L.W / 2 - tw / 2, H - 26 - th, tw, th, 10, C.gold, 'rgba(18,22,34,.96)'); lines.forEach((l, i) => txt(l, L.W / 2, H - 26 - th + 16 + i * 20, 15, C.text, 'center', 600)); }
+  txt(`H help   R restart   D daily ${G.daily ? 'on' : 'off'}   M ${muted ? 'unmute' : 'mute'}   Esc menu`, L.W - 12, H - 12, 14, '#7d879e', 'right', 500);
+  if (G.queue.length && !G.instant) txt('click / Space to skip', L.ox, H - 12, 14, '#7d879e', 'left', 500); }
+function drawPick() { const a = ease((UI.now - G.screenT) / 260); ctx.fillStyle = `rgba(8,10,16,${.86 * a})`; ctx.fillRect(0, 0, L.W, L.H); ctx.globalAlpha = a;
+  const cw = Math.min(250, (L.W - 56) / 3), ch = 258, cy0 = L.H / 2 - ch / 2 + 24 + (1 - a) * 16, F = floorDef();
+  txt((F.endless ? F.name : 'FLOOR ' + (G.floor + 1)) + ' CLEARED  +' + CFG.floorBonus * (G.floor + 1), L.W / 2, cy0 - 84, 30, C.gold, 'center', 800); txt('Pick one perk  (click or press 1 / 2 / 3)', L.W / 2, cy0 - 50, 16, C.text, 'center', 500);
+  const nx = floorDef(G.floor + 1); txt('Next: ' + (nx.boss ? 'FINALE - ' + nx.name + ', cut 9 heads in ' + nx.turns + ' turns' : nx.name + ', ' + nx.quota + ' kills in ' + nx.turns + ' turns'), L.W / 2, cy0 - 26, 14, C.dim, 'center', 500);
+  G.offer.forEach((p, i) => { const x = L.W / 2 + (i - 1) * (cw + 12) - cw / 2, hot = UI.mx >= x && UI.mx <= x + cw && UI.my >= cy0 && UI.my <= cy0 + ch, y = cy0 - (hot ? 6 : 0);
+    UI.btns.push({ id:'card' + i, x, y:cy0, w:cw, h:ch }); if (hot) glow('rgba(124,245,255,.35)', 18); panel(x, y, cw, ch, 12, hot ? C.player : C.border); noGlow();
+    glow(p.risk ? C.danger : C.gold, 10); ctx.fillStyle = p.risk ? C.danger : C.gold; ctx.beginPath(); ctx.arc(x + cw / 2, y + 40, 24, 0, 6.283); ctx.fill(); noGlow(); txt(p.glyph, x + cw / 2, y + 41, 20, C.ink, 'center', 800);
+    txt((i + 1) + '.  ' + p.name, x + cw / 2, y + 86, 17, C.text, 'center', 800); if (p.how) txt('changes how you path', x + cw / 2, y + 106, 14, C.player, 'center', 500);
+    const yy = wrap(p.desc, x + cw / 2, y + 128, cw - 24, 14, C.text, 'center', 500, 18); wrap('Why: ' + p.why, x + cw / 2, Math.max(yy + 8, y + ch - 52), cw - 24, 14, C.dim, 'center', 500, 18); });
+  ctx.globalAlpha = 1; }
+function causeText() { const f = floorDef(), fl = G.floor + 1;
+  if (G.cause === 'quota') return { head:'QUOTA MISSED', cause:`Floor ${fl} needed ${f.quota} kills in ${f.turns} turns - you got ${G.floorKills}.`, tip:'Small monsters never need blade power: hoover them for length (n x n points) and save the staircase 1-2-3-4 for the big ones.' };
+  if (G.cause === 'boss') return { head:'THE HYDRA REGREW', cause:`${G.stats.heads} of 9 heads cut in ${f.turns} turns.`, tip:'Build power on small monsters first, then step onto the lowest-numbered head. Heads next to each other can be chained in one turn.' };
+  const who = G.killer >= 0 ? (G.grid[G.killer] && G.grid[G.killer].head ? 'Hydra head ' + G.killerV : NAMES[Math.min(9, G.killerV)] + ' ' + G.killerV + (G.killerRage ? ' (enraged)' : '')) : 'a monster';
+  return { head:G.endless ? 'ENDLESS RUN OVER' : 'SLAIN', cause:`Killed on ${f.boss ? 'the finale' : 'floor ' + fl} by ${who} beside your end cell (-${G.lastDmg} HP).`,
+    tip:G.killerRage ? 'Enraged monsters grow every time they hit you. Kill them next turn or SHOVE away - never park beside the same one twice.' : 'Read the preview before you release: it names every monster that will hit you. A shorter chain ending in a safe cell beats a long one ending beside an Ogre. REST or SHOVE when boxed in.' }; }
+function drawResult() { const win = G.state === 'won', a = ease((UI.now - G.screenT) / 280), pw = Math.min(620, L.W - 32), ph = 392, px = L.W / 2 - pw / 2, py = L.H / 2 - ph / 2 + (1 - a) * 18, m = medalFor(G.score);
+  ctx.fillStyle = `rgba(8,10,16,${.82 * a})`; ctx.fillRect(0, 0, L.W, L.H); ctx.globalAlpha = a; panel(px, py, pw, ph, 14, win ? C.safe : C.border);
+  medalBadge(px + 70, py + 70, 34, m); txt(m ? m.toUpperCase() + ' MEDAL' : 'NO MEDAL YET', px + 70, py + 150, 14, m ? C.gold : C.dim);
+  const c = win ? { head:'THE HYDRA FALLS', cause:`You cut all 9 heads with ${G.hp} HP left and ${G.turn} turns played.`, tip:'Endless mode keeps the floors coming with rising quotas. Chains of 6+ heal; Dark Bargain and long staircases push the score.' } : causeText();
+  txt(c.head, px + 130, py + 44, 28, win ? C.safe : C.danger, 'left', 800);
+  let y = wrap(c.cause, px + 130, py + 80, pw - 150, 16, C.text, 'left', 600, 21); y = wrap('Tip: ' + c.tip, px + 130, y + 6, pw - 150, 14, C.dim, 'left', 500, 19);
+  y = Math.max(y + 14, py + 196); txt('SCORE', px + 30, y, 14, C.dim, 'left'); txt('' + Math.round(G.shown), px + 90, y - 1, 30, C.gold, 'left', 800); txt(`BEST ${best}${G.newBest ? '  NEW!' : ''}     WINS ${wins}`, px + pw - 30, y, 14, G.newBest ? C.gold : C.dim, 'right');
+  txt(`Floors ${G.stats.floors}    Turns ${G.turn}    Kills ${G.kills}    Longest chain ${G.stats.longest}    Avg chain ${G.stats.chains ? (G.stats.chainSum / G.stats.chains).toFixed(1) : 0}    Damage taken ${G.stats.dmg}`, px + 30, y + 34, 14, C.text, 'left', 500);
+  txt(`Medals:  Bronze ${MEDALS[2][1]}   Silver ${MEDALS[1][1]}   Gold ${MEDALS[0][1]}  (score)`, px + 30, y + 58, 14, C.dim, 'left', 500);
+  const by = py + ph - 66; if (win) { button('endless', 'KEEP GOING (ENDLESS)', px + 30, by, 236, 46, { primary:true, size:16 }); button('retry', 'RETRY  (R)', px + 278, by, 140, 46); button('menu', 'MENU  (Esc)', px + 430, by, 140, 46); }
+  else { button('retry', 'RETRY  (R)', px + 30, by, 200, 46, { primary:true }); button('menu', 'MENU  (Esc)', px + 242, by, 150, 46); }
+  ctx.globalAlpha = 1; }
+function drawClear() { const t = (UI.now - G.screenT) / 1300, a = Math.min(1, t * 4); ctx.globalAlpha = a; panel(L.W / 2 - 200, L.H / 2 - 44, 400, 88, 14, C.safe, 'rgba(18,22,34,.95)');
+  txt('FLOOR CLEARED', L.W / 2, L.H / 2 - 12, 30, C.safe, 'center', 800); txt('+' + CFG.floorBonus * (G.floor + 1) + ' points', L.W / 2, L.H / 2 + 22, 16, C.gold, 'center', 600); ctx.globalAlpha = 1; }
+// ---------- start / help screen ----------
+function drawDiagram(cxx, y, c) { const tok = (i, v, o) => drawToken(cxx + (i - 2) * c * 1.35, y, c * .36, { v, mod:'', s:1, sh:0, rage:0 }, o);
+  ctx.strokeStyle = C.gold; ctx.lineWidth = 6; ctx.lineCap = 'round'; glow(C.gold, 10); ctx.beginPath(); ctx.moveTo(cxx - 2 * c * 1.35, y); ctx.lineTo(cxx + c * 1.35, y); ctx.stroke(); noGlow();
+  drawHero(cxx - 2 * c * 1.35, y, c * .34, 1); tok(1, 1, { look:[-1, 0] }); tok(2, 2, { look:[-1, 0] }); tok(3, 3, { look:[-1, 0] });
+  drawToken(cxx + c * 1.35, y + c * 1.05, c * .36, { v:5, mod:'', s:1, sh:0, rage:0 }, { look:[0, -1] }); drawToken(cxx + c * 2.7, y, c * .36, { v:6, mod:'', s:1, sh:0, rage:0 }, { locked:1, look:[-1, 0] });
+  [2, 3, 4].forEach((p, i) => { ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(cxx + (i - 1) * c * 1.35, y - c * .62, c * .16, 0, 6.283); ctx.fill(); txt(String(p), cxx + (i - 1) * c * 1.35, y - c * .61, c * .2, C.ink, 'center', 800); });
+  txt('power 1', cxx - 2 * c * 1.35, y - c * .62, 14, C.player, 'center', 700);
+  ctx.strokeStyle = C.danger; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cxx + c * 1.35, y + c * .62); ctx.lineTo(cxx + c * 1.35, y + c * .42); ctx.stroke(); txt('-5 HP: Ogre beside your end cell', cxx + c * 1.35 + c * .5, y + c * 1.05, 14, C.danger, 'left', 800);
+  txt('needs 6', cxx + c * 2.7, y + c * .58, 14, C.dim, 'center', 700);
+  const ty = y + c * 1.05 + c * .62; txt('1. Drag through monsters the blade can cut (value <= power). Each kill near your power grows it: 1 > 2 > 3 > 4.', cxx, ty, 14, C.text, 'center', 600);
+  txt('2. You STOP on the last cell. Monsters on its four sides hit you for their value - and grow +1 (enrage).', cxx, ty + 20, 14, C.text, 'center', 600); return ty + 20; }
+function drawStart() { const help = UI.help || UI.screen !== 'start', a = ease((UI.now - UI.t0) / 280), W = L.W, H = L.H, cw = Math.min(920, W - 40), m = (W - cw) / 2, top = Math.max(8, (H - 590) / 2) + (1 - a) * 14;
+  ctx.globalAlpha = a; ctx.letterSpacing = '3px'; txt('LADDERBLADE', m, top + 30, 42, C.text, 'left', 800); ctx.letterSpacing = '0px';
+  txtFit('Chain kills in one drag. The blade climbs a staircase - and you stop where the chain ends, beside whatever is left.', m, top + 66, 16, C.dim, cw, 'left', 500);
+  txtFit('GOAL: descend 5 floors (a kill quota each, 8 turns per floor), then cut the 9 heads of the HYDRA in ascending order.', m, top + 92, 16, C.gold, cw, 'left', 700);
+  medalBadge(m + cw - 26, top + 26, 18, bestMedal || null); txt(`BEST ${best}   WINS ${wins}`, m + cw - 56, top + 28, 14, C.dim, 'right');
+  const c = Math.min(50, (cw - 64) / 8.4, (H - 440) / 3.4), dy = top + 116 + c * .8, dEnd = drawDiagram(W / 2, dy, c);
+  const cy0 = dEnd + 22, chh = 196, cwid = (cw - 16) / 2; panel(m, cy0, cwid, chh); panel(m + cwid + 16, cy0, cwid, chh);
+  txt('CONTROLS', m + 16, cy0 + 20, 14, C.player, 'left', 800); let y = cy0 + 46;
+  for (const [k, d] of [['Drag from a cyan-ringed monster', 'CHAIN through 8-way neighbours, release to strike'], ['Space / REST button', 'REST: heal 1 (monsters beside you still hit)'], ['Right-click / S then click', 'SHOVE: swap places with a neighbour, no kill, every 3 turns'], ['While dragging', 'Staircase + red preview show exactly what will happen']]) {
+    txtFit(k, m + 16, y, 14, C.text, cwid - 32, 'left', 700); txtFit(d, m + 16, y + 17, 14, C.dim, cwid - 32, 'left', 500); y += 35; }
+  const sx = m + cwid + 32; txt('SCORE  &  LOSING', sx, cy0 + 20, 14, C.gold, 'left', 800); y = cy0 + 46;
+  y = wrap('A chain of n kills scores n x n (3 = 9, 6 = 36). Chains of 6+ heal up to 3. Small kills are always allowed; only kills of value >= power - 1 grow the blade.', sx, y, cwid - 32, 14, C.text, 'left', 500, 18) + 5;
+  y = wrap('Pick 1 of 3 perks after every floor. Miss a floor quota and the run ends.', sx, y, cwid - 32, 14, C.text, 'left', 500, 18) + 5;
+  wrap(`You have ${MODES[UI.hard ? 'hard' : 'normal'].hp} HP. Every monster on the four sides of your end cell hits you for its value, then grows +1. At 0 HP you are slain.`, sx, y, cwid - 32, 14, C.text, 'left', 500, 18);
+  const by = cy0 + chh + 16;
+  if (help) { button('resume', 'RESUME', W / 2 - 110, by, 220, 52, { primary:true, size:20 }); txt(`Difficulty: ${G && G.hard ? 'HARD' : 'NORMAL'}${G && G.daily ? '  ·  DAILY ' + G.seed : ''}  (change from the menu start screen)`, W / 2, by + 72, 14, C.dim, 'center', 500); }
+  else { button('normal', 'NORMAL', m, by + 8, 88, 36, { on:!UI.hard }); button('hard', 'HARD', m + 94, by + 8, 76, 36, { on:UI.hard }); button('daily', 'DAILY ' + (UI.daily ? 'ON' : 'OFF'), m + 176, by + 8, 100, 36, { on:UI.daily });
+    const pw = Math.min(220, W - 2 * (m + 286) - 16); button('play', 'PLAY', W / 2 - pw / 2, by, pw, 52, { primary:true, size:22 }); button('tutorial', UI.tutDone ? 'Replay tutorial' : 'Tutorial first', m + cw - 140, by + 8, 140, 36);
+    txt(UI.hard ? 'HARD: 18 HP, 7 turns per floor, bigger quotas and heads' : UI.tutDone ? 'NORMAL: 25 HP, 8 turns per floor, gentle first 5 turns' : 'PLAY starts with a 2-chain tutorial where nothing can hurt you', W / 2, by + 72, 14, C.dim, 'center', 500); }
+  txt(`H help    R restart    D daily    M ${muted ? 'unmute' : 'mute'}    Esc menu`, W / 2, H - 16, 14, C.dim, 'center', 500); ctx.globalAlpha = 1; }
+function render() { ctx.setTransform(1, 0, 0, 1, 0, 0); UI.btns = []; background();
+  if (UI.screen === 'start' || UI.help || !G) { drawStart(); return; }
+  ctx.save(); if (G.shake > 0) ctx.translate((Math.random() - .5) * G.shake, (Math.random() - .5) * G.shake);
+  drawHUD(); drawBoard(); drawSide(); ctx.restore(); drawBottom();
+  if (G.state === 'pick') drawPick(); else if (G.state === 'clear') drawClear(); else if (G.state === 'dead' || G.state === 'won') drawResult(); }
+
+// ---------- input ----------
+function cellAt(px, py, tight) { const fx = (px - L.ox) / L.cs, fy = (py - L.oy) / L.cs; if (fx < 0 || fy < 0 || fx >= N || fy >= N) return -1; const c = (fy | 0) * N + (fx | 0);
+  if (tight && Math.hypot(px - cx(c), py - cy(c)) > L.cs * .46) return -1; return c; }
+const btnAt = (mx, my) => UI.btns.find(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h);
+function setPath(p) { G.path = p; G.sim = p.length ? simulate({ type:'chain', path:p }) : null; }
+function openHelp(v) { if (UI.screen !== 'game') return; UI.help = v; UI.t0 = UI.now; if (G) { G.path = []; G.sim = null; } }
+function press(id) { tone(520, .06, 'sine', .06);
+  if (id === 'play') startRun({ tutorial:!UI.tutDone }); else if (id === 'tutorial') startRun({ tutorial:true });
+  else if (id === 'normal') UI.hard = false; else if (id === 'hard') UI.hard = true; else if (id === 'daily') UI.daily = !UI.daily;
+  else if (id === 'resume') openHelp(false); else if (id === 'retry') startRun(); else if (id === 'menu') window.location.href = 'index.html'; else if (id === 'endless') keepGoing();
+  else if (id === 'rest') { if (canAct()) { G.shoveMode = false; act({ type:'rest' }); } }
+  else if (id === 'shove') { if (canAct() && !G.shoveCd) { G.shoveMode = !G.shoveMode; G.sim = null; } }
+  else if (id.startsWith('card')) choosePerk(+id.slice(4)); }
+function onDown(mx, my, button = 0) { initAudio(); if (AC && AC.state === 'suspended') AC.resume(); UI.mx = mx; UI.my = my; const b = btnAt(mx, my); if (b) { UI.down = b.id; return; }
+  if (UI.screen !== 'game' || UI.help || !G) return;
+  if (G.tip && my > L.H - 100 && my < L.H - 24) { G.tip = null; return; }
+  if (G.queue.length) { flush(); return; }
+  if (!canAct()) return; const c = cellAt(mx, my, false); if (c < 0) return; const m = G.grid[c]; if (!m || !NB8[G.hero].includes(c)) { G.shoveMode = false; return; }
+  if (button === 2 || G.shoveMode) { if (m.head) { tip('You cannot shove a Hydra head.', 'noshovehead'); return; } if (G.shoveCd) { tip('SHOVE recharges in ' + G.shoveCd + ' turn(s).'); G.shoveMode = false; return; } act({ type:'shove', c }); return; }
+  if (killable(m, bladeStart(), minHead(headCounts(G.grid)))) { setPath([c]); tone(330, .05, 'triangle', .05); }
+  else { m.sh = .6; tip(m.head ? 'Hydra heads must be cut in ascending order - the lowest living number first.' : NAMES[m.v] + ' ' + m.v + ' needs power ' + need(m) + ': start with something the blade can cut and climb to it.'); } }
+function onMove(mx, my) { UI.mx = mx; UI.my = my; if (!G || UI.screen !== 'game') return; const c = cellAt(mx, my, true); G.hover = c;
+  if (!G.path.length || !canAct()) return; const p = G.path; if (c < 0 || c === p[p.length - 1]) return;
+  if (c === p[p.length - 2] || (p.length === 1 && c === G.hero)) { setPath(p.slice(0, -1)); tone(250, .04, 'triangle', .04); return; }
+  if (p.includes(c) || c === G.hero || !NB8[p[p.length - 1]].includes(c)) return;
+  const np = p.concat(c); if (pathLegal(np)) { setPath(np); tone(pent(Math.min(p.length, 11)), .05, 'triangle', .05); }
+  else { const m = G.grid[c]; if (m) { m.sh = .6; const st = stepsFor(p), pw = st[st.length - 1].pw; tip(m.head ? 'That head is locked: cut the lower-numbered heads first.' : NAMES[m.v] + ' ' + m.v + ' needs power ' + need(m) + ', your blade is at ' + pw + '.', 'lock' + Math.min(3, need(m) - pw)); } } }
+function onUp(mx, my) { if (UI.down) { const b = btnAt(mx, my); if (b && b.id === UI.down) press(b.id); UI.down = null; return; }
+  if (G && G.path.length) { if (canAct()) act({ type:'chain', path:G.path.slice() }); G.path = []; if (!G.queue.length) G.sim = null; } }
+function onKey(ev) { initAudio(); const k = (ev.key || '').toLowerCase();
+  if (k === 'escape') { window.location.href = 'index.html'; return; }
+  if (k === 'm') { setMute(!muted); return; }
+  if (k === 'h') { if (UI.screen === 'game') openHelp(!UI.help); return; }
+  if (k === 'd') { UI.daily = !UI.daily; if (UI.screen === 'game') startRun(); return; }
+  if (k === 'r') { if (UI.screen === 'game') startRun(); return; }
+  if (UI.screen === 'start') { if (k === 'enter' || k === ' ') press('play'); return; }
+  if (UI.help) { if (k === 'enter' || k === ' ') openHelp(false); return; }
+  if (!G) return;
+  if (G.state === 'pick' && '123'.includes(k) && k) { choosePerk(+k - 1); return; }
+  if (G.state === 'won' && (k === 'enter' || k === ' ')) { keepGoing(); return; }
+  if (G.queue.length && (k === ' ' || k === 'enter')) { flush(); return; }
+  if (k === ' ') { if (canAct()) { G.shoveMode = false; act({ type:'rest' }); } ev.preventDefault && ev.preventDefault(); return; }
+  if (k === 's') { if (canAct() && !G.shoveCd) { G.shoveMode = !G.shoveMode; G.sim = null; } return; } }
+cv.addEventListener('pointerdown', e => onDown(e.clientX, e.clientY, e.button)); window.addEventListener('pointermove', e => onMove(e.clientX, e.clientY)); window.addEventListener('pointerup', e => onUp(e.clientX, e.clientY));
+cv.addEventListener('contextmenu', e => e.preventDefault()); window.addEventListener('keydown', onKey); window.addEventListener('resize', resize);
+
+// ---------- boot ----------
+let lastT = 0;
+function frame(t) { const dt = Math.min(.05, (t - lastT) / 1000 || .016); lastT = t; update(dt); render(); requestAnimationFrame(frame); }
+resize(); requestAnimationFrame(frame);
+window.LB = { get G() { return G; }, UI, CFG, MODES, FLOORS, PERKS, MEDALS, NB4, NB8, startRun, legalChains, act, choosePerk, keepGoing, simulate, pathLegal, stepsFor, update, render, resize, need, floorDef, openHelp, setMute, press, onDown, onMove, onUp, onKey, get store() { return { best, bestMedal, wins, muted }; } };
+</script></body></html>

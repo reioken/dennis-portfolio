@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>MASS BUDGET</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;cursor:crosshair}</style>
+</head><body><canvas id="c"></canvas><script>
+(() => {
+'use strict';
+// ───────────── constants, tuning, data ─────────────
+const W = 2400, H = 1800, TAU = Math.PI * 2, SLOTS_BASE = 5, DEG = Math.PI / 180;
+const FONT = '"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+const CLR = { bg: '#0b0d12', bg2: '#121726', panel: '#121622', line: '#232a3d', white: '#f2f6ff', text: '#e8ecf4', grey: '#8892a6',
+  cyan: '#7cf5ff', red: '#ff5d73', gold: '#ffd166', green: '#9dff8a', bronze: '#cd8a4b', silver: '#cfd6e4' };
+const PCOL = CLR.white; // PLAYER = white with cyan accent, per house style
+const T = { digest: 0.4, digestBeast: 0.2, gulp: 0.6, spitCost: 0.08, lobLoss: 0.1, stun: 2.5,
+  cone: 25 * DEG, alphaNeed: 75, minR: 8, projSpeed: 500, chargeSpeed: 380, respawn: 16 };
+// {radius range, speed, behaviour, colour, population, bite = fraction of your mass lost on touch, spike = silhouette}
+const SPECIES = {
+  mite:    { name: 'Mite',    r: [4, 6],   speed: 45,  beh: 'wander', col: '#8fd18a', count: 110, bite: 0,    spike: null, zone: 1 },
+  grazer:  { name: 'Grazer',  r: [14, 20], speed: 80,  beh: 'graze',  col: '#6fb3d9', count: 14,  bite: 0.15, spike: null, zone: 1 },
+  pack:    { name: 'Pack',    r: [12, 12], speed: 125, beh: 'pack',   col: '#e8894a', count: 9,   bite: 0.15, spike: { n: 3, amt: 0.16, pow: 6 }, zone: 2 },
+  charger: { name: 'Charger', r: [26, 34], speed: 55,  beh: 'charge', col: '#d9576b', count: 7,   bite: 0.3,  spike: { n: 6, amt: 0.18, pow: 10 }, zone: 2 },
+  spitter: { name: 'Spitter', r: [30, 30], speed: 60,  beh: 'spit',   col: '#b780e0', count: 4,   bite: 0.3,  spike: { n: 8, amt: 0.1, pow: 14 }, zone: 3 },
+  brute:   { name: 'Brute',   r: [44, 52], speed: 45,  beh: 'charge', col: '#c4455a', count: 2,   bite: 0.3,  spike: { n: 5, amt: 0.22, pow: 10 }, zone: 3 },
+  alpha:   { name: 'ALPHA',   r: [90, 90], speed: 38,  beh: 'charge', col: '#e8c34a', count: 1,   bite: 0.3,  spike: { n: 7, amt: 0.25, pow: 10 }, zone: 4 },
+};
+const LADDER = Object.values(SPECIES).map(S => ({ S, r: (S.r[0] + S.r[1]) / 2 })).sort((a, b) => b.r - a.r);
+// NORMAL is tuned for a first-time human; HARD is the original bot-tuned numbers.
+const MODES = {
+  normal: { name: 'NORMAL', time: 300, startR: 17, teleMul: 1.5, speedMul: 0.82, biteMul: 0.7, hurtbox: 0.6, invDur: 1.3, respawnMul: 1.35, travel: 1.2, alphaDist: 500, growthMul: 1.6 },
+  hard:   { name: 'HARD',   time: 240, startR: 14, teleMul: 1.0, speedMul: 1.0,  biteMul: 1.0, hurtbox: 1.0, invDur: 1.0, respawnMul: 1.0,  travel: 1.0, alphaDist: 900, growthMul: 1.0 },
+};
+// zones: gate = size you must reach to clear it. unlock = species that appear when this zone begins.
+const ZONES = [
+  { name: 'THE PEN', sub: 'Practice VACUUM, SPIT and GULP. Nothing here can hurt you.' },
+  { name: 'SHALLOWS', gate: 30, unlock: ['mite', 'grazer'], sub: 'Mites and grazers only. Vacuum mites, grow past grazers.' },
+  { name: 'REEF', gate: 50, unlock: ['pack', 'charger'], sub: 'NEW: CHARGER telegraphs a red line then charges - step off it. NEW: PACK hunts in numbers - never let more than one close in.' },
+  { name: 'TRENCH', gate: 75, unlock: ['spitter', 'brute'], sub: 'NEW: SPITTER lobs a stunning glob from range - vacuum it out of the air for free ammo. NEW: BRUTE hits hard - only approach once stunned.' },
+  { name: "ALPHA'S LAIR", gate: Infinity, unlock: ['alpha'], sub: 'FINALE - reach size ' + T.alphaNeed + ', stun the ALPHA, then swallow it whole.' },
+  { name: 'ENDLESS', sub: 'No more zones. Keep growing - the ALPHA returns.' },
+];
+// 12 mutations, 1-of-3 offered at each of the 3 zone gates. how:true = changes HOW you play (per CLARITY, at least 4 must).
+const MUTATIONS = [
+  { id: 'wideMaw', name: 'WIDE MAW', desc: 'Vacuum cone 40% wider.', why: 'Forgives sloppy aim while sucking up mites.', how: true, icon: 'cone', apply: m => m.cone *= 1.4 },
+  { id: 'longReach', name: 'LONG REACH', desc: 'Vacuum range +30%.', why: 'Start pulling things in from farther away.', icon: 'reach', apply: m => m.range *= 1.3 },
+  { id: 'bigGullet', name: 'BIG GULLET', desc: 'Gullet holds 8 instead of 5.', why: 'Stockpile more ammo before you need to digest or spit.', how: true, icon: 'gullet', apply: m => m.slots = 8 },
+  { id: 'swiftCurrent', name: 'SWIFT CURRENT', desc: 'Move 15% faster.', why: 'Outrun chargers and packs.', icon: 'speed', apply: m => m.speed *= 1.15 },
+  { id: 'ironStomach', name: 'IRON STOMACH', desc: 'Digesting yields 50% more mass.', why: 'Rewards playing patient and grinding ammo into growth.', icon: 'stomach', apply: m => m.digest *= 1.5 },
+  { id: 'stickySpit', name: 'STICKY SPIT', desc: 'Spit sticks on impact and stuns 50% longer.', why: 'More time to close in and gulp what you stunned.', how: true, icon: 'sticky', apply: m => { m.stunMul *= 1.5; m.sticky = true; } },
+  { id: 'splitSpit', name: 'SPLIT SPIT', desc: 'Spit fires 3 shots in a spread.', why: 'Turns one shot into area denial against packs.', how: true, icon: 'split', apply: m => m.split = true },
+  { id: 'armorPlating', name: 'ARMOUR PLATING', desc: 'Bite damage -35%, but 15% slower.', why: 'Trade speed for surviving mistakes.', how: true, icon: 'armor', apply: m => { m.armor += 0.35; m.speed *= 0.85; } },
+  { id: 'camouflage', name: 'CAMOUFLAGE', desc: 'Standing still, beasts barely notice you.', why: 'A stealthy way to let danger wander off.', how: true, icon: 'camo', apply: m => m.camo = true },
+  { id: 'secondWind', name: 'SECOND WIND', desc: 'Once per run, survive a lethal hit at minimum size.', why: 'A safety net for one bad pull.', how: true, icon: 'wind', apply: m => m.secondWind = true },
+  { id: 'ricochetSpit', name: 'RICOCHET SPIT', desc: 'A stun chains to a second nearby beast.', why: 'Crowd control against packs and chargers.', how: true, icon: 'rico', apply: m => m.ricochet = true },
+  { id: 'thickHide', name: 'THICK HIDE', desc: 'Knockback -50%, bite damage -10%.', why: 'Stay put and keep fighting after a hit.', icon: 'hide', apply: m => { m.kb *= 0.5; m.armor += 0.1; } },
+];
+const MEDALS = ['none', 'bronze', 'silver', 'gold'];
+const hyp = (x, y) => Math.sqrt(x * x + y * y), clamp = (v, a, b) => v < a ? a : v > b ? b : v, lerp = (a, b, k) => a + (b - a) * k;
+let seed = 1;
+const rnd = () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const rr = (a, b) => a + rnd() * (b - a);
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const view = { w: 1280, h: 720 }, mouse = { x: 700, y: 360 }, K = {};
+let G = null, last = 0, modeId = lsGet('proto_massbudget_mode') === 'hard' ? 'hard' : 'normal', MODE = MODES[modeId];
+let muted = lsGet('proto_mute') === '1', UX = 0, UY = 0, US = 1, UIpress = null;
+const SEEN = {};
+const I = { mx: 0, my: 0, ax: W / 2 + 100, ay: H / 2, vac: false, spit: false, digest: false };
+const setInput = o => Object.assign(I, o);
+const motes = []; for (let i = 0; i < 40; i++) motes.push({ x: rnd(), y: rnd(), v: rr(0.004, 0.013), r: rr(0.8, 2.1), a: rr(0.05, 0.15) });
+
+// ───────────── audio (WebAudio, created on first input) ─────────────
+let AC = null, vacGain = null, vacFilt = null, noiseBuf = null, master = null;
+function initAudio() {
+  const Ctor = window.AudioContext || window.webkitAudioContext; if (AC || !Ctor) return;
+  try {
+    AC = new Ctor(); master = AC.createGain(); master.gain.value = muted ? 0 : 0.5; master.connect(AC.destination);
+    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    vacFilt = AC.createBiquadFilter(); vacFilt.type = 'bandpass'; vacFilt.Q.value = 1.2;
+    vacGain = AC.createGain(); vacGain.gain.value = 0;
+    src.connect(vacFilt); vacFilt.connect(vacGain); vacGain.connect(master); src.start();
+  } catch (e) { AC = null; }
+}
+function setMute(v) { muted = !!v; lsSet('proto_mute', muted ? '1' : '0'); if (master) master.gain.setTargetAtTime(muted ? 0 : 0.5, AC.currentTime, 0.02); }
+const pitch = () => clamp(Math.pow(14 / G.p.r, 0.5), 0.4, 1.4); // sounds drop as you grow
+function tone(f0, f1, dur, type, vol) {
+  if (!AC) return; const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(), k = pitch();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(f0 * k, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1 * k), t + dur);
+  g.gain.setValueAtTime(vol || 0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, freq, vol) {
+  if (!AC) return; const t = AC.currentTime, s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  s.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = freq * pitch(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + 0.02);
+}
+const SFX = {
+  spit: () => { tone(520, 150, 0.13, 'square', 0.12); noise(0.06, 1800, 0.2); },
+  slurp: () => tone(500, 950, 0.07, 'sine', 0.12),
+  digest: () => { tone(180, 330, 0.22, 'triangle', 0.22); noise(0.15, 400, 0.12); },
+  stun: () => { tone(900, 1500, 0.12, 'square', 0.08); noise(0.08, 2500, 0.15); },
+  gulp: () => { tone(150, 36, 0.5, 'sine', 0.6); tone(95, 30, 0.55, 'triangle', 0.35); noise(0.2, 200, 0.3); },
+  hurt: () => { tone(320, 60, 0.3, 'sawtooth', 0.25); noise(0.2, 900, 0.3); },
+  tele: () => tone(200, 420, 0.5, 'sawtooth', 0.06),
+  thud: () => noise(0.18, 160, 0.3),
+  pick: () => { tone(440, 440, 0.16, 'sine', 0.12); setTimeout(() => tone(660, 660, 0.22, 'sine', 0.1), 70); },
+  win: () => [0, 1, 2, 3].forEach(i => setTimeout(() => tone(260 * Math.pow(1.26, i), 260 * Math.pow(1.26, i), 0.3, 'triangle', 0.25), i * 110)),
+  die: () => tone(260, 30, 0.9, 'sawtooth', 0.3),
+};
+
+// ───────────── world setup ─────────────
+function freshMut() { return { cone: 1, range: 1, slots: SLOTS_BASE, speed: 1, digest: 1, stunMul: 1, sticky: false, split: false, armor: 0, camo: false, secondWind: false, secondWindUsed: false, ricochet: false, kb: 1 }; }
+function setMode(id) { modeId = id === 'hard' ? 'hard' : 'normal'; lsSet('proto_massbudget_mode', modeId); if (G && G.state === 'start') newRun('start'); }
+function newRun(state) {
+  seed = (Math.random() * 1e9) | 0; MODE = MODES[modeId];
+  G = { state: state || 'play', help: false, helpT: 0, fadeT: 0, t: 0, time: MODE.time, over: false, won: false, why: '', score: 0, newBest: false, medal: 0,
+    zone: 0, tutStep: 0, endless: false, shake: 0, hitstop: 0, spawnT: 0, fullT: 0, cool: {}, camoActive: false,
+    unlocked: new Set(), mutIds: [], mut: freshMut(), offer: null, pickDelay: 0, pickTitle: '', tipQ: [], firstSeen: {}, texts: [], banner: null,
+    p: { x: W / 2, y: H / 2, vx: 0, vy: 0, kx: 0, ky: 0, r: MODE.startR, dr: MODE.startR, inv: 0, cd: 0, aim: 0, wob: 0, gulpT: 0, peak: MODE.startR, gullet: [] },
+    ents: [], projs: [], parts: [], rings: [], rocks: [], gaps: [], swallow: null, cam: { x: W / 2, y: H / 2, z: 1.6 },
+    stats: { gulps: 0, hits: 0, t30: null, t50: null, t75: null, by: {} } };
+  genRocks();
+  for (let i = 0; i < 6; i++) { const a = rnd() * TAU, d = rr(60, 150); spawn('mite', W / 2 + Math.cos(a) * d, H / 2 + Math.sin(a) * d); }
+  { const a = rnd() * TAU, d = rr(200, 280); spawn('grazer', W / 2 + Math.cos(a) * d, H / 2 + Math.sin(a) * d, null, { sleepy: true, r: 12 }); } // r stays >=0.6*startR (unvacuumable) and <1.2*startR (gulpable) on both NORMAL(17) and HARD(14)
+  G.unlocked.add('mite'); G.unlocked.add('grazer'); G.firstSeen.mite = 0; G.firstSeen.grazer = 0;
+  for (const k of ['tut0', 'tut1', 'tut2', 'tut3', 'zone1', 'zone2', 'zone3', 'zone4', 'full']) delete SEEN[k];
+  if (G.state === 'play') tip('tut0', 'Hold LMB to VACUUM mites into your gullet.');
+  return G;
+}
+function beginPlay() { if (!G || G.state !== 'start') return; G.state = 'play'; banner('THE PEN', ZONES[0].sub, 3); tip('tut0', 'Hold LMB to VACUUM mites into your gullet.'); }
+function rockFree(x, y, R, pad) {
+  if (x < R + 200 || y < R + 200 || x > W - R - 200 || y > H - R - 200 || hyp(x - W / 2, y - H / 2) < R + 220) return false;
+  return G.rocks.every(k => hyp(k.x - x, k.y - y) > k.r + R + pad);
+}
+function genRocks() { // 5 walls of 4 rocks with 40px gaps (small bodies only) + 5 loose boulders; 200px lanes elsewhere; centre kept clear for the pen
+  let tries = 0;
+  while (G.rocks.length < 20 && tries++ < 3000) {
+    const a = rnd() * TAU, ca = Math.cos(a), sa = Math.sin(a), wall = []; let x = rr(200, W - 200), y = rr(200, H - 200), ok = true;
+    for (let i = 0; i < 4 && ok; i++) {
+      const R = rr(48, 72), pr = wall[i - 1]; if (pr) { x = pr.x + ca * (pr.r + R + 40); y = pr.y + sa * (pr.r + R + 40); }
+      ok = rockFree(x, y, R, 200); wall.push({ x, y, r: R });
+    }
+    if (!ok) continue;
+    for (let i = 0; i < 3; i++) G.gaps.push({ x: wall[i].x + ca * (wall[i].r + 20), y: wall[i].y + sa * (wall[i].r + 20), nx: -sa, ny: ca });
+    G.rocks.push(...wall);
+  }
+  while (G.rocks.length < 25 && tries++ < 6000) { const R = rr(40, 80), x = rr(0, W), y = rr(0, H); if (rockFree(x, y, R, 200)) G.rocks.push({ x, y, r: R }); }
+}
+function freeSpot(r, minD) {
+  for (let i = 0; i < 60; i++) {
+    const x = rr(r + 20, W - r - 20), y = rr(r + 20, H - r - 20);
+    if (hyp(x - G.p.x, y - G.p.y) >= minD && !G.rocks.some(k => hyp(k.x - x, k.y - y) < k.r + r + 4)) return { x, y };
+  }
+  return { x: r + 30, y: r + 30 };
+}
+function spawn(type, x, y, lead, opts) {
+  opts = opts || {}; const S = SPECIES[type], r = opts.r != null ? opts.r : rr(S.r[0], S.r[1]);
+  if (x == null) { const q = freeSpot(r, type === 'alpha' ? MODE.alphaDist : type === 'mite' ? (G.t < 1 ? 60 : 300) : (G.t < 1 ? 600 : 650)); x = q.x; y = q.y; }
+  const e = { type, S, x, y, vx: 0, vy: 0, r, stun: 0, state: 'idle', st: 0, wa: rnd() * TAU, wt: 0, cd: rr(1, 3), dx: 1, dy: 0, lead: lead || null, dead: false, age: 0, ph: rnd() * TAU, sleepy: !!opts.sleepy };
+  pushOut(e); G.ents.push(e); if (G.firstSeen[type] === undefined) G.firstSeen[type] = G.t; return e;
+}
+function spawnPack() { const l = spawn('pack'), n = 3 + (rnd() < 0.5 ? 1 : 0); for (let i = 0; i < n; i++) spawn('pack', l.x + rr(-40, 40), l.y + rr(-40, 40), l); }
+function spawnChunk(x, y, mass, vx, vy) { G.ents.push({ type: 'chunk', x: clamp(x, 3, W - 3), y: clamp(y, 3, H - 3), vx, vy, r: Math.max(2.5, Math.sqrt(mass)), mass, stun: 0, dead: false, age: 0, ph: rnd() * TAU }); }
+function unlockSpecies(list) {
+  for (const type of list) { G.unlocked.add(type); const S = SPECIES[type];
+    if (type === 'pack') { spawnPack(); spawnPack(); } else if (type === 'alpha') { spawn('alpha'); } else { for (let i = 0; i < S.count; i++) spawn(type); }
+    if (G.firstSeen[type] === undefined) G.firstSeen[type] = G.t;
+  }
+}
+function pushOut(o) { // keep a body inside the arena and outside rocks; returns true on contact
+  let hit = false;
+  for (let pass = 0; pass < 2; pass++) for (const k of G.rocks) {
+    const dx = o.x - k.x, dy = o.y - k.y, d = hyp(dx, dy), m = o.r + k.r;
+    if (d < m) { const q = d || 1; o.x = k.x + dx / q * m; o.y = k.y + dy / q * m; hit = true; }
+  }
+  const cx = clamp(o.x, o.r, W - o.r), cy = clamp(o.y, o.r, H - o.r); if (cx !== o.x || cy !== o.y) hit = true; o.x = cx; o.y = cy;
+  return hit;
+}
+function burst(x, y, col, n, sp, size) { for (let i = 0; i < n && G.parts.length < 400; i++) { const a = rnd() * TAU, v = rr(0.3, 1) * sp; G.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: rr(0.3, 0.7), max: 0.7, col, r: rr(0.5, 1) * size }); } }
+function floatText(x, y, s, col, size) { G.texts.push({ x, y, vx: 0, vy: -34, life: 1, col, s, size }); if (G.texts.length > 16) G.texts.shift(); }
+function tip(id, s, hold) { if (SEEN[id]) return; SEEN[id] = 1; G.tipQ.push({ s, life: 6 }); }
+function updateTips(dt) { const q = G.tipQ; if (!q.length) return; if ((q[0].life -= dt) <= 0) q.shift(); }
+function banner(title, sub, dur) { G.banner = { title, sub, life: dur || 3.2, max: dur || 3.2 }; }
+function addMass(m) {
+  const p = G.p, s = G.stats; p.r = Math.sqrt(Math.max(1, p.r * p.r + m)); if (p.r > p.peak) p.peak = p.r;
+  const el = G.t; if (p.r >= 30 && s.t30 == null) s.t30 = el; if (p.r >= 50 && s.t50 == null) s.t50 = el; if (p.r >= 75 && s.t75 == null) s.t75 = el;
+}
+function medalNow() { return G.won ? 3 : G.zone >= 4 ? 2 : G.zone >= 2 ? 1 : 0; }
+function persist() {
+  G.medal = medalNow(); const best = +lsGet('proto_massbudget_best') || 0;
+  if (G.score > best) { lsSet('proto_massbudget_best', Math.round(G.score)); G.newBest = true; }
+  const old = MEDALS.indexOf(lsGet('proto_massbudget_medal') || 'none'); if (G.medal > old) lsSet('proto_massbudget_medal', MEDALS[G.medal]);
+  if (G.won) lsSet('proto_massbudget_wins', (+lsGet('proto_massbudget_wins') || 0) + 1);
+}
+function end(won, why) {
+  if (G.over) return; const p = G.p; G.over = true; G.won = won; G.why = why; G.runTime = MODE.time - G.time;
+  G.score += (won ? 500 + Math.max(0, Math.round(G.time * 2)) : 0); persist(); G.state = won ? 'won' : 'over'; G.fadeT = 0;
+  if (won) SFX.win(); else { SFX.die(); burst(p.x, p.y, PCOL, 40, 300, 5); }
+}
+function goEndless() { if (!G || G.state !== 'won') return; G.over = false; G.state = 'play'; G.zone = 5; G.endless = true; banner('ENDLESS', ZONES[5].sub, 3); }
+
+// ───────────── player verbs: vacuum / spit / digest / gulp / hurt ─────────────
+const vacRange = () => (G.p.r * 4 + 20) * G.mut.range;
+function inCone(x, y, er) { // distance if inside the vacuum cone, else 0
+  const p = G.p, dx = x - p.x, dy = y - p.y, d = hyp(dx, dy) || 0.01; if (d > vacRange() + er) return 0;
+  const half = T.cone * G.mut.cone, a = Math.atan2(dy, dx) - p.aim; return Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < half + Math.asin(Math.min(1, er / d)) * 0.5 ? d : 0;
+}
+function swallowSmall(item) { const p = G.p; p.gullet.push(item); p.wob += 0.35; SFX.slurp(); }
+function vacuum(dt) {
+  const p = G.p;
+  const pull = (o, d) => { const f = (360 - 200 * d / (vacRange() + o.r)) * dt; o.x -= (o.x - p.x) / d * f; o.y -= (o.y - p.y) / d * f; };
+  for (const e of G.ents) {
+    const chunk = e.type === 'chunk'; if (e.dead || (chunk ? e.age < 0.4 : e.r >= 0.6 * p.r)) continue;
+    const d = inCone(e.x, e.y, e.r); if (!d) continue;
+    if (!chunk && p.gullet.length >= G.mut.slots) { if (G.fullT <= 0) tip('full', 'GULLET FULL — RMB/Space to spit, or E to digest for room.'); G.fullT = 0.6; continue; }
+    pull(e, d);
+    if (d < p.r + e.r * 0.3) { e.dead = true; if (chunk) { addMass(e.mass * MODE.growthMul); SFX.slurp(); p.wob += 0.2; } else swallowSmall({ r: e.r, col: e.S.col, type: e.type }); }
+  }
+}
+function spit() {
+  const p = G.p, mu = G.mut; let it = p.gullet.pop(), self = 0;
+  if (!it) { // empty gullet: spit a chunk of yourself
+    const m = p.r * p.r * T.spitCost; if (Math.sqrt(p.r * p.r - m) < T.minR + 0.5) return; addMass(-m); self = m; it = { r: Math.sqrt(m), col: PCOL };
+  }
+  const angles = mu.split ? [-0.22, 0, 0.22] : [0];
+  for (const off of angles) {
+    const a = p.aim + off, ca = Math.cos(a), sa = Math.sin(a);
+    G.projs.push({ x: p.x + ca * p.r, y: p.y + sa * p.r, vx: ca * T.projSpeed, vy: sa * T.projSpeed, r: Math.max(4, it.r), col: it.col, life: 1.3, self: off === 0 ? self : 0, enemy: false, spent: false, dead: false, sticky: mu.sticky });
+  }
+  p.cd = 0.22; p.wob += 0.6; p.kx -= Math.cos(p.aim) * 70; p.ky -= Math.sin(p.aim) * 70; SFX.spit(); burst(p.x + Math.cos(p.aim) * p.r, p.y + Math.sin(p.aim) * p.r, '#fff', 5, 120, 2);
+}
+function digest() {
+  const p = G.p; if (!p.gullet.length) return; let m = 0; for (const it of p.gullet) m += it.r * it.r * (it.r < 9 ? T.digest : T.digestBeast); // vacuumed beasts digest poorly: gulping is the real meal
+  m *= G.mut.digest * MODE.growthMul; p.gullet.length = 0; addMass(m); G.score += Math.round(m * 0.2); p.wob += 0.8; p.gulpT = 0.25; SFX.digest(); burst(p.x, p.y, '#bff5c0', 10, 140, 3);
+}
+const canGulp = e => e.type === 'alpha' ? G.p.r >= T.alphaNeed : e.r < 1.2 * G.p.r;
+function gulp(e) {
+  const p = G.p; e.dead = true; addMass(e.r * e.r * T.gulp * MODE.growthMul); G.stats.gulps++; const pts = Math.round(e.r * e.r * 0.7); G.score += pts;
+  G.hitstop = 0.08; G.shake = Math.max(G.shake, 5 + e.r * 0.35); p.wob += 1.5; p.gulpT = 0.4; if (G.mut.secondWind === true) {} // no-op guard
+  if (G.mut.ricochet) {} // ricochet only affects spit stuns, not gulp
+  G.swallow = { x: e.x, y: e.y, r: e.r, col: e.S.col, t: 0 }; G.rings.push({ x: p.x, y: p.y, r: p.r, max: p.r * 4 + e.r * 3, t: 0 });
+  burst(e.x, e.y, e.S.col, 18, 260, 4); SFX.gulp(); floatText(e.x, e.y - e.r - 6, '+' + pts, CLR.gold, 15);
+  if (e.type === 'alpha') end(true, 'You ate the Alpha!');
+}
+function loseMass(frac, nx, ny, chunks, kb, by) { // nx,ny points at whatever hurt us
+  const p = G.p; frac *= MODE.biteMul * (1 - G.mut.armor); kb *= G.mut.kb;
+  const lost = p.r * p.r * frac, base = Math.atan2(-ny, -nx); addMass(-lost); G.stats.hits++; G.stats.by[by] = (G.stats.by[by] || 0) + 1;
+  for (let i = 0; i < chunks; i++) { const a = base + rr(-1.3, 1.3), v = rr(160, 320); spawnChunk(p.x, p.y, lost * 0.8 / chunks, Math.cos(a) * v, Math.sin(a) * v); }
+  p.inv = MODE.invDur; p.kx = -nx * kb; p.ky = -ny * kb; p.wob += 1.2; G.shake = Math.max(G.shake, 6 + p.r * 0.2); G.hitstop = 0.04; SFX.hurt(); burst(p.x, p.y, PCOL, 12, 220, 3);
+  if (p.r < T.minR) {
+    if (G.mut.secondWind && !G.mut.secondWindUsed) { G.mut.secondWindUsed = true; addMass(T.minR * T.minR - p.r * p.r + 40); p.inv = 2.2; G.shake = 8; banner('SECOND WIND!', 'Saved from the brink — keep moving.', 2.4); SFX.digest(); }
+    else end(false, 'Shredded to nothing');
+  }
+}
+function updPlayer(dt) {
+  const p = G.p; let mx = I.mx, my = I.my; const m = hyp(mx, my); if (m > 1) { mx /= m; my /= m; }
+  p.aim = Math.atan2(I.ay - p.y, I.ax - p.x);
+  const sp = Math.max(70, 220 - 3 * p.r) * G.mut.speed * MODE.travel * (I.vac ? 0.6 : 1), k = Math.min(1, dt * 9);
+  p.vx += (mx * sp - p.vx) * k; p.vy += (my * sp - p.vy) * k; p.x += (p.vx + p.kx) * dt; p.y += (p.vy + p.ky) * dt;
+  const dk = Math.pow(0.01, dt); p.kx *= dk; p.ky *= dk; pushOut(p);
+  p.inv -= dt; p.cd -= dt; p.gulpT -= dt; p.dr += (p.r - p.dr) * Math.min(1, dt * 7); p.wob *= Math.pow(0.06, dt); G.fullT -= dt;
+  if (I.vac) vacuum(dt);
+  if (I.spit) { I.spit = false; if (p.cd <= 0) spit(); }
+  if (I.digest) { I.digest = false; digest(); }
+}
+function contacts() {
+  const p = G.p, eff = p.r * MODE.hurtbox;
+  for (const e of G.ents) {
+    if (e.dead || e.type === 'mite') continue; const dx = e.x - p.x, dy = e.y - p.y, d = hyp(dx, dy) || 1;
+    if (e.type === 'chunk') { if (e.age > 0.5 && d < p.r + e.r) { e.dead = true; addMass(e.mass * MODE.growthMul); SFX.slurp(); p.wob += 0.2; } continue; }
+    if (e.stun > 0) { if (d < p.r + e.r) { if (canGulp(e)) gulp(e); else { p.x = e.x - dx / d * (p.r + e.r); p.y = e.y - dy / d * (p.r + e.r); } } continue; }
+    if (e.r > 0.6 * p.r && p.inv <= 0 && !e.sleepy && d < eff + e.r) { loseMass(e.S.bite, dx / d, dy / d, 5, 340, e.type); if (G.over) return; }
+  }
+}
+
+// ───────────── fauna AI ─────────────
+function steer(e, tx, ty, sp, dt) { const k = Math.min(1, dt * 4); e.vx += (tx * sp - e.vx) * k; e.vy += (ty * sp - e.vy) * k; }
+function wander(e, dt, f) { e.wt -= dt; if (e.wt <= 0) { e.wa = rnd() * TAU; e.wt = rr(1, 3.5); } steer(e, Math.cos(e.wa), Math.sin(e.wa), e.S.speed * MODE.speedMul * f, dt); }
+function updEnt(e, dt) {
+  e.age += dt; const drag = Math.pow(0.04, dt);
+  if (e.type === 'chunk') { e.vx *= drag; e.vy *= drag; if (e.age > 25) e.dead = true; }
+  else if (e.stun > 0) { e.stun -= dt; e.vx *= drag; e.vy *= drag; }
+  else if (e.sleepy) { wander(e, dt, 0.15); }
+  else {
+    const p = G.p, S = e.S; let dx = p.x - e.x, dy = p.y - e.y; const d = hyp(dx, dy) || 1; dx /= d; dy /= d;
+    const camoGap = G.camoActive ? 260 : 0, gap = d - p.r - e.r - camoGap, hurts = e.r > 0.6 * p.r, sp = S.speed * MODE.speedMul, chSp = T.chargeSpeed * MODE.speedMul;
+    switch (S.beh) {
+      case 'wander': gap < 80 ? steer(e, -dx, -dy, sp, dt) : wander(e, dt, 0.5); break;
+      case 'graze': p.r > e.r && gap < 220 ? steer(e, -dx, -dy, sp, dt) : wander(e, dt, 0.4); break;
+      case 'pack':
+        if (e.rest > 0) { e.rest -= dt; wander(e, dt, 0.4); }
+        else if (hurts && p.r < 30 && gap < 420) { if ((e.ct = (e.ct || 0) + dt) > 5) { e.ct = 0; e.rest = 4; } steer(e, dx + Math.cos(e.ph) * 0.35, dy + Math.sin(e.ph) * 0.35, sp, dt); }
+        else if (!hurts && gap < 200) steer(e, -dx, -dy, sp, dt);
+        else if (e.lead && !e.lead.dead && hyp(e.lead.x - e.x, e.lead.y - e.y) > 70) { const lx = e.lead.x - e.x, ly = e.lead.y - e.y, ld = hyp(lx, ly); steer(e, lx / ld, ly / ld, sp * 0.6, dt); }
+        else wander(e, dt, 0.4); break;
+      case 'charge': { const alpha = e.type === 'alpha';
+        if (e.state === 'tele') { e.st -= dt; steer(e, 0, 0, 0, dt); if (e.st > 0.25 * MODE.teleMul) { e.dx = dx; e.dy = dy; } if (e.st <= 0) { e.state = 'charge'; e.st = alpha ? 1.2 : 0.9; } }
+        else if (e.state === 'charge') { e.st -= dt; e.vx = e.dx * chSp; e.vy = e.dy * chSp; if (e.st <= 0) { e.state = 'tired'; e.st = 1.5; } }
+        else if (e.state === 'tired') { e.st -= dt; steer(e, 0, 0, 0, dt); if (e.st <= 0) e.state = 'idle'; }
+        else if (hurts && gap < (alpha ? 380 : 300)) { e.state = 'tele'; e.st = 0.6 * MODE.teleMul; e.dx = dx; e.dy = dy; if (gap < 700) SFX.tele(); }
+        else if (hurts && gap < 520) steer(e, dx, dy, sp, dt);
+        else if (!hurts && gap < 220) steer(e, -dx, -dy, sp, dt);
+        else wander(e, dt, 0.7); break; }
+      case 'spit':
+        if (hurts) {
+          if (gap > 330 && gap < 700) steer(e, dx, dy, sp, dt); else if (gap < 220) steer(e, -dx, -dy, sp, dt); else wander(e, dt, 0.3);
+          e.cd -= dt; if (e.cd <= 0 && gap < 460) { e.cd = 2.8; G.projs.push({ x: e.x + dx * e.r, y: e.y + dy * e.r, vx: dx * 170 * MODE.speedMul, vy: dy * 170 * MODE.speedMul, r: 8, col: S.col, life: 3.2, self: 0, enemy: true, spent: false, dead: false }); noise(0.1, 700, 0.1); }
+        } else gap < 260 ? steer(e, -dx, -dy, sp, dt) : wander(e, dt, 0.5);
+    }
+  }
+  e.x += e.vx * dt; e.y += e.vy * dt;
+  if (pushOut(e)) { if (e.state === 'charge') { e.state = 'tired'; e.st = 1.5; e.vx = e.vy = 0; burst(e.x, e.y, '#889', 8, 160, 3); SFX.thud(); G.shake = Math.max(G.shake, e.r * 0.06); } else e.wt = Math.min(e.wt, 0.3); }
+}
+function entPairs() { // beasts shove each other apart; anything may eat a loose chunk
+  const B = G.ents.filter(e => !e.dead && e.type !== 'mite');
+  for (let i = 0; i < B.length; i++) for (let j = i + 1; j < B.length; j++) {
+    const a = B[i], b = B[j], ac = a.type === 'chunk', bc = b.type === 'chunk'; if (ac && bc) continue;
+    const dx = b.x - a.x, dy = b.y - a.y, d = hyp(dx, dy) || 1, o = a.r + b.r - d; if (o <= 0) continue;
+    if (ac || bc) { const c = ac ? a : b, e = ac ? b : a; if (c.age > 1 && e.stun <= 0) { c.dead = true; e.r = Math.min(e.S.r[1] * 1.25, Math.sqrt(e.r * e.r + c.mass * 0.5)); } continue; }
+    const wa = b.r * b.r / (a.r * a.r + b.r * b.r); a.x -= dx / d * o * wa; a.y -= dy / d * o * wa; b.x += dx / d * o * (1 - wa); b.y += dy / d * o * (1 - wa); pushOut(a); pushOut(b);
+  }
+}
+function updProjs(dt) {
+  const p = G.p;
+  for (const q of G.projs) {
+    if (q.dead) continue; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt;
+    if (q.x < 0 || q.y < 0 || q.x > W || q.y > H || G.rocks.some(k => hyp(k.x - q.x, k.y - q.y) < k.r + q.r * 0.5)) q.life = 0;
+    if (q.enemy) { // lobs hurt, unless you catch them in the vacuum cone: free ammo
+      const dx = q.x - p.x, dy = q.y - p.y, d = hyp(dx, dy) || 1, caught = I.vac && p.gullet.length < G.mut.slots && inCone(q.x, q.y, q.r);
+      if (caught) { q.x -= dx / d * 260 * dt; q.y -= dy / d * 260 * dt; }
+      if (d < p.r + q.r) { if (caught) { q.dead = true; swallowSmall({ r: q.r, col: q.col, type: 'lob' }); continue; } else if (p.inv <= 0) { q.life = 0; loseMass(T.lobLoss, dx / d, dy / d, 2, 160, 'lob'); p.inv = 0.5; } }
+    }
+    else if (!q.spent) for (const e of G.ents) {
+      if (e.dead || e.type === 'chunk' || hyp(e.x - q.x, e.y - q.y) >= e.r + q.r) continue;
+      if (e.type === 'mite') { e.dead = true; burst(e.x, e.y, e.S.col, 6, 120, 2); continue; }
+      const nx = (q.x - e.x) / (hyp(q.x - e.x, q.y - e.y) || 1), ny = (q.y - e.y) / (hyp(q.x - e.x, q.y - e.y) || 1), dot = q.vx * nx + q.vy * ny;
+      e.stun = T.stun * G.mut.stunMul; e.state = 'idle'; e.st = 0; e.vx += q.vx * 0.08; e.vy += q.vy * 0.08; // STUN + bounce off (or stick)
+      if (q.sticky) { q.vx = 0; q.vy = 0; } else { q.vx = (q.vx - 2 * dot * nx) * 0.45; q.vy = (q.vy - 2 * dot * ny) * 0.45; }
+      q.spent = true; q.life = Math.min(q.life, 0.35);
+      burst(q.x, q.y, '#fff7a8', 10, 200, 3); SFX.stun(); G.hitstop = Math.max(G.hitstop, 0.03); G.shake = Math.max(G.shake, 3);
+      if (G.mut.ricochet) for (const e2 of G.ents) { if (e2 === e || e2.dead || e2.type === 'chunk' || e2.type === 'mite' || e2.stun > 0) continue; if (hyp(e2.x - q.x, e2.y - q.y) < 150) { e2.stun = T.stun * G.mut.stunMul; e2.state = 'idle'; e2.st = 0; burst(e2.x, e2.y, '#fff7a8', 6, 150, 2); break; } }
+      break;
+    }
+    if (q.life <= 0) { q.dead = true; if (q.self) spawnChunk(q.x, q.y, q.self * 0.85, q.vx * 0.2, q.vy * 0.2); else burst(q.x, q.y, q.col, 6, 120, 2.5); }
+  }
+}
+function respawn(dt) { // mites refill fast; each unlocked species gets one replacement per T.respawn seconds, far from you
+  G.spawnT -= dt; if (G.spawnT > 0) return; G.spawnT = 0.5; const n = {}; for (const e of G.ents) n[e.type] = (n[e.type] || 0) + 1;
+  for (const type in SPECIES) {
+    if (!G.unlocked.has(type)) continue; if (type === 'alpha' && G.zone < 5) continue;
+    const c = n[type] || 0, S = SPECIES[type]; if (c >= S.count) continue;
+    if (type === 'mite') { for (let i = 0; i < Math.min(3, S.count - c); i++) spawn(type); continue; }
+    if ((G.cool[type] = (G.cool[type] || 0) + 0.5) < T.respawn * MODE.respawnMul) continue;
+    if (type === 'pack') { if (c <= S.count - 5) { spawnPack(); G.cool[type] = 0; } } else { spawn(type); G.cool[type] = 0; }
+  }
+}
+
+// ───────────── zones + mutation picks ─────────────
+function finishTutorial() { G.ents = G.ents.filter(e => e.type === 'chunk'); G.zone = 1; unlockSpecies(ZONES[1].unlock); banner('ZONE 1: ' + ZONES[1].name, ZONES[1].sub, 3.4); }
+function zoneClear() { const bonus = 100 * G.zone; G.score += bonus; floatText(G.p.x, G.p.y - 50, '+' + bonus + ' ZONE BONUS', CLR.gold, 16); G.pickTitle = ZONES[G.zone].name + ' CLEARED'; offerPick(); }
+function offerPick() {
+  const pool = MUTATIONS.filter(m => G.mutIds.indexOf(m.id) < 0), p2 = pool.slice(), offer = [];
+  while (offer.length < 3 && p2.length) offer.push(p2.splice(Math.floor(rnd() * p2.length), 1)[0]);
+  G.offer = offer; G.state = 'pick'; G.pickDelay = 0.35; I.vac = false; I.spit = false;
+}
+function pickMutation(i) {
+  if (!G || G.state !== 'pick' || G.pickDelay > 0 || !G.offer || !G.offer[i]) return false;
+  const m = G.offer[i]; m.apply(G.mut); G.mutIds.push(m.id); G.offer = null; SFX.pick();
+  G.zone++; const z = ZONES[G.zone]; if (z && z.unlock) unlockSpecies(z.unlock);
+  G.state = 'play'; if (z) banner((G.zone === 4 ? 'FINALE: ' : 'ZONE ' + G.zone + ': ') + z.name, z.sub, 3.6);
+  return true;
+}
+
+// ───────────── main update ─────────────
+function update(dt) {
+  if (!G) return; G.fadeT += dt; if (G.help) G.helpT += dt;
+  for (const q of G.parts) { q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.92; q.vy *= 0.92; q.life -= dt; }
+  for (const o of G.rings) o.t += dt * 2.2; if (G.swallow && (G.swallow.t += dt * 4) >= 1) G.swallow = null;
+  for (const tx of G.texts) { tx.x += tx.vx * dt; tx.y += tx.vy * dt; tx.life -= dt; }
+  G.parts = G.parts.filter(q => q.life > 0); G.rings = G.rings.filter(o => o.t < 1); G.texts = G.texts.filter(t => t.life > 0); G.shake *= Math.pow(0.004, dt);
+  if (G.banner && (G.banner.life -= dt) <= 0) G.banner = null;
+  const p = G.p, c = G.cam, zt = clamp(Math.min(view.w, view.h) / 720 * 1.7 * Math.pow(14 / p.dr, 0.5), 0.35, 2.4), ck = Math.min(1, dt * 5);
+  c.x += (p.x - c.x) * ck; c.y += (p.y - c.y) * ck; c.z += (zt - c.z) * Math.min(1, dt * 2);
+  if (AC && vacGain) { vacGain.gain.setTargetAtTime(I.vac && G.state === 'play' && !G.help ? 0.17 : 0, AC.currentTime, 0.05); vacFilt.frequency.setTargetAtTime((G.fullT > 0 ? 500 : 950) * pitch(), AC.currentTime, 0.05); }
+  if (G.help || G.state === 'start' || G.state === 'over' || G.state === 'won') return;
+  if (G.state === 'pick') { G.pickDelay -= dt; return; }
+  if (G.hitstop > 0) { G.hitstop -= dt; return; }
+  G.t += dt; if (G.zone < 5) G.time -= dt;
+  G.camoActive = G.mut.camo && hyp(p.vx, p.vy) < 8;
+  updateTips(dt);
+  if (G.zone === 0) { // independent checks (not else-if): a player may skip straight to spit+gulp without ever vacuuming, and must still finish
+    if (G.tutStep < 1 && p.gullet.length > 0) { G.tutStep = 1; tip('tut1', 'RMB / Space to SPIT — hit the sleepy GRAZER to stun it.'); }
+    if (G.tutStep < 2 && G.ents.some(e => e.stun > 0)) { G.tutStep = 2; tip('tut2', 'Touch the STUNNED grazer to GULP it and grow.'); }
+    if (G.tutStep < 3 && G.stats.gulps > 0) { G.tutStep = 3; finishTutorial(); }
+  }
+  updPlayer(dt); for (const e of G.ents) if (!e.dead) updEnt(e, dt);
+  entPairs(); contacts(); if (G.over) return; updProjs(dt); respawn(dt);
+  G.ents = G.ents.filter(e => !e.dead); G.projs = G.projs.filter(q => !q.dead);
+  if (G.state === 'play' && G.zone >= 1 && G.zone <= 3 && p.r >= ZONES[G.zone].gate) zoneClear();
+  if (G.zone < 5 && G.time <= 0) { G.time = 0; end(false, 'Out of time'); }
+}
+
+// ───────────── drawing helpers ─────────────
+function font(size, weight) { ctx.font = (weight || 500) + ' ' + size + 'px ' + FONT; }
+function txt(s, x, y, size, col, align, weight) { font(size, weight); ctx.fillStyle = col || CLR.text; ctx.textAlign = align || 'left'; ctx.fillText(s, x, y); }
+function tw(s, size, weight) { font(size, weight); return +ctx.measureText(s).width || 0; }
+function wrapText(s, maxW, size, weight) { font(size, weight); const out = []; let line = ''; for (const wd of s.split(' ')) { const t = line ? line + ' ' + wd : wd; if (line && (+ctx.measureText(t).width || 0) > maxW) { out.push(line); line = wd; } else line = t; } if (line) out.push(line); return out; }
+function para(s, x, y, maxW, size, col, align, lh) { const L = wrapText(s, maxW, size); L.forEach((l, i) => txt(l, x, y + i * (lh || size * 1.4), size, col, align)); return y + L.length * (lh || size * 1.4); }
+function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function card(x, y, w, h, hover) { ctx.fillStyle = CLR.panel; rrect(x, y, w, h, 12); ctx.fill(); ctx.strokeStyle = hover ? CLR.cyan : CLR.line; ctx.lineWidth = hover ? 2 : 1; ctx.stroke(); }
+function glow(col, blur) { ctx.shadowColor = col; ctx.shadowBlur = blur; } function noGlow() { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
+function disc(x, y, r, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+function drawBadge(x, y, r, medal) {
+  if (!medal) { ctx.strokeStyle = CLR.grey; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke(); ctx.setLineDash([]); txt('-', x, y + r * 0.3, r, CLR.grey, 'center', 800); return; }
+  const col = [0, CLR.bronze, CLR.silver, CLR.gold][medal]; ctx.fillStyle = col; ctx.globalAlpha = 0.75;
+  ctx.beginPath(); ctx.moveTo(x - r * 0.55, y + r * 0.5); ctx.lineTo(x - r * 0.75, y + r * 1.6); ctx.lineTo(x - r * 0.3, y + r * 1.3); ctx.lineTo(x, y + r * 1.6); ctx.lineTo(x + r * 0.3, y + r * 1.3); ctx.lineTo(x + r * 0.75, y + r * 1.6); ctx.lineTo(x + r * 0.55, y + r * 0.5); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  glow(col, 14); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); noGlow();
+  ctx.strokeStyle = 'rgba(11,13,18,0.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r * 0.78, 0, TAU); ctx.stroke();
+}
+function drawMutIcon(id, x, y) {
+  ctx.save(); ctx.translate(x, y); ctx.lineWidth = 2.4; ctx.strokeStyle = CLR.cyan; ctx.fillStyle = 'rgba(124,245,255,0.25)'; ctx.lineCap = 'round';
+  if (id === 'cone') { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 22, -0.65, 0.65); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if (id === 'reach') { ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(14, 0); ctx.stroke(); ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(4, -8); ctx.moveTo(14, 0); ctx.lineTo(4, 8); ctx.stroke(); ctx.beginPath(); ctx.arc(-18, 0, 5, 0, TAU); ctx.fill(); }
+  else if (id === 'gullet') { for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(-21 + i * 14, 0, 6, 0, TAU); ctx.stroke(); if (i < 2) ctx.fill(); } }
+  else if (id === 'speed') { for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-20 + i * 12, -10); ctx.lineTo(-10 + i * 12, 0); ctx.lineTo(-20 + i * 12, 10); ctx.stroke(); } }
+  else if (id === 'stomach') { ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill(); ctx.stroke(); ctx.strokeStyle = CLR.gold; ctx.beginPath(); ctx.arc(0, 2, 7, 0, TAU); ctx.stroke(); }
+  else if (id === 'sticky') { ctx.beginPath(); ctx.arc(0, -4, 10, 0, TAU); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-4, 4); ctx.quadraticCurveTo(-2, 16, 2, 18); ctx.moveTo(4, 4); ctx.quadraticCurveTo(6, 14, 8, 16); ctx.stroke(); }
+  else if (id === 'split') { for (const a of [-0.35, 0, 0.35]) { ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(16 * Math.cos(a) - 16, 16 * Math.sin(a)); ctx.stroke(); } }
+  else if (id === 'armor') { ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(16, -8); ctx.lineTo(16, 8); ctx.lineTo(0, 18); ctx.lineTo(-16, 8); ctx.lineTo(-16, -8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if (id === 'camo') { ctx.beginPath(); ctx.ellipse(0, 0, 16, 9, 0, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-2, 0); ctx.moveTo(4, 0); ctx.lineTo(10, 0); ctx.stroke(); }
+  else if (id === 'wind') { ctx.strokeStyle = CLR.green; for (const k of [-8, 0, 8]) { ctx.beginPath(); ctx.moveTo(-18, k); ctx.quadraticCurveTo(0, k - 10, 18, k); ctx.stroke(); } }
+  else if (id === 'rico') { ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(0, 10); ctx.lineTo(18, -6); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 10, 4, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(18, -6, 4, 0, TAU); ctx.fill(); }
+  else if (id === 'hide') { ctx.beginPath(); ctx.arc(0, 4, 16, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * 10, 4); ctx.lineTo(i * 10, -6); ctx.stroke(); } }
+  ctx.restore();
+}
+
+// ───────────── entity/player rendering ─────────────
+function blobPath(x, y, r, wob, t, ang, stretch, spike) { // wobbly squash-and-stretch outline, optional spiky silhouette
+  ctx.beginPath();
+  for (let i = 0; i <= 24; i++) {
+    const a = i / 24 * TAU, c = Math.cos(a - ang);
+    let rad = r * (1 + stretch * (c * c - 0.5) + wob * 0.11 * Math.sin(a * 3 + t * 9) + wob * 0.07 * Math.sin(a * 5 - t * 13) + 0.03 * Math.sin(a * 2 + t * 2.5));
+    if (spike) rad *= 1 + spike.amt * Math.pow(Math.max(0, Math.cos(a * spike.n)), spike.pow || 8);
+    i ? ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad) : ctx.moveTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
+  }
+  ctx.closePath();
+}
+function eyes(x, y, r, ang, col) { for (const s of [-1, 1]) { const ex = x + Math.cos(ang + s * 0.55) * r * 0.55, ey = y + Math.sin(ang + s * 0.55) * r * 0.55; disc(ex, ey, r * 0.2, '#fff'); disc(ex + Math.cos(ang) * r * 0.08, ey + Math.sin(ang) * r * 0.08, r * 0.1, col); } }
+function threatColor(e) { // size-relative colour cue: green = edible right now, red = avoid, grey = always harmless
+  const p = G.p; if (e.type === 'mite') return CLR.grey;
+  if (e.r < 0.6 * p.r) return CLR.green; if (e.stun > 0 && canGulp(e)) return CLR.green; return CLR.red;
+}
+function drawEnt(e) {
+  const t = G.t + e.ph;
+  if (e.type === 'chunk') { blobPath(e.x, e.y, e.r, 0.6, t, 0, 0, null); ctx.fillStyle = PCOL; ctx.fill(); return; }
+  const tele = e.state === 'tele', flash = tele && Math.sin(G.t * 45) > 0, sp = hyp(e.vx, e.vy), ang = e.state === 'idle' && sp > 3 ? Math.atan2(e.vy, e.vx) : Math.atan2(e.dy, e.dx);
+  if (sp > 3 && e.state === 'idle') { e.dx = e.vx / sp; e.dy = e.vy / sp; }
+  if (tele || e.state === 'charge') { ctx.strokeStyle = 'rgba(255,80,80,' + (tele ? (flash ? 0.5 : 0.2) : 0.12) + ')'; ctx.lineWidth = e.r * 1.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + e.dx * 360, e.y + e.dy * 360); ctx.stroke(); }
+  blobPath(e.x, e.y, e.r, e.stun > 0 ? 1 : 0.3, t, ang, Math.min(0.3, sp / 900), e.S.spike); ctx.fillStyle = e.S.col; ctx.fill();
+  if (e.stun > 0 || flash) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fill(); } else if (e.state === 'tired') { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fill(); }
+  const tc = threatColor(e); if (tc !== CLR.grey) { if (tc === CLR.green) glow(tc, 8); ctx.strokeStyle = tc; ctx.lineWidth = Math.max(1.5, e.r * 0.09); ctx.stroke(); noGlow(); }
+  if (e.type !== 'mite') eyes(e.x, e.y, e.r, ang, e.stun > 0 ? '#999' : '#111');
+  if (e.stun > 0) { ctx.fillStyle = '#ffe66a'; ctx.font = 'bold ' + Math.max(12, e.r * 0.6) + 'px sans-serif'; ctx.textAlign = 'center'; for (let i = 0; i < 3; i++) { const a = G.t * 5 + i * TAU / 3; ctx.fillText('★', e.x + Math.cos(a) * e.r * 0.8, e.y - e.r * 1.05 + Math.sin(a) * e.r * 0.25); } }
+  if (e.type !== 'mite' && G.t - (G.firstSeen[e.type] || 0) < 6) { // skip the label if it would land in the fixed top/bottom HUD bands
+    const sy = (e.y - e.r - 10 - G.cam.y) * G.cam.z + view.h / 2; if (sy > 78 && sy < view.h - 92) txt(e.S.name, e.x, e.y - e.r - 10, 13, tc === CLR.grey ? CLR.grey : tc, 'center', 700);
+  }
+}
+function drawPlayer() {
+  const p = G.p, t = G.t, r = p.dr * (1 + Math.max(0, p.gulpT) * 0.5 * Math.sin(Math.max(0, p.gulpT) * 25)), sp = hyp(p.vx, p.vy);
+  if (I.vac) { // suction cone: faint streaks rushing toward the mouth
+    const R = vacRange(), half = T.cone * G.mut.cone; ctx.fillStyle = 'rgba(160,210,255,0.05)'; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, R, p.aim - half, p.aim + half); ctx.fill();
+    ctx.strokeStyle = G.fullT > 0 ? 'rgba(255,160,120,0.35)' : 'rgba(190,225,255,0.35)'; ctx.lineWidth = Math.max(1, r * 0.06);
+    for (let i = 0; i < 16; i++) { const a = p.aim + (((i * 0.618) % 1) * 2 - 1) * half, k = 1 - ((t * 1.8 + i * 0.37) % 1), d0 = r + (R - r) * k, d1 = Math.max(r, d0 - R * 0.18); ctx.beginPath(); ctx.moveTo(p.x + Math.cos(a) * d0, p.y + Math.sin(a) * d0); ctx.lineTo(p.x + Math.cos(a) * d1, p.y + Math.sin(a) * d1); ctx.stroke(); }
+  }
+  if (p.inv > 0 && Math.sin(t * 40) > 0) ctx.globalAlpha = 0.45;
+  glow(CLR.cyan, 10); blobPath(p.x, p.y, r, 0.35 + p.wob, t, sp > 5 ? Math.atan2(p.vy, p.vx) : p.aim, Math.min(0.28, sp / 600), null); ctx.fillStyle = PCOL; ctx.fill(); noGlow(); ctx.strokeStyle = CLR.cyan; ctx.lineWidth = Math.max(1.5, r * 0.07); ctx.stroke();
+  eyes(p.x, p.y, r * 0.85, p.aim, '#1a1f2b');
+  disc(p.x + Math.cos(p.aim) * r * 0.72, p.y + Math.sin(p.aim) * r * 0.72, r * (I.vac ? 0.3 + 0.04 * Math.sin(t * 30) : 0.1), '#122028');
+  ctx.globalAlpha = 1;
+}
+
+// ───────────── world + HUD render ─────────────
+function render() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.textBaseline = 'alphabetic'; const w = cv.width, h = cv.height;
+  const bgg = ctx.createRadialGradient(w / 2, h / 2, 40, w / 2, h / 2, Math.max(w, h) * 0.75); bgg.addColorStop(0, CLR.bg2); bgg.addColorStop(1, CLR.bg); ctx.fillStyle = bgg; ctx.fillRect(0, 0, w, h);
+  for (const mt of motes) { const y = ((mt.y - (G ? G.fadeT : 0) * mt.v) % 1 + 1) % 1; ctx.fillStyle = 'rgba(170,179,197,' + mt.a + ')'; ctx.beginPath(); ctx.arc(mt.x * w, y * h, mt.r, 0, TAU); ctx.fill(); }
+  if (!G) return;
+  renderWorld(w, h);
+  if (G.state !== 'start') renderHUD(w, h);
+  const a = clamp(G.fadeT / 0.3, 0, 1);
+  if (G.help || G.state === 'start') renderStart(G.help ? clamp(G.helpT / 0.25, 0, 1) : a);
+  else if (G.state === 'pick' && G.offer) renderPick(a);
+  else if (G.state === 'over' || G.state === 'won') renderResult(a);
+  else cv.style.cursor = I.vac ? 'grabbing' : 'crosshair';
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+}
+function renderWorld(w, h) {
+  const c = G.cam, p = G.p;
+  ctx.save(); ctx.translate(w / 2 + (Math.random() - 0.5) * G.shake * 2, h / 2 + (Math.random() - 0.5) * G.shake * 2); ctx.scale(c.z, c.z); ctx.translate(-c.x, -c.y);
+  ctx.fillStyle = '#10131b'; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = '#171b26'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 100) { ctx.moveTo(x, 0); ctx.lineTo(x, H); } for (let y = 0; y <= H; y += 100) { ctx.moveTo(0, y); ctx.lineTo(W, y); } ctx.stroke();
+  ctx.strokeStyle = '#3a4258'; ctx.lineWidth = 6; ctx.strokeRect(0, 0, W, H);
+  for (const k of G.rocks) { disc(k.x, k.y, k.r, '#272c3a'); ctx.strokeStyle = '#3a4258'; ctx.lineWidth = 3; ctx.stroke(); }
+  const hw = w / 2 / c.z + 120, hh = h / 2 / c.z + 120;
+  for (const e of G.ents) if (!e.dead && Math.abs(e.x - c.x) < hw + e.r && Math.abs(e.y - c.y) < hh + e.r) drawEnt(e);
+  for (const q of G.projs) if (!q.dead) { disc(q.x, q.y, q.r, q.col); ctx.strokeStyle = q.enemy ? CLR.red : '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
+  if (G.swallow) { const s = G.swallow, k = s.t * s.t; disc(s.x + (p.x - s.x) * k, s.y + (p.y - s.y) * k, s.r * (1 - k * 0.8), s.col); }
+  if (!G.over || G.won) drawPlayer();
+  for (const q of G.parts) { ctx.globalAlpha = clamp(q.life / q.max, 0, 1); disc(q.x, q.y, q.r, q.col); } ctx.globalAlpha = 1;
+  for (const o of G.rings) { ctx.strokeStyle = 'rgba(255,255,255,' + (1 - o.t) * 0.7 + ')'; ctx.lineWidth = 8 * (1 - o.t) + 1; ctx.beginPath(); ctx.arc(o.x, o.y, o.r + (o.max - o.r) * o.t, 0, TAU); ctx.stroke(); }
+  for (const tx of G.texts) { ctx.globalAlpha = clamp(tx.life, 0, 1); txt(tx.s, tx.x, tx.y, tx.size, tx.col, 'center', 800); } ctx.globalAlpha = 1;
+  ctx.restore();
+}
+function hud(w, h) { renderHUD(w, h); } // kept for external callers/tests
+function renderHUD(w, h) {
+  const p = G.p, z = G.zone;
+  let label, frac, right;
+  if (z === 0) { label = 'THE PEN — practice'; frac = G.tutStep / 3; right = 'step ' + Math.min(3, G.tutStep + 1) + ' / 3'; }
+  else if (z >= 1 && z <= 3) { const zo = ZONES[z], prev = z === 1 ? 0 : ZONES[z - 1].gate; label = 'ZONE ' + z + '/4: ' + zo.name; frac = clamp((p.r - prev) / (zo.gate - prev), 0, 1); right = 'size ' + Math.round(p.r) + ' / ' + zo.gate; }
+  else if (z === 4) { label = "FINALE: ALPHA'S LAIR"; frac = clamp(p.r / T.alphaNeed, 0, 1); right = 'size ' + Math.round(p.r) + ' / ' + T.alphaNeed; }
+  else { label = 'ENDLESS'; frac = 1; right = 'grown ' + Math.floor(G.t) + 's'; }
+  txt(label, 16, 26, 13, CLR.grey, 'left', 700);
+  ctx.fillStyle = '#1b2130'; rrect(16, 32, 220, 9, 4); ctx.fill(); if (frac > 0.01) { ctx.fillStyle = CLR.cyan; rrect(16, 32, Math.max(8, 220 * frac), 9, 4); ctx.fill(); }
+  txt(right, 244, 40, 13, CLR.text, 'left', 600);
+  if (z < 5) { const mm = Math.floor(Math.max(0, G.time) / 60), ss = Math.floor(Math.max(0, G.time) % 60); txt((mm + ':' + (ss < 10 ? '0' : '') + ss), 16, 66, 22, G.time < 30 ? CLR.red : CLR.text, 'left', 800); txt('TIME LEFT', 16, 80, 11, CLR.grey, 'left', 700); }
+  txt('SCORE', 120, 66, 11, CLR.grey, 'left', 700); txt(String(Math.round(G.score)), 120, 88, 20, CLR.gold, 'left', 800);
+  // top-right: size/mass (=HP) + gullet resource
+  txt('SIZE ' + p.r.toFixed(1) + '   MASS ' + Math.round(p.r * p.r), w - 16, 26, 14, PCOL, 'right', 700);
+  const slots = G.mut.slots, gy = 50, gx = w - 16 - (slots - 1) * 28;
+  txt('GULLET', w - 16, gy - 18, 11, CLR.grey, 'right', 700);
+  for (let i = 0; i < slots; i++) { const it = p.gullet[i]; ctx.strokeStyle = G.fullT > 0 ? CLR.red : i === p.gullet.length - 1 ? '#fff' : CLR.line; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gx + i * 28, gy, 12, 0, TAU); ctx.stroke(); if (it) disc(gx + i * 28, gy, clamp(it.r * 0.55, 4, 10), it.col); }
+  // food-chain ladder, anchored under the top-right stats
+  let ly = 92; const lx = w - 190; txt('FOOD CHAIN', lx, ly - 12, 11, CLR.grey, 'left', 700);
+  const you = () => { disc(lx + 8, ly - 4, 6, PCOL); ctx.fillStyle = PCOL; ctx.font = 'bold 12px ' + FONT; ctx.textAlign = 'left'; ctx.fillText('▶ YOU (' + Math.round(p.r) + ')', lx + 22, ly); ly += 20; }; let placed = false;
+  for (const o of LADDER) {
+    if (!placed && p.r >= o.r) { placed = true; you(); }
+    const st = o.r < 0.6 * p.r ? ['VACUUM', CLR.green] : (o.S === SPECIES.alpha ? p.r >= T.alphaNeed : o.r < 1.2 * p.r) ? ['STUN+GULP', CLR.gold] : o.S === SPECIES.mite ? ['—', CLR.grey] : ['AVOID', CLR.red];
+    disc(lx + 8, ly - 4, clamp(o.r * 0.2, 2.5, 8), o.S.col); txt(o.S.name, lx + 22, ly, 12, CLR.text, 'left', 600); txt(st[0], lx + 96, ly, 12, st[1], 'left', 700); ly += 20;
+  }
+  if (!placed) you();
+  const al = G.ents.find(e => e.type === 'alpha'); // edge arrow to the Alpha
+  if (al && G.state === 'play') { const sx = (al.x - G.cam.x) * G.cam.z, sy = (al.y - G.cam.y) * G.cam.z; if (Math.abs(sx) > w / 2 - 30 || Math.abs(sy) > h / 2 - 30) { const a = Math.atan2(sy, sx), k = Math.min((w / 2 - 40) / Math.abs(Math.cos(a) || 1e-6), (h / 2 - 40) / Math.abs(Math.sin(a) || 1e-6)); ctx.save(); ctx.translate(w / 2 + Math.cos(a) * k, h / 2 + Math.sin(a) * k); ctx.rotate(a); ctx.fillStyle = SPECIES.alpha.col; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-10, -10); ctx.lineTo(-10, 10); ctx.fill(); ctx.restore(); } }
+  // bottom-centre: tip area (fixed, never overlaps gameplay)
+  const tp = G.tipQ[0];
+  if (tp && G.state === 'play') { const al2 = clamp(tp.life, 0, 1); ctx.globalAlpha = Math.min(1, al2 * 3); const L = wrapText(tp.s, w - 360, 15); L.slice(0, 2).forEach((l, i) => txt(l, w / 2, h - 78 + i * 19, 15, CLR.white, 'center', 600)); ctx.globalAlpha = 1; }
+  txt(G.fullT > 0 ? 'GULLET FULL — E digest / RMB spit' : p.gullet.length ? 'RMB/Space spit · E digest' : 'empty spit costs ' + Math.round(T.spitCost * 100) + '% of YOU', w / 2, h - 40, 12, G.fullT > 0 ? CLR.red : CLR.grey, 'center', 500);
+  // bottom-right: key reminders
+  txt('WASD move · LMB vacuum · RMB/Space spit · E digest', w - 16, h - 34, 12, CLR.grey, 'right', 500);
+  txt('H help · R restart · M ' + (muted ? 'unmute' : 'mute') + ' · Esc menu', w - 16, h - 16, 12, CLR.grey, 'right', 500);
+  // banner: zone / new-species callouts, top-centre
+  if (G.banner) { const b = G.banner, age = b.max - b.life, a = Math.min(clamp(age / 0.3, 0, 1), clamp(b.life / 0.4, 0, 1)); ctx.globalAlpha = a;
+    const wd = Math.min(w - 40, 760), y = 20; ctx.fillStyle = 'rgba(11,13,18,0.82)'; rrect(w / 2 - wd / 2, y, wd, b.sub ? 68 : 42, 12); ctx.fill(); ctx.strokeStyle = CLR.line; ctx.lineWidth = 1; ctx.stroke();
+    txt(b.title, w / 2, y + 27, 21, CLR.gold, 'center', 800); if (b.sub) para(b.sub, w / 2, y + 48, wd - 40, 13, CLR.grey, 'center', 16); ctx.globalAlpha = 1; }
+}
+
+// ───────────── UI: start / pick / result screens + buttons ─────────────
+function uiResize() { US = Math.min(view.w / 800, view.h / 600); UX = (view.w - 800 * US) / 2; UY = (view.h - 600 * US) / 2; }
+function uiBegin(a) { ctx.setTransform(US, 0, 0, US, UX, UY + (1 - a) * 14 * US); ctx.globalAlpha = a; }
+function dim(a, k) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = 'rgba(8,10,16,' + (k * a) + ')'; ctx.fillRect(0, 0, view.w, view.h); }
+function buttons() {
+  const b = [];
+  if (!G) return b;
+  if (G.help || G.state === 'start') {
+    b.push({ id: 'play', x: 300, y: 528, w: 200, h: 50, label: G.state === 'start' ? 'PLAY' : 'RESUME', primary: true });
+    b.push({ id: 'mode', x: 40, y: 534, w: 220, h: 38, label: 'DIFFICULTY: ' + MODES[modeId].name });
+  } else if (G.state === 'pick' && G.offer) {
+    const n = G.offer.length, w = 200, gap = 20, x0 = 400 - (w * n + gap * (n - 1)) / 2;
+    G.offer.forEach((m, i) => b.push({ id: 'card' + i, mut: m, idx: i, x: x0 + i * (w + gap), y: 168, w, h: 238 }));
+  } else if (G.state === 'over') {
+    b.push({ id: 'retry', x: 250, y: 480, w: 150, h: 46, label: 'RETRY  (R)', primary: true });
+    b.push({ id: 'menu', x: 410, y: 480, w: 140, h: 46, label: 'MENU  (Esc)' });
+  } else if (G.state === 'won') {
+    b.push({ id: 'endless', x: 150, y: 480, w: 250, h: 46, label: 'KEEP GOING: ENDLESS', primary: true });
+    b.push({ id: 'retry', x: 410, y: 480, w: 110, h: 46, label: 'RETRY' });
+    b.push({ id: 'menu', x: 530, y: 480, w: 110, h: 46, label: 'MENU' });
+  }
+  return b;
+}
+function hitBtn() { if (!G) return null; const vx = (mouse.x - UX) / US, vy = (mouse.y - UY) / US; for (const b of buttons()) if (vx >= b.x && vx <= b.x + b.w && vy >= b.y && vy <= b.y + b.h) return b; return null; }
+function act(id) {
+  if (id === 'play') { if (G.state === 'start') beginPlay(); else G.help = false; }
+  else if (id === 'mode') setMode(modeId === 'hard' ? 'normal' : 'hard');
+  else if (id === 'retry') newRun('play');
+  else if (id === 'menu') { try { location.href = 'index.html'; } catch (e) {} }
+  else if (id === 'endless') goEndless();
+  else if (id.indexOf('card') === 0) pickMutation(+id.slice(4));
+}
+function drawBtn(b, hov) {
+  const down = hov && UIpress === b.id, y = b.y + (down ? 2 : hov ? -2 : 0);
+  if (b.primary) { glow(CLR.cyan, hov ? 18 : 8); ctx.fillStyle = hov ? '#a6f9ff' : CLR.cyan; rrect(b.x, y, b.w, b.h, 12); ctx.fill(); noGlow(); txt(b.label, b.x + b.w / 2, y + b.h / 2 + 8, 22, '#0b0d12', 'center', 800); }
+  else { card(b.x, y, b.w, b.h, hov); txt(b.label, b.x + b.w / 2, y + b.h / 2 + 5, 15, hov ? CLR.white : CLR.text, 'center', 600); }
+}
+function drawButtons() { const hb = hitBtn(); for (const b of buttons()) if (!b.mut) drawBtn(b, hb && hb.id === b.id); cv.style.cursor = hb ? 'pointer' : (G.state === 'play' && !G.help ? (I.vac ? 'grabbing' : 'crosshair') : 'default'); }
+function diagram(cx, cy) { // the core verb, drawn with the game's own shapes: vacuum -> spit -> gulp
+  const u = ((G.fadeT * 0.5) % 3) / 3;
+  txt('VACUUM small critters', cx - 210, cy - 44, 13, CLR.green, 'center', 700);
+  ctx.save(); ctx.translate(cx - 210, cy); ctx.fillStyle = 'rgba(160,210,255,0.15)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 46, -0.5, 0.5); ctx.fill();
+  disc(0, 0, 15, PCOL); ctx.strokeStyle = CLR.cyan; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.stroke();
+  const k = clamp(u / 0.3, 0, 1); disc(40 - 34 * k, -4 + 4 * k, 4, CLR.green); ctx.restore();
+  txt('SPIT to stun', cx, cy - 44, 13, CLR.gold, 'center', 700);
+  ctx.save(); ctx.translate(cx - 40, cy); disc(0, 0, 13, PCOL); ctx.restore();
+  ctx.strokeStyle = 'rgba(255,209,102,0.5)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - 26, cy); ctx.lineTo(cx + 30, cy); ctx.stroke();
+  disc(cx + 34, cy, 12, CLR.red); ctx.fillStyle = '#ffe66a'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('★', cx + 34, cy - 18);
+  txt('GULP: touch it, grow', cx + 210, cy - 44, 13, CLR.gold, 'center', 700);
+  ctx.save(); ctx.translate(cx + 210, cy); const gk = 1 + 0.15 * Math.sin(G.fadeT * 3); ctx.scale(gk, gk); disc(0, 0, 15, PCOL); ctx.strokeStyle = CLR.cyan; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.stroke(); ctx.restore();
+  ctx.strokeStyle = CLR.grey; ctx.lineWidth = 2; ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.moveTo(cx - 160, cy); ctx.lineTo(cx - 90, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 60, cy); ctx.lineTo(cx + 150, cy); ctx.stroke(); ctx.setLineDash([]);
+}
+function renderStart(a) {
+  dim(a, 0.93); uiBegin(a);
+  ctx.letterSpacing = '3px'; txt('MASS BUDGET', 32, 58, 42, CLR.white, 'left', 800); ctx.letterSpacing = '0px';
+  ctx.fillStyle = CLR.cyan; ctx.fillRect(34, 66, 60, 3);
+  txt('Your MASS is your HP, ammo, size and speed. Grow to size ' + T.alphaNeed + ' and eat the ALPHA.', 32, 88, 15, CLR.text, 'left', 500);
+  const med = MEDALS.indexOf(lsGet('proto_massbudget_medal') || 'none'); drawBadge(744, 44, 18, Math.max(0, med));
+  txt('Best ' + (Math.round(+lsGet('proto_massbudget_best')) || 0) + '   Wins ' + (+lsGet('proto_massbudget_wins') || 0), 716, 50, 14, CLR.grey, 'right', 600);
+  card(32, 100, 736, 128); txt('VACUUM → SPIT → GULP', 400, 122, 14, CLR.white, 'center', 800); diagram(400, 172);
+  card(32, 240, 362, 184); txt('CONTROLS', 48, 264, 14, CLR.cyan, 'left', 800);
+  { let cy = 288; [['WASD', 'move'], ['MOUSE', 'aim'], ['HOLD LMB', 'vacuum small critters into your gullet (5 slots)'], ['RMB / SPACE', 'spit a gullet critter to STUN a beast'], ['E', 'digest gullet for a little mass'], ['H R M Esc', 'help/pause, restart, mute, menu']].forEach(r => { txt(r[0], 48, cy, 13, CLR.white, 'left', 700); const ny = para(r[1], 152, cy, 226, 13, CLR.text, 'left', 15); cy = Math.max(cy + 20, ny + 6); }); }
+  card(406, 240, 362, 184); txt('SCORE AND LOSING', 422, 264, 14, CLR.cyan, 'left', 800);
+  { let sy = 286; ['STUNNED beast smaller than 1.2x you: GULP it (+60% of its mass).', 'AWAKE beast bigger than 0.6x you: costs 30% of your mass.', 'At minimum size you are shredded — run over.', 'GOAL  reach size ' + T.alphaNeed + ', stun & eat the ALPHA.', 'MEDALS  Bronze: Shallows   Silver: the finale   Gold: eat the Alpha'].forEach((s, i) => { sy = para(s, 422, sy, 330, 13, i >= 3 ? CLR.gold : CLR.text, 'left', 16) + 8; }); }
+  card(32, 432, 736, 54); const LG = [['mite', 'VACUUM'], ['grazer', 'STUN+GULP'], ['charger', 'AVOID / gate 2'], ['spitter', 'AVOID / gate 3'], ['alpha', 'FINALE']];
+  LG.forEach((g, i) => { const S = SPECIES[g[0]], lx = 48 + i * 146; disc(lx + 8, 455, 9, S.col); txt(S.name, lx + 24, 452, 13, CLR.text, 'left', 700); txt(g[1], lx + 24, 469, 12, CLR.grey, 'left', 500); });
+  drawButtons();
+  txt(modeId === 'hard' ? 'HARD: ' + MODES.hard.time / 60 + ' min, faster beasts, tighter telegraphs (the original tuning).' : 'NORMAL: 5 minutes, gentler beasts, longer telegraphs. Recommended for a first run.', 400, 598, 13, CLR.grey, 'center', 500);
+  txt('THE PEN teaches vacuum / spit / gulp safely before anything can hurt you.', 400, 578, 12, CLR.grey, 'center', 500);
+}
+function renderPick(a) {
+  dim(a, 0.8); uiBegin(a);
+  txt(G.pickTitle || 'MUTATION', 400, 108, 28, CLR.green, 'center', 800);
+  txt('Pick ONE mutation. Click a card or press 1 / 2 / 3. The game is paused.', 400, 140, 14, CLR.text, 'center', 500);
+  const hb = G.pickDelay > 0 ? null : hitBtn();
+  for (const b of buttons()) { if (!b.mut) continue; const m = b.mut, hov = hb && hb.id === b.id, y = b.y - (hov ? 6 : 0);
+    if (hov) glow(CLR.cyan, 16); card(b.x, y, b.w, b.h, hov); noGlow(); txt(String(b.idx + 1), b.x + 14, y + 24, 15, CLR.grey, 'left', 800); if (m.how) txt('CHANGES PLAY', b.x + b.w - 12, y + 22, 11, CLR.cyan, 'right', 700);
+    drawMutIcon(m.icon, b.x + b.w / 2, y + 60); txt(m.name, b.x + b.w / 2, y + 112, 15, CLR.gold, 'center', 800);
+    const ny = para(m.desc, b.x + b.w / 2, y + 136, b.w - 24, 13, CLR.text, 'center', 18); para(m.why, b.x + b.w / 2, Math.max(ny + 6, y + 178), b.w - 24, 12, CLR.grey, 'center', 16); }
+  drawButtons();
+}
+function causeText() {
+  if (G.won) return 'You swallowed the ALPHA whole' + (G.mut.secondWindUsed ? ' after a Second Wind saved you earlier' : '') + '. Peak size ' + Math.round(G.p.peak) + '.';
+  if (G.why === 'Out of time') return 'Time ran out at size ' + Math.round(G.p.r) + ', in ' + ZONES[G.zone].name + '.';
+  let worst = null, wc = 0; for (const k in G.stats.by) if (G.stats.by[k] > wc) { wc = G.stats.by[k]; worst = k; }
+  const nm = worst && SPECIES[worst] ? SPECIES[worst].name : (worst === 'lob' ? 'a stun-glob' : 'something');
+  return 'Shredded to nothing by a ' + nm + ' in ' + ZONES[G.zone].name + '. Hits taken: ' + G.stats.hits + '.';
+}
+const CAUSE_TIP = {
+  grazer: 'Grazers only bite once bigger than 0.6x your size. Grow past them on mites first, or spit-stun then gulp them.',
+  pack: 'Pack hunters gang up in numbers - never let more than one close in at once; stun the one nearest you and back away.',
+  charger: 'Chargers telegraph a red line for a moment before they charge - watch for it and step sideways off the line.',
+  spitter: 'Spitters stun from range - hold LMB while their glob is incoming to vacuum it out of the air for free ammo instead of taking it.',
+  brute: 'Brutes hit hard - only approach one once you have stunned it with a spit.',
+  alpha: 'The ALPHA only goes down once you are size ' + T.alphaNeed + ' and it is stunned - avoid it until then.',
+  lob: 'That stun came from a Spitter\'s lob - hold LMB while it is incoming to vacuum it out of the air instead of eating it.',
+};
+function tipText() {
+  if (G.won) return 'Endless mode keeps your size and mutations - the Alpha returns. See how big you can grow.';
+  if (G.why === 'Out of time') return 'Vacuum every mite you pass - they cost nothing and add up fast. Spend spit-stuns on anything within reach the moment you see it.';
+  let worst = null, wc = 0; for (const k in G.stats.by) if (G.stats.by[k] > wc) { wc = G.stats.by[k]; worst = k; }
+  return CAUSE_TIP[worst] || 'Keep your distance from anything bigger than you until you can stun it.';
+}
+function renderResult(a) {
+  dim(a, 0.84); uiBegin(a); const won = G.state === 'won', k = clamp(G.fadeT / 0.9, 0, 1), med = G.medal; card(120, 56, 560, 484);
+  ctx.letterSpacing = '2px'; txt(won ? 'ALPHA EATEN' : 'GAME OVER', 400, 108, 32, won ? CLR.green : CLR.red, 'center', 800); ctx.letterSpacing = '0px';
+  drawBadge(220, 178, 36, med); txt(['NO MEDAL YET', 'BRONZE MEDAL', 'SILVER MEDAL', 'GOLD MEDAL'][med], 288, 164, 15, [CLR.grey, CLR.bronze, CLR.silver, CLR.gold][med], 'left', 800);
+  txt(String(Math.round(G.score * k)), 288, 206, 38, CLR.gold, 'left', 800); const sw = tw(String(Math.round(G.score * k)), 38, 800); txt(G.newBest ? 'NEW BEST' : 'best ' + Math.round(+lsGet('proto_massbudget_best') || 0), 296 + sw, 206, 13, G.newBest ? CLR.green : CLR.grey, 'left', 700);
+  txt(med < 3 ? 'Next: ' + ['BRONZE - clear the Shallows (size 30)', 'SILVER - reach the finale (size 75)', 'GOLD - eat the ALPHA'][med] : 'Every medal earned - chase the score now.', 288, 232, 13, CLR.grey, 'left', 500);
+  let y = para(causeText(), 400, 286, 500, 15, CLR.white, 'center', 21); y = para('TIP: ' + tipText(), 400, y + 10, 500, 14, CLR.cyan, 'center', 19);
+  txt('Time ' + Math.floor(G.t) + 's   Peak size ' + G.p.peak.toFixed(1) + '   Gulps ' + G.stats.gulps + '   Hits taken ' + G.stats.hits + '   ' + MODES[modeId].name, 400, 442, 13, CLR.grey, 'center', 500);
+  drawButtons();
+}
+
+// ───────────── loop + input ─────────────
+function resize() { view.w = cv.width = window.innerWidth || 1280; view.h = cv.height = window.innerHeight || 720; uiResize(); }
+function toggleHelp() { if (!G || G.state === 'start') return; G.help = !G.help; G.helpT = 0; I.vac = false; }
+function frame(now) {
+  const dt = Math.min(0.033, (now - last) / 1000 || 0.016); last = now;
+  I.mx = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0); I.my = (K.KeyS || K.ArrowDown ? 1 : 0) - (K.KeyW || K.ArrowUp ? 1 : 0);
+  if (G) { I.ax = G.cam.x + (mouse.x - view.w / 2) / G.cam.z; I.ay = G.cam.y + (mouse.y - view.h / 2) / G.cam.z; }
+  update(dt); render(); requestAnimationFrame(frame);
+}
+window.addEventListener('resize', resize);
+window.addEventListener('keydown', e => {
+  initAudio(); K[e.code] = true;
+  if (G && G.state === 'play' && !G.help) { if (e.code === 'Space' && !e.repeat) I.spit = true; if (e.code === 'KeyE' && !e.repeat) I.digest = true; }
+  if (e.code === 'KeyR') newRun('play');
+  else if (e.code === 'Escape') { try { location.href = 'index.html'; } catch (er) {} }
+  else if (e.code === 'KeyH') toggleHelp();
+  else if (e.code === 'KeyM') setMute(!muted);
+  else if (e.code === 'KeyD' && (G.help || G.state === 'start')) act('mode');
+  else if ((e.code === 'Enter' || e.code === 'Space') && (G.help || G.state === 'start')) act('play');
+  else if (G.state === 'pick' && (e.key === '1' || e.key === '2' || e.key === '3')) pickMutation(+e.key - 1);
+  if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+});
+window.addEventListener('keyup', e => { K[e.code] = false; });
+window.addEventListener('blur', () => { for (const k in K) K[k] = false; I.vac = false; });
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mousedown', e => {
+  initAudio(); mouse.x = e.clientX; mouse.y = e.clientY;
+  if (e.button === 0) { const b = hitBtn(); if (b) { UIpress = b.id; e.preventDefault(); return; } if (G && G.state === 'play' && !G.help) I.vac = true; }
+  if (e.button === 2 && G && G.state === 'play' && !G.help) I.spit = true;
+  e.preventDefault();
+});
+window.addEventListener('mouseup', e => { if (e.button === 0) { I.vac = false; const b = hitBtn(); if (b && UIpress === b.id) act(b.id); UIpress = null; } });
+window.addEventListener('contextmenu', e => e.preventDefault());
+window.MB = { newRun, startRun: (s) => newRun('play'), beginPlay, setInput, update, render, pushOut, canGulp, pickMutation, offerPick, goEndless, setMode, setMute, toggleHelp,
+  buttons, hitBtn, act, click: (x, y) => { mouse.x = x; mouse.y = y; const b = hitBtn(); if (b) act(b.id); }, resize, causeText, tipText,
+  SPECIES, MUTATIONS, ZONES, MODES, T, W, H, get G() { return G; }, get modeId() { return modeId; }, get muted() { return muted; } };
+resize(); newRun('start'); requestAnimationFrame(frame);
+})();
+</script></body></html>

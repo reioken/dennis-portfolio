@@ -48,6 +48,12 @@
 /arcade/*
   Cache-Control: public, max-age=0, must-revalidate
 
+# Loop prototypes: self-contained HTML greyboxes; always revalidate so tuning updates land.
+/games/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Cache-Control: public, max-age=0, must-revalidate
+
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 

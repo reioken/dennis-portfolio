@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>SEAM</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;cursor:crosshair}</style>
+</head><body><canvas id="c"></canvas><script>
+'use strict';
+// =====================================================================
+// SEAM - cut ore-rich pieces loose from a hanging slab. One file, no deps.
+// =====================================================================
+// ---------- config ----------
+const GW=160,GH=100,N=GW*GH,FLOOR=95,HUD=92,CEIL=22,BOT=78,GRAV=240,GASR=8,AVGV=1.8;
+const FONT='"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+const C={bg:'#0b0d12',white:'#f2f5fb',cyan:'#7cf5ff',red:'#ff5d73',gold:'#ffd166',green:'#9dff8a',grey:'#aab3c5',dim:'#566076',panel:'#121622',line:'#232a3d'};
+const GCOL={CLEAN:'#ffd166',OK:'#9dff8a',LOW:'#d8e6a0',RUBBLE:'#aab3c5'};
+const ORE=[null,{n:'copper',v:1,c:'#d9823b'},{n:'silver',v:2,c:'#dfe6f2'},{n:'gold',v:4,c:'#ffd166'}];
+const MODES={
+ normal:{name:'NORMAL',cuts:9,cores:2,quota:0.25,finQuota:0.28,goal:4,tiers:[[0.6,3,'CLEAN'],[0.3,1,'OK'],[0.15,0.5,'LOW']],blur:3,oreFrac:0.86,f0:0.026,fs:0.007,medals:[1000,3000,5000]},
+ hard:{name:'HARD',cuts:7,cores:1,quota:0.30,finQuota:0.36,goal:6,tiers:[[0.7,3,'CLEAN'],[0.4,1,'OK']],blur:5,oreFrac:0.88,f0:0.03,fs:0.011,medals:[800,2500,5000]}};
+const NAMES=['SURFACE VEIN','DEEP SEAM','GAS FAULT','IRON MAZE','PRESSURE ZONE','BLACK SHAFT'];
+// upgrades: one data row + one rule hook each (hooks are looked up as G.up.<id>)
+const UPG=[
+ {id:'cut',icon:'+1',name:'EXTRA BLADE',desc:'+1 cut on every slab.',why:'More cuts = more pieces. Never bad.',stack:1},
+ {id:'core',icon:'◎',name:'CORE KIT',desc:'+2 core samples per slab (right-click).',why:'Turn blurry glows into exact ore before you commit.',stack:1},
+ {id:'thin',icon:'│',name:'THIN KERF',desc:'Blade is 1 cell thick instead of 2.',why:'Destroys half as much ore when you must cut through it.'},
+ {id:'wide',icon:'↔',name:'WIDE REVEAL',desc:'Cuts reveal 7 cells deep instead of 4.',why:'Every cut teaches you more about the next one.'},
+ {id:'wedge',icon:'◣',name:'WEDGE',desc:'One free cut per slab that COLLECTS ore it crosses (W or Shift-drag).',why:'Cut straight through the richest blob and keep it.',how:1},
+ {id:'scan',icon:'≋',name:'SHARP SCAN',desc:'The ultrasound glow is much crisper.',why:'Better guesses from the very first cut.'},
+ {id:'sift',icon:'⚖',name:'SIFTER',desc:'Every grade needs 10% less ore.',why:'Sloppier pieces still make the grade.'},
+ {id:'net',icon:'▽',name:'CATCH NET',desc:'RUBBLE still pays x0.25.',why:'Big rough chunks stop being a total loss.'},
+ {id:'drill',icon:'◍',name:'DRILL',desc:'Core samples also drill a hole and collect the ore inside.',why:'Holes weaken necks: finish a piece without spending a cut.',how:1},
+ {id:'refund',icon:'↺',name:'FOREMAN',desc:'Your first 2 CLEAN pieces each slab refund the cut.',why:'Rewards many small precise cuts over one big chop.',how:1},
+ {id:'diamond',icon:'◆',name:'DIAMOND TIP',desc:'The blade passes through hard rock.',why:'Hard veins stop blocking your lines.',how:1,need:s=>s>=2},
+ {id:'sealed',icon:'☁',name:'SEALED BLADE',desc:'Gas pockets no longer burst when cut.',why:'Ignore the red pockets and cut where you like.',how:1,need:s=>s>=3},
+ {id:'magnet',icon:'∪',name:'MAGNET TRAY',desc:'Half of the ore your blade destroys is recovered.',why:'Softens every cut through a blob.'}];
+// ---------- state ----------
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const mk=()=>document.createElement('canvas');
+const slabCv=mk(),slabCtx=slabCv.getContext('2d'),prevCv=mk(),prevCtx=prevCv.getContext('2d'),bgCv=mk(),bgCtx=bgCv.getContext('2d');
+let W=0,H=0,cs=5,ox=0,oy=HUD+CEIL,slabDirty=true,uiT=0,noScan=false;
+let rock=new Uint8Array(N),ore=new Uint8Array(N),rev=new Uint8Array(N),kind=new Uint8Array(N),brit=new Uint8Array(N),hint=new Float32Array(N),gas=[];
+let chunks=[],parts=[],motes=[],drag=null,mouse={x:0,y:0,down:false},btns=[],pressed=null,preview=null,prevKey='',sparks=[];
+let mode='normal',best=0,bestMedal='',wins=0,muted=false,tutDone=false,tipsSeen={},tipCur=null,G={state:'title',sT:0,up:{}};
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,String(v))}catch(e){}}
+best=+lsGet('proto_seam_best',0)||0;bestMedal=lsGet('proto_seam_medal','');wins=+lsGet('proto_seam_wins',0)||0;
+muted=lsGet('proto_mute','0')==='1';tutDone=lsGet('proto_seam_tut','0')==='1';mode=lsGet('proto_seam_mode','normal')==='hard'?'hard':'normal';
+const M=()=>MODES[mode];
+const MRANK={'':0,bronze:1,silver:2,gold:3};
+function medalOf(s){const m=M().medals;return s>=m[2]?'gold':s>=m[1]?'silver':s>=m[0]?'bronze':''}
+function saveRun(won){if(G.score>best){best=G.score;lsSet('proto_seam_best',best)}
+ const md=medalOf(G.score);if(MRANK[md]>MRANK[bestMedal]){bestMedal=md;lsSet('proto_seam_medal',md)}
+ if(won){wins++;lsSet('proto_seam_wins',wins)}}
+// ---------- audio (soft, musical, master gain, M = mute) ----------
+let AC=null,master=null,nbuf=null;const PENTA=[0,2,4,7,9,12,14,16,19,21,24];
+function initAudio(){if(AC)return;try{const A=window.AudioContext||window.webkitAudioContext;if(!A)return;AC=new A();master=AC.createGain();master.gain.value=muted?0:0.5;master.connect(AC.destination);
+ const len=(AC.sampleRate*0.6)|0;nbuf=AC.createBuffer(1,len,AC.sampleRate);const d=nbuf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1}catch(e){AC=null}}
+function setMute(m){muted=m;lsSet('proto_mute',m?'1':'0');try{if(master)master.gain.value=m?0:0.5}catch(e){}}
+function tone(f0,f1,dur,type,vol,delay){if(!AC)return;try{const t=AC.currentTime+(delay||0),o=AC.createOscillator(),g=AC.createGain();
+ o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);
+ g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+0.012);g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.03)}catch(e){}}
+function hiss(dur,freq,vol,delay){if(!AC||!nbuf)return;try{const t=AC.currentTime+(delay||0),s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();
+ s.buffer=nbuf;f.type='lowpass';f.frequency.setValueAtTime(freq,t);f.frequency.exponentialRampToValueAtTime(Math.max(60,freq*0.2),t+dur);
+ g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t);s.stop(t+dur+0.02)}catch(e){}}
+const note=k=>330*Math.pow(2,PENTA[Math.max(0,Math.min(PENTA.length-1,k))]/12);
+const sfx={
+ crack(len){hiss(0.16+Math.min(0.2,len*0.0006),2600,0.35);tone(520,180,0.12,'triangle',0.12)},
+ whiff(){tone(300,220,0.09,'sine',0.08)},
+ thud(n){const s=Math.min(1,Math.sqrt(n)/70);hiss(0.2+0.3*s,500+300*s,0.3+0.3*s);tone(110-50*s,40,0.2+0.3*s,'sine',0.3+0.25*s)},
+ tick(k){tone(note(k),note(k),0.05,'sine',0.05)},
+ stamp(mult,k){if(mult>=3)for(let i=0;i<4;i++)tone(note(k+i*2),note(k+i*2),0.22,'triangle',0.13,i*0.06);else if(mult>0)for(let i=0;i<2;i++)tone(note(k+i),note(k+i),0.18,'triangle',0.11,i*0.07);else tone(196,147,0.25,'sine',0.1)},
+ ping(){tone(660,880,0.16,'sine',0.12)},click(){tone(520,620,0.06,'sine',0.08)},
+ burst(){hiss(0.5,1400,0.5);tone(160,50,0.4,'sine',0.3)},
+ clear(){[0,2,4,5,7].forEach((k,i)=>tone(note(k+2),note(k+2),0.3,'triangle',0.13,i*0.08))},
+ win(){[0,2,4,5,7,9,10].forEach((k,i)=>tone(note(k),note(k),0.4,'triangle',0.13,i*0.1));tone(165,165,1.2,'sine',0.1,0.2)},
+ lose(){tone(294,262,0.35,'sine',0.12);tone(220,196,0.6,'sine',0.12,0.3)}};
+// ---------- helpers ----------
+const clamp=(v,a,b)=>v<a?a:v>b?b:v,ease=t=>1-Math.pow(1-clamp(t,0,1),3);
+function noise(seed){const h=(x,y)=>{let a=Math.imul((x*374761393+y*668265263+seed*1442695)|0,1274126177);a^=a>>>13;a=Math.imul(a,1274126177);return((a^(a>>>16))>>>0)/4294967296};
+ const v=(x,y)=>{const xi=Math.floor(x),yi=Math.floor(y);let fx=x-xi,fy=y-yi;fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);
+  const a=h(xi,yi),b=h(xi+1,yi),c=h(xi,yi+1),d=h(xi+1,yi+1);return a+(b-a)*fx+(c-a)*fy+(a-b-c+d)*fx*fy};
+ return(x,y)=>(v(x,y)+0.5*v(x*2+31,y*2+17))/1.5}
+function comp(start,arr,seen){const out=[],st=[start];seen[start]=1;
+ while(st.length){const i=st.pop();out.push(i);const x=i%GW,y=(i/GW)|0;
+  if(x>0&&!seen[i-1]&&arr[i-1]){seen[i-1]=1;st.push(i-1)}
+  if(x<GW-1&&!seen[i+1]&&arr[i+1]){seen[i+1]=1;st.push(i+1)}
+  if(y>0&&!seen[i-GW]&&arr[i-GW]){seen[i-GW]=1;st.push(i-GW)}
+  if(y<GH-1&&!seen[i+GW]&&arr[i+GW]){seen[i+GW]=1;st.push(i+GW)}}
+ return out}
+function anchoredOf(arr){const seen=new Uint8Array(N);for(let x=0;x<GW;x++)if(arr[x]&&!seen[x])comp(x,arr,seen);return seen}
+function revealCircle(cx,cy,r){const r2=r*r+1;for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(dx*dx+dy*dy>r2)continue;
+ const x=cx+dx,y=cy+dy;if(x>=0&&y>=0&&x<GW&&y<GH)rev[y*GW+x]=1}slabDirty=true}
+function bres(x0,y0,x1,y1){const p=[];let dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,e=dx+dy;
+ for(let k=0;k<2000;k++){p.push([x0,y0]);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx}if(e2<=dx){e+=dx;y0+=sy}}return p}
+function spawn(x,y,vx,vy,life,c,s){if(parts.length>400)parts.shift();parts.push({x,y,vx,vy,life,max:life,c,s:s||1,txt:null})}
+function label(x,y,txt,c){parts.push({x:clamp(x,16,GW-16),y:Math.max(4,y),vx:0,vy:-5,life:1.6,max:1.6,c,s:1,txt})}
+function tiers(){const d=G.up&&G.up.sift?0.1:0;return M().tiers.map(t=>[t[0]-d,t[1],t[2]])}
+function gradeOf(p){for(const t of tiers())if(p>=t[0]-1e-9)return{mult:t[1],name:t[2],col:GCOL[t[2]]};return{mult:G.up&&G.up.net?0.25:0,name:'RUBBLE',col:GCOL.RUBBLE}}
+function multTxt(m){return m===0.5?'x½':m===0.25?'x¼':'x'+m}
+const thick=()=>G.up.thin?1:2,revR=()=>G.up.wide?7:4;
+function pOre(h,k){if(noScan)return 0.12;return clamp((h-(k===0?0.45:k===2?0.05:0.22))/(k===1?0.56:0.5),0,1)} // k: 0 low, 1 estimate, 2 high
+// ---------- tips (first time only, fixed tip area) ----------
+function tip(id,txt,sticky){if(tipsSeen[id])return;tipsSeen[id]=1;tipCur={id,txt,t:sticky?1e9:6}}
+function clearTip(id){if(tipCur&&tipCur.id===id)tipCur=null}
+// ---------- stage / generation ----------
+function stageInfo(s){const m=M(),fin=!G.endless&&s===m.goal,over=Math.max(0,s-m.goal);
+ return{fin,hard:s>=2,gas:s>=3?Math.min(5,s-1):0,brit:s>=m.goal,name:fin?'THE MOTHERLODE':NAMES[(s-1)%NAMES.length],quota:fin?m.finQuota:Math.min(0.5,m.quota+0.02*over)}}
+function genSlab(){const s=G.slab,st=stageInfo(s),m=M(),seed=(Math.random()*1e6)|0,nS=noise(seed),nO=noise(seed+77),f=m.f0+Math.min(7,s-1)*m.fs,hgt=st.fin?64:56;
+ rock=new Uint8Array(N);ore=new Uint8Array(N);rev=new Uint8Array(N);kind=new Uint8Array(N);brit=new Uint8Array(N);hint=new Float32Array(N);gas=[];chunks=[];parts=[];drag=null;preview=null;prevKey='';
+ for(let y=0;y<hgt+16;y++)for(let x=0;x<GW;x++){const nx=Math.abs(x-80)/68,ny=y/hgt;
+  if(nx*nx*nx+ny*ny*ny+(nS(x*0.06,y*0.06)-0.5)*0.8<1)rock[y*GW+x]=1}
+ const keep=anchoredOf(rock);for(let i=0;i<N;i++)if(rock[i]&&!keep[i])rock[i]=0;
+ const tmp=new Float32Array(N),vals=[];
+ for(let i=0;i<N;i++)if(rock[i]){tmp[i]=nO((i%GW)*f,((i/GW)|0)*f*1.15);vals.push(tmp[i])}
+ vals.sort((a,b)=>a-b);const thr=vals[Math.floor(vals.length*m.oreFrac)];
+ const raw=new Uint8Array(N);for(let i=0;i<N;i++)if(rock[i]&&tmp[i]>thr)raw[i]=1;
+ const seen=new Uint8Array(N);let bigB=null;
+ for(let i=0;i<N;i++)if(raw[i]&&!seen[i]){const b=comp(i,raw,seen),r=Math.random(),t=b.length<5?0:r<0.5?1:r<0.83?2:3;
+  for(const j of b)ore[j]=t;if(!bigB||b.length>bigB.length)bigB=b}
+ if(st.fin&&bigB)for(const j of bigB)ore[j]=3; // the motherlode itself
+ if(st.brit&&bigB){ // brittle shell: patches of cracked rock 2-5 cells out from the biggest vein
+  const dist=new Uint8Array(N).fill(255);let fr=bigB.slice();for(const j of fr)dist[j]=0;
+  for(let d=1;d<=5&&fr.length;d++){const nx=[];for(const j of fr){const x=j%GW,y=(j/GW)|0;for(const q of[j-1,j+1,j-GW,j+GW]){
+    if(q<0||q>=N||(q===j-1&&x===0)||(q===j+1&&x===GW-1)||!rock[q]||dist[q]!==255)continue;dist[q]=d;nx.push(q)}}fr=nx}
+  const nB=noise(seed+555),bt=st.fin?0.54:0.5;for(let i=0;i<N;i++)if(rock[i]&&!ore[i]&&!kind[i]&&dist[i]>=2&&dist[i]<=4&&nB((i%GW)*0.07,((i/GW)|0)*0.07)>bt)brit[i]=1}
+ if(st.hard){const nH=noise(seed+333),nM=noise(seed+444);for(let i=0;i<N;i++)if(rock[i]&&!ore[i]&&!brit[i]){const x=i%GW,y=(i/GW)|0;
+  if(y>8&&Math.abs(nH(x*0.05,y*0.05)-0.5)<0.045&&nM(x*0.03,y*0.03)>(st.fin?0.45:0.52))kind[i]=1}}
+ for(let k=0,tries=0;k<st.gas&&tries<400;tries++){const x=(20+Math.random()*120)|0,y=(12+Math.random()*(hgt-20))|0,i=y*GW+x;
+  if(!rock[i]||kind[i]||gas.some(g=>Math.hypot(g.x-x,g.y-y)<22))continue;
+  for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++)if(dx*dx+dy*dy<=7){const j=(y+dy)*GW+x+dx;if(rock[j]){kind[j]=2+k;ore[j]=0;brit[j]=0}}gas.push({x,y,alive:true});k++}
+ let total=0;for(let i=0;i<N;i++)if(ore[i])total+=ORE[ore[i]].v;
+ // ultrasound hint: blurred ore presence + noise = uncertain edges
+ const R=Math.max(1,m.blur-(G.up.scan?2:0)),a=new Float32Array(N),b=new Float32Array(N),nz=noise(seed+191);
+ for(let i=0;i<N;i++)a[i]=ore[i]?1:0;
+ for(let pass=0;pass<2;pass++){
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){let sum=0;for(let d=-R;d<=R;d++){const xx=x+d;if(xx>=0&&xx<GW)sum+=a[y*GW+xx]}b[y*GW+x]=sum/(2*R+1)}
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){let sum=0;for(let d=-R;d<=R;d++){const yy=y+d;if(yy>=0&&yy<GH)sum+=b[yy*GW+x]}a[y*GW+x]=sum/(2*R+1)}}
+ for(let i=0;i<N;i++)if(rock[i]&&!kind[i]&&!brit[i])hint[i]=clamp(a[i]*1.1+(nz((i%GW)*0.09,((i/GW)|0)*0.09)-0.5)*(G.up.scan?0.1:0.24),0,1);
+ for(let i=0;i<N;i++)if(!rock[i]){const x=i%GW,y=(i/GW)|0;
+  if((x>0&&rock[i-1])||(x<GW-1&&rock[i+1])||(y>0&&rock[i-GW])||(y<GH-1&&rock[i+GW]))revealCircle(x,y,2)}
+ G.st=st;G.totalOre=total;G.quota=Math.max(1,Math.round(total*st.quota*(G.contract?1.4:1)));G.contractOn=!!G.contract;G.contract=false;
+ G.slabPts=0;G.slabDisp=0;G.cuts=G.maxCuts=m.cuts+G.up.cut;G.cores=m.cores+2*G.up.core;G.wedge=G.up.wedge?1:0;G.refunds=G.up.refund?2:0;
+ G.armed=false;G.finish=false;G.settle=0;G.cur=null;G.metTold=false;G.giveUpT=0;G.needCheck=false;G.sl={destroyed:0,rubble:0,whiffs:0};G.tut=null;slabDirty=true;
+ if(s===1&&!tutDone)makeTutorial();
+ else if(st.fin)tip('fin','FINALE: the gold vein is wrapped in BRITTLE rock (cracked red). Cuts through it SHATTER the freed pieces (RUBBLE) - enter through the gaps.',true);
+ else if(s===3)tip('gas','NEW: GAS pocket (red). If the blade touches it, it bursts and destroys everything in the ring.');
+ else if(s===2)tip('hardrock','NEW: HARD ROCK (dark blue studs). The blade STOPS when it hits it - cut from another side.')}
+function cand(){const side=()=>{const r=Math.random();return r<0.3?[-2,4+Math.random()*70]:r<0.6?[GW+1,4+Math.random()*70]:[Math.random()*GW,82]};return[side(),side()]}
+function trueStats(idx){let o=0,v=0;for(const j of idx)if(ore[j]){o++;v+=ORE[ore[j]].v}return{pur:o/idx.length,val:v}}
+function makeTutorial(){let bestS=-1,bl=null;for(let k=0;k<260;k++){const[a,b]=cand(),s=simCut(a[0],a[1],b[0],b[1]);if(!s.pieces.length)continue;
+  let sc=0;for(const p of s.pieces){const t=trueStats(p);if(p.length>=30)sc+=t.val*gradeOf(t.pur).mult}
+  for(const i of s.line)if(ore[i])sc-=3*ORE[ore[i]].v;
+  if(sc>bestS){bestS=sc;bl=[a,b]}}
+ if(bl){G.tut={a:bl[0],b:bl[1]};tip('tut','TUTORIAL: drag along the dotted line (START to END) and release. This cut is free.',true)}}
+function startRun(){initAudio();const up={};for(const u of UPG)up[u.id]=0;
+ G={state:'play',sT:0,slab:1,score:0,disp:0,slabPts:0,slabDisp:0,quota:1,cuts:0,maxCuts:0,cores:0,wedge:0,up,shake:0,hitstop:0,settle:0,finish:false,opts:[],picks:1,
+  bonus:0,flash:0,endless:false,contract:false,help:false,cleared:0,stats:{clean:0,pieces:0,destroyed:0,bestPiece:0}};genSlab()}
+// ---------- the verb: simulate, preview, commit ----------
+function simCut(x0,y0,x1,y1){x0=Math.round(x0);y0=Math.round(y0);x1=Math.round(x1);y1=Math.round(y1);
+ const t=thick(),pts=bres(x0,y0,x1,y1),mark=new Uint8Array(N),line=[],burst=[],path=[];let stopped=false;
+ outer:for(const[px,py]of pts){
+  if(!G.up.diamond)for(let dy=0;dy<t;dy++)for(let dx=0;dx<t;dx++){const x=px+dx,y=py+dy;if(x<0||y<0||x>=GW||y>=GH)continue;const i=y*GW+x;if(rock[i]&&kind[i]===1){stopped=true;break outer}}
+  for(let dy=0;dy<t;dy++)for(let dx=0;dx<t;dx++){const x=px+dx,y=py+dy;if(x<0||y<0||x>=GW||y>=GH)continue;const i=y*GW+x;
+   if(rock[i]&&!mark[i]){mark[i]=1;line.push(i);if(kind[i]>=2&&!G.up.sealed&&burst.indexOf(kind[i]-2)<0)burst.push(kind[i]-2)}}
+  path.push([px,py])}
+ const blast=[];for(const b of burst){const g=gas[b];for(let dy=-GASR;dy<=GASR;dy++)for(let dx=-GASR;dx<=GASR;dx++){if(dx*dx+dy*dy>GASR*GASR)continue;
+  const x=g.x+dx,y=g.y+dy;if(x<0||y<0||x>=GW||y>=GH)continue;const i=y*GW+x;if(rock[i]&&!mark[i]){mark[i]=1;blast.push(i)}}}
+ // brittle rock: a blade that runs through cracked rock shatters every piece it frees (they land as RUBBLE)
+ let brk=0;for(const i of line)if(brit[i])brk++;
+ const pieces=[],mask=new Uint16Array(N);
+ if(line.length){const tmp=rock.slice();for(const i of line)tmp[i]=0;for(const i of blast)tmp[i]=0;
+  const keep=anchoredOf(tmp),seen=new Uint8Array(N);
+  for(let i=0;i<N;i++)if(tmp[i]&&!keep[i]&&!seen[i]){const idx=comp(i,tmp,seen);if(idx.length>=6){pieces.push(idx);for(const j of idx)mask[j]=pieces.length}}}
+ return{line,blast,burst,pieces,mask,path,stopped,brk,end:path.length?path[path.length-1]:[x0,y0]}}
+// what the PLAYER can know about a piece: revealed cells exactly, fogged cells from the scan glow
+const SHAT=()=>({mult:G.up&&G.up.net?0.25:0,name:'SHATTERED',col:GCOL.RUBBLE});
+function visStats(idx,sh){let n=idx.length,ko=0,kv=0,lo=0,es=0,hi=0,sx=0,sy=0,minY=GH;
+ for(const j of idx){const y=(j/GW)|0;sx+=j%GW;sy+=y;if(y<minY)minY=y;
+  if(rev[j]){if(ore[j]){ko++;kv+=ORE[ore[j]].v}}else if(!kind[j]&&!brit[j]){lo+=pOre(hint[j],0);es+=pOre(hint[j],1);hi+=pOre(hint[j],2)}}
+ const pLo=(ko+lo)/n,pHi=Math.min(1,(ko+hi)/n),pEs=clamp((ko+es)/n,pLo,pHi),g=sh?SHAT():gradeOf(pEs),gLo=sh?g:gradeOf(pLo),gHi=sh?g:gradeOf(pHi);
+ return{n,pLo,pHi,pEs,g,gLo,gHi,sure:gLo.name===gHi.name,pts:Math.round((kv+es*AVGV)*g.mult),cx:sx/n,cy:sy/n,minY,sh:!!sh}}
+function calcPreview(x0,y0,x1,y1,wedge){const s=simCut(x0,y0,x1,y1);let dK=0,dV=0,dE=0,bK=0;
+ for(const i of s.line){if(rev[i]){if(ore[i]){dK++;dV+=ORE[ore[i]].v}}else if(!kind[i]&&!brit[i])dE+=pOre(hint[i],1)}
+ for(const i of s.blast){if(rev[i]){if(ore[i])bK++}else if(!kind[i]&&!brit[i])bK+=pOre(hint[i],1)}
+ const ps=s.pieces.map(idx=>visStats(idx,s.brk>0));let pts=0;for(const p of ps)pts+=p.pts;
+ return{sim:s,hit:s.line.length,ps,pts,dK,dV,dE,bK,wedge:!!wedge,stopped:s.stopped,burst:s.burst}}
+function doCut(x0,y0,x1,y1,wedge){if(G.state!=='play'||G.help||busy())return false;
+ wedge=(!!wedge||G.cuts<=0)&&G.wedge>0;if(!wedge&&G.cuts<=0)return false;
+ const s=simCut(x0,y0,x1,y1);if(!s.line.length){sfx.whiff();return false}
+ let lost=0,lostV=0,got=0,k=0,bj=-1;
+ for(const i of s.line){const x=i%GW,y=(i/GW)|0;if(brit[i]&&bj<0)bj=i;
+  if(ore[i]){if(wedge){got+=ORE[ore[i]].v;if(k++%2===0)spawn(x,y,(Math.random()-.5)*20,-10-Math.random()*20,0.6,C.green,1)}
+   else{lost++;lostV+=ORE[ore[i]].v;if(k++%2===0)spawn(x,y,(Math.random()-.5)*26,-8-Math.random()*26,0.6,'#8a3040',0.9)}}
+  else if((k++)%3===0)spawn(x,y,(Math.random()-.5)*30,(Math.random()-.7)*30,0.3+Math.random()*0.25,'#8a93a5',0.8);
+  rock[i]=0;ore[i]=0;kind[i]=0;brit[i]=0}
+ clearTip('fin');G.shatter=s.brk>0;
+ if(s.brk&&bj>=0){G.crackFx={x:bj%GW,y:(bj/GW)|0,t:0.6};hiss(0.35,1800,0.3)}
+ for(const b of s.burst){const g=gas[b];g.alive=false;G.burstFx={x:g.x,y:g.y,t:0.5};sfx.burst();label(g.x,g.y-GASR-2,'GAS BURST',C.red);
+  tip('gasburst','A gas pocket burst: everything inside the red ring was destroyed. Cut around them.')}
+ for(const i of s.blast){if(ore[i]){lost++;lostV+=ORE[ore[i]].v}rock[i]=0;ore[i]=0;kind[i]=0;brit[i]=0;if(i%5===0)spawn(i%GW,(i/GW)|0,(Math.random()-.5)*50,(Math.random()-.5)*50,0.5,'#8a3040',0.9)}
+ for(const[px,py]of s.path)revealCircle(px,py,revR());
+ const free=!!G.tut;
+ if(wedge){G.wedge--;G.armed=false}else if(!free)G.cuts--;
+ if(G.up.magnet&&lostV&&!wedge){const back=Math.round(lostV*0.5);if(back){got+=back}}
+ if(got){addPoints(got);label((x0+x1)/2,(y0+y1)/2-4,(wedge?'WEDGE':'MAGNET')+' +'+got,C.green)}
+ if(lost>3){label((x0+x1)/2,(y0+y1)/2,'-'+lost+' ore destroyed',C.red);tip('destroy','The blade destroys ore it crosses (red in the preview). Cut AROUND the glows.')}
+ G.sl.destroyed+=lostV;G.stats.destroyed+=lostV;
+ G.shake=Math.min(6,3+s.line.length*0.01);G.hitstop=0.04;G.flash=0.15;G.lastCut=[Math.round(x0),Math.round(y0),s.end[0],s.end[1]];sfx.crack(s.line.length);
+ if(s.stopped)tip('stopped','The blade stopped at HARD ROCK. Approach the ore from a side with no dark-blue vein.');
+ const nDrop=detach();
+ if(!nDrop){G.sl.whiffs++;
+  if(G.tut){tip('tutmiss','Nothing fell. Drag from OUTSIDE the rock, right across it, to outside again. Still free - try again.')}
+  else tip('nodrop','Nothing fell: a piece only drops when it is fully cut off from the CEILING. Join cuts up or go edge to edge.')}
+ else if(G.tut){G.tut=null;tutDone=true;lsSet('proto_seam_tut','1');clearTip('tut');clearTip('tutmiss');tipsSeen.scale=0;
+  tip('scale','It falls on the SCALE and is graded by its ore %. Now fill ORE COLLECTED before your cuts run out.')}
+ G.settle=0.6;slabDirty=true;preview=null;prevKey='';G.needCheck=true;return true}
+function oreLeft(){let v=0,n=0;for(let i=0;i<N;i++)if(rock[i]){n++;if(ore[i])v+=ORE[ore[i]].v}return{v,n}}
+// the slab ends by itself when the quota can no longer be reached (even if every remaining ore cell came down CLEAN) or nothing is left to cut
+function checkHopeless(){if(G.finish||G.tut||G.slabPts>=G.quota)return;const l=oreLeft();
+ if(l.n===0||G.slabPts+l.v*3<G.quota){G.finish=true;G.settle=Math.max(G.settle,1.2);tipCur=null;tip('hopeless',l.n===0?'The whole slab is gone - nothing left to cut.':'Not enough ore left in the slab to reach the quota.')}}
+function detach(){const keep=anchoredOf(rock),seen=new Uint8Array(N);let made=0;
+ for(let i=0;i<N;i++){if(!rock[i]||keep[i]||seen[i])continue;const idx=comp(i,rock,seen);
+  let minX=GW,maxX=0,minY=GH,maxY=0,sx=0,sy=0;const cells=[];
+  for(const j of idx){const x=j%GW,y=(j/GW)|0;cells.push([x,y,ore[j],rev[j],hint[j],kind[j],brit[j]]);if(kind[j]>=2&&gas[kind[j]-2])gas[kind[j]-2].alive=false;rock[j]=0;ore[j]=0;kind[j]=0;brit[j]=0;sx+=x;sy+=y;
+   if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y}
+  if(cells.length<6){for(const c of cells)spawn(c[0],c[1],(Math.random()-.5)*10,0,0.6,'#8a93a5',0.8);continue}
+  const c={cells,minX,minY,maxY,w:maxX-minX+1,h:maxY-minY+1,off:0,vy:8,phase:'fall',t:0,n:cells.length,cx:sx/cells.length-minX,cy:sy/cells.length-minY,cv:mk(),sh:!!G.shatter};
+  paintChunk(c);chunks.push(c);made++}
+ if(made&&G.shatter){tip('brittle','SHATTERED: the blade crossed BRITTLE rock, so the piece broke apart and grades as RUBBLE. Enter through gaps in the cracked shell.')}
+ G.shatter=false;return made}
+function land(c){c.phase='wait';c.vy=0;c.t=0;let o=0,val=0;for(const q of c.cells){q[3]=1;if(q[2]){o++;val+=ORE[q[2]].v}}
+ c.pur=o/c.n;c.val=val;c.g=c.sh?SHAT():gradeOf(c.pur);c.pts=Math.round(val*c.g.mult);c.dur=val?0.8:0.3;c.hold=val?1.0:0.5;c.shown=0;c.tk=0;paintChunk(c);
+ const s=Math.sqrt(c.n);G.shake=Math.max(G.shake,Math.min(6,1.5+s*0.12));G.hitstop=Math.max(G.hitstop,Math.min(0.08,0.03+s*0.0006));sfx.thud(c.n);
+ if(c.sh){hiss(0.4,2200,0.35);for(let k=0;k<Math.min(40,c.n/4);k++){const q=c.cells[(Math.random()*c.n)|0];spawn(q[0],FLOOR-1-Math.random()*c.h,(Math.random()-.5)*60,-20-Math.random()*50,0.5+Math.random()*0.4,q[2]?ORE[q[2]].c:BRIT,1)}}
+ for(let x=c.minX;x<c.minX+c.w;x+=3)spawn(x,FLOOR-0.5,(Math.random()-.5)*30,-Math.random()*(10+s*0.4),0.4+Math.random()*0.3,'#8a93a5',0.8)}
+function stampChunk(c){c.phase='stamp';c.t=0;c.shown=c.pur;G.stats.pieces++;sfx.stamp(c.g.mult,Math.min(6,G.stats.clean));
+ if(c.pts){addPoints(c.pts);if(c.pts>G.stats.bestPiece)G.stats.bestPiece=c.pts}
+ if(c.g.mult<1)G.sl.rubble+=Math.round(c.val*(1-c.g.mult));
+ if(c.g.name==='CLEAN'){G.stats.clean++;if(G.refunds>0&&c.val>=8&&!G.tut){G.refunds--;G.cuts=Math.min(G.maxCuts,G.cuts+1);label(c.minX+c.w/2,FLOOR-c.h-6,'FOREMAN: cut refunded',C.cyan)}
+  for(let k=0;k<14;k++)spawn(c.minX+Math.random()*c.w,FLOOR-Math.random()*c.h,(Math.random()-.5)*30,-20-Math.random()*30,0.7,'#fff1c4',0.7)}
+ if(c.g.name==='RUBBLE'&&c.val>0)tip('rubble','RUBBLE: too much plain rock in that piece. Cut tighter around the glow so ore % is higher.');
+ if(!G.metTold&&G.slabPts>=G.quota){G.metTold=true;sfx.clear();tip('met','QUOTA MET! SPACE finishes the slab (bonus per unused cut) - or keep cutting for more score.')}}
+function addPoints(p){G.score+=p;G.slabPts+=p}
+function coreSample(x,y){if(G.state!=='play'||G.help||G.cores<=0||busy())return false;x=Math.round(x);y=Math.round(y);G.cores--;revealCircle(x,y,7);sfx.ping();G.coreFx={x,y,t:0.5};clearTip('coretip');
+ if(G.up.drill){let got=0;for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){if(dx*dx+dy*dy>17)continue;const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=GW||yy>=GH)continue;const i=yy*GW+xx;
+   if(rock[i]&&kind[i]!==1){if(ore[i])got+=ORE[ore[i]].v;rock[i]=0;ore[i]=0;kind[i]=0;brit[i]=0}}
+  if(got){addPoints(got);label(x,y-6,'DRILL +'+got,C.green)}detach();G.settle=0.6;G.needCheck=true}
+ preview=null;prevKey='';slabDirty=true;return true}
+const busy=()=>chunks.some(c=>c.phase!=='fade');
+function skipAnim(){const c=G.cur;if(!c)return;if(c.phase==='weigh')c.t=c.dur;else if(c.phase==='stamp')c.t=c.hold}
+// ---------- flow ----------
+function setState(s){G.state=s;G.sT=0}
+function endSlab(){const met=G.slabPts>=G.quota;G.bonus=0;tipCur=null;
+ if(!met){let left=0;for(let i=0;i<N;i++)if(rock[i]&&ore[i])left+=ORE[ore[i]].v;G.left=left;setState('over');sfx.lose();saveRun(false);return}
+ G.bonus=G.cuts*Math.max(5,Math.round(G.quota*0.15))+(G.contractOn?Math.round(G.quota*0.5):0);G.score+=G.bonus;G.cleared++;
+ if(!G.endless&&G.slab>=M().goal){setState('win');sfx.win();saveRun(true);return}
+ sfx.clear();toUpgrade()}
+function toUpgrade(){const next=G.slab+1,pool=UPG.filter(u=>(u.stack||!G.up[u.id])&&(!u.need||u.need(next)));
+ for(let i=pool.length-1;i>0;i--){const j=(Math.random()*(i+1))|0,t=pool[i];pool[i]=pool[j];pool[j]=t}
+ G.opts=pool.slice(0,3);G.picks=G.contractOn?2:1;G.contractOn=false;G.contract=false;setState('upgrade');
+ if(canContract())tip('upg','Pick 1 upgrade - it lasts for the rest of the run. The CONTRACT below is optional: risk now, reward later.');
+ else tip('upgfin','Pick 1 upgrade - it lasts for the rest of the run. Next up: THE MOTHERLODE finale.')}
+function pickUpgrade(i){if(G.state!=='upgrade'||!G.opts[i])return false;G.up[G.opts[i].id]++;G.opts.splice(i,1);G.picks--;sfx.ping();
+ if(G.picks>0&&G.opts.length)return true;clearTip('upg');clearTip('upgfin');G.slab++;setState('play');genSlab();return true}
+function keepGoing(){if(G.state!=='win')return;G.endless=true;toUpgrade()}
+function canContract(){return G.endless||G.slab+1<M().goal}
+function update(dt){if(G.state==='title'||G.help)return;
+ G.shake*=Math.exp(-dt*11);if(G.flash>0)G.flash-=dt;
+ if(tipCur){tipCur.t-=dt;if(tipCur.t<=0)tipCur=null}
+ if(G.hitstop>0){G.hitstop-=dt;return}
+ G.disp=Math.min(G.score,G.disp+Math.max(1,(G.score-G.disp)*5*dt));
+ G.slabDisp=Math.min(G.slabPts,G.slabDisp+Math.max(0.5,(G.slabPts-G.slabDisp)*5*dt));
+ if(G.coreFx&&(G.coreFx.t-=dt)<=0)G.coreFx=null;if(G.burstFx&&(G.burstFx.t-=dt)<=0)G.burstFx=null;if(G.crackFx&&(G.crackFx.t-=dt)<=0)G.crackFx=null;
+ for(let i=chunks.length-1;i>=0;i--){const c=chunks[i];
+  if(c.phase==='fall'){c.vy+=GRAV*dt;c.off+=c.vy*dt;if(c.maxY+1+c.off>=FLOOR){c.off=FLOOR-c.maxY-1;land(c)}}
+  else if(c.phase==='fade'){c.t+=dt;if(c.t>0.4)chunks.splice(i,1)}}
+ if(!G.cur){G.cur=chunks.find(c=>c.phase==='wait')||null;if(G.cur){G.cur.phase='weigh';G.cur.t=0}}
+ if(G.cur){const c=G.cur;c.t+=dt;
+  if(c.phase==='weigh'){c.shown=c.pur*ease(c.t/c.dur);const tk=Math.floor(c.shown*20);if(tk>c.tk){c.tk=tk;sfx.tick(Math.min(10,tk>>1))}if(c.t>=c.dur)stampChunk(c)}
+  else if(c.phase==='stamp'&&c.t>=c.hold){c.phase='fade';c.t=0;G.cur=null}}
+ for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt;if(p.life<=0){parts.splice(i,1);continue}
+  if(!p.txt)p.vy+=90*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(!p.txt&&p.y>FLOOR-0.5){p.y=FLOOR-0.5;p.vy*=-0.3;p.vx*=0.6}}
+ if(G.state==='play'&&!G.tut&&G.cores>0&&G.cuts<=G.maxCuts-3&&G.cores===M().cores+2*G.up.core)tip('coretip','Unsure what a glow hides? RIGHT-CLICK takes a free core sample and reveals a circle exactly.');
+ if(G.giveUpT>0){G.giveUpT-=dt;if(G.giveUpT<=0)clearTip('giveup')}
+ if(G.state==='play'&&G.needCheck&&!busy()){G.needCheck=false;checkHopeless()}
+ if(G.state==='play'&&!busy()&&!G.tut&&(G.finish||(G.cuts<=0&&G.wedge<=0))){G.settle-=dt;if(G.settle<=0)endSlab()}}
+// ---------- drawing helpers ----------
+function text(s,x,y,size,col,align,weight){ctx.font=(weight||600)+' '+size+'px '+FONT;ctx.fillStyle=col;ctx.textAlign=align||'left';ctx.fillText(s,x,y)}
+function tw(s,size,weight){ctx.font=(weight||600)+' '+size+'px '+FONT;return ctx.measureText(s).width}
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function panel(x,y,w,h,r,fill,stroke,glow){ctx.save();rr(ctx,x,y,w,h,r);if(glow){ctx.shadowColor=glow;ctx.shadowBlur=14}ctx.fillStyle=fill;ctx.fill();ctx.shadowBlur=0;if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}ctx.restore()}
+function wrapLines(s,maxW,size,weight){const out=[];let line='';for(const w of s.split(' ')){const t=line?line+' '+w:w;if(tw(t,size,weight)>maxW&&line){out.push(line);line=w}else line=t}if(line)out.push(line);return out}
+function wrap(s,x,y,maxW,size,col,align,weight,lh){for(const l of wrapLines(s,maxW,size,weight)){text(l,x,y,size,col,align,weight);y+=lh||size+6}return y}
+function pill(s,x,y,size,col,border){const w=tw(s,size)+16;x=clamp(x,w/2+4,W-w/2-4);panel(x-w/2,y-size-4,w,size+12,8,'rgba(11,13,18,0.9)',border||C.line);text(s,x,y,size,col,'center')}
+function inR(r){return mouse.x>=r.x&&mouse.x<=r.x+r.w&&mouse.y>=r.y&&mouse.y<=r.y+r.h}
+function button(id,x,y,w,h,lbl,o,cb){o=o||{};const r={id,x,y,w,h,cb},hov=inR(r),pr=pressed===id&&hov,dy=pr?2:hov?-1:0;btns.push(r);
+ ctx.save();if(o.primary){ctx.shadowColor=C.cyan;ctx.shadowBlur=hov?18:10}rr(ctx,x,y+dy,w,h,Math.min(12,h/2));
+ ctx.fillStyle=o.primary?(pr?'#4fc4cf':C.cyan):o.on?'#1d2a3a':pr?'#0e111a':C.panel;ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle=o.primary?C.cyan:hov||o.on?C.cyan:C.line;ctx.lineWidth=o.on?2:1;ctx.stroke();ctx.restore();
+ text(lbl,x+w/2,y+dy+h/2+(o.size||15)*0.36,o.size||15,o.primary?'#06222a':o.col||C.white,'center',o.primary?800:600);return r}
+function hatch(x,y,w,h){ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.fillStyle='#1b202c';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#6d7890';ctx.lineWidth=2;ctx.beginPath();
+ for(let k=-h;k<w+h;k+=10){ctx.moveTo(x+k,y+h);ctx.lineTo(x+k+h,y)}ctx.stroke();ctx.restore()}
+function medalBadge(x,y,r,m){const col=m==='gold'?C.gold:m==='silver'?'#dfe6f2':m==='bronze'?'#cd8a4b':null;ctx.save();
+ if(!col){ctx.setLineDash([5,5]);ctx.strokeStyle=C.dim;ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.stroke();ctx.setLineDash([]);text('NO',x,y-1,14,C.grey,'center');text('MEDAL',x,y+15,14,C.grey,'center');ctx.restore();return}
+ ctx.fillStyle='#3a6ea8';ctx.beginPath();ctx.moveTo(x-r*0.55,y+r*0.5);ctx.lineTo(x-r*0.75,y+r*1.7);ctx.lineTo(x-r*0.2,y+r*1.35);ctx.lineTo(x,y+r*0.8);ctx.lineTo(x+r*0.2,y+r*1.35);ctx.lineTo(x+r*0.75,y+r*1.7);ctx.lineTo(x+r*0.55,y+r*0.5);ctx.fill();
+ ctx.shadowColor=col;ctx.shadowBlur=16;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle='rgba(0,0,0,0.3)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,r*0.76,0,7);ctx.stroke();
+ ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,q=k%2?r*0.24:r*0.55;ctx.lineTo(x+Math.cos(a)*q,y+Math.sin(a)*q)}ctx.fill();ctx.restore()}
+// ---------- slab painting ----------
+const FOG=[];for(let k=0;k<=8;k++)for(let d=0;d<2;d++){const a=k/8*0.5,b=d?[64,70,82]:[56,62,74],g=[255,209,102];FOG.push('rgb('+b.map((v,i)=>Math.round(v+(g[i]-v)*a)).join(',')+')')}
+const BRIT='#8a4a56',BRITC='#ff8fa0';
+function cellColor(o,r,x,y,h,kd,br){if(kd===1)return(x+y)%3===0?'#55628f':'#262d47';if(kd>=2)return(x+y)%2?'#ff5d73':'#b83a4c';if(br)return((x*3+y*5)%7===0||(x+y*2)%9===0)?BRITC:BRIT;
+ if(!r)return FOG[(noScan?0:Math.min(8,Math.round(h*8)))*2+((x*7+y*13)%5===0?1:0)];if(o)return ORE[o].c;return(x*5+y*11)%4===0?'#7c8493':'#737b8a'}
+function paintSlab(){slabCtx.clearRect(0,0,slabCv.width,slabCv.height);sparks=[];
+ for(let i=0;i<N;i++)if(rock[i]){const x=i%GW,y=(i/GW)|0;slabCtx.fillStyle=cellColor(ore[i],rev[i],x,y,hint[i],kind[i],brit[i]);slabCtx.fillRect(x*cs,y*cs,cs,cs);if(rev[i]&&ore[i]>=2&&i%7===0)sparks.push(i)}slabDirty=false}
+function paintChunk(c){c.cv.width=c.w*cs;c.cv.height=c.h*cs;const k=c.cv.getContext('2d');
+ for(const q of c.cells){k.fillStyle=cellColor(q[2],q[3],q[0],q[1],q[4],q[5],q[6]);k.fillRect((q[0]-c.minX)*cs,(q[1]-c.minY)*cs,cs,cs)}}
+function paintPreview(p){prevCtx.clearRect(0,0,prevCv.width,prevCv.height);const m=p.sim.mask;
+ p.sim.pieces.forEach((idx,k)=>{const col=p.ps[k].g.col;prevCtx.fillStyle=col;prevCtx.globalAlpha=0.28;for(const j of idx)prevCtx.fillRect((j%GW)*cs,((j/GW)|0)*cs,cs,cs);
+  prevCtx.globalAlpha=1;for(const j of idx){const x=j%GW,y=(j/GW)|0,id=k+1;
+   if(x===0||m[j-1]!==id)prevCtx.fillRect(x*cs,y*cs,2,cs);if(x===GW-1||m[j+1]!==id)prevCtx.fillRect(x*cs+cs-2,y*cs,2,cs);
+   if(y===0||m[j-GW]!==id)prevCtx.fillRect(x*cs,y*cs,cs,2);if(y===GH-1||m[j+GW]!==id)prevCtx.fillRect(x*cs,y*cs+cs-2,cs,2)}});
+ for(const i of p.sim.line){const known=rev[i]&&ore[i],maybe=!rev[i]&&!kind[i]&&!brit[i]&&pOre(hint[i],1)>0.5;if(!known&&!maybe)continue;
+  prevCtx.globalAlpha=known?1:0.6;prevCtx.fillStyle=p.wedge?C.green:C.red;prevCtx.fillRect((i%GW)*cs,((i/GW)|0)*cs,cs,cs)}
+ prevCtx.globalAlpha=0.4;prevCtx.fillStyle=C.red;for(const i of p.sim.blast)prevCtx.fillRect((i%GW)*cs,((i/GW)|0)*cs,cs,cs);prevCtx.globalAlpha=1}
+function resize(){W=cv.width=window.innerWidth||800;H=cv.height=window.innerHeight||600;cs=Math.max(2,Math.floor(Math.min((W-24)/GW,(H-HUD-CEIL-BOT-8)/GH)));
+ ox=Math.floor((W-GW*cs)/2);oy=HUD+CEIL;slabCv.width=prevCv.width=GW*cs;slabCv.height=prevCv.height=GH*cs;slabDirty=true;prevKey='';for(const c of chunks)paintChunk(c);
+ bgCv.width=W;bgCv.height=H;const g=bgCtx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.7);g.addColorStop(0,'#121726');g.addColorStop(1,'#0b0d12');bgCtx.fillStyle=g;bgCtx.fillRect(0,0,W,H);
+ bgCtx.fillStyle='rgba(170,179,197,0.07)';for(let y=12;y<H;y+=24)for(let x=12;x<W;x+=24)bgCtx.fillRect(x,y,2,2);
+ motes=[];for(let i=0;i<36;i++)motes.push({x:Math.random()*W,y:Math.random()*H,v:4+Math.random()*8,s:1+Math.random()*1.5,p:Math.random()*6})}
+// ---------- render ----------
+function drawBg(){ctx.drawImage(bgCv,0,0);ctx.fillStyle='rgba(170,179,197,0.13)';for(const m of motes){const y=(m.y+uiT*m.v)%H,x=m.x+Math.sin(uiT*0.3+m.p)*14;ctx.fillRect(x,y,m.s,m.s)}}
+function drawWorld(){const sx=(Math.random()-.5)*2*G.shake,sy=(Math.random()-.5)*2*G.shake,pw=GW*cs,ph=GH*cs;
+ panel(ox-10,oy-CEIL-8,pw+20,ph+CEIL+16,14,'#0e1119',C.line,'rgba(124,245,255,0.10)');
+ ctx.save();ctx.translate(sx,sy);
+ ctx.fillStyle='#151a25';ctx.fillRect(ox,oy+FLOOR*cs,pw,(GH-FLOOR)*cs);
+ ctx.fillStyle=C.grey;ctx.fillRect(ox,oy+FLOOR*cs,pw,2);for(let x=0;x<=GW;x+=10)ctx.fillRect(ox+x*cs,oy+FLOOR*cs,1,x%50===0?8:4);
+ if(slabDirty)paintSlab();ctx.drawImage(slabCv,ox,oy);
+ for(let k=0;k<sparks.length;k+=3){const i=sparks[(k+Math.floor(uiT*2))%sparks.length],a=Math.sin(uiT*5+i)*0.5+0.5;if(a>0.8&&rock[i]){ctx.fillStyle='rgba(255,255,255,'+(a-0.6)+')';ctx.fillRect(ox+(i%GW)*cs-1,oy+((i/GW)|0)*cs-1,cs+2,cs+2)}}
+ // ceiling anchor
+ hatch(ox,oy-CEIL,pw,CEIL);let a0=GW,a1=0;for(let x=0;x<GW;x++)if(rock[x]){if(x<a0)a0=x;if(x>a1)a1=x}
+ if(a1>=a0){ctx.save();ctx.shadowColor=C.green;ctx.shadowBlur=8;ctx.fillStyle=C.green;ctx.fillRect(ox+a0*cs,oy-3,(a1-a0+1)*cs,3);ctx.restore()}
+ pill('CEILING  ·  rock attached here stays up  ·  cut pieces LOOSE to drop them',ox+pw/2,oy-5,14,C.green,'#2c5a36');
+ for(const g of gas)if(g.alive){const p=0.5+0.5*Math.sin(uiT*3+g.x);ctx.save();ctx.strokeStyle='rgba(255,93,115,'+(0.25+0.3*p)+')';ctx.setLineDash([4,5]);ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(ox+(g.x+.5)*cs,oy+(g.y+.5)*cs,GASR*cs,0,7);ctx.stroke();ctx.restore();
+  text('GAS',ox+(g.x+.5)*cs,oy+(g.y-4)*cs,14,C.red,'center',700)}
+ if(G.flash>0&&G.lastCut){const c=G.lastCut;ctx.save();ctx.globalAlpha=Math.min(1,G.flash*7);ctx.strokeStyle='#fff';ctx.shadowColor=C.cyan;ctx.shadowBlur=12;ctx.lineWidth=cs*2;ctx.lineCap='round';ctx.beginPath();
+  ctx.moveTo(ox+(c[0]+.5)*cs,oy+(c[1]+.5)*cs);ctx.lineTo(ox+(c[2]+.5)*cs,oy+(c[3]+.5)*cs);ctx.stroke();ctx.restore()}
+ if(G.coreFx){const f=G.coreFx;ctx.save();ctx.globalAlpha=f.t*2;ctx.strokeStyle=C.cyan;ctx.lineWidth=2;ctx.beginPath();ctx.arc(ox+(f.x+.5)*cs,oy+(f.y+.5)*cs,7*cs*(1.2-f.t*0.4),0,7);ctx.stroke();ctx.restore()}
+ if(G.burstFx){const f=G.burstFx;ctx.save();ctx.globalAlpha=f.t*2;ctx.strokeStyle=C.red;ctx.lineWidth=3;ctx.beginPath();ctx.arc(ox+(f.x+.5)*cs,oy+(f.y+.5)*cs,GASR*cs*(1.3-f.t*0.6),0,7);ctx.stroke();ctx.restore()}
+ if(G.crackFx){const f=G.crackFx,cx0=ox+(f.x+.5)*cs,cy0=oy+(f.y+.5)*cs;ctx.save();ctx.globalAlpha=Math.min(1,f.t*2);ctx.strokeStyle=BRITC;ctx.lineWidth=2;ctx.beginPath();
+  for(let k=0;k<6;k++){const a=k*1.05+0.3,l=(0.6-f.t)*cs*22;ctx.moveTo(cx0,cy0);ctx.lineTo(cx0+Math.cos(a)*l,cy0+Math.sin(a)*l*0.7);ctx.lineTo(cx0+Math.cos(a+0.25)*l*1.3,cy0+Math.sin(a+0.25)*l*0.9)}ctx.stroke();ctx.restore()}
+ for(const c of chunks){const X=ox+c.minX*cs,Y=oy+(c.minY+c.off)*cs;ctx.globalAlpha=c.phase==='fade'?Math.max(0,1-c.t/0.4):1;
+  ctx.save();ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=10;ctx.shadowOffsetY=4;ctx.drawImage(c.cv,X,Y);ctx.restore();
+  if(c.sh&&c.phase!=='fall'){ctx.save();ctx.strokeStyle=BRITC;ctx.lineWidth=2;ctx.beginPath();const cw=c.w*cs,chh=c.h*cs;
+   for(let k=0;k<4;k++){const fx=X+cw*(0.15+k*0.22),fy=Y+chh*(k%2?0.1:0.9);ctx.moveTo(fx,fy);ctx.lineTo(fx+cw*0.08,Y+chh*0.5);ctx.lineTo(fx-cw*0.05,Y+chh*(k%2?0.9:0.1))}ctx.stroke();ctx.restore()}
+  if(c.n>=50&&c.phase!=='fade'){const ex=X+c.cx*cs,ey=Y+c.cy*cs,er=Math.max(3,cs*0.9),shut=c.phase==='wait'||(c.phase==='weigh'&&c.t<0.2);
+   for(const d of[-1,1]){if(shut){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ex+d*er*1.5-er,ey);ctx.lineTo(ex+d*er*1.5+er,ey);ctx.stroke()}
+    else{ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ex+d*er*1.5,ey,er,0,7);ctx.fill();ctx.fillStyle='#0b0d12';ctx.beginPath();ctx.arc(ex+d*er*1.5,ey+(c.phase==='fall'?er*0.4:-er*0.4),er*0.5,0,7);ctx.fill()}}}}
+ ctx.globalAlpha=1;
+ for(const p of parts){ctx.globalAlpha=Math.min(1,p.life/p.max*2);
+  if(p.txt)pill(p.txt,ox+p.x*cs,oy+p.y*cs,14,p.c);else{ctx.fillStyle=p.c;ctx.fillRect(ox+p.x*cs,oy+p.y*cs,cs*p.s,cs*p.s)}}
+ ctx.globalAlpha=1;
+ // under-floor strip: scale label + ore legend
+ const fy=oy+FLOOR*cs+Math.min(17,(GH-FLOOR)*cs-3);text('SCALE',ox+8,fy,14,C.grey,'left',700);
+ let lx=ox+70;const leg=[[ORE[1].c,'copper 1'],[ORE[2].c,'silver 2'],[ORE[3].c,'gold 4'],[FOG[10],'glow = ore?']];if(G.st&&G.st.hard)leg.push(['#55628f','hard rock']);if(G.st&&G.st.gas)leg.push([C.red,'gas']);if(G.st&&G.st.brit)leg.push([BRITC,'brittle']);
+ for(const[c,n]of leg){if(lx+tw(n,14)+24>ox+pw)break;ctx.fillStyle=c;ctx.fillRect(lx,fy-11,12,12);text(n,lx+17,fy,14,C.grey);lx+=tw(n,14)+27}
+ ctx.restore()}
+function drawTutorial(){if(!G.tut||G.state!=='play'||busy())return;const a=G.tut.a,b=G.tut.b,ax=ox+(a[0]+.5)*cs,ay=oy+(a[1]+.5)*cs,bx=ox+(b[0]+.5)*cs,by=oy+(b[1]+.5)*cs;
+ ctx.save();ctx.strokeStyle=C.cyan;ctx.shadowColor=C.cyan;ctx.shadowBlur=10;ctx.lineWidth=3;ctx.setLineDash([10,8]);ctx.lineDashOffset=-uiT*30;ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();ctx.setLineDash([]);
+ const t=(uiT*0.6)%1,hx=ax+(bx-ax)*t,hy=ay+(by-ay)*t;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(hx,hy,7,0,7);ctx.fill();
+ for(const[x,y]of[[ax,ay],[bx,by]]){ctx.beginPath();ctx.arc(x,y,9+Math.sin(uiT*5)*2,0,7);ctx.stroke()}ctx.restore();
+ pill('START: press here',ax,ay-16,14,C.cyan,C.cyan);pill('END: release here',bx,by-16,14,C.cyan,C.cyan)}
+function drawDrag(){if(G.state!=='play'||G.help)return;const c=toCell(mouse.x,mouse.y),inside=c[0]>-6&&c[1]>-6&&c[0]<GW+6&&c[1]<GH;
+ if(!drag){if(inside&&!busy()){ctx.save();ctx.strokeStyle=C.cyan;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(mouse.x-9,mouse.y);ctx.lineTo(mouse.x+9,mouse.y);ctx.moveTo(mouse.x,mouse.y-9);ctx.lineTo(mouse.x,mouse.y+9);ctx.stroke();
+   if(G.cores>0){ctx.setLineDash([3,5]);ctx.globalAlpha=0.5;ctx.beginPath();ctx.arc(mouse.x,mouse.y,7*cs,0,7);ctx.stroke()}ctx.restore()}return}
+ const a=toCell(drag.px,drag.py),wedge=(G.armed||drag.shift||G.cuts<=0)&&G.wedge>0,can=wedge||G.cuts>0,key=[a,c,wedge].join();
+ if(key!==prevKey){prevKey=key;preview=Math.hypot(a[0]-c[0],a[1]-c[1])>=3?calcPreview(a[0],a[1],c[0],c[1],wedge):null;if(preview)paintPreview(preview)}
+ const p=preview;let ex=mouse.x,ey=mouse.y;if(p&&p.stopped){ex=ox+(p.sim.end[0]+.5)*cs;ey=oy+(p.sim.end[1]+.5)*cs}
+ if(p)ctx.drawImage(prevCv,ox,oy);
+ ctx.save();ctx.lineCap='round';ctx.beginPath();ctx.moveTo(drag.px,drag.py);ctx.lineTo(ex,ey);ctx.strokeStyle='rgba(124,245,255,0.10)';ctx.lineWidth=revR()*2*cs;ctx.stroke();
+ ctx.shadowColor=C.cyan;ctx.shadowBlur=10;ctx.strokeStyle=!can?C.grey:wedge?C.green:'#ffffff';ctx.lineWidth=Math.max(2,thick()*cs);ctx.stroke();ctx.restore();
+ if(p&&p.stopped){ctx.strokeStyle=C.grey;ctx.setLineDash([4,6]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(mouse.x,mouse.y);ctx.stroke();ctx.setLineDash([]);pill('blade stops at hard rock',ex,ey-14,14,C.white)}
+ if(!p)return;
+ p.ps.slice().sort((u,v)=>v.n-u.n).slice(0,3).forEach(s=>{const lo=Math.round(s.pLo*100),hi=Math.round(s.pHi*100);
+  pill((lo===hi?lo+'%':lo+'-'+hi+'%')+' ore  →  '+(s.sure?'':'likely ')+s.g.name+' '+multTxt(s.g.mult)+(s.pts?'   ≈ +'+s.pts:''),ox+s.cx*cs,oy+s.cy*cs+5,15,s.g.col,s.g.col)});
+ const L=[];if(!can)L.push(['no cuts left',C.grey]);else if(!p.hit)L.push(['blade is not touching rock',C.grey]);
+ else{if(!p.ps.length)L.push(['NOTHING FALLS - piece must be cut loose from the ceiling',C.white]);else L.push(['FALLS: '+p.ps.length+(p.ps.length>1?' pieces':' piece')+'   ≈ +'+p.pts+' ore',C.gold]);
+  const d=Math.round(p.dK+p.dE+p.bK);L.push(p.wedge?['wedge collects the ore it crosses',C.green]:d>0?['blade destroys ~'+d+' ore'+(p.burst.length?' (GAS BURST!)':''),C.red]:['blade destroys no ore',C.grey]);
+  if(p.sim.brk&&p.ps.length)L.push(['BRITTLE on the line: pieces SHATTER (RUBBLE)',C.red])}
+ let mw=0;for(const l of L)mw=Math.max(mw,tw(l[0],15)+16);
+ const bx=clamp(mouse.x+18,8,W-mw-8),by=clamp(mouse.y+30,HUD+30,H-BOT-14-(L.length-1)*26);L.forEach((l,i)=>{const w=tw(l[0],15)+16;panel(bx,by+i*26-18,w,24,8,'rgba(11,13,18,0.92)',C.line);text(l[0],bx+8,by+i*26,15,l[1])})}
+function drawScalePanel(){const c=G.cur;if(!c||G.state!=='play')return;const stamped=c.phase==='stamp',pw=230,ph=stamped?118:64;
+ const px=clamp(ox+(c.minX+c.w/2)*cs-pw/2,ox+4,ox+GW*cs-pw-4),py=clamp(oy+(FLOOR-c.h)*cs-ph-14,oy+4,oy+FLOOR*cs-ph-8);
+ panel(px,py,pw,ph,12,'rgba(14,17,25,0.95)',C.line,'rgba(0,0,0,0.5)');
+ text('ORE PURITY',px+14,py+26,14,C.grey);text(Math.round(c.shown*100)+'%',px+pw-14,py+28,24,C.white,'right',800);
+ const bx=px+14,bw=pw-28,by=py+40,ts=tiers();let prev=1;
+ ctx.fillStyle='#2a3142';ctx.fillRect(bx,by,bw,10);
+ for(const t of ts){ctx.globalAlpha=0.35;ctx.fillStyle=GCOL[t[2]];ctx.fillRect(bx+bw*t[0],by,bw*(prev-t[0]),10);prev=t[0]}ctx.globalAlpha=1;
+ const g=gradeOf(c.shown);ctx.fillStyle=g.col;ctx.fillRect(bx,by,bw*c.shown,10);ctx.fillStyle='#fff';ctx.fillRect(bx+bw*c.shown-1,by-3,3,16);
+ for(const t of ts){ctx.fillStyle=C.bg;ctx.fillRect(bx+bw*t[0]-1,by,2,10)}
+ if(stamped){const k=1+0.6*(1-ease(c.t/0.14));ctx.save();ctx.translate(px+pw/2,py+86);ctx.rotate(-0.06);ctx.scale(k,k);ctx.shadowColor=c.g.col;ctx.shadowBlur=c.g.mult>=3?14:0;
+  ctx.strokeStyle=c.g.col;ctx.lineWidth=3;rr(ctx,-100,-22,200,44,8);ctx.stroke();ctx.shadowBlur=0;
+  const s1=c.g.name+' '+multTxt(c.g.mult),s2=c.pts?'+'+c.pts:c.val?'wasted':'no ore';let fs=22;while(fs>15&&tw(s1,fs,800)+tw(s2,20,800)>172)fs--;
+  text(s1,-90,8,fs,c.g.col,'left',800);text(s2,90,8,20,c.pts?C.gold:C.grey,'right',800);ctx.restore()}}
+function drawHUD(){const m=M(),goal=m.goal;
+ text('GOAL',16,22,14,C.grey,'left',700);text(G.endless?'Endless - how far can you go?':'Clear '+goal+' slabs  ·  '+m.name,58,22,14,C.white);
+ for(let i=0;i<goal;i++){const x=16+i*32,done=i<G.cleared,cur=i===G.slab-1&&!G.endless,fin=i===goal-1;
+  rr(ctx,x,30,27,11,4);ctx.fillStyle=done?C.green:'#1c212c';ctx.fill();ctx.strokeStyle=cur?C.cyan:fin?C.gold:C.dim;ctx.lineWidth=cur?2:1;ctx.stroke()}
+ if(G.endless)text('+'+(G.cleared-goal),16+goal*32+4,41,14,C.green);
+ text('SLAB '+G.slab+'  ·  '+(G.st?G.st.name:''),16,62,14,G.st&&G.st.fin?C.gold:C.grey,'left',700);
+ text('SCORE',16,84,14,C.grey,'left',700);text(String(Math.floor(G.disp)),66,85,22,C.gold,'left',800);
+ // quota bar (centre)
+ const bw=clamp(W-2*260,250,480),bx=W/2-bw/2,fr=Math.min(1,G.slabDisp/G.quota),met=G.slabPts>=G.quota;
+ text('ORE COLLECTED',bx,24,15,C.grey,'left',700);text(Math.floor(G.slabDisp)+' / '+G.quota,bx+bw,25,22,met?C.green:C.white,'right',800);
+ rr(ctx,bx,34,bw,24,8);ctx.fillStyle='#1c212c';ctx.fill();ctx.save();rr(ctx,bx,34,bw,24,8);ctx.clip();ctx.shadowColor=met?C.green:C.gold;ctx.shadowBlur=10;ctx.fillStyle=met?C.green:C.gold;ctx.fillRect(bx,34,bw*fr,24);ctx.restore();
+ rr(ctx,bx,34,bw,24,8);ctx.strokeStyle=C.dim;ctx.lineWidth=1;ctx.stroke();
+ const stt=G.state!=='play'?'':G.tut?'Tutorial: cuts are free until a piece falls':met?'QUOTA MET  -  SPACE to finish slab (+bonus per unused cut)':'Need '+(G.quota-G.slabPts)+' more before your cuts run out'+(G.contractOn?'  (contract quota)':'');
+ text(stt,W/2,78,14,met?C.green:C.grey,'center');
+ // resources (right)
+ const low=G.cuts<=1;text('CUTS LEFT',W-16-G.maxCuts*12-44,24,14,C.grey,'right',700);text(String(G.cuts),W-16-G.maxCuts*12-10,25,22,low?C.red:C.white,'right',800);
+ for(let i=0;i<G.maxCuts;i++){const x=W-16-(G.maxCuts-i)*12;rr(ctx,x,8,8,18,2);if(i<G.cuts){ctx.fillStyle=low?C.red:C.cyan;ctx.fill()}else{ctx.strokeStyle=C.dim;ctx.lineWidth=1;ctx.stroke()}}
+ text('CORE SAMPLES '+G.cores+'  (right-click)',W-16,50,14,G.cores>0?C.cyan:C.grey,'right');
+ if(G.up.wedge)text('WEDGE '+(G.wedge>0?(G.armed?'ARMED - next cut collects':'ready (W or Shift-drag)'):'used'),W-16,72,14,G.wedge>0?C.green:C.grey,'right')}
+function drawBottom(){const y0=H-BOT;
+ if(tipCur&&G.state!=='over'&&G.state!=='win'){const maxW=Math.min(760,W-260),ls=wrapLines(tipCur.txt,maxW-28,15).slice(0,2);let w=0;for(const l of ls)w=Math.max(w,tw(l,15));w+=28;const h=ls.length*20+12;
+  panel(W/2-w/2,y0+4,w,h,10,C.panel,C.cyan,'rgba(124,245,255,0.25)');ls.forEach((l,i)=>text(l,W/2,y0+24+i*20,15,C.white,'center'))}
+ button('help',W-112,y0+8,100,28,'? HELP (H)',{size:14},()=>toggleHelp());
+ const ts=tiers();let x=16;text('GRADES',x,H-12,14,C.grey,'left',700);x+=tw('GRADES',14,700)+12;
+ const items=ts.map(t=>[t[2]+' '+Math.round(t[0]*100)+'%+ '+multTxt(t[1]),GCOL[t[2]]]);items.push(['RUBBLE '+multTxt(G.up&&G.up.net?0.25:0),GCOL.RUBBLE]);
+ for(const[s,c]of items){text(s,x,H-12,14,c);x+=tw(s,14)+16}
+ const keys='H help   R restart   M '+(muted?'unmute':'mute')+'   Esc menu';if(x+tw(keys,14)+16<W)text(keys,W-16,H-12,14,C.grey,'right')}
+function drawIcon(u,x,y){ctx.save();ctx.shadowColor=C.cyan;ctx.shadowBlur=10;ctx.strokeStyle=C.cyan;ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,22,0,7);ctx.fillStyle='#0e1a24';ctx.fill();ctx.stroke();ctx.restore();text(u.icon,x,y+8,22,C.white,'center',800)}
+function drawUpgrade(){const a=ease(G.sT/0.25),cy=(HUD+H-BOT)/2;ctx.fillStyle='rgba(8,10,14,'+0.86*a+')';ctx.fillRect(0,HUD,W,H-HUD-BOT);ctx.save();ctx.globalAlpha=a;ctx.translate(0,(1-a)*16);
+ text('SLAB CLEARED',W/2,cy-150,32,C.green,'center',800);
+ text((G.bonus?'Bonus +'+G.bonus+'   ·   ':'')+(G.picks>1?'Contract paid: choose '+G.picks+' upgrades':'Choose 1 upgrade (click or press 1-3)'),W/2,cy-122,15,C.gold,'center');
+ const n=G.opts.length,w=Math.min(240,(W-80)/3),h=196,gap=16,x0=W/2-(n*w+(n-1)*gap)/2;
+ G.opts.forEach((u,i)=>{const r={x:x0+i*(w+gap),y:cy-104,w,h},hov=inR(r),ly=hov?-4:0;btns.push({id:'card'+i,x:r.x,y:r.y,w,h,cb:()=>pickUpgrade(i)});
+  panel(r.x,r.y+ly,w,h,12,C.panel,hov?C.cyan:C.line,hov?'rgba(124,245,255,0.3)':null);drawIcon(u,r.x+w/2,r.y+ly+34);
+  text((i+1)+'. '+u.name,r.x+w/2,r.y+ly+80,16,C.white,'center',800);if(u.how)text('CHANGES HOW YOU PLAY',r.x+w/2,r.y+ly+98,14,C.cyan,'center',700);
+  const yy=wrap(u.desc,r.x+w/2,r.y+ly+(u.how?118:104),w-24,14,C.white,'center',500,18);wrap(u.why,r.x+w/2,Math.max(yy+4,r.y+ly+152),w-24,14,C.grey,'center',500,17)});
+ if(canContract()){const on=G.contract,bw2=Math.min(620,W-40);button('contract',W/2-bw2/2,cy+104,bw2,36,(on?'[x]':'[  ]')+' CONTRACT: next quota +40%  →  if met: bonus score and pick 2 upgrades',{size:14,on,col:on?C.gold:C.white},()=>{G.contract=!G.contract;sfx.click()})}
+ ctx.restore()}
+function drawResult(){const a=ease(G.sT/0.3),w=G.state==='win',pw=Math.min(560,W-32),ph=Math.min(430,H-24),px=W/2-pw/2,py=H/2-ph/2+(1-a)*18;
+ ctx.fillStyle='rgba(8,10,14,'+0.88*a+')';ctx.fillRect(0,0,W,H);ctx.save();ctx.globalAlpha=a;btns.length=0;
+ panel(px,py,pw,ph,14,C.panel,C.line,'rgba(124,245,255,0.12)');const md=medalOf(G.score),sl=G.sl||{destroyed:0,rubble:0,whiffs:0};
+ medalBadge(px+66,py+64,34,md);
+ text(w?'RUN COMPLETE':(G.endless?'ENDLESS RUN OVER':'QUOTA MISSED'),px+120,py+50,28,w?C.gold:C.white,'left',800);
+ let cause,tp;
+ if(w){cause='The Motherlode is cleared - all '+M().goal+' slabs met their quota.';tp='Keep going in ENDLESS for a higher score and medal, or retry on HARD.'}
+ else{const miss=G.quota-G.slabPts,opts=[[sl.destroyed,'your blade destroyed '+sl.destroyed+' ore','Watch the red cells in the preview and route cuts AROUND the glows.'],
+   [sl.rubble,sl.rubble+' ore was wasted in low-grade pieces','Cut closer to the ore: smaller pieces with a higher ore % pay x3.'],
+   [G.left||0,(G.left||0)+' ore was still hanging from the ceiling','Make every cut drop something: check the preview says FALLS before you release.']].sort((u,v)=>v[0]-u[0])[0];
+  cause='Slab '+G.slab+' ('+G.st.name+'): collected '+G.slabPts+' of '+G.quota+', '+miss+' short. Biggest loss: '+opts[1]+'.';tp=opts[2]}
+ let y=wrap(cause,px+120,py+76,pw-144,15,C.white,'left',500,20);y=Math.max(y+6,py+124);
+ text('TIP',px+24,y+4,14,C.cyan,'left',800);y=wrap(tp,px+58,y+4,pw-84,15,C.cyan,'left',500,20)+8;
+ const stt=[['SCORE',G.score],['BEST',best],['SLABS CLEARED',G.cleared],['CLEAN PIECES',G.stats.clean],['BEST PIECE','+'+G.stats.bestPiece],['ORE DESTROYED',G.stats.destroyed]];
+ stt.forEach((s,i)=>{const cx=px+24+(i%3)*((pw-48)/3),cy=y+16+Math.floor(i/3)*46;text(s[0],cx,cy,14,C.grey,'left',700);text(String(s[1]),cx,cy+22,20,i===0?C.gold:C.white,'left',800)});y+=104;
+ const ms=M().medals;text('MEDALS   Bronze '+ms[0]+'   ·   Silver '+ms[1]+'   ·   Gold '+ms[2]+(md?'      you earned '+md.toUpperCase():''),px+24,y+6,14,C.grey);
+ const by=py+ph-58;if(w){button('endless',px+24,by,200,40,'KEEP GOING (endless)',{primary:true,size:15},keepGoing);button('retry',px+236,by,130,40,'RETRY (R)',{},startRun);button('menu',px+378,by,Math.min(130,pw-402),40,'MENU',{},goMenu)}
+ else{button('retry',px+24,by,200,40,'RETRY (R)',{primary:true,size:16},startRun);button('menu',px+236,by,130,40,'MENU (Esc)',{},goMenu)}
+ ctx.restore()}
+function drawDiagram(x,y){const w=380,h=168;panel(x,y,w,h,12,'#0e1119',C.line);hatch(x+30,y+10,w-60,12);ctx.fillStyle=C.green;ctx.fillRect(x+50,y+21,250,2);
+ const P=(pts,dx,dy,col)=>{ctx.fillStyle=col;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(x+p[0]+dx,y+p[1]+dy):ctx.moveTo(x+p[0]+dx,y+p[1]+dy));ctx.fill()};
+ P([[50,23],[300,23],[304,62],[270,98],[200,112],[110,106],[62,78]],0,0,'#394050');
+ ctx.save();ctx.shadowColor=C.gold;ctx.shadowBlur=14;ctx.fillStyle='rgba(255,209,102,0.35)';ctx.beginPath();ctx.arc(x+120,y+64,15,0,7);ctx.fill();ctx.restore();
+ P([[204,113],[270,98],[304,62],[303,50]],0,0,'#0e1119');P([[204,113],[270,98],[304,62],[303,50]],16,30,'#737b8a');
+ ctx.save();ctx.shadowColor=C.gold;ctx.shadowBlur=8;ctx.fillStyle=C.gold;ctx.beginPath();ctx.arc(x+290,y+112,9,0,7);ctx.fill();ctx.restore();
+ ctx.save();ctx.strokeStyle='#fff';ctx.shadowColor=C.cyan;ctx.shadowBlur=10;ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x+188,y+124);ctx.lineTo(x+318,y+40);ctx.stroke();ctx.restore();
+ ctx.strokeStyle=C.white;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+330,y+92);ctx.lineTo(x+330,y+132);ctx.moveTo(x+324,y+124);ctx.lineTo(x+330,y+133);ctx.lineTo(x+336,y+124);ctx.stroke();
+ ctx.fillStyle=C.grey;ctx.fillRect(x+20,y+150,w-40,2);text('SCALE',x+24,y+146,14,C.grey,'left',700);
+ text('1 drag a cut',x+196,y+140,14,C.cyan,'right',700);text('2 loose piece falls',x+w-12,y+84,14,C.white,'right',700);text('3 graded by ore %',x+w-12,y+164,14,C.gold,'right',700);
+ text('glow = ore likely',x+60,y+124,14,C.gold,'left');text('attached',x+56,y+40,14,C.green,'left',700)}
+function drawStart(isHelp){const a=ease((isHelp?G.helpT:G.sT)/0.25);if(isHelp){ctx.fillStyle='rgba(8,10,14,'+0.93*a+')';ctx.fillRect(0,0,W,H)}btns.length=0;
+ ctx.save();ctx.globalAlpha=a;const y0=Math.max(0,(H-600)/2)+(1-a)*14,m=M();
+ try{ctx.letterSpacing='3px'}catch(e){}text('SEAM',40,y0+62,48,C.white,'left',800);try{ctx.letterSpacing='0px'}catch(e){}
+ text(isHelp?'Paused  -  '+'cut ore-rich pieces loose and clear '+m.goal+' slabs.':'Cut ore-rich pieces loose from the hanging slab. Clear '+m.goal+' slabs to win.',42,y0+88,16,C.cyan);
+ medalBadge(W-64,y0+46,22,bestMedal);text('BEST '+best,W-100,y0+44,15,C.gold,'right',700);text('WINS '+wins,W-100,y0+64,14,C.grey,'right');
+ drawDiagram(W/2-190,y0+104);
+ const cw=Math.min(370,(W-56)/2),cx1=W/2-cw-8,cx2=W/2+8,cyy=y0+284,ch=178;panel(cx1,cyy,cw,ch,12,C.panel,C.line);panel(cx2,cyy,cw,ch,12,C.panel,C.line);
+ text('CONTROLS',cx1+16,cyy+24,14,C.cyan,'left',800);let y=cyy+48;
+ for(const[k,d]of[['DRAG','a straight cut. Live preview shows what will fall.'],['RIGHT-CLICK','core sample: reveals a circle, costs no cut.'],['SPACE','finish the slab once the quota is met (press twice to give up).'],['CLICK','skip the weighing animation.']]){
+  text(k,cx1+16,y,14,C.white,'left',800);y=wrap(d,cx1+112,y,cw-126,14,C.grey,'left',500,17)+6}
+ text('SCORING',cx2+16,cyy+24,14,C.gold,'left',800);y=cyy+48;
+ y=wrap('Pieces cut LOOSE from the ceiling fall on the scale and are graded by their ore %:',cx2+16,y,cw-32,14,C.white,'left',500,17);
+ let tx=cx2+16;for(const t of tiers().concat([[0,0,'RUBBLE']])){const s=t[2]+(t[0]?' '+Math.round(t[0]*100)+'%+ ':' ')+multTxt(t[1]);if(tx+tw(s,14,700)>cx2+cw-10){tx=cx2+16;y+=18}text(s,tx,y+2,14,GCOL[t[2]],'left',700);tx+=tw(s,14,700)+12}
+ y+=26;y=wrap('The blade DESTROYS ore it crosses. Rock left hanging scores nothing.',cx2+16,y,cw-32,14,C.red,'left',500,17)+2;
+ wrap('Run ends if cuts run out below the ORE COLLECTED quota.',cx2+16,y,cw-32,14,C.grey,'left',500,17);
+ const by=cyy+ch+16;
+ if(isHelp)button('resume',W/2-100,by,200,48,'RESUME',{primary:true,size:20},()=>toggleHelp());
+ else{button('play',W/2-100,by,200,48,'PLAY',{primary:true,size:22},startRun);
+  text('DIFFICULTY',W/2+124,by+16,14,C.grey,'left',700);button('mNormal',W/2+124,by+22,84,28,'NORMAL',{size:14,on:mode==='normal'},()=>setMode('normal'));button('mHard',W/2+212,by+22,70,28,'HARD',{size:14,on:mode==='hard'},()=>setMode('hard'));
+  text(m.cuts+' cuts · '+m.cores+' cores · quota '+Math.round(m.quota*100)+'%',W/2-124,by+30,14,C.grey,'right')}
+ text('H help    R restart    M '+(muted?'unmute':'mute')+'    Esc menu',W/2,Math.min(H-12,by+78),14,C.grey,'center');ctx.restore()}
+function render(){ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;btns=[];drawBg();
+ if(G.state==='title'){drawStart(false);return}
+ drawWorld();drawTutorial();drawDrag();drawScalePanel();drawHUD();
+ if(G.state==='upgrade')drawUpgrade();
+ drawBottom();
+ if(G.state==='over'||G.state==='win')drawResult();
+ if(G.help)drawStart(true)}
+// ---------- input ----------
+function toCell(px,py){return[(px-ox)/cs-0.5,(py-oy)/cs-0.5]}
+function goMenu(){try{window.location.href='index.html'}catch(e){}}
+function setMode(m){mode=m;lsSet('proto_seam_mode',m);sfx.click()}
+function toggleHelp(){if(G.state==='title')return;G.help=!G.help;G.helpT=0;drag=null;sfx.click()}
+function onKey(k){if(k==='Escape'){goMenu();return}
+ if(k==='m'||k==='M'){setMute(!muted);return}
+ if(k==='r'||k==='R'){startRun();return}
+ if(G.state==='title'){if(k===' '||k==='Enter')startRun();if(k==='t'||k==='T')setMode(mode==='normal'?'hard':'normal');return}
+ if(k==='h'||k==='H'||k==='?'){toggleHelp();return}
+ if(G.help)return;
+ if(G.state==='win'&&(k==='Enter'||k==='k'||k==='K')){keepGoing();return}
+ if(G.state==='upgrade'){if(k>='1'&&k<='3')pickUpgrade(+k-1);if((k==='c'||k==='C')&&canContract())G.contract=!G.contract;return}
+ if(G.state==='play'){if(k===' '){if(busy())skipAnim();else if(!G.tut&&(G.slabPts>=G.quota||G.cuts<=0)){G.finish=true;G.settle=Math.min(G.settle,0.3)}
+   else if(!G.tut&&!G.finish){if(G.giveUpT>0){G.finish=true;G.settle=0.3;tipCur=null}else{G.giveUpT=2.5;tipsSeen.giveup=0;tip('giveup','Quota NOT met - giving up ends the run. Press SPACE again within 2s to confirm, or keep cutting.')}}}
+  if((k==='w'||k==='W')&&G.wedge>0)G.armed=!G.armed}}
+function onDown(e){initAudio();mouse.x=e.clientX;mouse.y=e.clientY;
+ for(let i=btns.length-1;i>=0;i--)if(inR(btns[i])){pressed=btns[i].id;return}
+ if(G.state!=='play'||G.help)return;
+ if(busy()){skipAnim();return}
+ if(e.button===2){const c=toCell(e.clientX,e.clientY);coreSample(c[0],c[1]);return}
+ if(e.button===0)drag={px:e.clientX,py:e.clientY,shift:!!e.shiftKey}}
+function onUp(e){mouse.x=e.clientX;mouse.y=e.clientY;
+ if(pressed){const id=pressed;pressed=null;for(let i=btns.length-1;i>=0;i--)if(btns[i].id===id&&inR(btns[i])){sfx.click();btns[i].cb();break}return}
+ if(!drag||e.button!==0)return;const a=toCell(drag.px,drag.py),b=toCell(e.clientX,e.clientY),sh=drag.shift||!!e.shiftKey;drag=null;preview=null;prevKey='';
+ if(Math.hypot(a[0]-b[0],a[1]-b[1])<3)return;doCut(a[0],a[1],b[0],b[1],G.armed||sh)}
+window.addEventListener('resize',resize);
+window.addEventListener('keydown',e=>{if(e.key===' ')e.preventDefault();onKey(e.key)});
+cv.addEventListener('mousedown',onDown);
+window.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;if(drag)drag.shift=!!e.shiftKey});
+window.addEventListener('mouseup',onUp);
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+let last=0;
+function frame(t){const dt=Math.min(0.033,(t-last)/1000||0.016);last=t;uiT+=dt;G.sT=(G.sT||0)+dt;if(G.help)G.helpT=(G.helpT||0)+dt;update(dt);render();requestAnimationFrame(frame)}
+// test / debug hooks (used by the headless bot test)
+window.SEAM={get G(){return G},get rock(){return rock},get ore(){return ore},get rev(){return rev},get brit(){return brit},get btns(){return btns},get chunks(){return chunks},get tip(){return tipCur},
+ GW,GH,UPG,MODES,startRun,doCut,coreSample,pickUpgrade,keepGoing,onKey,onDown,onUp,update,render,calcPreview,busy,cand,medalOf,genSlab,resize,
+ get muted(){return muted},get mode(){return mode},
+ setMode(m){mode=m},setScan(on){noScan=!on;slabDirty=true},setTutDone(v){tutDone=v},press(id){const b=btns.find(b=>b.id===id);if(b)b.cb();return!!b}};
+resize();requestAnimationFrame(frame);
+</script></body></html>

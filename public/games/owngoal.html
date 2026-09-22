@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>OWN GOAL</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden;font-family:"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif}canvas{display:block;cursor:crosshair}</style>
+</head><body><canvas id="c"></canvas>
+<script>
+(function(){'use strict';
+// ================= CONFIG =================
+const W=800,H=600,TOP=72,BOT=72,PAD=12,UH=TOP+H+BOT,TAU=Math.PI*2,PI=Math.PI,GAMEID='owngoal';
+const C={bg:'#0b0d12',bg2:'#121726',panel:'#121622',line:'#232a3d',white:'#ffffff',text:'#e8ecf5',grey:'#aab3c5',cyan:'#7cf5ff',red:'#ff5d73',gold:'#ffd166',green:'#9dff8a',bronze:'#cd8a4b',silver:'#cfd6e4',pink:'#ff9aa8'};
+const CYAN=C.cyan,RED=C.red,GOLD=C.gold,GREEN=C.green,GREY=C.grey,BG=C.bg,WHITE=C.white,PINK=C.pink;
+const FONT='"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+const CFG={pSpeed:230,pR:10,hurt:6,discR:7,throwCd:0.35,hitstop:0.04,hitstopGap:0.12,maxParts:160,catchBuf:0.3,pickDelay:0.6,winDelay:0.8,clearT:1.7,mineR:90,mineT:1.5,ghostT:0.3,dragK:0.5,lull:4,tutSpeed:210};
+// run structure: training -> 4 stages with cumulative banking targets -> finale -> endless
+const STAGES=[
+ {name:'TRAINING',sub:'Throw, kill, catch. Once, safely.'},
+ {name:'KICK-OFF',target:60,mix:[1,0,0,0],rule:'Chasers only. Any disc kills them.',callout:'Chasers walk at you. Kill them with discs, catch the discs to bank kills x kills.'},
+ {name:'REFLECTORS',target:150,mix:[.8,.2,0,0],newType:1,rule:'Squares bounce discs back, faster.',callout:'NEW: REFLECTOR (square). Discs bounce off it, faster. Only your catch pulse kills it: get close, press SPACE.'},
+ {name:'EATERS',target:280,mix:[.7,.18,.12,0],newType:2,rule:'Rings swallow discs under 3 kills.',callout:'NEW: EATER (ring). It swallows discs carrying fewer than 3 kills. Feed it a fat disc, or catch-pulse it.'},
+ {name:'DASHERS',target:450,mix:[.64,.16,.1,.10],newType:3,rule:'Diamonds draw a red line, then lunge.',callout:'NEW: DASHER (diamond). It stops, draws a red line at you, then lunges along it. Step off the line.'},
+ {name:'THE GOALKEEPER',boss:true,mix:[1,0,0,0],rule:'Hit its gold BACK with a 3+ kill disc.',callout:'FINALE: THE GOALKEEPER. Its white front SAVES every disc. Only a disc with 3+ kills hitting its gold BACK scores. Bounce discs off the wall behind it.'},
+ {name:'ENDLESS',endless:true,mix:[.55,.17,.12,.16],rule:'Everything spawns, faster and faster.',callout:'ENDLESS: every enemy type, faster and faster. Your upgrades stay. Chase the score.'}];
+// NORMAL = tuned for a first-time human. HARD = the original bot-tuned numbers.
+const MODES={
+ normal:{name:'NORMAL',hp:4,discSpeed:360,arm:0.8,catchR:95,catchCd:2,catchInv:0.4,hitInv:1.5,pickHeal:1,shove:150,spawnTele:0.9,spawnDist:230,reflBoost:1.1,reflCap:1.4,heavy:280,
+   gap:[[2.5,1.7],[2.2,1.5],[2.1,1.5],[2.2,1.6],[2.5,1.9],[1.4,0.55]],esp:[[28,48,36,60],[42,68,52,80],[44,70,52,82],[46,72,55,85],[40,62,45,72],[65,100,85,125]],cap:[10,12,14,14,7,40],
+   dashTele:0.9,dashSp:380,dashRange:230,boss:{hp:4,sp:30,turn:1.1,r:34,lunge:5,lungeSp:420,lungeT:0.9,rest:1.3,hitInv:0.6,back:-0.17}},
+ hard:{name:'HARD',hp:1,discSpeed:420,arm:0.4,catchR:70,catchCd:3,catchInv:0.15,hitInv:0.6,pickHeal:0,shove:0,spawnTele:0.55,spawnDist:170,reflBoost:1.15,reflCap:2,heavy:320,
+   gap:[[1.3,0.8],[1.2,0.7],[1.1,0.6],[1.0,0.5],[1.5,0.9],[0.9,0.35]],esp:[[70,120,70,120],[75,125,75,125],[80,130,80,130],[85,135,85,135],[70,120,70,120],[90,140,110,160]],cap:[30,30,30,30,16,60],
+   dashTele:0.55,dashSp:460,dashRange:260,boss:{hp:6,sp:45,turn:2.0,r:34,lunge:3.5,lungeSp:520,lungeT:0.55,rest:0.9,hitInv:0.6,back:-0.342}}};
+let hard=false,M=MODES.normal,muted=false,tutOn=true;
+const ENEMY=[{name:'CHASER',r:9,col:RED},{name:'REFLECTOR',r:11,col:'#ff7a5c'},{name:'EATER',r:13,col:'#ff5d9e'},{name:'DASHER',r:9,col:'#ff7d94'},{name:'GOALKEEPER',r:34,col:'#ff5d73'},{name:'DUMMY',r:12,col:'#8892a8',harmless:true}];
+// upgrades: data row + one rule hook each. how:1 = changes HOW you play.
+const ITEMS=[
+ {id:'big',name:'WIDE NET',desc:'Catch ring radius +30.',why:'More room to catch, more room to clear.',max:3,apply:g=>g.catchR+=30},
+ {id:'quick',name:'QUICK HANDS',desc:'Catch pulse recharges 0.5s faster.',why:'Bank more often, hold less at risk.',max:2,apply:g=>g.catchCd=Math.max(1,g.catchCd-(hard?1:.5))},
+ {id:'skin',name:'THICK SKIN',desc:'+1 max HP, and heal 1 now.',why:'One more mistake allowed.',max:2,apply:g=>{g.maxHp++;g.hp++;}},
+ {id:'fuse',name:'LONG FUSE',desc:'Discs take twice as long to arm.',why:'A longer harmless flight: throw from closer.',max:1,apply:g=>g.arm*=2},
+ {id:'bounty',name:'INTEREST',desc:'+1 kill on a disc every 10 wall bounces.',why:'Patient discs grow fat on their own.',max:1},
+ {id:'shield',name:'MULLIGAN',desc:'A shield that absorbs one hit.',why:'Refunds your next own goal.',max:1,apply:g=>g.shield=1},
+ {id:'ghost',name:'GHOST BOUNCE',how:1,desc:'Discs pass through you for 0.3s after every wall bounce.',why:'Hug the walls: rebounds cannot own-goal you.',max:1},
+ {id:'magnet',name:'MAGNET',how:1,desc:'While your catch is READY, discs carrying kills curve toward you.',why:'Fat discs come to you - armed. Catch on time.',max:1},
+ {id:'mine',name:'WALL MINE',how:1,desc:'Every 3rd throw sticks to the first wall, bursts after 1.5s (kills within 90px), then flies on carrying those kills.',why:'Plant it where the pack is heading.',max:1},
+ {id:'dbl',name:'DOUBLE OR NOTHING',how:1,desc:'Catching exactly ONE scoring disc pays double. Two or more at once pay nothing.',why:'Space your catches; the pulse still clears discs.',max:1},
+ {id:'drag',name:'RING DRAG',how:1,desc:'Discs move at half speed inside your catch ring.',why:'Easy catches - but armed discs linger near you.',max:1},
+ {id:'split',name:'MITOSIS',how:1,desc:'A disc splits in two on its 5th bounce (kills shared).',why:'Twice the discs, twice the danger.',max:1},
+ {id:'slow',name:'HEAVY DISCS',how:1,desc:'Your discs fly slower.',why:'Easier to catch and to dodge; slower to arrive.',max:1,apply:g=>{g.discSpeed=M.heavy;for(const d of g.discs)if(d.sp>M.heavy)setSpeed(d,M.heavy);}},
+ {id:'home',name:'BLOODHOUND',how:1,desc:'Discs curve toward enemies ahead of them (in the finale, 3+ kill discs fly straight).',why:'Discs get fat almost by themselves.',max:1}];
+const MEDALS=['none','bronze','silver','gold'],MEDALCOL=[GREY,C.bronze,C.silver,GOLD];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, rnd=(a,b)=>a+Math.random()*(b-a), ease=k=>{k=clamp(k,0,1);return 1-(1-k)*(1-k)*(1-k);};
+const fmtT=t=>(t/60|0)+':'+((t%60|0)<10?'0':'')+(t%60|0);
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,String(v));}catch(e){}}
+let cv,ctx,scale=1,dpr=1,ox=0,oy=0,G,seen={};
+const inp={up:0,down:0,left:0,right:0,mx:W/2,my:0,throw:false,pick:null,cont:false};
+const UI={press:null};
+const motes=[];for(let i=0;i<40;i++)motes.push({x:Math.random(),y:Math.random(),r:rnd(.6,1.6),v:rnd(.004,.012),a:rnd(.08,.22)});
+muted=lsGet('proto_mute')==='1';tutOn=lsGet('proto_'+GAMEID+'_tut')!=='1';hard=lsGet('proto_'+GAMEID+'_mode')==='hard';
+
+// ================= AUDIO (soft, musical; M mutes; shared key proto_mute) =================
+let ac=null,master=null,noiseBuf=null;
+function audio(){if(ac||typeof AudioContext==='undefined')return;try{ac=new AudioContext();master=ac.createGain();master.gain.value=muted?0:0.45;master.connect(ac.destination);
+  noiseBuf=ac.createBuffer(1,ac.sampleRate*0.5,ac.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}catch(e){ac=null;}}
+function setMute(m){muted=!!m;lsSet('proto_mute',muted?'1':'0');if(master)master.gain.setTargetAtTime(muted?0:0.45,ac.currentTime,0.02);}
+function tone(f,dur,type,vol,f2,delay){if(!ac)return;const t=ac.currentTime+(delay||0),o=ac.createOscillator(),g=ac.createGain();
+  o.type=type||'triangle';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.03);}
+function noise(dur,vol,fc,delay){if(!ac||!noiseBuf)return;const t=ac.currentTime+(delay||0),s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+  s.buffer=noiseBuf;f.type='bandpass';f.frequency.value=fc||800;f.Q.value=0.8;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(f);f.connect(g);g.connect(master);s.start(t);s.stop(t+dur+0.02);}
+const PENTA=[0,2,4,7,9],note=n=>220*Math.pow(2,(12*Math.floor(n/5)+PENTA[n%5])/12);
+const sfx={
+ thr(){tone(620,.07,'triangle',.08,300);noise(.06,.10,1400);},
+ kill(k){if(G.clock-G.lastKillSfx<.03)return;G.lastKillSfx=G.clock;tone(note(Math.min(k,19)),.14,'triangle',.18);noise(.05,.08,500);},
+ swell(){tone(110,.4,'sine',.22,520);tone(220,.3,'triangle',.08,660);},
+ chime(i,delay){tone(note(5+Math.min(i,14)),.22,'sine',.16,0,delay);tone(note(5+Math.min(i,14))*2,.12,'triangle',.05,0,delay);},
+ gulp(){tone(300,.22,'sine',.18,70);},ping(){tone(1300,.06,'sine',.07,1900);},
+ item(){tone(note(7),.15,'triangle',.16);tone(note(9),.15,'triangle',.16,0,.1);tone(note(12),.3,'triangle',.16,0,.2);},
+ clear(){for(let i=0;i<4;i++)tone(note(8+i*2),.28,'triangle',.16,0,i*.09);tone(note(16),.6,'sine',.12,0,.36);},
+ win(){for(let i=0;i<6;i++)tone(note(5+i*2),.3,'triangle',.18,0,i*.11);tone(note(17),.9,'sine',.14,0,.66);},
+ pop(){noise(.18,.22,300);tone(180,.25,'sine',.2,60);},
+ goal(){tone(note(12),.18,'triangle',.2);tone(note(15),.3,'triangle',.2,0,.1);noise(.12,.12,900);},
+ lunge(){noise(.25,.14,240);tone(90,.3,'sine',.14,50);},
+ die(){tone(330,.5,'sine',.22,110);tone(220,.7,'sine',.16,70,.15);noise(.5,.12,200,.05);}};
+
+// ================= STATE =================
+function setHard(b){hard=!!b;lsSet('proto_'+GAMEID+'_mode',hard?'hard':'normal');if(!G||G.state==='start')M=hard?MODES.hard:MODES.normal;}   // mid-run (help) the change applies to the next run
+const PM=()=>MODES[hard?'hard':'normal'];
+function setTut(b){tutOn=!!b;}
+function setState(s){G.state=s;G.fadeT=0;inp.throw=false;}
+function newRun(){M=hard?MODES.hard:MODES.normal;
+  G={state:'start',prev:null,fadeT:0,helpT:0,t:0,st:0,clock:0,stage:0,p:{x:W/2,y:H/2,vx:0,vy:0,kx:0,ky:0},discs:[],enemies:[],parts:[],texts:[],rings:[],
+    hp:M.hp,maxHp:M.hp,bank:0,bankShown:0,bonus:0,items:{},catchR:M.catchR,catchCd:M.catchCd,discSpeed:M.discSpeed,arm:M.arm,shield:0,
+    throwT:0,throwBuf:0,catchT:0,catchBuf:0,invuln:0,hitstop:0,lastHit:-1,shake:0,spawnT:2,pulse:0,killer:null,deadT:0,choices:[],pickDelay:0,lastKillSfx:0,noSpawn:false,
+    unbanked:0,newBest:false,thrown:0,lost:0,ownHits:0,hitsBy:[0,0,0,0,0,0],won:false,endless:false,winT:0,winDelay:0,tip:null,banner:null,cause:'',advice:'',
+    tut:0,tutT:0,clearT:0,riskInfo:null,boss:null,bossT:0,stageReached:0,medal:0,bossHits:0,stageT:[],intro:{},best:+lsGet('proto_'+GAMEID+'_best')||0,carried:0,lightT:0};
+  inp.throw=false;inp.pick=null;inp.cont=false;}
+function startRun(){newRun();setState('play');beginStage(tutOn?0:1);}
+function toStart(){newRun();G.state='start';seen.throw=0;}
+function toggleHelp(){if(G.state==='start')return;if(G.state==='help'){setState(G.prev);}else{G.prev=G.state;G.state='help';G.helpT=0;inp.throw=false;}}
+function setInput(o){for(const k in o){if(k==='catch'){if(o.catch)G.catchBuf=CFG.catchBuf;}else inp[k]=o[k];}}
+const has=id=>G.items[id]>0;
+const discValue=d=>Math.round(d.kills*d.kills*(d.carry?1.5:1));
+const atRisk=()=>{let s=0;for(const d of G.discs)if(!d.dead)s+=discValue(d);return s;};
+const score=()=>G.bank+G.bonus;
+const medalNow=()=>G.won?3:G.stageReached>=5?2:G.stageReached>=2?1:0;
+function give(id){const it=ITEMS.find(i=>i.id===id);G.items[id]=(G.items[id]||0)+1;if(it.apply)it.apply(G);}
+function setSpeed(d,sp){const l=Math.hypot(d.vx,d.vy)||1;d.sp=sp;d.vx=d.vx/l*sp;d.vy=d.vy/l*sp;}
+function setKills(d,k){d.kills=k;d.r=CFG.discR+Math.min(7,k*0.5);}
+function persist(){G.medal=medalNow();const s=score();if(s>G.best){G.best=s;G.newBest=true;lsSet('proto_'+GAMEID+'_best',s);}
+  const old=MEDALS.indexOf(lsGet('proto_'+GAMEID+'_medal')||'none');if(G.medal>old)lsSet('proto_'+GAMEID+'_medal',MEDALS[G.medal]);}
+// contextual tips: fixed tip area, first time only, 6s or until the relevant action
+function tip(id,text,o){o=o||{};if(id&&seen[id])return;const pri=o.pri||0;if(G.tip&&G.tip.pri>pri&&G.tip.life>0)return;if(id)seen[id]=1;
+  G.tip={text,life:o.life||6,until:o.until||null,pri,col:o.col||WHITE,age:0};}
+function ev(name){if(G.tip&&G.tip.until===name)G.tip=null;}
+function banner(title,sub,life,good){G.banner={title,sub,life:life||3.2,max:life||3.2,good:!!good};}
+
+// ================= FX =================
+function burst(x,y,col,n,spd){for(let i=0;i<n&&G.parts.length<CFG.maxParts;i++){const a=Math.random()*TAU,s=rnd(.3,1)*spd;
+  G.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.2,.4),max:.4,col,size:rnd(1.5,3)});}}
+function ring(x,y,r0,r1,col,life){G.rings.push({x,y,r0,r1,col,life:life||.35,max:life||.35});}
+function floatText(s,x,y,col,size){const p=G.p;if(Math.abs(x-p.x)<70&&Math.abs(y-p.y)<30)y=p.y-38;   // never on top of the player
+  G.texts.push({s,x:clamp(x,50,W-50),y:clamp(y,24,H-10),col,size:Math.max(14,size||14),life:1});}
+function updateFx(dt){
+  G.shake=Math.min(6,G.shake)*Math.exp(-dt*14);G.pulse=Math.max(0,G.pulse-dt);
+  G.bankShown+=(G.bank-G.bankShown)*Math.min(1,dt*6);if(G.bank-G.bankShown<.5)G.bankShown=G.bank;
+  for(const q of G.parts){q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.94;q.vy*=.94;}
+  for(const q of G.texts){q.life-=dt;q.y-=26*dt;}
+  for(const q of G.rings)q.life-=dt;
+  if(G.parts.length&&G.parts[0].life<=0||G.parts.length>60)G.parts=G.parts.filter(q=>q.life>0);
+  if(G.texts.length)G.texts=G.texts.filter(q=>q.life>0);
+  if(G.rings.length)G.rings=G.rings.filter(q=>q.life>0);
+  if(G.banner){G.banner.life-=dt;if(G.banner.life<=0)G.banner=null;}}
+
+// ================= RUN STRUCTURE =================
+function beginStage(n){const S=STAGES[n];G.stage=n;G.st=0;G.spawnT=n===0?0:2.5;G.invuln=Math.max(G.invuln,1.5);G.stageReached=Math.max(G.stageReached,n);G.lightT=0;
+  if(n===0){G.tut=0;spawnDummy();}
+  else{banner(n<=4?'STAGE '+n+' / 4  ·  '+S.name:S.name,S.callout,n===5?5:3.6);
+    if(n===5)spawnBoss();}
+  persist();}
+function stageClear(){setState('clear');G.clearT=CFG.clearT;G.stageT[G.stage]=G.st;
+  for(const e of G.enemies){burst(e.x,e.y,'#c9cfdb',6,160);ring(e.x,e.y,e.r,e.r+18,C.grey,.3);}G.enemies=[];
+  ring(G.p.x,G.p.y,20,260,GREEN,.9);sfx.clear();G.stageReached=Math.max(G.stageReached,G.stage+1);persist();}
+function afterClear(){const live=G.discs.filter(d=>!d.dead&&d.kills>0);
+  if(live.length){let face=0;for(const d of live)face+=discValue(d);G.riskInfo={n:live.length,face,carry:Math.round(face*1.5)};setState('risk');G.pickDelay=CFG.pickDelay;inp.pick=null;
+    tip('risk','RISK NOW: cash out is safe; carrying keeps those discs armed and in play next stage, but they pay +50% when caught.',{pri:1,life:20,until:'risk'});}
+  else{G.discs=[];offer();}}
+function riskChoose(i){const info=G.riskInfo;if(!info)return;ev('risk');
+  if(i===0){G.bank+=info.face;floatText('+'+info.face+' CASHED OUT',G.p.x,G.p.y-G.catchR-6,GREEN,20);for(const d of G.discs)burst(d.x,d.y,GOLD,4,140);G.discs=[];sfx.swell();}
+  else{for(const d of G.discs)if(d.kills>0){d.carry=true;G.carried++;}else d.dead=true;G.discs=G.discs.filter(d=>!d.dead);sfx.ping();}
+  G.riskInfo=null;offer();}
+function offer(){const pool=ITEMS.filter(i=>(G.items[i.id]||0)<i.max);for(let i=pool.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[pool[i],pool[j]]=[pool[j],pool[i]];}
+  G.choices=pool.slice(0,3);if(!G.choices.length){beginStage(G.stage+1);setState('play');return;}
+  setState('pick');G.pickDelay=CFG.pickDelay;inp.pick=null;sfx.item();
+  tip('pick','UPGRADE: click a card or press 1, 2 or 3. The game is paused.',{until:'pick',life:60,pri:1});}
+function choose(i){const it=G.choices[i];if(!it)return;give(it.id);if(M.pickHeal&&G.hp<G.maxHp){G.hp+=M.pickHeal;floatText('+1 HP',G.p.x,G.p.y-40,GREEN,18);}
+  G.choices=[];ev('pick');beginStage(G.stage+1);setState('play');G.invuln=Math.max(G.invuln,1.5);}
+function win(){G.won=true;G.winT=G.t;G.bonus=150+50*G.hp;G.stageReached=6;lsSet('proto_'+GAMEID+'_wins',(+lsGet('proto_'+GAMEID+'_wins')||0)+1);persist();
+  setState('won');G.winDelay=CFG.winDelay;inp.cont=false;sfx.win();ring(W/2,H/2,40,420,GREEN,1.2);}
+function goEndless(){G.endless=true;beginStage(6);setState('play');G.invuln=Math.max(G.invuln,1.5);}
+
+// ================= ACTIONS =================
+function throwDisc(){const p=G.p;let dx=inp.mx-p.x,dy=inp.my-p.y,l=Math.hypot(dx,dy);if(l<1){dx=1;dy=0;l=1;}dx/=l;dy/=l;
+  G.throwT=CFG.throwCd;G.thrown++;ev('throw');const sp=G.stage===0?CFG.tutSpeed:G.discSpeed;
+  const d={x:clamp(p.x+dx*12,CFG.discR,W-CFG.discR),y:clamp(p.y+dy*12,CFG.discR,H-CFG.discR),vx:dx*sp,vy:dy*sp,sp,r:CFG.discR,age:0,kills:0,bounces:0,child:false,dead:false,ghost:0,carry:false,mine:0,mineT:0,wall:0};
+  if(has('mine')&&G.thrown%3===0){d.mine=1;tip('mine','WALL MINE: that disc (cross) sticks to the first wall it hits, bursts after 1.5s, then flies on with the kills.');}
+  G.discs.push(d);burst(d.x,d.y,WHITE,3,100);G.shake=Math.min(6,G.shake+1);sfx.thr();
+  if(G.stage===0&&G.tut===0){G.tut=1;}
+  if(G.discs.length>=6)tip('many','That is a lot of discs. Every armed disc can hit you: catch (SPACE) to clear the ones in your ring.');}
+function doCatch(){const p=G.p;G.catchT=G.catchCd;G.catchBuf=0;G.invuln=Math.max(G.invuln,M.catchInv);G.pulse=.35;let gain=0,n=0,scoring=0;ev('catch');
+  const got=[];for(const d of G.discs){if(d.dead||Math.hypot(d.x-p.x,d.y-p.y)>G.catchR+d.r)continue;d.dead=true;got.push(d);if(d.kills>0)scoring++;}
+  for(const d of got){let v=discValue(d);if(has('dbl')){if(scoring===1)v*=2;else v=0;}gain+=v;
+    burst(d.x,d.y,GOLD,4+Math.min(8,d.kills*2),160);if(d.kills>0)ring(d.x,d.y,d.r,d.r+22,GOLD,.3);
+    if(v>0){sfx.chime(n,.06+n*.075);n++;}}
+  for(const e of G.enemies){if(e.dead||e.type===0||e.type===4||e.type===5||e.spawn>0||Math.hypot(e.x-p.x,e.y-p.y)>G.catchR+e.r)continue;e.dead=true;popEnemy(e);}
+  G.bank+=gain;G.shake=Math.min(6,G.shake+(gain>0?4:2));sfx.swell();ring(p.x,p.y,G.catchR*.5,G.catchR+10,CYAN,.3);
+  if(gain>0){floatText('+'+gain+' BANKED'+(has('dbl')&&scoring===1?' x2':''),p.x,p.y-G.catchR-6,GREEN,20);
+    tip('banked','BANKED! A disc pays kills x kills, so a fat disc is worth far more: 2 kills = 4, 5 kills = 25.');}
+  else if(has('dbl')&&scoring>1){floatText('NOTHING (2+ discs)',p.x,p.y-G.catchR-6,GREY,16);}
+  if(G.stage===0&&G.tut===2&&gain>0){G.tut=3;G.tutT=2.2;G.bank=0;tutOn=false;lsSet('proto_'+GAMEID+'_tut','1');banner('THAT IS THE WHOLE LOOP','From now on discs ARM after '+G.arm+'s and can hit YOU. Stage 1 starts.',2.2,true);sfx.clear();}}
+function popEnemy(e){burst(e.x,e.y,'#c9cfdb',6,160);ring(e.x,e.y,e.r,e.r+16,'#c9cfdb',.28);}
+function killEnemy(e,d){e.dead=true;setKills(d,d.kills+1);popEnemy(e);G.shake=Math.min(6,G.shake+2);sfx.kill(d.kills);
+  if(G.stage===0){if(G.tut<2){G.tut=2;}}
+  else tip('kill','KILL! That disc now carries points AT RISK. Get it inside your cyan ring and press SPACE / RIGHT CLICK to BANK it.',{until:'catch',life:10});
+  if(G.clock-G.lastHit>CFG.hitstopGap){G.lastHit=G.clock;G.hitstop=CFG.hitstop;}}
+function where(){const s=G.stage;return s===0?'in training':s===5?'in the finale':s===6?'in endless, '+fmtT(G.t-G.winT)+' after winning':'in Stage '+s+' ('+STAGES[s].name+')';}
+function describe(k,kind){
+  if(kind==='disc'){G.cause='Killed by your own disc ('+k.kills+' kill'+(k.kills===1?'':'s')+' unbanked) '+where()+'.';
+    G.advice='Armed discs have a red outline. Press SPACE before one reaches you: the pulse removes every disc in your ring and makes you immune for '+M.catchInv+'s. Fewer discs in play means fewer surprises.';}
+  else if(k.type===1){G.cause='Caught by a REFLECTOR (square) '+where()+'.';G.advice='Discs bounce off reflectors. Only the catch pulse destroys them: walk up so the square is inside your ring and press SPACE.';}
+  else if(k.type===2){G.cause='Caught by an EATER (ring) '+where()+'.';G.advice='Eaters swallow discs with fewer than 3 kills. Hit them with a fat disc (3+ kills) or get them inside your ring and press SPACE.';}
+  else if(k.type===3){G.cause='Run down by a DASHER (diamond) '+where()+'.';G.advice='A dasher stops and draws a red line at you before it lunges. Step sideways off the line, then throw at it while it rests.';}
+  else if(k.type===4){G.cause='Flattened by THE GOALKEEPER '+where()+'.';G.advice='It lunges along the red wedge after a wind-up: sidestep. Keep 3+ kill discs bouncing and stand so its gold back faces the wall they come from.';}
+  else{G.cause='Caught by a CHASER '+where()+'.';G.advice='Keep 2-3 discs bouncing and keep moving away from the pack. Throw at the nearest chaser: any disc kills it, armed or not.';}}
+function hurt(k,kind){if(G.invuln>0||G.state!=='play')return;const p=G.p;let lostV=0;
+  if(kind==='disc'){k.dead=true;lostV=discValue(k);G.lost+=lostV;G.ownHits++;if(lostV)floatText('LOST '+lostV,k.x,k.y-16,RED,18);}
+  else{if(k.type!==4)k.dead=true;G.hitsBy[k.type]++;}
+  if(G.shield){G.shield=0;G.items.shield=0;G.invuln=M.hitInv;burst(p.x,p.y,CYAN,14,240);ring(p.x,p.y,12,60,CYAN,.4);G.shake=6;sfx.pop();floatText('SHIELD POPPED',p.x,p.y-40,CYAN,16);return;}
+  G.hp--;G.invuln=M.hitInv;G.shake=6;burst(p.x,p.y,CYAN,14,240);
+  if(M.shove)for(const e of G.enemies){if(e.dead||e.spawn>0||e.type===4)continue;const dx=e.x-p.x,dy=e.y-p.y,l=Math.hypot(dx,dy)||1;if(l<M.shove){e.x=clamp(p.x+dx/l*M.shove,e.r,W-e.r);e.y=clamp(p.y+dy/l*M.shove,e.r,H-e.r);}} // forgiveness: a hit shoves the pack back
+  if(G.hp>0){sfx.pop();floatText('-1 HP',p.x,p.y-40,RED,18);
+    if(kind==='disc')tip('ownhit','OWN GOAL: your armed disc hit you. -1 HP, the disc is destroyed and its kills are lost. You blink while immune.',{pri:1});
+    else tip('enemyhit','An enemy touched you: -1 HP. You blink while briefly immune - use it to get clear.',{pri:1});return;}
+  setState('dying');G.deadT=.5;G.killer={x:k.x,y:k.y,r:k.r,kills:k.kills|0,kind,type:k.type|0};describe(k,kind);G.unbanked=atRisk()+lostV;sfx.die();persist();}
+
+// ================= SPAWNING =================
+function spawnGap(){const S=STAGES[G.stage],i=Math.min(5,G.stage-1),t=G.st,c=t%30;if(t>=30&&c<CFG.lull&&G.stage!==5)return Infinity;           // lull
+  const g=M.gap[i],k=Math.min(1,t/60);let gap=lerp(g[0],g[1],k);if(S.endless)gap=Math.max(hard?.3:.45,gap-.25*Math.max(0,(t-60)/60));return gap;}
+function mk(type,x,y){const E=ENEMY[type];return {x,y,type,r:E.r,sp:0,col:E.col,ox:rnd(-70,70),oy:rnd(-70,70),spawn:M.spawnTele,dead:false,kills:0,h:0,ph:Math.random()*TAU,st:0,tm:0,ax:1,ay:0,hp:1,max:1,hitT:0};}
+function spawnEnemy(){const p=G.p,S=STAGES[G.stage];let x,y,tries=0;
+  do{const s=Math.random()*4|0,u=Math.random();x=s===0?14:s===1?W-14:14+u*(W-28);y=s===2?14:s===3?H-14:14+u*(H-28);}while((Math.hypot(x-p.x,y-p.y)<M.spawnDist||(G.banner&&y<90))&&++tries<12);   // not too close, and not under the stage banner
+  const mix=S.mix,r=Math.random();let type=0,acc=0;for(let i=0;i<4;i++){acc+=mix[i];if(r<acc){type=i;break;}}
+  // one new element at a time: the first of the stage's new type is forced and labelled; nothing new in the first 10s of a stage
+  if(S.newType!=null&&G.intro[S.newType]==null){if(G.st>=10)type=S.newType;else if(type===S.newType)type=0;}
+  if(type&&G.intro[type]==null)G.intro[type]=G.t;
+  const e=mk(type,x,y),i=Math.min(5,G.stage-1),es=M.esp[i],k=Math.min(1,G.st/60);
+  e.sp=rnd(lerp(es[0],es[2],k),lerp(es[1],es[3],k))*(type===1?.75:1);G.enemies.push(e);}
+function spawnBoss(){const p=G.p,B=M.boss,x=p.x<W/2?W-80:80,y=p.y>H/2+60?120:H-80,e=mk(4,x,y);   // far corner, never under the stage banner
+  e.spawn=1.6;e.sp=B.sp;e.hp=e.max=B.hp;e.tm=B.lunge;e.h=Math.atan2(p.y-y,p.x-x);G.enemies.push(e);G.boss=e;G.intro[4]=G.t;}
+function spawnDummy(){const p=G.p,a=Math.atan2(H/2-p.y,W/2-p.x)+rnd(-.6,.6),e=mk(5,clamp(p.x+Math.cos(a)*170,40,W-40),clamp(p.y+Math.sin(a)*170,40,H-40));e.spawn=0.6;G.enemies.push(e);}
+
+// ================= UPDATE =================
+function onBounce(d,wall){d.bounces++;d.wall=wall;if(G.parts.length<80)burst(d.x,d.y,'#8892a8',1,60);
+  if(has('ghost')){d.ghost=CFG.ghostT;}
+  if(d.mine===1){d.mine=2;d.mineT=CFG.mineT;d.vx=d.vy=0;return;}
+  if(has('split')&&d.bounces===5&&!d.child&&G.discs.length<120){d.child=true;const a=.35,c=Math.cos(a),s=Math.sin(a);
+    const n={...d,child:true,vx:d.vx*c-d.vy*s,vy:d.vx*s+d.vy*c,age:Math.max(d.age,G.arm)};setKills(n,d.kills>>1);
+    const vx=d.vx*c+d.vy*s;d.vy=-d.vx*s+d.vy*c;d.vx=vx;G.discs.push(n);sfx.ping();}
+  if(has('bounty')&&d.bounces%10===0){setKills(d,d.kills+1);floatText('+1 kill',d.x,d.y-14,GOLD,14);sfx.ping();}}
+function mineBurst(d){let n=0;for(const e of G.enemies){if(e.dead||e.spawn>0||e.type===4)continue;if(Math.hypot(e.x-d.x,e.y-d.y)<CFG.mineR+e.r){e.dead=true;popEnemy(e);n++;}}
+  setKills(d,d.kills+n);ring(d.x,d.y,10,CFG.mineR,GOLD,.4);burst(d.x,d.y,GOLD,10,200);G.shake=Math.min(6,G.shake+3);if(n)sfx.kill(d.kills);else sfx.ping();
+  const base=d.wall===1?0:d.wall===2?PI:d.wall===3?PI/2:-PI/2,a=base+rnd(-.7,.7);d.mine=0;d.vx=Math.cos(a);d.vy=Math.sin(a);setSpeed(d,G.discSpeed);d.ghost=.4;d.age=Math.max(d.age,G.arm);
+  d.x=clamp(d.x,d.r,W-d.r);d.y=clamp(d.y,d.r,H-d.r);
+  if(n)floatText('+'+n+' kill'+(n>1?'s':''),d.x,d.y-20,GOLD,16);}
+function updateDiscs(dt){const p=G.p,home=has('home'),drag=has('drag'),mag=has('magnet')&&G.catchT<=0;
+  for(const d of G.discs){if(d.dead)continue;const was=d.age<G.arm;d.age+=dt;if(d.ghost>0)d.ghost-=dt;
+    if(G.stage>0&&was&&d.age>=G.arm)tip('armed','Your disc is now ARMED (filled gold, red outline): it will hurt YOU too. Hollow discs are still harmless.');
+    if(d.mine===2){d.mineT-=dt;if(d.mineT<=0)mineBurst(d);continue;}
+    if(home&&!(G.boss&&d.kills>=3)){let bd=240*240,be=null;for(const e of G.enemies){if(e.dead||e.type===1||e.type===4||e.type===5||e.spawn>0)continue;const ex=e.x-d.x,ey=e.y-d.y,q=ex*ex+ey*ey;if(q<bd&&ex*d.vx+ey*d.vy>0){bd=q;be=e;}} // only steer at enemies AHEAD: no orbiting. While the keeper lives, fat discs fly straight (so they can reach its back).
+      if(be){const l=Math.sqrt(bd)||1;d.vx+=(be.x-d.x)/l*d.sp*3*dt;d.vy+=(be.y-d.y)/l*d.sp*3*dt;setSpeed(d,d.sp);}}
+    const pdx=p.x-d.x,pdy=p.y-d.y,pd=Math.hypot(pdx,pdy);
+    if(mag&&d.kills>0&&pd<G.catchR*2.2&&pd>20){d.vx+=pdx/pd*300*dt;d.vy+=pdy/pd*300*dt;setSpeed(d,d.sp);}
+    const f=drag&&pd<G.catchR?CFG.dragK:1;
+    d.x+=d.vx*dt*f;d.y+=d.vy*dt*f;
+    if(d.x<d.r){d.x=2*d.r-d.x;d.vx=Math.abs(d.vx);onBounce(d,1);}else if(d.x>W-d.r){d.x=2*(W-d.r)-d.x;d.vx=-Math.abs(d.vx);onBounce(d,2);}
+    if(d.mine!==2){if(d.y<d.r){d.y=2*d.r-d.y;d.vy=Math.abs(d.vy);onBounce(d,3);}else if(d.y>H-d.r){d.y=2*(H-d.r)-d.y;d.vy=-Math.abs(d.vy);onBounce(d,4);}}
+    if(d.mine===2){d.x=clamp(d.x,d.r,W-d.r);d.y=clamp(d.y,d.r,H-d.r);continue;}
+    for(const e of G.enemies){if(e.dead||e.spawn>0)continue;const dx=d.x-e.x,dy=d.y-e.y,rr=d.r+e.r;if(dx*dx+dy*dy>=rr*rr)continue;
+      const l=Math.hypot(dx,dy)||1,nx=dx/l,ny=dy/l,dot=d.vx*nx+d.vy*ny;
+      if(e.type===1){if(dot<0){d.vx-=2*dot*nx;d.vy-=2*dot*ny;setSpeed(d,Math.min(d.sp*M.reflBoost,Math.max(d.sp,G.discSpeed*M.reflCap)));d.x=e.x+nx*rr;d.y=e.y+ny*rr;burst(d.x,d.y,'#c9cfdb',3,120);sfx.ping();G.shake=Math.min(6,G.shake+1);}}
+      else if(e.type===4){if(dot<0){const fx=Math.cos(e.h),fy=Math.sin(e.h),back=nx*fx+ny*fy<M.boss.back;
+          d.vx-=2*dot*nx;d.vy-=2*dot*ny;d.x=e.x+nx*rr;d.y=e.y+ny*rr;
+          if(back&&d.kills>=3&&e.hitT<=0){e.hp--;e.hitT=M.boss.hitInv;G.bossHits++;burst(d.x,d.y,GOLD,14,220);ring(e.x,e.y,e.r,e.r+30,GOLD,.4);G.shake=6;sfx.goal();floatText('GOAL!  '+e.hp+' HP left',e.x,e.y-e.r-22,GOLD,20);
+            tip('goal','GOAL! Only 3+ kill discs hitting the gold back count. Keep them alive - do not catch your ammo.',{pri:1});
+            if(e.hp<=0){e.dead=true;bossDie(e);return;}}
+          else if(back){if(G.clock-G.lightT>1){G.lightT=G.clock;floatText('TOO LIGHT (needs 3+)',e.x,e.y-e.r-22,GREY,14);}sfx.ping();}
+          else{burst(d.x,d.y,'#c9cfdb',3,120);sfx.ping();if(G.clock-G.lightT>2){G.lightT=G.clock;floatText('SAVED',e.x,e.y-e.r-22,'#c9cfdb',14);}}}}   // a save keeps the disc's speed
+      else if(e.type===2&&d.kills<3){d.dead=true;e.r=Math.min(20,e.r+1.5);const v=discValue(d);G.lost+=v;floatText(v?'EATEN: LOST '+v:'EATEN',e.x,e.y-e.r-10,RED,14);burst(d.x,d.y,'#c9cfdb',4,100);sfx.gulp();break;}
+      else killEnemy(e,d);}
+    d.x=clamp(d.x,d.r,W-d.r);d.y=clamp(d.y,d.r,H-d.r);
+    if(!d.dead&&G.stage>0&&d.age>=G.arm&&d.ghost<=0){const dx=d.x-p.x,dy=d.y-p.y,rr=d.r+CFG.hurt;if(dx*dx+dy*dy<rr*rr)hurt(d,'disc');}}}
+function bossDie(e){setState('bossdie');G.bossT=1.4;G.boss=null;burst(e.x,e.y,GOLD,40,300);ring(e.x,e.y,e.r,e.r+120,GOLD,.9);ring(e.x,e.y,e.r,e.r+60,WHITE,.5);G.shake=6;sfx.clear();
+  for(const o of G.enemies)if(!o.dead&&o!==e){o.dead=true;popEnemy(o);}G.killer=null;banner('THE GOALKEEPER IS DOWN','',1.4,true);}
+function updateEnemies(dt){const p=G.p,B=M.boss;
+  for(const e of G.enemies){if(e.dead)continue;if(e.spawn>0){e.spawn-=dt;continue;}if(e.hitT>0)e.hitT-=dt;
+    const pdx=p.x-e.x,pdy=p.y-e.y,pd=Math.hypot(pdx,pdy)||1;
+    if(e.type===5)continue;                                                              // dummy: harmless, still
+    if(e.type===4){                                                                      // goalkeeper: slow, faces you, lunges
+      if(e.st===0){let da=Math.atan2(pdy,pdx)-e.h;da=Math.atan2(Math.sin(da),Math.cos(da));e.h+=clamp(da,-B.turn*dt,B.turn*dt);
+        if(pd>e.r+20){e.x+=Math.cos(e.h)*e.sp*dt;e.y+=Math.sin(e.h)*e.sp*dt;}
+        e.tm-=dt;if(e.tm<=0&&pd<320){e.st=1;e.tm=B.lungeT;tip('lunge','The GOALKEEPER is winding up: it lunges along the red wedge. Step sideways.',{pri:1,col:RED});}}
+      else if(e.st===1){e.tm-=dt;if(e.tm<=0){e.st=2;e.tm=.35;sfx.lunge();}}
+      else if(e.st===2){e.x+=Math.cos(e.h)*B.lungeSp*dt;e.y+=Math.sin(e.h)*B.lungeSp*dt;e.tm-=dt;if(e.tm<=0){e.st=3;e.tm=B.rest;}}
+      else{e.tm-=dt;if(e.tm<=0){e.st=0;e.tm=B.lunge;}}
+      e.x=clamp(e.x,e.r,W-e.r);e.y=clamp(e.y,e.r,H-e.r);if(pd<e.r+CFG.hurt)hurt(e,'enemy');continue;}
+    if(e.type===3){                                                                      // dasher: approach, aim (telegraph), lunge, rest
+      if(e.st===0){const f=Math.min(1,pd/260),tx=p.x+e.ox*f-e.x,ty=p.y+e.oy*f-e.y,l=Math.hypot(tx,ty)||1;e.x+=tx/l*e.sp*dt;e.y+=ty/l*e.sp*dt;e.h=Math.atan2(ty,tx);
+        if(pd<M.dashRange){e.st=1;e.tm=M.dashTele;}}
+      else if(e.st===1){if(e.tm>.3){e.ax=pdx/pd;e.ay=pdy/pd;}e.h=Math.atan2(e.ay,e.ax);e.tm-=dt;if(e.tm<=0){e.st=2;e.tm=.5;sfx.lunge();}}
+      else if(e.st===2){e.x+=e.ax*M.dashSp*dt;e.y+=e.ay*M.dashSp*dt;e.tm-=dt;if(e.tm<=0){e.st=3;e.tm=1.1;}}
+      else{e.tm-=dt;if(e.tm<=0)e.st=0;}
+      e.x=clamp(e.x,e.r,W-e.r);e.y=clamp(e.y,e.r,H-e.r);if(pd<e.r+CFG.hurt)hurt(e,'enemy');continue;}
+    const f=Math.min(1,pd/260),tx=p.x+e.ox*f-e.x,ty=p.y+e.oy*f-e.y,l=Math.hypot(tx,ty)||1;
+    e.x+=tx/l*e.sp*dt;e.y+=ty/l*e.sp*dt;e.h=Math.atan2(ty,tx);if(pd<e.r+CFG.hurt)hurt(e,'enemy');}}
+function updateTutorial(){if(G.stage!==0)return;
+  if(G.tut===3){if(G.banner==null){G.discs=[];G.enemies=[];beginStage(1);}return;}
+  if(!G.enemies.some(e=>!e.dead&&e.type===5)&&G.tut<2)spawnDummy();
+  if(G.tut===2&&!G.discs.some(d=>!d.dead&&d.kills>0)){G.tut=1;}}
+function update(dt){
+  G.clock+=dt;G.fadeT+=dt;
+  if(G.state==='help'){G.helpT+=dt;return;}
+  if(G.state==='start')return;
+  updateFx(dt);
+  if(G.state==='clear'){G.clearT-=dt;if(G.clearT<=0)afterClear();return;}
+  if(G.state==='risk'){G.pickDelay-=dt;if(inp.pick!=null&&G.pickDelay<=0&&inp.pick<2)riskChoose(inp.pick);inp.pick=null;return;}
+  if(G.state==='pick'){G.pickDelay-=dt;if(inp.pick!=null&&G.pickDelay<=0&&G.choices[inp.pick])choose(inp.pick);inp.pick=null;return;}
+  if(G.state==='won'){G.winDelay-=dt;if(inp.cont&&G.winDelay<=0)goEndless();inp.cont=false;return;}
+  if(G.state==='bossdie'){G.bossT-=dt;if(G.bossT<=0)win();return;}
+  if(G.state==='dying'){G.deadT-=dt;if(G.deadT<=0)setState('dead');return;}
+  if(G.state==='dead')return;
+  if(G.tip){G.tip.life-=dt;G.tip.age+=dt;if(G.tip.life<=0)G.tip=null;}
+  if(G.hitstop>0){G.hitstop-=dt;return;}
+  G.t+=dt;G.st+=dt;G.invuln-=dt;G.throwT-=dt;G.catchT-=dt;G.catchBuf-=dt;
+  const p=G.p,ix=(inp.right?1:0)-(inp.left?1:0),iy=(inp.down?1:0)-(inp.up?1:0),il=Math.hypot(ix,iy)||1,a=Math.min(1,dt*18);
+  p.vx+=(ix/il*CFG.pSpeed-p.vx)*a;p.vy+=(iy/il*CFG.pSpeed-p.vy)*a;const kd=Math.exp(-dt*7);p.kx*=kd;p.ky*=kd;
+  p.x=clamp(p.x+(p.vx+p.kx)*dt,CFG.pR,W-CFG.pR);p.y=clamp(p.y+(p.vy+p.ky)*dt,CFG.pR,H-CFG.pR);
+  if((inp.throw||G.throwBuf>0)&&G.throwT<=0&&!(G.stage===0&&G.tut===3)){G.throwBuf=0;throwDisc();}G.throwBuf-=dt;   // a tap is buffered so a fast click never gets lost
+  if(G.catchBuf>0){if(G.catchT<=0)doCatch();else if(G.catchT>CFG.catchBuf)tip('cool','Catch is recharging ('+G.catchCd+'s). The ring around you fills up and turns solid when it is ready.');}
+  if(!G.noSpawn&&G.stage>0){const gap=spawnGap(),cap=M.cap[Math.min(5,G.stage-1)];if(gap!==Infinity){G.spawnT-=dt;if(G.spawnT<=0&&G.enemies.length<cap){G.spawnT=gap;spawnEnemy();}}}
+  updateDiscs(dt);if(G.state==='play')updateEnemies(dt);
+  G.discs=G.discs.filter(d=>!d.dead);G.enemies=G.enemies.filter(e=>!e.dead);
+  updateTutorial();
+  if(G.state!=='play')return;
+  const S=STAGES[G.stage];if(S.target&&G.bank>=S.target)stageClear();
+}
+
+// ================= RENDER: helpers =================
+function font(size,weight){ctx.font=(weight||700)+' '+size+'px '+FONT;}
+function txt(s,x,y,size,col,align,weight){font(size,weight);ctx.fillStyle=col;ctx.textAlign=align||'left';ctx.fillText(s,x,y);}
+function otxt(s,x,y,size,col,align){font(size,800);ctx.textAlign=align||'center';ctx.lineWidth=4;ctx.strokeStyle=BG;ctx.lineJoin='round';ctx.strokeText(s,x,y);ctx.fillStyle=col;ctx.fillText(s,x,y);}
+function tw(s,size,weight){font(size,weight);return +ctx.measureText(s).width||0;}
+function wrapText(s,maxW,size,weight){font(size,weight);const out=[];let line='';for(const wd of s.split(' ')){const t=line?line+' '+wd:wd;if(line&&(+ctx.measureText(t).width||0)>maxW){out.push(line);line=wd;}else line=t;}if(line)out.push(line);return out;}
+function para(s,x,y,maxW,size,col,align,lh,weight){const L=wrapText(s,maxW,size,weight);L.forEach((l,i)=>txt(l,x,y+i*(lh||size*1.4),size,col,align,weight));return y+L.length*(lh||size*1.4);}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function card(x,y,w,h,hov){ctx.fillStyle=C.panel;rr(x,y,w,h,12);ctx.fill();ctx.strokeStyle=hov?CYAN:C.line;ctx.lineWidth=hov?2:1;ctx.stroke();}
+function glow(col,b){ctx.shadowColor=col;ctx.shadowBlur=b;}function noGlow(){ctx.shadowBlur=0;ctx.shadowColor='transparent';}
+function circle(x,y,r){ctx.beginPath();ctx.arc(x,y,Math.max(0,r),0,TAU);}
+function arrow(x1,y1,x2,y2,col){const g=ctx,a=Math.atan2(y2-y1,x2-x1);g.strokeStyle=col;g.fillStyle=col;g.lineWidth=2;g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();
+  g.beginPath();g.moveTo(x2,y2);g.lineTo(x2-9*Math.cos(a-.4),y2-9*Math.sin(a-.4));g.lineTo(x2-9*Math.cos(a+.4),y2-9*Math.sin(a+.4));g.closePath();g.fill();}
+function tracePath(x,y,vx,vy,r,t){ctx.moveTo(x,y);
+  for(let i=0;i<4&&t>1e-4;i++){const tx=vx>0?(W-r-x)/vx:vx<0?(r-x)/vx:9,ty=vy>0?(H-r-y)/vy:vy<0?(r-y)/vy:9,h=Math.max(0,Math.min(tx,ty,t));
+    x+=vx*h;y+=vy*h;ctx.lineTo(x,y);t-=h;if(h===tx)vx=-vx;else if(h===ty)vy=-vy;}return [x,y];}
+function badge(x,y,r,m){const g=ctx;
+  if(!m){g.strokeStyle=GREY;g.lineWidth=2;g.setLineDash([5,5]);circle(x,y,r);g.stroke();g.setLineDash([]);txt('-',x,y+r*.3,r,GREY,'center',800);return;}
+  const col=MEDALCOL[m];g.fillStyle=col;g.globalAlpha=.75;
+  g.beginPath();g.moveTo(x-r*.55,y+r*.5);g.lineTo(x-r*.75,y+r*1.6);g.lineTo(x-r*.3,y+r*1.3);g.lineTo(x,y+r*1.6);g.lineTo(x+r*.3,y+r*1.3);g.lineTo(x+r*.75,y+r*1.6);g.lineTo(x+r*.55,y+r*.5);g.closePath();g.fill();g.globalAlpha=1;
+  glow(col,14);circle(x,y,r);g.fill();noGlow();g.strokeStyle='rgba(11,13,18,0.35)';g.lineWidth=2;circle(x,y,r*.78);g.stroke();
+  g.fillStyle='rgba(11,13,18,0.55)';g.beginPath();for(let i=0;i<10;i++){const a=-PI/2+i*PI/5,k=r*(i%2?.26:.58);g[i?'lineTo':'moveTo'](x+Math.cos(a)*k,y+Math.sin(a)*k);}g.closePath();g.fill();}
+// --- the game's own shapes (also used by the start-screen diagram and legend) ---
+function drawPlayer(x,y,alpha,aim,breath){const g=ctx;g.save();g.globalAlpha=alpha==null?1:alpha;const s=1+(breath||0);g.translate(x,y);g.scale(s,s);aim=aim==null?-PI/2:aim;
+  glow(CYAN,12);g.fillStyle=WHITE;circle(0,0,CFG.pR);g.fill();noGlow();
+  g.strokeStyle=CYAN;g.lineWidth=3;g.beginPath();g.arc(0,0,CFG.pR-4,aim-.95,aim+.95);g.stroke();            // visor faces the cursor
+  g.fillStyle=WHITE;circle(Math.cos(aim)*(CFG.pR+3),Math.sin(aim)*(CFG.pR+3),3.5);g.fill();                 // throwing hand
+  g.restore();}
+function drawDisc(x,y,r,kills,armed,o){const g=ctx;o=o||{};
+  if(o.mine){g.strokeStyle=GOLD;g.lineWidth=2;g.beginPath();g.moveTo(x-r,y);g.lineTo(x+r,y);g.moveTo(x,y-r);g.lineTo(x,y+r);g.stroke();}
+  if(!armed){g.strokeStyle=GOLD;g.lineWidth=2;circle(x,y,r-1);g.stroke();return;}               // hollow = harmless
+  if(o.ghost){g.globalAlpha=.55;g.fillStyle=GOLD;circle(x,y,r);g.fill();g.globalAlpha=1;return;}  // ghost = harmless for a moment
+  if(kills>0){glow(GOLD,8+Math.min(10,kills*2));}
+  g.fillStyle=GOLD;circle(x,y,r);g.fill();noGlow();g.strokeStyle=RED;g.lineWidth=2.5;circle(x,y,r+1.5);g.stroke();} // red outline = armed
+function eyes(x,y,r,look,col){const g=ctx,er=Math.max(1.6,r*.24),fx=Math.cos(look),fy=Math.sin(look),off=r*.3,sep=r*.4;
+  for(const s of [-1,1]){const ex=x+fx*off-fy*sep*s,ey=y+fy*off+fx*sep*s;g.fillStyle=col||WHITE;circle(ex,ey,er);g.fill();g.fillStyle=BG;circle(ex+fx*er*.4,ey+fy*er*.4,er*.55);g.fill();}}
+function drawEnemy(type,x,y,r,o){const g=ctx,E=ENEMY[type];o=o||{};const look=o.look==null?-PI/2:o.look,wob=o.wob||0;
+  g.save();g.translate(x,y);g.scale(1+wob,1-wob);g.fillStyle=o.hot?'#ffffff':E.col;
+  if(type===1){rr(-r,-r,r*2,r*2,3);g.fill();g.strokeStyle='#ffd9d0';g.lineWidth=2;g.strokeRect(-r+3,-r+3,r*2-6,r*2-6);}
+  else if(type===2){circle(0,0,r);g.fill();g.fillStyle=BG;circle(0,0,r*.55);g.fill();}
+  else if(type===3){g.beginPath();g.moveTo(r*1.3,0);g.lineTo(0,r*.9);g.lineTo(-r*1.1,0);g.lineTo(0,-r*.9);g.closePath();g.fill();}
+  else if(type===4){circle(0,0,r);g.fill();}
+  else if(type===5){circle(0,0,r);g.fill();g.strokeStyle='#c9cfdb';g.lineWidth=2;circle(0,0,r*.55);g.stroke();}
+  else{circle(0,0,r);g.fill();g.fillStyle='#5a0f1d';circle(0,0,r*.3);g.fill();}
+  g.restore();
+  if(type===4){const h=o.h||0,big=r>=20,pr=r+(big?4:2);                                             // front plate (saves) + gold back (weak spot)
+    const fa=PI-Math.acos(-M.boss.back)-.05;g.strokeStyle=o.hot?WHITE:'#dfe6f2';g.lineWidth=big?7:3;g.lineCap='round';g.beginPath();g.arc(x,y,pr,h-fa,h+fa);g.stroke();
+    if(big)glow(GOLD,14);g.strokeStyle=GOLD;g.lineWidth=big?6:3;const ha=Math.acos(-M.boss.back);g.beginPath();g.arc(x,y,pr,h+PI-ha,h+PI+ha);g.stroke();noGlow();g.lineCap='butt';}
+  if(r>=6)eyes(x,y,type===4?r*.6:r,look,type===2?'#ffd9e6':WHITE);}
+function drawRing(x,y,R,fr,ready){const g=ctx;
+  if(ready){g.fillStyle='rgba(124,245,255,.05)';circle(x,y,R);g.fill();g.strokeStyle='rgba(124,245,255,.8)';g.lineWidth=2;circle(x,y,R);g.stroke();}
+  else{g.setLineDash([3,7]);g.strokeStyle='rgba(124,245,255,.3)';g.lineWidth=1.5;circle(x,y,R);g.stroke();g.setLineDash([]);
+    g.strokeStyle='rgba(124,245,255,.6)';g.lineWidth=3;g.beginPath();g.arc(x,y,R,-TAU/4,-TAU/4+TAU*fr);g.stroke();}}
+function drawIcon(id,x,y){const g=ctx;g.save();g.translate(x,y);g.lineWidth=2.5;g.strokeStyle=CYAN;g.fillStyle='rgba(124,245,255,.25)';g.lineCap='round';
+  const disc=(dx,dy,r,fill)=>{g.strokeStyle=GOLD;g.fillStyle=GOLD;circle(dx,dy,r);if(fill)g.fill();else g.stroke();};
+  if(id==='big'){g.strokeStyle=CYAN;circle(0,0,18);g.stroke();g.setLineDash([3,4]);circle(0,0,24);g.stroke();g.setLineDash([]);}
+  else if(id==='quick'){g.strokeStyle=CYAN;g.beginPath();g.arc(0,0,16,-PI/2,PI);g.stroke();g.fillStyle=CYAN;g.beginPath();g.moveTo(-18,2);g.lineTo(-10,-8);g.lineTo(-4,4);g.closePath();g.fill();}
+  else if(id==='skin'){g.strokeStyle=GREEN;g.lineWidth=6;g.beginPath();g.moveTo(-12,0);g.lineTo(12,0);g.moveTo(0,-12);g.lineTo(0,12);g.stroke();}
+  else if(id==='fuse'){disc(-14,0,6,false);g.strokeStyle=GOLD;g.setLineDash([2,5]);g.beginPath();g.moveTo(-6,0);g.lineTo(22,0);g.stroke();g.setLineDash([]);}
+  else if(id==='bounty'){disc(0,0,9,true);txt('+1',14,-8,14,GOLD,'left',800);}
+  else if(id==='shield'){g.strokeStyle=CYAN;g.beginPath();g.moveTo(0,-18);g.lineTo(16,-10);g.lineTo(12,10);g.lineTo(0,18);g.lineTo(-12,10);g.lineTo(-16,-10);g.closePath();g.fill();g.stroke();}
+  else if(id==='ghost'){g.strokeStyle=GREY;g.beginPath();g.moveTo(-22,-18);g.lineTo(-22,18);g.stroke();g.globalAlpha=.5;disc(-6,6,7,true);g.globalAlpha=1;g.strokeStyle=CYAN;g.beginPath();g.moveTo(14,-14);g.lineTo(-20,0);g.lineTo(14,14);g.stroke();}
+  else if(id==='magnet'){g.strokeStyle=CYAN;g.beginPath();g.arc(0,4,12,PI,0);g.moveTo(-12,4);g.lineTo(-12,14);g.moveTo(12,4);g.lineTo(12,14);g.stroke();disc(0,-14,5,true);}
+  else if(id==='mine'){g.strokeStyle=GREY;g.beginPath();g.moveTo(-22,-18);g.lineTo(-22,18);g.stroke();disc(-12,0,7,true);g.strokeStyle=GOLD;g.setLineDash([3,3]);circle(-12,0,18);g.stroke();g.setLineDash([]);}
+  else if(id==='dbl'){disc(-8,0,8,true);txt('x2',6,6,16,GOLD,'left',800);}
+  else if(id==='drag'){g.strokeStyle=CYAN;circle(0,0,18);g.stroke();disc(6,0,6,true);g.strokeStyle=GOLD;for(let i=0;i<3;i++){g.beginPath();g.moveTo(-4-i*5,-4+i*4);g.lineTo(-10-i*5,-4+i*4);g.stroke();}}
+  else if(id==='split'){disc(-10,-8,7,true);disc(10,8,7,true);g.strokeStyle=GOLD;g.beginPath();g.moveTo(-4,-3);g.lineTo(4,3);g.stroke();}
+  else if(id==='slow'){disc(0,0,10,true);g.strokeStyle=GOLD;g.beginPath();g.moveTo(-18,-8);g.lineTo(-13,-8);g.moveTo(-20,0);g.lineTo(-13,0);g.moveTo(-18,8);g.lineTo(-13,8);g.stroke();}
+  else if(id==='home'){disc(-14,4,6,true);g.strokeStyle=GOLD;g.beginPath();g.moveTo(-8,2);g.quadraticCurveTo(6,-14,16,-4);g.stroke();drawEnemy(0,16,-4,6,{look:PI});}
+  g.restore();}
+
+// ================= RENDER: world =================
+function renderArena(){const g=ctx,p=G.p,alive=G.state!=='dying'&&G.state!=='dead',playing=G.state==='play';
+  g.save();rr(0,0,W,H,14);g.clip();
+  const pg=g.createRadialGradient(W/2,H/2,40,W/2,H/2,Math.max(W,H)*.7);pg.addColorStop(0,'#131826');pg.addColorStop(1,'#0d1017');g.fillStyle=pg;g.fillRect(0,0,W,H);
+  g.fillStyle='#1b2130';for(let x=40;x<W;x+=40)for(let y=40;y<H;y+=40)g.fillRect(x-1,y-1,2,2);
+  const ready=G.catchT<=0,fr=ready?1:1-G.catchT/G.catchCd,aim=Math.atan2(inp.my-p.y,inp.mx-p.x);
+  // the player's verbs, always visible: catch ring + cooldown, aim line = harmless flight distance
+  if(alive){drawRing(p.x,p.y,G.catchR,fr,ready);
+    if(G.pulse>0){const k=1-G.pulse/.35;g.fillStyle='rgba(124,245,255,'+(.22*(1-k))+')';circle(p.x,p.y,G.catchR*(.3+.7*k));g.fill();}
+    const dx=inp.mx-p.x,dy=inp.my-p.y,l=Math.hypot(dx,dy)||1,sp=G.stage===0?CFG.tutSpeed:G.discSpeed;g.setLineDash([2,7]);g.strokeStyle='rgba(124,245,255,.55)';g.lineWidth=2;g.beginPath();
+    const end=tracePath(p.x+dx/l*14,p.y+dy/l*14,dx/l*sp,dy/l*sp,CFG.discR,G.stage===0?2.5:G.arm);g.stroke();g.setLineDash([]);
+    if(G.stage>0){g.strokeStyle='rgba(255,93,115,.7)';g.lineWidth=1.5;circle(end[0],end[1],CFG.discR+2);g.stroke();}}
+  // disc trajectory stubs + motion streaks (batched)
+  g.strokeStyle='rgba(255,209,102,.3)';g.lineWidth=1.5;g.beginPath();for(const d of G.discs)if(!d.dead&&d.mine!==2)tracePath(d.x,d.y,d.vx,d.vy,d.r,.5);g.stroke();
+  g.strokeStyle='rgba(255,209,102,.35)';g.lineWidth=3;g.lineCap='round';g.beginPath();for(const d of G.discs){if(d.dead||d.mine===2)continue;g.moveTo(d.x-d.vx*.05,d.y-d.vy*.05);g.lineTo(d.x,d.y);}g.stroke();g.lineCap='butt';
+  // telegraphs under bodies: dasher lines, goalkeeper lunge wedge
+  for(const e of G.enemies){if(e.dead||e.spawn>0)continue;
+    if(e.type===3&&e.st===1){const lock=e.tm<=.3;glow(RED,lock?12:0);g.strokeStyle='rgba(255,93,115,'+(lock?.95:.5)+')';g.lineWidth=lock?3.5:1.5;if(!lock)g.setLineDash([8,7]);
+      g.beginPath();g.moveTo(e.x,e.y);g.lineTo(e.x+e.ax*300,e.y+e.ay*300);g.stroke();g.setLineDash([]);noGlow();}
+    if(e.type===4&&e.st===1){const lock=e.tm<=.3;g.fillStyle='rgba(255,93,115,'+(lock?.3:.14)+')';g.beginPath();g.moveTo(e.x,e.y);g.arc(e.x,e.y,e.r+M.boss.lungeSp*.35+20,e.h-.35,e.h+.35);g.closePath();g.fill();
+      glow(RED,lock?12:0);g.strokeStyle='rgba(255,93,115,'+(lock?.95:.5)+')';g.lineWidth=lock?3:1.5;g.stroke();noGlow();}}
+  // enemies: red family, told apart by SHAPE; spawn telegraph = shrinking dashed red ring
+  for(const e of G.enemies){if(e.dead)continue;const look=Math.atan2(p.y-e.y,p.x-e.x);
+    if(e.spawn>0){const harmless=ENEMY[e.type].harmless;g.setLineDash([4,4]);g.strokeStyle=harmless?GREY:RED;g.globalAlpha=.7;g.lineWidth=2;circle(e.x,e.y,e.r+e.spawn*26);g.stroke();g.setLineDash([]);g.globalAlpha=.3;drawEnemy(e.type,e.x,e.y,e.r*.6,{look});g.globalAlpha=1;continue;}
+    const moving=e.type===5?false:e.type===3?e.st===0||e.st===2:e.type===4?e.st===0||e.st===2:true,wob=moving?Math.sin(G.clock*(e.type===3?16:9)+e.ph)*.09:e.type===4&&e.st===1?Math.sin(G.clock*30)*.04:0;
+    if(e.type===4)glow(RED,10);drawEnemy(e.type,e.x,e.y,e.r,{look,wob,h:e.h,hot:e.hitT>M.boss.hitInv-.15});noGlow();
+    if(e.type===4){const n=e.max,wq=9;for(let i=0;i<n;i++){g.fillStyle=i<e.hp?RED:'#3a4258';rr(e.x-(n*wq)/2+i*wq+1,e.y-e.r-22,wq-2,6,2);g.fill();}
+      if(e.st===1)otxt('LUNGE!',e.x,e.y-e.r-30,15,PINK);else if(G.t-G.intro[4]<12){otxt('GOALKEEPER',e.x,e.y-e.r-30,15,PINK);otxt('gold back = weak spot',e.x,e.y+e.r+22,14,GOLD);}}
+    else if(e.type===5)otxt('DUMMY (harmless)',e.x,e.y+e.r+18,14,GREY);
+    else{const t0=G.intro[e.type];if(t0!=null&&G.t-t0<(e.type?14:9))otxt(ENEMY[e.type].name,e.x,clamp(e.y+e.r+16,20,H-6),14,PINK);}}
+  // discs: gold; hollow = harmless, red outline = ARMED; number = kills carried
+  g.textBaseline='middle';
+  for(const d of G.discs){if(d.dead)continue;const armed=G.stage>0&&d.age>=G.arm&&d.mine!==2;
+    if(d.mine===2){const k=1-d.mineT/CFG.mineT;g.strokeStyle='rgba(255,209,102,.6)';g.lineWidth=2;g.setLineDash([4,5]);circle(d.x,d.y,CFG.mineR);g.stroke();g.setLineDash([]);g.fillStyle='rgba(255,209,102,'+(.08+.18*k)+')';circle(d.x,d.y,CFG.mineR*k);g.fill();}
+    drawDisc(d.x,d.y,d.r,d.kills,armed,{ghost:d.ghost>0,mine:d.mine>0});
+    if(alive&&ready&&Math.hypot(d.x-p.x,d.y-p.y)<=G.catchR+d.r){g.strokeStyle=CYAN;g.lineWidth=1.5;circle(d.x,d.y,d.r+6);g.stroke();}
+    if(d.kills>0){const ny=d.y-d.r-13<12?d.y+d.r+14:d.y-d.r-13;otxt(String(d.kills)+(d.carry?' x1.5':''),d.x,ny,15+Math.min(9,d.kills),d.carry?GREEN:GOLD);}}
+  g.textBaseline='alphabetic';
+  if(alive){const blink=G.invuln>0&&G.state==='play'&&(G.clock*14|0)%2;drawPlayer(p.x,p.y,blink?.35:1,aim,Math.sin(G.clock*2.4)*.04);
+    if(G.shield){g.strokeStyle=CYAN;g.lineWidth=2;circle(p.x,p.y,CFG.pR+7);g.stroke();}}
+  for(const q of G.parts){g.globalAlpha=Math.max(0,q.life/q.max);g.fillStyle=q.col;g.fillRect(q.x-q.size/2,q.y-q.size/2,q.size,q.size);}
+  g.globalAlpha=1;
+  for(const q of G.rings){const k=1-q.life/q.max;g.globalAlpha=(1-k)*.9;g.strokeStyle=q.col;g.lineWidth=3*(1-k)+1;circle(q.x,q.y,lerp(q.r0,q.r1,ease(k)));g.stroke();}
+  g.globalAlpha=1;
+  for(const q of G.texts){g.globalAlpha=Math.min(1,q.life*2.5);otxt(q.s,q.x,q.y,q.size,q.col);}
+  g.globalAlpha=1;
+  if(G.killer&&!alive){const k=G.killer,pr=k.r+14+Math.sin(G.clock*10)*3;g.strokeStyle=RED;g.lineWidth=3;circle(k.x,k.y,pr);g.stroke();
+    otxt(k.kind==='disc'?'YOUR DISC':ENEMY[k.type].name,k.x,clamp(k.y+pr+18,20,H-8),15,PINK);}
+  // tutorial guide / stage banner: top of the playfield, eased in
+  let bt=null,bs=null,good=false,a=1;
+  if(G.banner){const b=G.banner,age=b.max-b.life;bt=b.title;bs=b.sub;good=b.good;a=Math.min(ease(age/.3),clamp(b.life/.4,0,1));}
+  else if(G.stage===0&&playing){const st=Math.min(3,G.tut+1);bt='TRAINING '+st+'/3   '+(G.tut===0?'LEFT CLICK toward the grey DUMMY to throw a disc':G.tut===1?'Hit the DUMMY. Throw again if you missed.':'Walk so the disc is inside your ring, then SPACE / RIGHT CLICK to bank it');
+    bs=G.tut===0?'Training discs are harmless. The dotted line shows where the disc flies.':G.tut===1?'Any disc kills it. The number on the disc counts its kills.':'The ring around you is your catch reach. Banking pays kills x kills.';}
+  if(bt&&alive){g.globalAlpha=a;const y=16-(1-a)*14,wd=Math.min(W-40,760),L=bs?wrapText(bs,wd-30,14,500).slice(0,2):[];g.fillStyle='rgba(11,13,18,0.86)';rr(W/2-wd/2,y,wd,L.length?50+L.length*18:44,12);g.fill();g.strokeStyle=good?GREEN:bt.indexOf('FINALE')===0||bs&&bs.indexOf('NEW')===0?RED:C.line;g.lineWidth=1;g.stroke();
+    txt(bt,W/2,y+29,bt.length>60?15:19,good?GREEN:WHITE,'center',800);L.forEach((l,i)=>txt(l,W/2,y+52+i*18,14,bs.indexOf('NEW')===0||bs.indexOf('FINALE')===0?PINK:GREY,'center',500));g.globalAlpha=1;}
+  // stage clear flourish
+  if(G.state==='clear'){const k=ease((CFG.clearT-G.clearT)/.4),fade=clamp(G.clearT/.4,0,1);g.globalAlpha=fade;g.save();g.translate(W/2,H/2);g.scale(.6+.4*k,.6+.4*k);
+    glow(GREEN,18);txt('STAGE '+G.stage+' CLEAR',0,10,46,GREEN,'center',800);noGlow();txt('banked '+G.bank+' in '+fmtT(G.stageT[G.stage]||0),0,42,16,WHITE,'center',600);g.restore();g.globalAlpha=1;}
+  // custom crosshair
+  if(playing&&G.state!=='help'){glow(CYAN,10);g.strokeStyle=CYAN;g.lineWidth=2;g.beginPath();g.arc(inp.mx,inp.my,7,0,TAU);g.moveTo(inp.mx-13,inp.my);g.lineTo(inp.mx-4,inp.my);g.moveTo(inp.mx+4,inp.my);g.lineTo(inp.mx+13,inp.my);g.moveTo(inp.mx,inp.my-13);g.lineTo(inp.mx,inp.my-4);g.moveTo(inp.mx,inp.my+4);g.lineTo(inp.mx,inp.my+13);g.stroke();noGlow();}
+  g.restore();
+  g.strokeStyle=C.line;g.lineWidth=1;rr(.5,.5,W-1,H-1,14);g.stroke();g.strokeStyle='rgba(124,245,255,0.06)';g.lineWidth=6;rr(4,4,W-8,H-8,11);g.stroke();
+}
+// ================= RENDER: HUD (fixed regions outside the playfield) =================
+function renderHud(){const g=ctx,dead=G.state==='dying'||G.state==='dead',risk=dead?0:atRisk(),bank=Math.round(G.bankShown),S=STAGES[G.stage],boss=G.boss;
+  // top-left: goal/progress + score
+  let label,frac,right,col=GREEN;
+  if(G.stage===0){label='TRAINING';frac=Math.min(3,G.tut)/3;right='step '+Math.min(3,G.tut+1)+' / 3';}
+  else if(S.target){label='STAGE '+G.stage+' / 4  ·  BANK '+S.target;frac=Math.min(1,bank/S.target);right=bank+' / '+S.target;}
+  else if(S.boss){label='FINALE  ·  THE GOALKEEPER';frac=boss?clamp(boss.hp/boss.max,0,1):0;right=boss?'KEEPER HP '+boss.hp+' / '+boss.max:'DOWN!';col=RED;}
+  else{label='ENDLESS  ·  '+fmtT(G.t-G.winT);frac=1;right='score '+score();}
+  txt(label,14,-54,14,GREY,'left',700);
+  const bx=14,by=-46,bw=250,bh=12;g.fillStyle='#1b2130';rr(bx,by,bw,bh,6);g.fill();
+  if(S.target){g.fillStyle='rgba(255,209,102,.5)';rr(bx,by,Math.max(0,bw*Math.min(1,(bank+risk)/S.target)),bh,6);g.fill();}
+  if(frac>0.01){g.fillStyle=col;rr(bx,by,Math.max(8,bw*frac),bh,6);g.fill();}g.strokeStyle=C.line;g.lineWidth=1;rr(bx,by,bw,bh,6);g.stroke();
+  txt(right,bx+bw+10,by+12,20,WHITE,'left',800);
+  txt('BANKED',14,-9,14,GREEN,'left',700);txt(String(bank),78,-8,24,GREEN,'left',800);
+  txt('AT RISK',196,-9,14,risk?GOLD:GREY,'left',700);txt(String(risk),268,-8,24,risk?GOLD:GREY,'left',800);
+  // top-centre: time + the stage's one-line rule
+  txt(fmtT(G.t)+(hard?'  HARD':''),W/2+60,-44,20,WHITE,'center',800);
+  txt(S.rule||S.sub||'',W/2+40,-8,14,GREY,'center',500);
+  // top-right: HP + catch resource
+  let hx=W-14;for(let i=G.maxHp-1;i>=0;i--){const on=i<G.hp;if(on)glow(CYAN,6);circle(hx-9,-52,8);if(on){g.fillStyle=WHITE;g.fill();noGlow();g.strokeStyle=CYAN;g.lineWidth=2.5;g.stroke();}else{g.strokeStyle='#3a4258';g.lineWidth=2;g.stroke();}hx-=24;}
+  if(G.shield){g.strokeStyle=CYAN;g.lineWidth=2;rr(hx-16,-60,16,16,4);g.stroke();txt('+',hx-8,-47,14,CYAN,'center',800);hx-=24;}
+  txt('HP',hx-4,-47,14,GREY,'right',700);
+  const ready=G.catchT<=0,fr=ready?1:1-G.catchT/G.catchCd,cw=110,cx0=W-14-cw;g.fillStyle='#1b2130';rr(cx0,-22,cw,12,6);g.fill();g.fillStyle=ready?CYAN:'rgba(124,245,255,.45)';rr(cx0,-22,Math.max(8,cw*fr),12,6);g.fill();
+  g.strokeStyle=C.line;g.lineWidth=1;rr(cx0,-22,cw,12,6);g.stroke();txt(ready?'CATCH READY':'CATCH '+Math.max(0,G.catchT).toFixed(1)+'s',cx0-10,-11,14,ready?CYAN:GREY,'right',700);
+  // bottom-centre: tip area (outside the arena, never over gameplay)
+  const t=G.tip;if(t&&(G.state==='play'||G.state==='pick'||G.state==='risk'||G.state==='clear')){const a=Math.min(ease(t.age/.25),clamp(t.life/.4,0,1));g.globalAlpha=a;
+    g.fillStyle=C.panel;rr(0,H+6,W,34,10);g.fill();g.strokeStyle=t.col===RED?RED:C.line;g.lineWidth=1;g.stroke();
+    const L=wrapText(t.text,W-40,14,600);if(L.length===1)txt(L[0],W/2,H+28,15,WHITE,'center',600);else{txt(L[0],W/2,H+21,14,WHITE,'center',600);txt(L[1]||'',W/2,H+36,14,WHITE,'center',600);}g.globalAlpha=1;}
+  // bottom-left: upgrades owned; bottom-right: key reminders + help button
+  let cx=0;const cy=H+47;let shown=0,total=0;for(const it of ITEMS){const n=G.items[it.id];if(!n)continue;total++;const label2=it.name+(n>1?' x'+n:''),w=tw(label2,13,700)+14;
+    if(cx+w>W-340)continue;g.fillStyle=C.panel;rr(cx,cy,w,20,10);g.fill();g.strokeStyle=C.line;g.lineWidth=1;g.stroke();txt(label2,cx+7,cy+15,13,GOLD,'left',700);cx+=w+6;shown++;}
+  if(shown<total)txt('+'+(total-shown),cx+2,cy+15,13,GREY,'left',700);
+  const hb=hitBtn(),hv=hb&&hb.id==='help';g.fillStyle=hv?'#1a2233':C.panel;rr(W-84,H+45,84,24,8);g.fill();g.strokeStyle=hv?CYAN:C.line;g.lineWidth=1;g.stroke();
+  txt('? Help  H',W-42,H+62,14,WHITE,'center',700);
+  txt('R restart   M '+(muted?'unmute':'mute')+'   Esc menu',W-96,H+62,14,GREY,'right',500);
+}
+// ================= UI buttons (virtual coordinates: x 0..800, y -TOP..H+BOT) =================
+function buttons(){const b=[],st=G.state;
+  if(st==='start'||st==='help'){b.push({id:'play',x:290,y:514,w:220,h:54,label:st==='start'?'PLAY':'RESUME',primary:true});
+    b.push({id:'mode',x:32,y:521,w:236,h:40,label:'DIFFICULTY: '+PM().name+'  [T]'});b.push({id:'tut',x:532,y:521,w:236,h:40,label:'TUTORIAL: '+(tutOn?'ON':'OFF')+'  [U]'});}
+  else if(st==='pick'){G.choices.forEach((it,i)=>b.push({id:'card'+i,card:it,idx:i,x:52+i*240,y:180,w:216,h:236}));}
+  else if(st==='risk'){b.push({id:'risk0',risk:0,x:110,y:180,w:270,h:210});b.push({id:'risk1',risk:1,x:420,y:180,w:270,h:210});}
+  else if(st==='dead'){b.push({id:'retry',x:250,y:420,w:160,h:46,label:'RETRY  (R)',primary:true});b.push({id:'menu',x:426,y:420,w:124,h:46,label:'MENU  (Esc)'});}
+  else if(st==='won'){b.push({id:'endless',x:168,y:420,w:236,h:46,label:'KEEP GOING: ENDLESS',primary:true});b.push({id:'retry',x:416,y:420,w:110,h:46,label:'RETRY'});b.push({id:'menu',x:538,y:420,w:94,h:46,label:'MENU'});}
+  else if(st==='play'||st==='clear')b.push({id:'help',x:W-84,y:H+45,w:84,h:24});
+  return b;}
+function hitBtn(){const vx=inp.mx,vy=inp.my;for(const b of buttons())if(vx>=b.x&&vx<=b.x+b.w&&vy>=b.y&&vy<=b.y+b.h)return b;return null;}
+function act(id){
+  if(id==='play'){if(G.state==='start')startRun();else toggleHelp();}
+  else if(id==='mode'){setHard(!hard);if(G.state==='start')toStart();}
+  else if(id==='tut'){setTut(!tutOn);}
+  else if(id==='retry')startRun();else if(id==='menu')location.href='index.html';
+  else if(id==='endless'){inp.cont=true;}else if(id==='help')toggleHelp();
+  else if(id.indexOf('card')===0)inp.pick=+id.slice(4);else if(id.indexOf('risk')===0)inp.pick=+id.slice(4);}
+function drawBtn(b,hov){const g=ctx,down=hov&&UI.press===b.id,y=b.y+TOP+(down?2:hov?-2:0);   // buttons live in arena space; screens draw in UI space
+  if(b.primary){glow(CYAN,hov?18:8);g.fillStyle=hov?'#a6f9ff':CYAN;rr(b.x,y,b.w,b.h,12);g.fill();noGlow();txt(b.label,b.x+b.w/2,y+b.h/2+(b.h>50?9:6),b.h>50?26:17,BG,'center',800);}
+  else{card(b.x,y,b.w,b.h,hov);txt(b.label,b.x+b.w/2,y+b.h/2+5,15,hov?WHITE:C.text,'center',600);}}
+function drawButtons(){const hb=hitBtn();for(const b of buttons())if(b.label)drawBtn(b,hb&&hb.id===b.id);}
+// ================= RENDER: screens (UI space y from -TOP) =================
+function dim(a,k){const g=ctx;g.setTransform(1,0,0,1,0,0);g.fillStyle='rgba(8,10,16,'+(k*a)+')';g.fillRect(0,0,cv.width,cv.height);}
+function uiBegin(a){const s=scale*dpr;ctx.setTransform(s,0,0,s,ox*dpr,(oy-TOP*scale+(1-a)*16*scale)*dpr);ctx.globalAlpha=a;}
+function renderStart(paused,a){const g=ctx;dim(a,paused?.9:.96);uiBegin(a);
+  g.letterSpacing='3px';txt('OWN GOAL',32,58,44,GOLD,'left',800);g.letterSpacing='0px';g.fillStyle=CYAN;g.fillRect(34,66,60,3);
+  txt('Discs bounce forever and kill anything red - including you. Bank 4 stages, then beat THE GOALKEEPER.',32,88,15,C.text,'left',500);
+  const med=MEDALS.indexOf(lsGet('proto_'+GAMEID+'_medal')||'none');badge(744,44,18,Math.max(0,med));
+  txt('Best '+(+lsGet('proto_'+GAMEID+'_best')||0)+'   Wins '+(+lsGet('proto_'+GAMEID+'_wins')||0),716,50,14,GREY,'right',600);
+  // ---- diagram: three panels drawn with the game's own shapes
+  card(32,104,736,196);const py=134,ph=150,pw=228;const caps=['1  THROW  (left click)','2  IT KILLS, THEN IT ARMS','3  CATCH TO BANK  (space)'];
+  const subs=['Hollow disc = harmless to you.','Each kill adds to its number.','Pays kills x kills: 3 x 3 = 9.'];
+  for(let i=0;i<3;i++){const x=44+i*240;g.fillStyle='#0f131c';rr(x,py,pw,ph,10);g.fill();g.strokeStyle=C.line;g.lineWidth=1;g.stroke();
+    txt(caps[i],x+pw/2,py+22,14,i===2?GREEN:i===1?GOLD:CYAN,'center',800);txt(subs[i],x+pw/2,py+ph-12,14,WHITE,'center',500);}
+  {const x=44;drawPlayer(x+40,py+86,1,Math.atan2(-24,70));g.setLineDash([2,7]);g.strokeStyle='rgba(124,245,255,.6)';g.lineWidth=2;g.beginPath();g.moveTo(x+56,py+82);g.lineTo(x+108,py+66);g.stroke();g.setLineDash([]);
+    drawDisc(x+118,py+63,7,0,false);arrow(x+132,py+59,x+170,py+50,GOLD);drawEnemy(0,x+192,py+45,10,{look:PI+.3});txt('YOU',x+40,py+118,14,CYAN,'center',700);txt('CHASER',x+192,py+76,14,PINK,'center',700);txt('disc',x+118,py+90,14,GOLD,'center',700);}
+  {const x=284;g.strokeStyle='#4a5470';g.lineWidth=3;g.beginPath();g.moveTo(x+212,py+34);g.lineTo(x+212,py+118);g.stroke();
+    g.strokeStyle='rgba(255,209,102,.5)';g.lineWidth=1.5;g.beginPath();g.moveTo(x+30,py+50);g.lineTo(x+118,py+66);g.lineTo(x+204,py+82);g.lineTo(x+140,py+108);g.stroke();
+    g.strokeStyle='#c9cfdb';g.lineWidth=2;for(let k=0;k<6;k++){const a2=k/6*TAU;g.beginPath();g.moveTo(x+118+Math.cos(a2)*6,py+66+Math.sin(a2)*6);g.lineTo(x+118+Math.cos(a2)*13,py+66+Math.sin(a2)*13);g.stroke();}
+    txt('kill',x+118,py+50,14,WHITE,'center',500);drawDisc(x+30,py+50,7,0,false);drawDisc(x+124,py+112,9,2,true);otxt('2',x+124,py+96,18,GOLD);arrow(x+112,py+118,x+80,py+130,RED);
+    txt('ARMED',x+168,py+124,14,PINK,'center',700);txt('wall',x+190,py+46,14,GREY,'center',500);}
+  {const x=524;drawRing(x+100,py+80,48,1,true);drawPlayer(x+100,py+80,1,Math.atan2(-10,30));drawDisc(x+128,py+60,10,3,true);otxt('3',x+128,py+42,18,GOLD);g.strokeStyle=CYAN;g.lineWidth=1.5;circle(x+128,py+60,16);g.stroke();
+    otxt('+9 BANKED',x+184,py+82,16,GREEN);txt('catch ring',x+40,py+40,14,CYAN,'center',500);}
+  // ---- two cards: controls, score/lose
+  card(32,312,362,150);txt('CONTROLS',48,336,14,CYAN,'left',800);
+  [['WASD / arrows','move'],['LEFT CLICK','throw (hold to keep throwing)'],['RIGHT CLICK / SPACE','catch pulse, '+PM().catchCd+'s cooldown'],['1 2 3  or  CLICK','pick an upgrade'],['H  R  M  Esc','help, restart, mute, menu']].forEach((r,i)=>{txt(r[0],48,360+i*20,14,WHITE,'left',700);txt(r[1],196,360+i*20,14,C.text,'left',500);});
+  card(406,312,362,150);txt('HOW YOU SCORE  /  LOSE',422,336,14,CYAN,'left',800);
+  ['Catch a disc in your cyan ring to BANK kills x kills.','Until then its points are only AT RISK.','Armed discs (red outline) and enemies cost 1 of your '+PM().hp+' HP.','Bank 60 / 150 / 280 / 450, then beat THE GOALKEEPER.','MEDALS  Bronze: clear stage 1  Silver: reach the finale','               Gold: beat THE GOALKEEPER'].forEach((s,i)=>txt(s,422,360+i*20,14,i>=4?GOLD:i===2?PINK:C.text,'left',500));
+  // ---- legend: shapes
+  card(32,474,736,58);
+  {let lx=48;const ly=497;drawDisc(lx+6,ly-5,6,0,false);txt('hollow gold = your disc, harmless',lx+18,ly,14,C.text,'left',600);lx+=18+tw('hollow gold = your disc, harmless',14,600)+22;
+    drawDisc(lx+7,ly-5,7,2,true);txt('red outline = ARMED, hurts you',lx+20,ly,14,C.text,'left',600);lx+=20+tw('red outline = ARMED, hurts you',14,600)+22;
+    otxt('3',lx+6,ly,14,GOLD);txt('= kills it carries',lx+16,ly,14,C.text,'left',600);lx+=16+tw('= kills it carries',14,600)+22;
+    g.setLineDash([4,4]);g.strokeStyle=RED;g.lineWidth=2;circle(lx+7,ly-5,7);g.stroke();g.setLineDash([]);txt('spawning',lx+20,ly,14,C.text,'left',600);}
+  {let lx=48;const ly=522;const LG=[[0,'CHASER','follows'],[1,'REFLECTOR','bounces discs'],[2,'EATER','eats <3 kills'],[3,'DASHER','lunges'],[4,'KEEPER','finale boss']];
+    LG.forEach(e=>{drawEnemy(e[0],lx+8,ly-5,e[0]===4?8:e[0]===2?7:6,{look:0});txt(e[1],lx+22,ly,14,PINK,'left',700);const w1=tw(e[1],14,700);txt(e[2],lx+27+w1,ly,14,GREY,'left',500);lx+=27+w1+tw(e[2],14,500)+18;});}
+  drawButtons();
+  txt(hard?'HARD: 1 HP, fast discs, small ring, dense spawns (the original tuning).':'NORMAL: 4 HP, slower discs, a wide ring, a gentle first stage. Recommended for a first run.',400,668,14,GREY,'center',500);
+  txt((paused?'PAUSED  ·  ':'')+'H help   R restart   M '+(muted?'unmute':'mute')+'   Esc menu'+(paused?'      (difficulty changes on the next run)':''),400,694,14,paused?CYAN:GREY,'center',500);
+  ctx.globalAlpha=1;}
+function renderPick(a){const g=ctx;dim(a,.8);uiBegin(a);
+  txt('STAGE '+G.stage+' CLEAR  ·  UPGRADE',400,112,30,GREEN,'center',800);
+  txt('Pick ONE upgrade. Click a card or press 1 / 2 / 3. The game is paused.  (next: '+(STAGES[G.stage+1].target?'bank '+STAGES[G.stage+1].target:'THE GOALKEEPER')+')',400,140,15,C.text,'center',500);
+  const hb=G.pickDelay>0?null:hitBtn();
+  for(const b of buttons()){if(!b.card)continue;const it=b.card,hov=hb&&hb.id===b.id,y=b.y+TOP-(hov?6:0)+(hov&&UI.press===b.id?3:0);
+    if(hov)glow(CYAN,16);card(b.x,y,b.w,b.h,hov);noGlow();txt(String(b.idx+1),b.x+14,y+26,16,GREY,'left',800);if(it.how)txt('NEW TRICK',b.x+b.w-12,y+24,13,CYAN,'right',700);
+    drawIcon(it.id,b.x+b.w/2,y+62);txt(it.name,b.x+b.w/2,y+116,17,GOLD,'center',800);
+    const ny=para(it.desc,b.x+b.w/2,y+142,b.w-24,14,C.text,'center',18,500);para(it.why,b.x+b.w/2,Math.max(ny+8,y+200),b.w-24,13,GREY,'center',17,'italic 500');}
+  if(M.pickHeal&&G.hp<G.maxHp)txt('Picking also heals 1 HP.',400,446+TOP,14,GREEN,'center',600);ctx.globalAlpha=1;}
+function renderRisk(a){const g=ctx,info=G.riskInfo||{n:0,face:0,carry:0};dim(a,.8);uiBegin(a);
+  txt('STAGE '+G.stage+' CLEAR  ·  RISK NOW?',400,112,30,GREEN,'center',800);
+  txt(info.n+' live disc'+(info.n>1?'s':'')+' still carr'+(info.n>1?'y':'ies')+' points. Click a card or press 1 / 2.',400,140,15,C.text,'center',500);
+  const hb=G.pickDelay>0?null:hitBtn();
+  for(const b of buttons()){if(b.risk==null)continue;const hov=hb&&hb.id===b.id,y=b.y+TOP-(hov?6:0),safe=b.risk===0;
+    if(hov)glow(CYAN,16);card(b.x,y,b.w,b.h,hov);noGlow();txt(String(b.risk+1),b.x+14,y+26,16,GREY,'left',800);
+    txt(safe?'CASH OUT':'CARRY',b.x+b.w/2,y+56,22,safe?GREEN:GOLD,'center',800);
+    txt(safe?'+'+info.face+' now':'up to +'+info.carry+' later',b.x+b.w/2,y+92,26,safe?GREEN:GOLD,'center',800);
+    para(safe?'Every live disc is banked at face value. The arena starts empty.':'The discs stay in play, ARMED, into the next stage. Each pays +50% when you catch it. Lose one and its points are gone.',b.x+b.w/2,y+122,b.w-28,14,C.text,'center',18,500);
+    txt(safe?'safe':'risk now, reward later',b.x+b.w/2,y+b.h-14,13,GREY,'center','italic 500');}
+  ctx.globalAlpha=1;}
+function renderResult(a){const g=ctx,won=G.state==='won',k=ease(G.fadeT/.9),med=G.medal;dim(a,.86);uiBegin(a);card(120,60,560,490);
+  g.letterSpacing='2px';const own=G.killer&&G.killer.kind==='disc';txt(won?'CLEAN SHEET':G.won?'RUN OVER':own?'OWN GOAL':'OVERRUN',400,108,34,won?GREEN:RED,'center',800);g.letterSpacing='0px';
+  badge(220,176,38,med);txt(['NO MEDAL YET','BRONZE MEDAL','SILVER MEDAL','GOLD MEDAL'][med],290,162,16,MEDALCOL[med],'left',800);
+  const sc=Math.round(score()*k);txt(String(sc),290,204,40,GOLD,'left',800);const sw=tw(String(sc),40,800);txt(G.newBest?'NEW BEST':'best '+G.best,300+sw,204,14,G.newBest?GREEN:GREY,'left',700);
+  txt(med<3?'Next: '+['BRONZE - clear Stage 1 (bank 60)','SILVER - reach the finale (bank 450)','GOLD - beat THE GOALKEEPER'][med]:'Every medal earned. Chase the score now.',290,230,14,GREY,'left',500);
+  let y;if(won)y=para('You beat THE GOALKEEPER in '+fmtT(G.winT)+' with '+G.hp+' HP left (+'+G.bonus+' bonus).',400,284,500,16,WHITE,'center',23,600);
+  else{y=para(G.cause,400,284,500,16,WHITE,'center',23,600);if(G.unbanked)y=para('Died with '+G.unbanked+' points still at risk (unbanked = worth nothing).',400,y+4,500,14,GOLD,'center',20,600);}
+  y=para('TIP: '+(won?'Endless keeps your upgrades and spawns every type. Fat discs and spaced-out catches are where the score is.':G.advice),400,y+12,500,15,CYAN,'center',21,500);
+  txt('Survived '+fmtT(G.t)+'    Stage '+Math.min(5,G.stageReached)+'    Discs thrown '+G.thrown+'    Own-goals '+G.ownHits+'    Lost '+G.lost+'    '+M.name,400,458,14,GREY,'center',500);
+  drawButtons();ctx.globalAlpha=1;}
+function render(){const g=ctx,s=scale*dpr;
+  g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.textBaseline='alphabetic';
+  const bgr=g.createRadialGradient(cv.width/2,cv.height/2,50,cv.width/2,cv.height/2,Math.max(cv.width,cv.height)*.75);bgr.addColorStop(0,C.bg2);bgr.addColorStop(1,C.bg);g.fillStyle=bgr;g.fillRect(0,0,cv.width,cv.height);
+  for(const mt of motes){const y=((mt.y-G.clock*mt.v)%1+1)%1;g.fillStyle='rgba(170,179,197,'+mt.a+')';circle(mt.x*cv.width,y*cv.height,mt.r*dpr);g.fill();}
+  const sh=Math.min(6,G.shake);g.setTransform(s,0,0,s,(ox+rnd(-1,1)*sh)*dpr,(oy+rnd(-1,1)*sh)*dpr);renderArena();
+  g.setTransform(s,0,0,s,ox*dpr,oy*dpr);if(G.state!=='start'&&G.state!=='help')renderHud();
+  const a=ease(G.fadeT/.28);
+  if(G.state==='start'||G.state==='help')renderStart(G.state==='help',G.state==='help'?ease(G.helpT/.25):1);
+  else if(G.state==='pick')renderPick(a);else if(G.state==='risk')renderRisk(a);else if(G.state==='dead'||G.state==='won')renderResult(a);
+  cv.style.cursor=G.state==='play'?'none':hitBtn()?'pointer':'default';
+  g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;}
+
+// ================= BOOT / INPUT =================
+function resize(){dpr=window.devicePixelRatio||1;const w=window.innerWidth,h=window.innerHeight;cv.width=w*dpr;cv.height=h*dpr;cv.style.width=w+'px';cv.style.height=h+'px';
+  scale=Math.min(w/(W+PAD*2),h/(UH+PAD));ox=(w-W*scale)/2;oy=(h-UH*scale)/2+TOP*scale;}
+const KEYS={w:'up',arrowup:'up',s:'down',arrowdown:'down',a:'left',arrowleft:'left',d:'right',arrowright:'right'};
+function mouse(e){inp.mx=(e.clientX-ox)/scale;inp.my=(e.clientY-oy)/scale;}
+function onKey(k,repeat){
+  if(k==='escape'){location.href='index.html';return true;}
+  if(k==='r'){startRun();return true;}
+  if(k==='h'){if(!repeat)toggleHelp();return true;}
+  if(k==='m'){if(!repeat)setMute(!muted);return true;}
+  if(G.state==='start'||G.state==='help'){if(k==='t'){act('mode');}else if(k==='u'){act('tut');}else if(k==='enter'||k===' '){act('play');}else return false;return true;}
+  if(G.state==='won'){if(k==='enter'||k===' '){inp.cont=true;return true;}return false;}
+  if(k===' '){if(!repeat&&G.state==='play')G.catchBuf=CFG.catchBuf;return true;}
+  if(k>='1'&&k<='3'){inp.pick=+k-1;return true;}
+  return false;}
+function onDown(b){if(b!==0){if(G.state==='play')G.catchBuf=CFG.catchBuf;return;}
+  const hb=hitBtn();UI.press=hb?hb.id:null;if(hb)return;
+  if(G.state==='start')act('play');else if(G.state==='help')toggleHelp();
+  else if(G.state==='won')inp.cont=true;
+  else if(G.state==='play'){inp.throw=true;G.throwBuf=CFG.catchBuf;}}
+function onUp(b){if(b!==0)return;inp.throw=false;const hb=hitBtn(),id=UI.press;UI.press=null;if(hb&&hb.id===id)act(id);}
+function bind(){
+  window.addEventListener('resize',resize);
+  window.addEventListener('keydown',e=>{audio();const k=e.key.toLowerCase();if(KEYS[k]){inp[KEYS[k]]=1;e.preventDefault();}else if(onKey(k,e.repeat))e.preventDefault();});
+  window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(KEYS[k])inp[KEYS[k]]=0;});
+  window.addEventListener('blur',()=>{inp.up=inp.down=inp.left=inp.right=0;inp.throw=false;});
+  cv.addEventListener('mousemove',mouse);
+  cv.addEventListener('mousedown',e=>{audio();mouse(e);e.preventDefault();onDown(e.button);});
+  window.addEventListener('mouseup',e=>{mouse(e);onUp(e.button);});
+  cv.addEventListener('contextmenu',e=>e.preventDefault());
+}
+let last=0;
+function frame(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;update(dt);render();requestAnimationFrame(frame);}
+cv=document.getElementById('c');ctx=cv.getContext('2d');resize();bind();toStart();requestAnimationFrame(frame);
+window.Game={startRun,toStart,toggleHelp,setHard,setTut,setMute,setInput,update,render,give,offer,choose,riskChoose,beginStage,onKey,onDown,onUp,act,buttons,hitBtn,CFG,MODES,ITEMS,STAGES,ENEMY,W,H,TOP,BOT,
+  get M(){return M;},get hard(){return hard;},get muted(){return muted;},get tutOn(){return tutOn;},get state(){return G;},get input(){return inp;},get seen(){return seen;}};
+})();
+</script></body></html>

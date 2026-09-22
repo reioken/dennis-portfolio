@@ -1,0 +1,611 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>SWAPMEET</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block;cursor:crosshair}</style>
+</head><body><canvas id="c"></canvas><script>
+'use strict';
+// ============ SWAPMEET — your only attack is swapping places. Attacks hit CELLS, not people. ============
+const GID = 'swapmeet', N = 7, GOAL = 44, SWAP_COOLDOWN = 1, ROCKS = 3;
+const FONT = '"Segoe UI Variable Display","Segoe UI",ui-rounded,system-ui,sans-serif';
+const C = { bg:'#0b0d12', bg2:'#121726', panel:'#121622', border:'#232a3d', player:'#7cf5ff', danger:'#ff5d73', gold:'#ffd166',
+  safe:'#9dff8a', text:'#e8ecf5', dim:'#aab3c5', ink:'#0b0d12' };
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1]], DIAG = [[1,1],[1,-1],[-1,1],[-1,-1]];
+const MEDALS = [['gold',240],['silver',140],['bronze',60]];                   // score thresholds (calibrated with the handicapped bot)
+const medalFor = s => (MEDALS.find(m => s >= m[1]) || [null])[0];
+// ---------- run structure: 5 stages of 8 turns, one new piece per stage, named finale ----------
+const STAGES = [
+  { name:'GRUNTS',   until:8 },
+  { name:'BOMBERS',  until:16, add:'bomber' },
+  { name:'ARCHERS',  until:24, add:'archer' },
+  { name:'SLAMMERS', until:32, add:'slammer' },
+  { name:'FINALE - THE WARLORD', until:GOAL, boss:'warlord' },
+];
+const MODES = {                                                            // HARD = the original bot-tuned pressure and 3 HP
+  normal:{ hp:5, interval:[1,1,1,1,1], count:[1,2,2,2,3], cap:[6,8,10,12,14] },
+  hard:  { hp:3, interval:[1,1,1,1,1], count:[2,2,3,3,3], cap:[8,10,12,14,14] },
+};
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let W = 0, H = 0, cs = 60, ox = 0, oy = 0, bw = 0, G = null, P = null;
+const store = { get:(k,d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+  set:(k,v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+let best = +store.get('proto_'+GID+'_best', 0) || 0, bestMedal = store.get('proto_'+GID+'_medal', ''), wins = +store.get('proto_'+GID+'_wins', 0) || 0;
+const UI = { screen:'start', help:false, hard:false, t0:0, now:0, mx:-1, my:-1, down:null, btns:[], tutDone: store.get('proto_'+GID+'_tut','') === '1', motes:[] };
+const seenTips = {};
+
+// ---------- data: items (data row + one rule hook). 'how' items change how you play ----------
+const ITEMS = [
+  { id:'diag',   glyph:'X',  name:'Bishop Clause', desc:'You can also swap along diagonals.', why:'Twice as many swap lines.', diag:1 },
+  { id:'pierce', glyph:'>>', name:'Long Arm',      desc:'Your swap line passes through one blocker.', why:'Reach the enemy hiding behind another.', pierce:1 },
+  { id:'step2',  glyph:'2',  name:'Long Stride',   desc:'Step up to 2 tiles in a line.', why:'Escape big blasts in one move.', stepRange:2 },
+  { id:'shove',  glyph:'->', name:'Shove',         desc:'While swap recharges: step INTO an adjacent enemy to push it 1 tile. Counts as a swap for score.', why:'An attack on your off-turn.', shove:1 },
+  { id:'mine',   glyph:'*',  name:'Parting Gift',  desc:'The cell you leave by swapping explodes, killing whoever you put there.', why:'Every swap becomes a kill.', onSwap:(g,e,from)=>{ g.mine = {x:from.x,y:from.y}; } },
+  { id:'stun',   glyph:'zz', name:'Jet Lag',       desc:'The enemy you swap with skips its next turn.', why:'It stays where you put it.', onSwap:(g,e)=>{ e.stun = 1; } },
+  { id:'wind',   glyph:'~',  name:'Second Wind',   desc:'A swap that kills 2 or more recharges instantly.', why:'Chain big combos back to back.', wind:1 },
+  { id:'extra',  glyph:'!!', name:'Encore',        desc:'3+ kills in one turn: take a free extra turn.', why:'Big combos buy you time.', extraAt:3 },
+  { id:'pact',   glyph:'x2', name:'Blood Pact',    desc:'Lose 1 HP now. Swap kills score double for the rest of the run.', why:'Risk now, reward later.', mult:2, can:g=>g.player.hp > 1, onPick:g=>{ g.player.hp--; } },
+  { id:'tips',   glyph:'$',  name:'Tip Jar',       desc:'Enemies that die WITHOUT your swap still score 1 each.', why:'Get paid for the chaos.', tipjar:1 },
+  { id:'skin',   glyph:'O',  name:'Thick Skin',    desc:'The first hit you take each stage is absorbed.', why:'A safety net for mistakes.', skin:1, onPick:g=>{ g.shield = 1; } },
+  { id:'ins',    glyph:'+1', name:'Insurance',     desc:'Once: a lethal hit leaves you at 1 HP instead.', why:'One free mistake in the finale.', onPick:g=>{ g.insured = 1; } },
+  { id:'hp',     glyph:'+',  name:'Bandage',       desc:'Heal 2 HP.', why:'Simple. Alive is good.', repeat:1, onPick:g=>{ g.player.hp += 2; } },
+];
+const owned = () => ITEMS.filter(i => G.items[i.id]);
+const stat = (k, base) => owned().reduce((v, i) => i[k] !== undefined ? i[k] : v, base);
+
+// ---------- data: enemy types (move rule + telegraph shape) ----------
+const around = (cx, cy, offs) => offs.map(([dx,dy]) => ({ x:cx+dx, y:cy+dy })).filter(c => inb(c.x,c.y) && !rockAt(c.x,c.y));
+const ray = (x0, y0, dx, dy, len) => { const cells = []; for (let i = 1; i <= len; i++) { const x = x0+dx*i, y = y0+dy*i; if (!inb(x,y) || rockAt(x,y)) break; cells.push({ x, y }); } return cells; };
+const TYPES = {
+  grunt: { bag:3, letter:'G', name:'Grunt', verb:'stabs', short:'stabs 1 cell toward you', info:'Grunt: stabs the next cell toward you after your move.',
+    move: e => stepToward(e),
+    tele: e => { const [dx,dy] = dirTo(e), x = e.x+dx, y = e.y+dy; return inb(x,y) && !rockAt(x,y) ? { cells:[{x,y}], timer:1 } : null; } },
+  bomber: { bag:3, letter:'B', name:'Bomber', verb:'bomb explodes', short:'3x3 blast on a countdown', info:'Bomber: drops a 3x3 blast where you stand. The number counts the turns until it lands.',
+    tip:'NEW: BOMBER (B) - marks a 3x3 blast with a countdown. Be outside when it hits 0, or swap enemies INTO it.',
+    move: e => hasTele(e) ? stepToward(e) : false,
+    tele: e => hasTele(e) ? null : { cells:around(P.x,P.y,[[0,0],...DIRS,...DIAG]), timer:2, delayed:true, cx:P.x, cy:P.y } },
+  archer: { bag:3, letter:'A', name:'Archer', verb:'shoots', short:'arrow hits the first body', info:'Archer: fires up to 3 cells in a line. The arrow stops at the FIRST body it meets.',
+    tip:'NEW: ARCHER (A) - fires 3 cells in a line, but the arrow stops at the FIRST body. Put an enemy in the way.',
+    move: e => { const ax = Math.abs(P.x-e.x), ay = Math.abs(P.y-e.y), sx = Math.sign(P.x-e.x), sy = Math.sign(P.y-e.y);
+      if (ax && ay) return ax <= ay ? (tryMove(e,sx,0) || tryMove(e,0,sy)) : (tryMove(e,0,sy) || tryMove(e,sx,0));   // align
+      if (ax+ay <= 1) return tryMove(e,-sx,-sy); if (ax+ay > 3) return tryMove(e,sx,sy); return false; },
+    tele: e => { if (e.x !== P.x && e.y !== P.y) return null; const [dx,dy] = dirTo(e), cells = ray(e.x, e.y, dx, dy, 3);   // arrows stop at rocks
+      return cells.length ? { cells, timer:1, line:true } : null; } },
+  slammer: { bag:3, letter:'S', name:'Slammer', verb:'slams', short:'hits the 4 cells around it', info:'Slammer: every other turn it hits the 4 cells next to where it stood.',
+    tip:'NEW: SLAMMER (S) - every other turn it hits the 4 cells around it. Swap it next to its friends.',
+    move: e => (e.tick = (e.tick||0)+1) % 2 ? stepToward(e) : false,
+    tele: e => e.tick % 2 ? null : { cells:around(e.x,e.y,DIRS), timer:1, cx:e.x, cy:e.y } },
+  warlord: { bag:0, letter:'W', name:'Warlord', hp:2, verb:'slams', short:'2 HP, cross slam for 2. Hurt only on your SWAP turns', info:'Warlord: 2 HP. Slams a cross 2 cells long for 2 damage on a countdown. Armoured: it is only hurt on a turn you SWAPPED - swap it into another enemy\'s attack, twice.',
+    tip:`FINALE: THE WARLORD (W) - slams a cross for 2 damage on a countdown. It only takes damage on turns you SWAP: put it in another enemy's red cell, twice, for +15. Survive to turn ${GOAL}.`,
+    move: e => { if (hasTele(e)) return false; e.rest = (e.rest||0)+1; return stepToward(e); },
+    tele: e => (hasTele(e) || (e.rest||0) < 2) ? null : (e.rest = 0, { cells:DIRS.flatMap(([dx,dy]) => ray(e.x,e.y,dx,dy,2)), timer:2, delayed:true, dmg:2, cx:e.x, cy:e.y }) },
+};
+const armored = (type, verb) => type === 'warlord' && !verb;                 // the boss shrugs off hits on turns you did not swap
+
+// ---------- helpers ----------
+const inb = (x,y) => x >= 0 && y >= 0 && x < N && y < N;
+const enemyAt = (x,y) => G.enemies.find(e => e.x === x && e.y === y);
+const rockAt = (x,y) => G.rocks.some(r => r.x === x && r.y === y);
+const byId = id => G.enemies.find(e => e.id === id);
+const hasTele = e => G.tele.some(t => t.owner === e.id);
+const dist = e => Math.abs(P.x-e.x) + Math.abs(P.y-e.y);
+const inCells = (cells,x,y) => cells.some(c => c.x === x && c.y === y);
+const shuffle = a => { for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+const later = (ms, fn) => G.q.push({ ms, fn });
+const MODE = () => MODES[G.hard ? 'hard' : 'normal'];
+const ease = t => 1-Math.pow(1-Math.max(0,Math.min(1,t)),3);
+function dirTo(e) { const dx = P.x-e.x, dy = P.y-e.y; return Math.abs(dx) >= Math.abs(dy) ? [Math.sign(dx)||1, 0] : [0, Math.sign(dy)]; }
+function moveEnt(o, x, y, dur = 140, arc = 0) { o.a = { fx:o.x, fy:o.y, t:0, dur, arc }; o.x = x; o.y = y; }
+function tryMove(e, dx, dy) { const x = e.x+dx, y = e.y+dy;
+  if ((!dx && !dy) || !inb(x,y) || rockAt(x,y) || enemyAt(x,y) || (x === P.x && y === P.y)) return false; moveEnt(e,x,y); return true; }
+function stepToward(e) { const dx = Math.sign(P.x-e.x), dy = Math.sign(P.y-e.y);
+  return Math.abs(P.x-e.x) >= Math.abs(P.y-e.y) ? (tryMove(e,dx,0) || tryMove(e,0,dy)) : (tryMove(e,0,dy) || tryMove(e,dx,0)); }
+// archer lines stop at the first body; everything else hits all of its cells
+function effCells(t, occ) { if (!t.line) return t.cells; const out = []; for (const c of t.cells) { out.push(c); if (occ(c.x,c.y)) break; } return out; }
+function nameList(arr) { const m = {}; arr.forEach(n => m[n] = (m[n]||0)+1); const p = Object.keys(m).map(n => m[n] > 1 ? `${m[n]} ${n}s` : n);
+  return p.length > 1 ? p.slice(0,-1).join(', ')+' and '+p[p.length-1] : p[0]; }
+
+// ---------- audio: soft synth, master gain, shared mute ----------
+let AC = null, MG = null, muted = store.get('proto_mute','0') === '1';
+function initAudio() { if (AC) return; const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+  try { AC = new A(); MG = AC.createGain(); MG.gain.value = muted ? 0 : .5; MG.connect(AC.destination); } catch (e) { AC = null; } }
+function setMute(m) { muted = m; store.set('proto_mute', m ? '1' : '0'); if (MG) MG.gain.value = m ? 0 : .5; }
+function tone(f, d = .12, type = 'sine', v = .12, slide = 0, delay = 0) { if (!AC) return;
+  const t = AC.currentTime+delay, o = AC.createOscillator(), g = AC.createGain(); o.type = type;
+  o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f*slide), t+d);
+  g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t+.012); g.gain.exponentialRampToValueAtTime(.0001, t+d);
+  o.connect(g); g.connect(MG); o.start(t); o.stop(t+d+.03); }
+function noise(d = .12, freq = 900, v = .1) { if (!AC) return; const n = Math.floor(AC.sampleRate*d), b = AC.createBuffer(1,n,AC.sampleRate), ch = b.getChannelData(0);
+  for (let i = 0; i < n; i++) ch[i] = (Math.random()*2-1)*(1-i/n);
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = b; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = v;
+  s.connect(f); f.connect(g); g.connect(MG); s.start(); }
+const PENTA = [0,2,4,7,9,12,14,16,19,21], pent = i => 392*Math.pow(2, PENTA[Math.min(i,9)]/12);
+const jingle = (notes, type = 'triangle', v = .1) => notes.forEach((n,i) => tone(pent(n), .26, type, v, 0, i*.09));
+
+// ---------- run setup & spawning ----------
+function startRun(opts = {}) {
+  UI.screen = 'game'; UI.help = false; UI.t0 = UI.now;
+  const hard = UI.hard;
+  G = { hard, phase:'player', turn:0, stage:0, score:0, shown:0, kills:0, nextItem:10, items:{}, offer:null, offerWhy:'', pickQ:[], cool:0, shield:0, insured:0,
+    player:{ x:3, y:3, hp:MODES[hard?'hard':'normal'].hp, a:null }, enemies:[], rocks:[], tele:[], pending:[], spawnT:3, bag:[], forceType:null, nid:1, seen:{ grunt:0 },
+    q:[], skip:false, hitstop:0, shake:0, parts:[], rings:[], flashes:[], att:null, hover:null, hoverOff:false, scorePop:null,
+    res:{ kills:0, hurt:false }, verbTurn:false, swapped:0, mine:null, killer:null, time:0, hurtFlash:0, eventLine:'', lastLine:'',
+    tip:null, tipQ:[], tut:null, won:false, endless:false, ended:false, screenT:0,
+    stats:{ swapKills:0, otherKills:0, maxCombo:0, swaps:0, items:0, hits:0 } };
+  P = G.player;
+  if (opts.tutorial) {                                                     // fixed teaching board: nothing can hurt you here
+    G.tut = { step:1 }; G.enemies.push(mkEnemy('grunt',3,2), mkEnemy('grunt',5,3));
+    G.enemies[0].label = 'ATTACKER'; G.enemies[0].ldy = -1; G.enemies[1].label = 'BYSTANDER'; G.enemies[1].ldy = 1;
+    G.tele.push({ cells:[{x:3,y:3}], timer:1, owner:G.enemies[0].id, kind:'grunt' }); return; }
+  // a few rocks in the inner ring (never on the edge spawn cells, never in the centre 3x3, never touching each other) so line-blocking matters
+  const spots = shuffle([].concat(...[1,2,3,4,5].map(x => [1,2,3,4,5].map(y => ({x,y})))).filter(c => Math.max(Math.abs(c.x-3),Math.abs(c.y-3)) === 2));
+  for (const c of spots) { if (G.rocks.length >= ROCKS) break; if (!G.rocks.some(r => Math.abs(r.x-c.x) <= 1 && Math.abs(r.y-c.y) <= 1)) G.rocks.push(c); }
+  for (let i = 0; i < 2; i++) { const c = spawnCell(); if (c) G.enemies.push(mkEnemy('grunt', c.x, c.y)); }
+  declare(G.enemies); announce();
+}
+function mkEnemy(type, x, y) { return { id:G.nid++, type, x, y, hp:TYPES[type].hp || 1, stun:0, a:null, born:UI.now, tick:0 }; }
+function spawnCell() { const cells = [];
+  for (let i = 0; i < N; i++) for (const c of [{x:i,y:0},{x:i,y:N-1},{x:0,y:i},{x:N-1,y:i}])
+    if (!enemyAt(c.x,c.y) && !inCells(G.pending,c.x,c.y) && Math.abs(c.x-P.x)+Math.abs(c.y-P.y) >= 2) cells.push(c);
+  return cells.length ? cells[Math.floor(Math.random()*cells.length)] : null; }
+function availTypes() { const out = ['grunt']; STAGES.forEach((s,i) => { if (s.add && (G.endless || i <= G.stage)) out.push(s.add); }); return out; }
+function drawType() { if (G.forceType) { const t = G.forceType; G.forceType = null; return t; }
+  if (!G.bag.length) G.bag = shuffle(availTypes().flatMap(k => Array(TYPES[k].bag).fill(k))); return G.bag.pop(); }
+function pushPending(type) { const c = spawnCell(); if (c) G.pending.push({ x:c.x, y:c.y, type }); }
+function spawnRule() { const m = MODE(), s = G.stage, t = Math.max(0, G.turn-GOAL);   // endless: pressure keeps climbing, a fresh Warlord every 12 turns
+  return G.endless ? { interval:1, count:1+Math.floor(t/8), cap:Math.min(14, 7+Math.floor(t/6)), boss:t > 0 && t % 12 === 0 } : { interval:m.interval[s], count:m.count[s], cap:m.cap[s] }; }
+function announce() { const r = spawnRule();
+  if (r.boss && !G.enemies.some(e => e.type === 'warlord')) pushPending('warlord');
+  for (let i = r.count; i > 0; i--) if (G.enemies.length+G.pending.length < r.cap) pushPending(drawType());
+  G.spawnT = r.interval; }
+function declare(list) { for (const e of list) { const t = TYPES[e.type].tele(e); if (t) G.tele.push({ ...t, owner:e.id, kind:e.type }); } }
+function stageStart() { const s = STAGES[G.stage]; G.shield = stat('skin',0) ? 1 : 0; G.bag = [];
+  if (s.add) { pushPending(s.add); tip(TYPES[s.add].tip, 'new'); G.seen[s.add] = G.turn; }
+  if (s.boss) { const c = spawnCell(); if (c) G.enemies.push(mkEnemy(s.boss, c.x, c.y)); else pushPending(s.boss); tip(TYPES[s.boss].tip, 'new'); G.seen[s.boss] = G.turn; }   // the boss walks in at once
+  jingle([0,2,4], 'sine', .08); }
+function tip(text, key, once) { if (once) { if (seenTips[key]) return; seenTips[key] = 1; } G.tipQ.push({ text, key }); }
+
+// ---------- player actions ----------
+function swapLines() { const out = [], dirs = stat('diag',0) ? DIRS.concat(DIAG) : DIRS;       // the reach of your verb, per direction
+  for (const [dx,dy] of dirs) { let skip = stat('pierce',0), x = P.x+dx, y = P.y+dy, ex = P.x, ey = P.y; const targets = [];
+    while (inb(x,y) && !rockAt(x,y)) { ex = x; ey = y; const e = enemyAt(x,y); if (e) { targets.push(e); if (skip-- <= 0) break; } x += dx; y += dy; }   // rocks end a line
+    out.push({ ex, ey, targets }); }
+  return out; }
+function legalActions() {
+  if (G.tut) return G.tut.step < 3 ? [{ type:'swap', id:G.enemies[1].id, x:G.enemies[1].x, y:G.enemies[1].y }] : [];
+  const out = [{ type:'wait', x:P.x, y:P.y }], r = stat('stepRange',1);
+  for (const [dx,dy] of DIRS) for (let i = 1; i <= r; i++) { const x = P.x+dx*i, y = P.y+dy*i;
+    if (!inb(x,y) || rockAt(x,y) || enemyAt(x,y)) break; out.push({ type:'step', x, y }); }
+  if (!G.cool) for (const l of swapLines()) for (const e of l.targets) out.push({ type:'swap', id:e.id, x:e.x, y:e.y });
+  else if (stat('shove',0)) for (const [dx,dy] of DIRS) { const e = enemyAt(P.x+dx,P.y+dy), bx = P.x+2*dx, by = P.y+2*dy;
+    if (e && inb(bx,by) && !rockAt(bx,by) && !enemyAt(bx,by)) out.push({ type:'shove', id:e.id, x:e.x, y:e.y, bx, by }); }
+  return out; }
+// what WOULD happen — same order and rules as the real resolution. Used by the hover preview, the skull marks and bots.
+function simulate(a) {
+  const pos = G.enemies.map(e => ({ id:e.id, type:e.type, x:e.x, y:e.y, hp:e.hp, alive:true })), verb = a.type === 'swap' || a.type === 'shove';
+  const px = a.x, py = a.y, tgt = verb && pos.find(p => p.id === a.id);
+  if (a.type === 'swap') { tgt.x = P.x; tgt.y = P.y; } else if (a.type === 'shove') { tgt.x = a.bx; tgt.y = a.by; }
+  const occ = (x,y) => (x === px && y === py) || pos.some(p => p.alive && p.x === x && p.y === y);
+  const list = G.tele.filter(t => t.timer <= 1); if (a.type === 'swap' && G.items.mine) list.push({ cells:[{x:P.x,y:P.y}], mineHit:true });
+  const dies = [], wounded = [], shrug = []; let hurt = false, hurtBy = null;
+  for (const t of list) { const cells = effCells(t, occ);
+    for (const p of pos) if (p.alive && inCells(cells,p.x,p.y)) { if (armored(p.type, verb)) { if (!shrug.includes(p)) shrug.push(p); } else if (--p.hp <= 0) { p.alive = false; dies.push(p); } else if (!wounded.includes(p)) wounded.push(p); }
+    if (!t.mineHit && !hurt && inCells(cells,px,py)) { hurt = true; hurtBy = t; } }
+  const n = dies.length, gain = verb ? n*n*stat('mult',1) : (stat('tipjar',0) ? n : 0), shielded = hurt && G.shield > 0;
+  return { px, py, dies, wounded, shrug, kills:n, hurt, hurtBy, shielded, dmg:hurt && !shielded ? (hurtBy.dmg || 1) : 0, gain, verb, moved:tgt || null };
+}
+const preview = simulate;
+function act(a) {
+  if (!G || G.phase !== 'player' || !a || UI.help || UI.screen !== 'game') return false;
+  const L = legalActions().find(l => l.type === a.type && l.x === a.x && l.y === a.y) ||
+    (a.type === 'step' && legalActions().find(l => l.type === 'shove' && l.x === a.x && l.y === a.y)); if (!L) return false;
+  G.phase = 'busy'; G.turn++; G.res = { kills:0, hurt:false }; G.verbTurn = L.type === 'swap' || L.type === 'shove'; G.swapped = 0; G.mine = null; G.q = [];
+  G.cool = L.type === 'swap' ? SWAP_COOLDOWN : Math.max(0, G.cool-1); G.eventLine = ''; G.hoverOff = true; dismissTip(L.type);
+  let lead = 160;
+  if (L.type === 'step') { moveEnt(P, L.x, L.y, 130); tone(520,.06,'triangle',.06); }
+  else if (L.type === 'swap') { const e = byId(L.id), from = { x:P.x, y:P.y }; G.stats.swaps++;
+    moveEnt(P, e.x, e.y, 170, .38); moveEnt(e, from.x, from.y, 170, .38); G.swapped = e.id;   // both arc past each other
+    owned().forEach(i => i.onSwap && i.onSwap(G, e, from)); tone(330,.18,'sine',.1,1.8); tone(495,.14,'triangle',.05,1.5,.04); lead = 240;
+    if (!G.tut) tip('SWAP RECHARGING - step or wait one turn, then you can swap again.', 'cool', true); }
+  else if (L.type === 'shove') { const e = byId(L.id), ex = e.x, ey = e.y; G.stats.swaps++; moveEnt(e, L.bx, L.by, 130); moveEnt(P, ex, ey, 130); G.swapped = e.id; noise(.08,700,.1); lead = 200; }
+  else { lead = 80; tone(240,.05,'sine',.04); }
+  G.tele.forEach(t => t.timer--);
+  let d = lead;                                                            // resolve ONE AT A TIME, on CELLS, slow enough to follow
+  for (const t of G.tele.filter(t => t.timer <= 0)) { later(d, () => strike(t)); d = 240; }
+  if (G.mine) { const m = G.mine; later(d, () => strike({ cells:[m], mineHit:true })); d = 240; }
+  later(d, finishRes); return true;
+}
+
+// ---------- resolution ----------
+function strike(t) {
+  G.tele = G.tele.filter(o => o !== t);
+  const occ = (x,y) => !!enemyAt(x,y) || (P.x === x && P.y === y), cells = effCells(t, occ), o = byId(t.owner);
+  const all = G.enemies.filter(e => inCells(cells,e.x,e.y)), victims = all.filter(e => !armored(e.type, G.verbTurn)), shrug = all.filter(e => armored(e.type, G.verbTurn)), hitP = !t.mineHit && inCells(cells,P.x,P.y);
+  if (o) G.att = { id:o.id, life:240 };
+  G.flashes.push({ cells, life:280, max:280, hot:!!(victims.length || hitP) });
+  const who = t.mineHit ? 'Parting Gift explodes' : `${TYPES[t.kind].name} ${TYPES[t.kind].verb}`, out = [];
+  const dead = victims.filter(e => e.hp <= 1), hurtE = victims.filter(e => e.hp > 1);
+  if (dead.length) out.push(nameList(dead.map(e => TYPES[e.type].name)) + (dead.length > 1 ? ' die' : ' dies'));
+  if (hurtE.length) out.push(nameList(hurtE.map(e => TYPES[e.type].name)) + ' takes 1 damage');
+  if (shrug.length) out.push('Warlord shrugs it off (no swap this turn)');
+  if (hitP) out.push(G.shield > 0 ? 'Thick Skin absorbs it' : `YOU take ${t.dmg || 1} damage`);
+  G.eventLine = who + ': ' + (out.length ? out.join(', ') : 'hits nothing');
+  if (!victims.length && !hitP) { tone(160,.06,'sine',.04); return; }
+  noise(.1, 1200, .08);
+  for (const e of victims) { if (--e.hp <= 0) kill(e); else { e.hitT = UI.now; tone(200,.1,'triangle',.08); } }
+  if (hitP && !G.res.hurt) { G.res.hurt = true;
+    if (G.shield > 0) { G.shield--; tone(660,.15,'sine',.08); ringFx(P.x,P.y,C.safe); return; }
+    P.hp -= t.dmg || 1; G.stats.hits++; G.hurtFlash = 350; G.shake = 6; G.hitstop = 80; tone(150,.3,'triangle',.14,.5); noise(.2,500,.12); shards(P.x,P.y,'#ffffff',8);
+    tip('You stood in a red cell when it resolved. Hover a move first: a RED outline on your ghost means damage.', 'hurt', true);
+    if (P.hp <= 0) { if (G.insured) { G.insured = 0; P.hp = 1; G.items.ins = 0; G.eventLine += ' - Insurance saves you at 1 HP'; return; }
+      scoreCombo(); G.killer = t; G.phase = 'dying'; G.q = []; later(500, die); } }
+}
+function kill(e) { G.enemies = G.enemies.filter(o => o !== e); const k = ++G.res.kills;
+  if (G.verbTurn) { G.kills++; G.stats.swapKills++; } else G.stats.otherKills++;
+  tone(pent(k-1), .16, 'sine', .11); tone(pent(k-1)*2, .1, 'triangle', .04);                    // pentatonic climb per kill
+  G.hitstop = Math.min(80, 30+15*k); G.shake = Math.min(6, 2+k); ringFx(e.x, e.y, G.verbTurn ? C.gold : C.dim); shards(e.x, e.y, G.verbTurn ? C.gold : C.dim, 7);
+  G.rings.push({ x:e.x, y:e.y, life:260, max:260, ghost:e.type });
+  if (e.type === 'warlord') { G.score += 15; G.bossDown = true; G.scorePop = { txt:'+15 WARLORD DOWN', life:1800, col:C.gold }; jingle([2,4,5,7]); } }
+function scoreCombo() { const n = G.res.kills; if (!n || G.res.scored) return; G.res.scored = true;
+  const gain = G.verbTurn ? n*n*stat('mult',1) : (stat('tipjar',0) ? n : 0);
+  G.score += gain; if (G.verbTurn) G.stats.maxCombo = Math.max(G.stats.maxCombo, n);
+  if (gain) { G.scorePop = { txt:'+'+gain+(n > 1 && G.verbTurn ? `  (${n} kills x ${n})` : ''), life:1500, col:C.gold }; if (n > 1) jingle([0,2,4,5].slice(0,n+1)); }
+  else { G.scorePop = { txt:'+0  (no swap)', life:1500, col:C.dim };
+    tip('Enemies that die WITHOUT your swap score nothing. Only turns where you SWAP score (kills x kills).', 'noscore', true); } }
+function finishRes() { scoreCombo(); const n = G.res.kills;
+  G.lastLine = (G.res.hurt ? 'You were hit. ' : '') + (n ? (G.verbTurn ? `Your swap killed ${n}.` : `${n} died on their own - no score without a swap.`) : '');
+  if (G.tut) { G.tut.step = 3; G.phase = 'tutEnd'; UI.tutDone = true; store.set('proto_'+GID+'_tut','1'); jingle([0,2,4,7]); return; }
+  if (G.verbTurn && n >= 2 && stat('wind',0)) G.cool = 0;
+  if (n >= stat('extraAt',99)) { G.lastLine += ' ENCORE - free turn!'; toPlayer(); } else later(80, enemyPhase); }
+function enemyPhase() {
+  const active = G.enemies.slice().sort((a,b) => dist(a)-dist(b)).filter(e => e.stun ? (e.stun = 0, false) : true);
+  active.forEach(e => TYPES[e.type].move(e)); declare(active);
+  G.pending = G.pending.filter(s => { if (enemyAt(s.x,s.y) || (P.x === s.x && P.y === s.y)) return true;   // blocked: stays announced
+    G.enemies.push(mkEnemy(s.type, s.x, s.y)); if (G.seen[s.type] === undefined) G.seen[s.type] = G.turn; tone(196,.12,'sine',.06,1.5); return false; });
+  if (!G.enemies.length && !G.pending.length) G.spawnT = 0;
+  if (--G.spawnT <= 0) announce();
+  later(170, toPlayer);
+}
+// back to the player — or a stage clear, a pick screen, or the win
+function toPlayer() { G.skip = false; G.att = null;
+  if (!G.endless && !G.won && G.turn >= GOAL) { G.won = true; G.phase = 'won'; G.screenT = UI.now; endRun(true); jingle([0,2,4,7,9], 'triangle', .12); return; }
+  if (!G.endless && G.turn >= STAGES[G.stage].until && G.stage < STAGES.length-1) { G.pickQ.push(`STAGE ${G.stage+1} CLEAR`); G.stage++; G.stageUp = true; jingle([0,4,7], 'triangle', .1); }
+  if (G.kills >= G.nextItem && !G.endless) { G.nextItem += 10; G.pickQ.push('10 SWAP KILLS - BONUS ITEM'); }   // endless: no more items, just pressure
+  if (G.pickQ.length) { G.offerWhy = G.pickQ.shift();
+    G.offer = shuffle(ITEMS.filter(i => (i.repeat || !G.items[i.id]) && (!i.can || i.can(G)))).slice(0,3);
+    if (G.offer.length) { G.phase = 'item'; G.screenT = UI.now; return; } }
+  if (G.stageUp) { G.stageUp = false; stageStart(); }
+  G.phase = 'player'; G.hoverOff = false; }
+function pickItem(i) { if (!G || G.phase !== 'item' || !G.offer[i]) return false; const it = G.offer[i];
+  G.items[it.id] = (G.items[it.id]||0)+1; it.onPick && it.onPick(G); G.stats.items++; G.offer = null; jingle([4,7]); toPlayer(); return true; }
+function keepGoing() { if (!G || G.phase !== 'won') return; G.endless = true; G.ended = false; G.phase = 'player'; tip('ENDLESS - spawns keep speeding up. How far can you push the score?', 'endless'); }
+function endRun(win) { if (G.ended) return; G.ended = true; const m = medalFor(G.score), rank = x => ['','bronze','silver','gold'].indexOf(x || '');
+  if (G.score > best) { best = G.score; store.set('proto_'+GID+'_best', best); }
+  if (rank(m) > rank(bestMedal)) { bestMedal = m; store.set('proto_'+GID+'_medal', m); }
+  if (win) { wins++; store.set('proto_'+GID+'_wins', wins); } }
+function die() { G.phase = 'dead'; G.screenT = UI.now+700; endRun(false); tone(294,.5,'sine',.1,.6); tone(220,.7,'triangle',.08,.6,.18); }
+function causeText() { const t = G.killer, nm = t && t.kind ? TYPES[t.kind].name : 'blast';
+  const what = { grunt:"a Grunt's stab", archer:"an Archer's arrow", bomber:"a Bomber's 3x3 blast", slammer:"a Slammer's slam", warlord:"the Warlord's cross slam" }[t && t.kind] || 'a blast';
+  const tips = { grunt:'Grunts stab the cell next to them, toward you. Step sideways - or swap something else into that cell.',
+    archer:'Arrows stop at the first body. Leave the row/column, or swap so an enemy (or a rock) stands between you and the Archer.',
+    bomber:'Bombs show a countdown. When it reads 1, be outside the 3x3 after your move - or swap an enemy into it.',
+    slammer:'Slammers hit the 4 cells around them every other turn. Stay diagonal to them, or swap them next to their friends.',
+    warlord:'The Warlord counts down before slamming a cross 2 cells long. Stay diagonal to it, or swap INTO its own centre cell - the cross never hits its centre.' };
+  return { cause:`Killed by ${what} on turn ${G.turn} (${G.endless ? 'ENDLESS' : STAGES[G.stage].name})`, tip:tips[t && t.kind] || tips.grunt, nm }; }
+function ringFx(x, y, col) { G.rings.push({ x, y, life:320, max:320, col }); }
+function shards(x, y, col, n) { for (let i = 0; i < n; i++) { const a = Math.random()*6.283, s = .002+Math.random()*.004;
+  G.parts.push({ x:x+.5, y:y+.5, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:260+Math.random()*160, max:420, col, rot:a }); } }
+function dismissTip(actType) { if (G.tip && G.tip.key === 'cool' && actType !== 'swap') G.tip = null; }
+
+// ---------- update ----------
+function update(dt) {
+  UI.now += dt; if (!G || UI.screen !== 'game' || UI.help) return;
+  G.time += dt;
+  G.shown += (G.score-G.shown)*Math.min(1, dt/160); if (Math.abs(G.score-G.shown) < .05) G.shown = G.score;
+  G.shake *= Math.pow(.84, dt/16); G.hurtFlash = Math.max(0, G.hurtFlash-dt);
+  if (G.scorePop && (G.scorePop.life -= dt) <= 0) G.scorePop = null;
+  if (G.tip && UI.now > G.tip.until) G.tip = null;
+  if (!G.tip && G.tipQ.length) { G.tip = G.tipQ.shift(); G.tip.until = UI.now+6000; G.tip.t0 = UI.now; }
+  if (G.hitstop > 0) { G.hitstop -= dt; return; }                          // hitstop freezes the sim only, max 80ms
+  const k = G.skip ? 6 : 1;
+  for (const o of [P, ...G.enemies]) if (o.a && (o.a.t += dt*k/o.a.dur) >= 1) o.a = null;
+  for (const p of G.parts) { p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .94; p.vy *= .94; p.life -= dt; }
+  for (const f of G.flashes) f.life -= dt*k; for (const r of G.rings) r.life -= dt; if (G.att && (G.att.life -= dt*k) <= 0) G.att = null;
+  G.parts = G.parts.filter(p => p.life > 0); G.flashes = G.flashes.filter(f => f.life > 0); G.rings = G.rings.filter(r => r.life > 0);
+  let d = dt*k;
+  while (G.q.length) { const s = G.q[0]; s.ms -= d; d = 0; if (s.ms > 0) break; G.q.shift(); s.fn(); if (G.hitstop > 0) break; }
+}
+
+// ---------- drawing primitives ----------
+const CX = x => ox+(x+.5)*cs, CY = y => oy+(y+.5)*cs;
+function vpos(o) { if (!o.a) return [o.x,o.y,0]; const t = Math.min(1,o.a.t), k = ease(t), dx = o.x-o.a.fx, dy = o.y-o.a.fy,
+  L = Math.hypot(dx,dy)||1, arc = Math.sin(Math.PI*k)*o.a.arc; return [o.a.fx+dx*k-dy/L*arc, o.a.fy+dy*k+dx/L*arc, Math.sin(Math.PI*t)]; }
+function setFont(size, weight = 700) { ctx.font = `${weight} ${Math.max(14, Math.round(size))}px ${FONT}`; }
+function txt(s, x, y, size, col, align = 'center', weight = 700) { setFont(size, weight); ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(s,x,y); }
+function txtO(s, x, y, size, col, align = 'center') { setFont(size); ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(11,13,18,.9)'; ctx.lineWidth = 4; ctx.strokeText(s,x,y); ctx.fillStyle = col; ctx.fillText(s,x,y); }
+function txtFit(s, x, y, size, col, maxW, align = 'center', weight = 700) { setFont(size, weight); while (size > 14 && ctx.measureText(s).width > maxW) { size--; setFont(size, weight); } txt(s,x,y,size,col,align,weight); }
+function wrapLines(s, w, size, weight = 500) { setFont(size, weight); const out = []; let line = '';
+  for (const wd of s.split(' ')) { if (line && ctx.measureText(line+' '+wd).width > w) { out.push(line); line = wd; } else line = line ? line+' '+wd : wd; }
+  if (line) out.push(line); return out; }
+function wrap(s, x, y, w, size, col, align = 'left', weight = 500, lh = size+6) { for (const l of wrapLines(s,w,size,weight)) { txt(l,x,y,size,col,align,weight); y += lh; } return y; }
+function rr(x, y, w, h, r) { r = Math.min(r, w/2, h/2); ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function panel(x, y, w, h, r = 12, border = C.border, fill = C.panel) { rr(x,y,w,h,r); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = border; ctx.lineWidth = 1; ctx.stroke(); }
+function glow(col, blur) { ctx.shadowColor = col; ctx.shadowBlur = blur; } const noGlow = () => { ctx.shadowBlur = 0; };
+function button(id, label, x, y, w, h, o = {}) { const hot = UI.mx >= x && UI.mx <= x+w && UI.my >= y && UI.my <= y+h, dn = hot && UI.down === id, yy = y+(dn ? 2 : hot ? -1 : 0);
+  UI.btns.push({ id, x, y, w, h }); rr(x,yy,w,h,o.r||10);
+  if (o.primary) { glow(C.player, hot ? 18 : 10); ctx.fillStyle = dn ? '#5fd0da' : C.player; ctx.fill(); noGlow(); txt(label, x+w/2, yy+h/2+1, o.size||18, C.ink, 'center', 800); }
+  else { ctx.fillStyle = o.on ? '#1c2a3a' : C.panel; ctx.fill(); ctx.strokeStyle = o.on || hot ? C.player : C.border; ctx.lineWidth = o.on ? 2 : 1; ctx.stroke(); txt(label, x+w/2, yy+h/2+1, o.size||14, o.on || hot ? C.text : C.dim); } }
+function shapePath(type, x, y, r) { ctx.beginPath();
+  if (type === 'grunt') rr(x-r*.86,y-r*.86,r*1.72,r*1.72,r*.3);
+  else if (type === 'archer') { ctx.moveTo(x-r*1.05,y-r*.8); ctx.lineTo(x+r*1.05,y-r*.8); ctx.lineTo(x,y+r*1.02); ctx.closePath(); }
+  else if (type === 'slammer') { ctx.moveTo(x,y-r*1.08); ctx.lineTo(x+r*1.08,y); ctx.lineTo(x,y+r*1.08); ctx.lineTo(x-r*1.08,y); ctx.closePath(); }
+  else { const n = type === 'warlord' ? 8 : 6, o = type === 'warlord' ? Math.PI/8 : 0; for (let i = 0; i < n; i++) { const a = o+i*2*Math.PI/n; ctx[i?'lineTo':'moveTo'](x+Math.cos(a)*r, y+Math.sin(a)*r); } ctx.closePath(); } }
+function drawRock(x, y, r) { ctx.save(); ctx.translate(x,y); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(0, r*.9, r*.9, r*.22, 0, 0, 6.283); ctx.fill();
+  const pts = [[-1,-.25],[-.6,-.9],[.35,-1],[1,-.35],[.85,.6],[.1,.95],[-.8,.7]]; ctx.beginPath(); pts.forEach(([a,b],i) => ctx[i?'lineTo':'moveTo'](a*r, b*r)); ctx.closePath();
+  ctx.fillStyle = '#4a5268'; ctx.fill(); ctx.strokeStyle = '#6b7590'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.moveTo(-.55*r,-.55*r); ctx.lineTo(.2*r,-.75*r); ctx.lineTo(-.1*r,-.2*r); ctx.closePath(); ctx.fill(); ctx.restore(); }
+// rounded token with drop shadow, letter, and eyes that look toward (lx,ly)
+function drawEnemy(type, x, y, r, o = {}) { const T = TYPES[type]; if (type === 'warlord') r *= 1.18;
+  ctx.save(); ctx.translate(x,y); ctx.scale(1+.16*(o.sq||0), 1-.12*(o.sq||0)); ctx.globalAlpha *= o.alpha || 1;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(0, r*.98, r*.8, r*.2, 0, 0, 6.283); ctx.fill();
+  shapePath(type, 0, 0, r); ctx.lineJoin = 'round';
+  if (o.ghost) { ctx.strokeStyle = C.danger; ctx.lineWidth = 2; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]); ctx.restore(); return; }
+  const col = o.stun ? '#8a3a48' : o.flash ? '#ffc2cb' : C.danger;
+  if (o.flash) glow(C.danger, 16); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = r*.22; ctx.stroke(); ctx.fill(); noGlow();
+  if (o.flash) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke(); }
+  if (o.swappable) { ctx.strokeStyle = C.player; ctx.lineWidth = 3; shapePath(type,0,0,r*1.22); ctx.stroke(); }
+  if (type === 'warlord') { ctx.fillStyle = '#7a1f30'; ctx.beginPath(); ctx.moveTo(-r*.5,-r*.78); ctx.lineTo(-r*.5,-r*1.2); ctx.lineTo(-r*.22,-r*.95); ctx.lineTo(0,-r*1.3); ctx.lineTo(r*.22,-r*.95); ctx.lineTo(r*.5,-r*1.2); ctx.lineTo(r*.5,-r*.78); ctx.closePath(); ctx.fill(); }
+  const ey = type === 'archer' ? -r*.42 : type === 'slammer' ? -r*.3 : -r*.36, ly = type === 'archer' ? r*.12 : r*.3, lk = o.look || [0,0], er = Math.max(2.2, r*.17);
+  for (const sx of [-1,1]) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sx*r*.32, ey, er, 0, 6.283); ctx.fill();
+    if (o.stun) continue; ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(sx*r*.32+lk[0]*er*.45, ey+lk[1]*er*.45, er*.52, 0, 6.283); ctx.fill(); }
+  txt(o.stun ? 'z' : T.letter, 0, ly, r*.78, C.ink, 'center', 800);
+  if (T.hp) for (let i = 0; i < T.hp; i++) { ctx.fillStyle = i < (o.hp === undefined ? T.hp : o.hp) ? '#fff' : '#5a1a26'; ctx.beginPath(); ctx.arc((i-(T.hp-1)/2)*r*.34, r*.78, r*.11, 0, 6.283); ctx.fill(); }
+  ctx.restore(); }
+// the player: a white pawn with a cyan visor
+function drawPlayer(x, y, r, o = {}) { const b = o.ghost ? 1 : 1+.03*Math.sin(UI.now/420);
+  ctx.save(); ctx.translate(x,y); ctx.scale((1+.16*(o.sq||0))*(2-b), (1-.12*(o.sq||0))*b); if (o.ghost) ctx.globalAlpha = .55;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(0, r*.98, r*.8, r*.2, 0, 0, 6.283); ctx.fill();
+  const body = () => { ctx.beginPath(); ctx.moveTo(-r*.78,r*.92); ctx.quadraticCurveTo(-r*.7,-r*.1,-r*.28,-r*.12); ctx.lineTo(r*.28,-r*.12); ctx.quadraticCurveTo(r*.7,-r*.1,r*.78,r*.92); ctx.closePath(); };
+  if (!o.ghost) glow(C.player, 14); ctx.fillStyle = o.hurt ? '#ffc2cb' : '#ffffff'; body(); ctx.fill(); ctx.beginPath(); ctx.arc(0,-r*.42,r*.56,0,6.283); ctx.fill(); noGlow();
+  ctx.fillStyle = C.player; rr(-r*.42,-r*.6,r*.84,r*.34,r*.17); ctx.fill();
+  ctx.fillStyle = C.ink; for (const sx of [-1,1]) { ctx.beginPath(); ctx.arc(sx*r*.18,-r*.43,r*.075,0,6.283); ctx.fill(); }
+  if (o.outline) { ctx.strokeStyle = o.outline; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(0,r*.05,r*1.22,0,6.283); ctx.stroke(); }
+  ctx.restore(); }
+function skull(x, y, r) { ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(x,y,r*1.4,0,6.283); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x,y-r*.15,r,0,6.283); ctx.fill(); ctx.fillRect(x-r*.55,y+r*.45,r*1.1,r*.6);
+  ctx.fillStyle = C.ink; for (const sx of [-1,1]) { ctx.beginPath(); ctx.arc(x+sx*r*.4,y-r*.15,r*.28,0,6.283); ctx.fill(); }
+  ctx.fillRect(x-r*.08,y+r*.55,r*.16,r*.5); }
+function medalBadge(x, y, r, m) { const col = { gold:C.gold, silver:'#cfd6e6', bronze:'#d08a4e' }[m];
+  ctx.fillStyle = m ? '#3a4a78' : '#1b2131'; ctx.beginPath(); ctx.moveTo(x-r*.55,y+r*.5); ctx.lineTo(x-r*.75,y+r*1.7); ctx.lineTo(x-r*.2,y+r*1.35); ctx.lineTo(x,y+r*1.7); ctx.lineTo(x+r*.2,y+r*1.35); ctx.lineTo(x+r*.75,y+r*1.7); ctx.lineTo(x+r*.55,y+r*.5); ctx.closePath(); ctx.fill();
+  if (m) glow(col, 14); ctx.fillStyle = m ? col : '#1b2131'; ctx.beginPath(); ctx.arc(x,y,r,0,6.283); ctx.fill(); noGlow();
+  ctx.strokeStyle = m ? 'rgba(11,13,18,.35)' : C.border; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x,y,r*.76,0,6.283); ctx.stroke();
+  txt(m ? m[0].toUpperCase() : '-', x, y+1, r*.9, m ? C.ink : C.dim, 'center', 800); }
+function background() { const g = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.65); g.addColorStop(0,C.bg2); g.addColorStop(1,C.bg); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = 'rgba(170,179,197,.07)'; for (let y = 14; y < H; y += 28) for (let x = 14; x < W; x += 28) ctx.fillRect(x,y,2,2);
+  for (const m of UI.motes) { const x = (m.x*W + UI.now*m.v) % W, y = (m.y*H + Math.sin(UI.now/3000+m.p)*20); ctx.fillStyle = `rgba(170,190,230,${m.a})`; ctx.beginPath(); ctx.arc(x,y,m.r,0,6.283); ctx.fill(); } }
+
+// ---------- render: game ----------
+function hoverAction() { if (!G.hover || G.hoverOff || G.phase !== 'player') return null;
+  return legalActions().find(a => a.x === G.hover.x && a.y === G.hover.y) || null; }
+function sentence(a, s) { const tgt = a.id && byId(a.id), head = a.type === 'swap' ? `SWAP with ${TYPES[tgt.type].name}` : a.type === 'shove' ? `SHOVE ${TYPES[tgt.type].name}` : a.type === 'step' ? 'STEP' : 'WAIT';
+  const names = s.dies.map(d => TYPES[d.type].name), parts = [];
+  parts.push(names.length ? nameList(names)+(names.length > 1 ? ' die' : ' dies') : 'nobody dies');
+  if (s.wounded.length) parts.push(nameList(s.wounded.map(d => TYPES[d.type].name))+' takes 1 damage');
+  if (s.shrug.length) parts.push('Warlord shrugs it off (hurt only on swap turns)');
+  parts.push(s.shielded ? 'Thick Skin absorbs a hit' : s.hurt ? (s.dmg >= P.hp ? `YOU TAKE ${s.dmg} DAMAGE AND DIE` : `YOU TAKE ${s.dmg} DAMAGE`) : 'you are safe');
+  parts.push(s.verb ? '+'+s.gain : names.length ? (s.gain ? '+'+s.gain+' (Tip Jar)' : 'no score (only swaps score)') : '');
+  return head+': '+parts.filter(Boolean).join(', '); }
+function render() {
+  ctx.setTransform(1,0,0,1,0,0); UI.btns = []; background();
+  if (UI.screen === 'start' || UI.help || !G) { drawStart(); return; }
+  ctx.save(); ctx.translate((Math.random()-.5)*G.shake, (Math.random()-.5)*G.shake);
+  // playfield panel
+  glow('rgba(124,245,255,.10)', 24); panel(ox-10, oy-10, bw+20, bw+20, 14, C.border, '#0e111a'); noGlow();
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { ctx.fillStyle = (x+y)%2 ? '#141926' : '#181e2d'; rr(ox+x*cs+1.5, oy+y*cs+1.5, cs-3, cs-3, 6); ctx.fill(); }
+  for (const r of G.rocks) drawRock(CX(r.x), CY(r.y), cs*.3);
+  const playerTurn = G.phase === 'player', acts = playerTurn ? legalActions() : [], ha = hoverAction(), sim = ha ? simulate(ha) : null;
+  const idle = playerTurn ? simulate({ type:'wait', x:P.x, y:P.y }) : null;
+  // your verb's reach: swap lines, always visible
+  if (playerTurn && !G.tut || (G.tut && G.tut.step < 3)) { const ready = !G.cool;
+    for (const l of swapLines()) { if (l.ex === P.x && l.ey === P.y) continue; ctx.strokeStyle = ready ? 'rgba(124,245,255,.28)' : 'rgba(170,179,197,.18)'; ctx.lineWidth = ready ? 3 : 2; ctx.setLineDash(ready ? [] : [4,6]);
+      ctx.beginPath(); ctx.moveTo(CX(P.x),CY(P.y)); ctx.lineTo(CX(l.ex),CY(l.ey)); ctx.stroke(); ctx.setLineDash([]); } }
+  for (const a of acts) if (a.type === 'step') { ctx.fillStyle = 'rgba(124,245,255,.55)'; ctx.beginPath(); ctx.arc(CX(a.x),CY(a.y),Math.max(3,cs*.07),0,6.283); ctx.fill(); }
+  // telegraphs: FILLED red target cells; delayed ones are paler and carry a countdown
+  const occNow = (x,y) => !!enemyAt(x,y) || (P.x === x && P.y === y);
+  for (const t of G.tele) { const soon = t.timer <= 1, pulse = .5+.5*Math.sin(UI.now/170), live = effCells(t, occNow);
+    for (const c of t.cells) { const x = ox+c.x*cs, y = oy+c.y*cs, on = inCells(live,c.x,c.y); if (soon && on) glow(C.danger, 10);
+      ctx.fillStyle = `rgba(255,93,115,${soon ? (on ? .42+.16*pulse : .16) : .15})`; rr(x+3,y+3,cs-6,cs-6,6); ctx.fill(); noGlow();
+      ctx.strokeStyle = `rgba(255,93,115,${soon ? (on ? 1 : .5) : .55})`; ctx.lineWidth = soon ? 2 : 1.5; ctx.setLineDash(soon && on ? [] : [5,5]); ctx.stroke(); ctx.setLineDash([]); } }
+  for (const s of G.pending) { const x = ox+s.x*cs, y = oy+s.y*cs; ctx.strokeStyle = 'rgba(170,179,197,.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]); rr(x+6,y+6,cs-12,cs-12,6); ctx.stroke(); ctx.setLineDash([]);
+    ctx.globalAlpha = .6; drawEnemy(s.type, CX(s.x), CY(s.y)+cs*.1, cs*.2, { ghost:true }); ctx.globalAlpha = 1; txtO('NEXT', CX(s.x), y+cs*.2, 14, C.dim); }
+  for (const f of G.flashes) { const k = f.life/f.max; ctx.fillStyle = f.hot ? `rgba(255,170,182,${k*.9})` : `rgba(255,93,115,${k*.35})`; for (const c of f.cells) { rr(ox+c.x*cs+2, oy+c.y*cs+2, cs-4, cs-4, 6); ctx.fill(); } }
+  // thin owner -> target links
+  for (const t of G.tele) { const e = byId(t.owner); if (!e) continue; const [ex,ey] = vpos(e), a = t.timer <= 1 ? .95 : .55, hot = G.att && G.att.id === e.id;
+    const ends = t.cx !== undefined ? (e.x === t.cx && e.y === t.cy ? (t.kind === 'slammer' ? t.cells : []) : [{x:t.cx,y:t.cy}]) : [t.cells[t.cells.length-1]];
+    for (const c of ends) { if (Math.hypot(c.x-ex,c.y-ey) < .5) continue; ctx.strokeStyle = `rgba(255,150,165,${a})`; ctx.lineWidth = hot ? 3 : 1.5; ctx.beginPath(); ctx.moveTo(CX(ex),CY(ey)); ctx.lineTo(CX(c.x),CY(c.y)); ctx.stroke();
+      ctx.fillStyle = `rgba(255,150,165,${a})`; ctx.beginPath(); ctx.arc(CX(c.x),CY(c.y),3.5,0,6.283); ctx.fill(); } }
+  for (const t of G.tele) if (t.delayed) { const bx = ox+t.cx*cs+cs*.22, by = oy+t.cy*cs+cs*.22, r = Math.max(11, cs*.17);
+    ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(bx,by,r,0,6.283); ctx.fill(); ctx.strokeStyle = C.danger; ctx.lineWidth = 2; ctx.stroke(); txt(''+t.timer, bx, by+1, Math.max(14, cs*.24), '#ffd0d6', 'center', 800); }
+  // pieces
+  const r0 = cs*.31;
+  for (const e of G.enemies) { const [x,y,sq] = vpos(e), grow = ease((UI.now-e.born)/220), L = Math.hypot(P.x-e.x,P.y-e.y)||1, wob = 1+.02*Math.sin(UI.now/380+e.id);
+    drawEnemy(e.type, CX(x), CY(y), r0*grow*wob, { sq, look:[(P.x-e.x)/L,(P.y-e.y)/L], stun:e.stun, hp:e.hp, swappable:acts.some(a => a.id === e.id), flash:(G.att && G.att.id === e.id) || (e.hitT && UI.now-e.hitT < 200) });
+    if (e.label) txtO(e.label, CX(e.x), CY(e.y+e.ldy), 14, '#ffd0d6');
+    else if (!G.tut && G.seen[e.type] !== undefined && G.turn-G.seen[e.type] < 3 && playerTurn) txtO(TYPES[e.type].name, CX(x), CY(y)+cs*.43, 14, '#ffd0d6'); }
+  for (const r of G.rings) { const k = 1-r.life/r.max; ctx.globalAlpha = 1-k;
+    if (r.ghost) drawEnemy(r.ghost, CX(r.x), CY(r.y), r0*(1+.5*k), { alpha:1 }); else { ctx.strokeStyle = r.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(CX(r.x),CY(r.y),cs*(.2+.4*ease(k)),0,6.283); ctx.stroke(); } ctx.globalAlpha = 1; }
+  { const [x,y,sq] = vpos(P), danger = idle && idle.hurt && !ha;
+    if (G.tut) txtO('YOU', CX(P.x), CY(P.y)+cs*.47, 14, C.player);
+    drawPlayer(CX(x), CY(y), r0, { sq, hurt:G.hurtFlash > 0, outline:danger ? C.danger : null });
+    if (G.shield > 0) { ctx.strokeStyle = C.safe; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(CX(x),CY(y)+r0*.05,r0*1.36,0,6.283); ctx.stroke(); } }
+  // hover preview: dashed path, player ghost (red outline = damage), enemy ghost, skulls on everything that would die
+  if (ha && ha.type !== 'wait') { ctx.setLineDash([6,5]); ctx.strokeStyle = C.player; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(CX(P.x),CY(P.y)); ctx.lineTo(CX(ha.x),CY(ha.y)); ctx.stroke(); ctx.setLineDash([]);
+    if (sim.moved) drawEnemy(sim.moved.type, CX(sim.moved.x), CY(sim.moved.y), r0*.8, { ghost:true });
+    drawPlayer(CX(sim.px), CY(sim.py), r0*.9, { ghost:true, outline:sim.hurt ? C.danger : C.player }); }
+  else if (ha && sim.hurt) drawPlayer(CX(P.x), CY(P.y), r0, { outline:C.danger });
+  if (sim && sim.hurt) txtO(sim.shielded ? 'absorbed' : `-${sim.dmg} HP`, CX(sim.px), CY(sim.py)-cs*.52 < oy+8 ? CY(sim.py)+cs*.55 : CY(sim.py)-cs*.52, 15, C.danger);
+  for (const d of (sim || idle || { dies:[] }).dies) skull(CX(d.x)+cs*.27, CY(d.y)-cs*.27, Math.max(6, cs*.115));
+  if (G.killer && (G.phase === 'dying' || G.phase === 'dead')) { const k = 1+.1*Math.sin(UI.now/110);
+    for (const c of G.killer.cells) { ctx.strokeStyle = C.danger; ctx.lineWidth = 4; rr(ox+c.x*cs+3, oy+c.y*cs+3, cs-6, cs-6, 6); ctx.stroke(); }
+    const o = byId(G.killer.owner); if (o) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(CX(o.x),CY(o.y),cs*.46*k,0,6.283); ctx.stroke(); txtO('KILLER', CX(o.x), CY(o.y)-cs*.55, 14, '#fff'); } }
+  for (const p of G.parts) { ctx.globalAlpha = Math.max(0,p.life/p.max); ctx.fillStyle = p.col; ctx.save(); ctx.translate(ox+p.x*cs, oy+p.y*cs); ctx.rotate(p.rot); ctx.fillRect(-3,-1.5,6,3); ctx.restore(); } ctx.globalAlpha = 1;
+  ctx.restore();
+  drawHud(ha, sim); drawSides();
+  if (G.phase === 'item') drawPick();
+  if ((G.phase === 'dead' && UI.now > G.screenT) || G.phase === 'won') drawResult();
+}
+function drawHud(ha, sim) {
+  const hudL = Math.max(16, Math.min(ox-10, W/2-340)), hudR = W-hudL, top = oy-10, y0 = oy+bw+10;
+  if (G.tut) { const s = G.tut.step, L1 = ['The Grunt (G) will hit the RED CELL after your move. Attacks hit CELLS, not people.', 'Read the preview under the board: the bystander dies, you are safe.', 'The attack hit the CELL - and the enemy you put there. Swapping is your only attack.'][s-1],
+      L2 = ['> Hover the BYSTANDER enemy in your row (cyan ring = you can swap with it).', '> Now CLICK it to SWAP places.', '> After a swap, step or wait one turn to recharge.  CLICK or SPACE to start the real run.'][s-1];
+    txt(`TUTORIAL  ${s}/3`, W/2, top-66, 15, C.gold, 'center', 800); txtFit(L1, W/2, top-42, 18, C.text, W-32); txtFit(L2, W/2, top-16, 16, C.player, W-32); }
+  else {
+    const st = STAGES[G.stage], bx = hudL, by = top-54, bwid = 230, k = Math.min(1, G.turn/GOAL);
+    txtFit(G.endless ? 'ENDLESS  -  goal done, chase the score' : `GOAL: survive ${GOAL} turns   -   STAGE ${G.stage+1}/${STAGES.length}: ${st.name}`, hudL, top-72, 14, C.dim, hudR-hudL-170, 'left');
+    // progress bar with stage ticks
+    rr(bx,by,bwid,12,6); ctx.fillStyle = '#1b2131'; ctx.fill(); if (k > 0) { rr(bx,by,Math.max(12,bwid*k),12,6); ctx.fillStyle = G.endless ? C.gold : C.safe; ctx.fill(); }
+    for (const s of STAGES.slice(0,-1)) { ctx.fillStyle = C.bg; ctx.fillRect(bx+bwid*s.until/GOAL-1, by, 2, 12); }
+    txt(`TURN ${G.turn}${G.endless ? '' : ' / '+GOAL}`, bx+bwid+12, by+7, 20, C.text, 'left', 800);
+    txt('SCORE', hudL, top-18, 14, C.dim, 'left'); txt(''+Math.round(G.shown), hudL+56, top-19, 26, C.gold, 'left', 800);
+    if (G.scorePop) { ctx.globalAlpha = Math.min(1, G.scorePop.life/300); txt(G.scorePop.txt, hudL+66+String(Math.round(G.shown)).length*16, top-18-(1-Math.min(1,G.scorePop.life/1500))*6, 16, G.scorePop.col, 'left'); ctx.globalAlpha = 1; }
+    // right: HP + item progress
+    const hpMax = Math.max(MODE().hp, P.hp); let x = hudR;
+    txt(''+Math.max(0,P.hp), x, top-64, 22, P.hp <= 1 ? C.danger : C.text, 'right', 800); x -= 22;
+    for (let i = hpMax-1; i >= 0; i--) { x -= 20; rr(x, top-72, 15, 15, 5); ctx.fillStyle = i < P.hp ? C.player : '#1b2131'; ctx.fill(); }
+    if (G.shield > 0) { x -= 20; ctx.strokeStyle = C.safe; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x+8, top-64, 7, 0, 6.283); ctx.stroke(); }
+    txt('HP', x-8, top-64, 14, C.dim, 'right');
+    if (G.endless) txt('ENDLESS: no more items - spawns keep climbing', hudR, top-40, 14, C.dim, 'right');
+    else { const ik = Math.min(1, (G.kills-(G.nextItem-10))/10); rr(hudR-120, top-44, 120, 8, 4); ctx.fillStyle = '#1b2131'; ctx.fill(); if (ik > 0) { rr(hudR-120, top-44, Math.max(8,120*ik), 8, 4); ctx.fillStyle = C.gold; ctx.fill(); }
+      txt(`NEXT ITEM  ${G.kills-(G.nextItem-10)}/10 swap kills`, hudR-130, top-40, 14, C.dim, 'right'); }
+    txt(`BEST ${best}${G.hard ? '   HARD' : ''}`, hudR, top-18, 14, C.dim, 'right');
+  }
+  // bottom: swap status, outcome sentence, tip area
+  const ready = !G.cool, sl = ready ? 'SWAP READY' : 'SWAP RECHARGING - step or wait'; setFont(15, 800); const sw = ctx.measureText(sl).width+28;
+  rr(W/2-sw/2, y0+8, sw, 26, 13); ctx.fillStyle = ready ? 'rgba(124,245,255,.14)' : '#1b2131'; ctx.fill(); ctx.strokeStyle = ready ? C.player : '#4a556e'; ctx.lineWidth = 1.5; ctx.stroke();
+  txt(sl, W/2, y0+22, 15, ready ? C.player : C.dim, 'center', 800);
+  let line = '', col = C.dim;
+  if (G.phase === 'player' && ha) { line = sentence(ha, sim); col = sim.hurt && !sim.shielded ? C.danger : sim.gain ? C.gold : C.text; }
+  else if (G.phase === 'player' && G.hover && !G.hoverOff && enemyAt(G.hover.x,G.hover.y)) { const e = enemyAt(G.hover.x,G.hover.y); line = (G.cool ? "Can't swap while recharging. " : 'Not in a clear swap line. ')+TYPES[e.type].info; }
+  else if (G.phase === 'busy' || G.phase === 'dying' || G.phase === 'tutEnd') { line = G.eventLine; col = C.text; }
+  else if (G.phase === 'player') line = G.lastLine ? G.lastLine+'  Hover a tile or enemy to preview.' : 'Hover a tile or an enemy to preview exactly what your move will do.';
+  if (line) txtFit(line, W/2, y0+52, 16, col, W-32);
+  if (G.tip) { const tw = Math.min(680, W-32), lines = wrapLines(G.tip.text, tw-28, 14, 600), th = 14+lines.length*19, a = ease((UI.now-G.tip.t0)/250);
+    ctx.globalAlpha = a; panel(W/2-tw/2, y0+70+(1-a)*8, tw, th, 10, C.player); lines.forEach((l,i) => txt(l, W/2, y0+70+(1-a)*8+16+i*19, 14, C.text, 'center', 600)); ctx.globalAlpha = 1; }
+  // footer: key reminders + help button (bottom-right), item chips (bottom-left) when there is no side panel
+  button('help', '? Help', W-92, H-38, 78, 28); txt(`Space wait/skip   H help   R restart   M ${muted ? 'unmute' : 'mute'}   Esc menu`, W-104, H-24, 14, C.dim, 'right', 500);
+  if (ox < 200) { let chx = 14; for (const it of owned()) { setFont(14,600); const w = ctx.measureText(it.name).width+18; if (chx+w > W-470) break; panel(chx, H-38, w, 26, 8); txt(it.name, chx+w/2, H-24, 14, C.gold, 'center', 600); chx += w+6; } }
+}
+function drawSides() { if (ox < 200 || G.tut) return; const lw = Math.min(250, ox-40), wide = lw >= 215, lx = ox-22-lw, rx = ox+bw+22;
+  const rows = [['you','You'],['cell','Red cell', 'gets hit after your move'],['skull','Skull', 'will die this turn'],['rock','Rock', 'blocks steps, lines, arrows'], ...Object.keys(TYPES).filter(k => G.seen[k] !== undefined).map(k => [k, `${TYPES[k].letter}  ${TYPES[k].name}`, TYPES[k].short])];
+  const rh = Math.min(wide ? 42 : 34, Math.floor((bw-24)/rows.length)), ph = 34+rows.length*rh; panel(lx, oy-10, lw, ph); txt('LEGEND', lx+14, oy+8, 14, C.dim, 'left', 800);
+  rows.forEach((r,i) => { const y = oy+30+i*rh+rh/2-4, ix = lx+24;
+    if (r[0] === 'you') drawPlayer(ix, y, 10, { ghost:true }); else if (r[0] === 'cell') { rr(ix-10,y-10,20,20,4); ctx.fillStyle = 'rgba(255,93,115,.5)'; ctx.fill(); ctx.strokeStyle = C.danger; ctx.lineWidth = 2; ctx.stroke(); }
+    else if (r[0] === 'skull') skull(ix, y, 7); else if (r[0] === 'rock') drawRock(ix, y, 10); else drawEnemy(r[0], ix, y, r[0] === 'warlord' ? 9 : 11, { look:[1,0] });
+    txt(r[1], lx+46, wide && r[2] ? y-8 : y, 14, C.text, 'left', 700); if (wide && r[2]) txtFit(r[2], lx+46, y+9, 14, C.dim, lw-54, 'left', 500); });
+  const its = owned(); panel(rx, oy-10, lw, Math.max(64, 34+its.reduce((h,it) => h+(wide ? 24+wrapLines(it.desc, lw-28, 14).length*18 : 26), 0)+(its.length ? 0 : 26)));
+  txt('ITEMS', rx+14, oy+8, 14, C.dim, 'left', 800); let y = oy+34;
+  if (!its.length) txt('none yet', rx+14, y, 14, C.dim, 'left', 500);
+  for (const it of its) { txt(it.name, rx+14, y, 14, C.gold, 'left', 700); y += wide ? 20 : 26; if (wide) y = wrap(it.desc, rx+14, y, lw-28, 14, C.dim, 'left', 500, 18)+4; if (y > oy+bw-10) break; } }
+function drawPick() { const a = ease((UI.now-G.screenT)/260); ctx.fillStyle = `rgba(8,10,16,${.86*a})`; ctx.fillRect(0,0,W,H); ctx.globalAlpha = a;
+  const cw = Math.min(250, (W-56)/3), ch = 250, cy = H/2-ch/2+24+(1-a)*16;
+  txt(G.offerWhy, W/2, cy-78, 30, C.gold, 'center', 800); txt('Pick one reward  (click or press 1 / 2 / 3)', W/2, cy-44, 16, C.text, 'center', 500);
+  txt('Items arrive after every stage and every 10 swap kills.', W/2, cy-20, 14, C.dim, 'center', 500);
+  G.offer.forEach((it,i) => { const x = W/2+(i-1)*(cw+12)-cw/2, hot = UI.mx >= x && UI.mx <= x+cw && UI.my >= cy && UI.my <= cy+ch, y = cy-(hot ? 6 : 0);
+    UI.btns.push({ id:'card'+i, x, y:cy, w:cw, h:ch }); if (hot) glow('rgba(124,245,255,.35)', 18); panel(x, y, cw, ch, 12, hot ? C.player : C.border); noGlow();
+    glow(C.gold, 10); ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(x+cw/2, y+40, 24, 0, 6.283); ctx.fill(); noGlow(); txt(it.glyph, x+cw/2, y+41, 20, C.ink, 'center', 800);
+    txt(`${i+1}.  ${it.name}`, x+cw/2, y+86, 17, C.text, 'center', 800);
+    let yy = wrap(it.desc, x+cw/2, y+112, cw-24, 14, C.text, 'center', 500, 18); wrap('Why: '+it.why, x+cw/2, Math.max(yy+8, y+ch-44), cw-24, 14, C.dim, 'center', 500, 18); });
+  ctx.globalAlpha = 1; }
+function drawResult() { const win = G.phase === 'won', a = ease((UI.now-G.screenT)/280), pw = Math.min(600, W-32), ph = 372, px = W/2-pw/2, py = H/2-ph/2+(1-a)*18, m = medalFor(G.score);
+  ctx.fillStyle = `rgba(8,10,16,${.8*a})`; ctx.fillRect(0,0,W,H); ctx.globalAlpha = a; panel(px, py, pw, ph, 14, win ? C.safe : C.border);
+  medalBadge(px+70, py+70, 34, m); txt(m ? m.toUpperCase()+' MEDAL' : 'NO MEDAL YET', px+70, py+150, 14, m ? C.gold : C.dim);
+  txt(win ? `YOU SURVIVED ${GOAL} TURNS` : (G.won ? 'ENDLESS RUN OVER' : 'SWAPPED OUT'), px+130, py+44, 28, win ? C.safe : C.danger, 'left', 800);
+  const c = win ? { cause:`You outlasted all 5 stages${G.bossDown ? ' and took down the Warlord' : ''} with ${P.hp} HP left.`, tip:G.bossDown ? 'Score comes only from swap turns: line up 2-3 enemies in red cells before you swap (kills x kills).' : 'The Warlord is worth +15: swap it into another enemy\'s red cell twice - it only takes damage on swap turns.' } : causeText();
+  let y = wrap(c.cause, px+130, py+78, pw-150, 16, C.text, 'left', 600, 21); y = wrap('Tip: '+c.tip, px+130, y+6, pw-150, 14, C.dim, 'left', 500, 19);
+  y = Math.max(y+14, py+186); txt('SCORE', px+30, y, 14, C.dim, 'left'); txt(''+Math.round(G.shown), px+90, y-1, 30, C.gold, 'left', 800); txt(`BEST ${best}     WINS ${wins}`, px+pw-30, y, 14, C.dim, 'right');
+  txt(`Turns ${G.turn}    Swaps ${G.stats.swaps}    Swap kills ${G.stats.swapKills}    Best combo x${G.stats.maxCombo}    Hits taken ${G.stats.hits}`, px+30, y+34, 14, C.text, 'left', 500);
+  txt(`Medals:  Bronze ${MEDALS[2][1]}   Silver ${MEDALS[1][1]}   Gold ${MEDALS[0][1]}  (score)`, px+30, y+58, 14, C.dim, 'left', 500);
+  const by = py+ph-66; if (win) { button('endless', 'KEEP GOING (ENDLESS)', px+30, by, 230, 46, { primary:true, size:16 }); button('retry', 'RETRY  (R)', px+272, by, 130, 46); button('menu', 'MENU  (Esc)', px+414, by, 130, 46); }
+  else { button('retry', 'RETRY  (R)', px+30, by, 200, 46, { primary:true }); button('menu', 'MENU  (Esc)', px+242, by, 150, 46); }
+  ctx.globalAlpha = 1; }
+
+// ---------- start / help screen ----------
+function drawDiagram(cx, y, c) { const sw = 4*c, gap = 64, x1 = cx-gap/2-sw, x2 = cx+gap/2;
+  const strip = (x0, after) => { for (let i = 0; i < 4; i++) { rr(x0+i*c+1.5, y+1.5, c-3, c-3, 6); ctx.fillStyle = i%2 ? '#141926' : '#181e2d'; ctx.fill(); }
+    glow(C.danger, 8); rr(x0+c+3, y+3, c-6, c-6, 6); ctx.fillStyle = 'rgba(255,93,115,.45)'; ctx.fill(); noGlow(); ctx.strokeStyle = C.danger; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,150,165,.95)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0+c*.5,y+c*.5); ctx.lineTo(x0+c*1.5,y+c*.5); ctx.stroke();
+    drawEnemy('grunt', x0+c*.5, y+c*.5, c*.3, { look:[1,0] });
+    if (!after) { drawPlayer(x0+c*1.5, y+c*.5, c*.3); drawEnemy('archer', x0+c*3.5, y+c*.5, c*.3, { look:[-1,0], swappable:true });
+      ctx.strokeStyle = C.player; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x0+c*1.6, y-4); ctx.quadraticCurveTo(x0+c*2.5, y-26, x0+c*3.4, y-4); ctx.stroke();
+      for (const [ax,s] of [[x0+c*1.6,-1],[x0+c*3.4,1]]) { ctx.fillStyle = C.player; ctx.beginPath(); ctx.moveTo(ax,y); ctx.lineTo(ax+s*9,y-5); ctx.lineTo(ax-s*1,y-12); ctx.closePath(); ctx.fill(); }
+      txt('SWAP', x0+c*2.5, y-24, 14, C.player, 'center', 800); }
+    else { drawEnemy('archer', x0+c*1.5, y+c*.5, c*.3, { look:[-1,0] }); skull(x0+c*1.5+c*.28, y+c*.22, c*.12); drawPlayer(x0+c*3.5, y+c*.5, c*.3); txt('safe', x0+c*3.5, y-12, 14, C.safe, 'center', 700); } };
+  strip(x1, false); strip(x2, true); txt('>', cx, y+c/2, 26, C.dim);
+  txt('1. The Grunt aims at YOUR cell', x1+sw/2, y+c+16, 14, C.text, 'center', 600); txt('2. After the swap, the hit lands on the Archer', x2+sw/2, y+c+16, 14, C.text, 'center', 600); }
+function drawStart() { const help = UI.help || UI.screen !== 'start', a = ease((UI.now-UI.t0)/280), cw = Math.min(920, W-40), m = (W-cw)/2, top = Math.max(10, (H-560)/2)+(1-a)*14;
+  ctx.globalAlpha = a; ctx.letterSpacing = '3px'; txt('SWAPMEET', m, top+30, 42, C.text, 'left', 800); ctx.letterSpacing = '0px';
+  txtFit("You can't attack. Enemy attacks hit CELLS, not people - so trade places and let them hit each other.", m, top+66, 16, C.dim, cw, 'left', 500);
+  txtFit(`GOAL: survive ${GOAL} turns - 4 stages, one new enemy each, then the Warlord finale.`, m, top+92, 16, C.gold, cw, 'left', 700);
+  medalBadge(m+cw-26, top+26, 18, bestMedal || null); txt(`BEST ${best}   WINS ${wins}`, m+cw-56, top+28, 14, C.dim, 'right');
+  const c = Math.min(50, (cw-64)/8.4); drawDiagram(W/2, top+150, c);
+  const cy = top+150+c+38, chh = 188, cwid = (cw-16)/2; panel(m, cy, cwid, chh); panel(m+cwid+16, cy, cwid, chh);
+  txt('CONTROLS', m+16, cy+20, 14, C.player, 'left', 800); let y = cy+46;
+  for (const [k,d] of [['Click dotted tile / WASD / arrows','STEP 1 tile'],['Click a cyan-ringed enemy','SWAP places (clear row / column)'],['Click yourself / Space','WAIT (Space also skips animations)'],['Hover anything','PREVIEW: who dies, are you hit, score']]) {
+    txtFit(k, m+16, y, 14, C.text, cwid-32, 'left', 700); txtFit(d, m+16, y+17, 14, C.dim, cwid-32, 'left', 500); y += 31; }
+  const sx = m+cwid+32; txt('SCORE  &  LOSING', sx, cy+20, 14, C.gold, 'left', 800); y = cy+46;
+  y = wrap('Kills on a turn you SWAPPED score kills x kills (2 = 4, 3 = 9). Enemies that die on other turns score nothing.', sx, y, cwid-32, 14, C.text, 'left', 500, 18)+5;
+  y = wrap('Pick 1 of 3 items after every stage and every 10 swap kills.', sx, y, cwid-32, 14, C.text, 'left', 500, 18)+5;
+  wrap(`You have ${MODES[UI.hard?'hard':'normal'].hp} HP. Standing in a red cell when it resolves costs 1 HP. Swaps need 1 turn to recharge. Rocks block steps, swap lines and arrows.`, sx, y, cwid-32, 14, C.text, 'left', 500, 18);
+  const by = cy+chh+16;
+  if (help) { button('resume', 'RESUME', W/2-110, by, 220, 52, { primary:true, size:20 }); txt(`Difficulty: ${G && G.hard ? 'HARD' : 'NORMAL'}  (change it from the menu start screen)`, W/2, by+72, 14, C.dim, 'center', 500); }
+  else { button('normal', 'NORMAL', m, by+8, 96, 36, { on:!UI.hard }); button('hard', 'HARD', m+104, by+8, 96, 36, { on:UI.hard });
+    button('play', 'PLAY', W/2-110, by, 220, 52, { primary:true, size:22 }); button('tutorial', UI.tutDone ? 'Replay tutorial' : 'Tutorial first', m+cw-150, by+8, 150, 36);
+    txt(UI.hard ? 'HARD: 3 HP, faster spawns' : UI.tutDone ? 'NORMAL: 5 HP, gentle ramp' : 'PLAY starts with a 3-step tutorial', W/2, by+72, 14, C.dim, 'center', 500); }
+  txt(`H help    R restart    M ${muted ? 'unmute' : 'mute'}    Esc menu`, W/2, H-16, 14, C.dim, 'center', 500); ctx.globalAlpha = 1; }
+
+// ---------- input ----------
+function resize() { W = cv.width = window.innerWidth; H = cv.height = window.innerHeight;
+  const topH = 106, botH = 160; cs = Math.max(28, Math.min(88, Math.floor(Math.min((W-24)/N, (H-topH-botH)/N)))); bw = N*cs;
+  ox = Math.floor((W-bw)/2); oy = topH+Math.max(0, Math.floor((H-topH-botH-bw)/2)); }
+function cellAt(mx, my) { const x = Math.floor((mx-ox)/cs), y = Math.floor((my-oy)/cs); return inb(x,y) ? {x,y} : null; }
+const btnAt = (mx,my) => UI.btns.find(b => mx >= b.x && mx <= b.x+b.w && my >= b.y && my <= b.y+b.h);
+function openHelp(v) { if (UI.screen !== 'game') return; UI.help = v; UI.t0 = UI.now; }
+function press(id) { tone(520,.06,'sine',.06);
+  if (id === 'play') startRun({ tutorial:!UI.tutDone }); else if (id === 'tutorial') startRun({ tutorial:true });
+  else if (id === 'normal') UI.hard = false; else if (id === 'hard') UI.hard = true; else if (id === 'resume') openHelp(false); else if (id === 'help') openHelp(true);
+  else if (id === 'retry') startRun(); else if (id === 'menu') window.location.href = 'index.html'; else if (id === 'endless') keepGoing();
+  else if (id.startsWith('card')) pickItem(+id.slice(4)); }
+function onMove(mx, my) { UI.mx = mx; UI.my = my; if (!G || UI.screen !== 'game') return; const c = cellAt(mx,my);
+  if (!c || !G.hover || c.x !== G.hover.x || c.y !== G.hover.y) G.hoverOff = false; G.hover = c;
+  if (G.tut && G.tut.step === 1 && c && c.x === G.enemies[1].x && c.y === G.enemies[1].y) { G.tut.step = 2; tone(660,.08,'sine',.06); } }
+function onDown(mx, my, button = 0) { initAudio(); UI.mx = mx; UI.my = my; const b = btnAt(mx,my); if (b) { UI.down = b.id; return; }
+  if (!G || UI.screen !== 'game' || UI.help) return;
+  if (button === 2) { G.hoverOff = true; return; }                         // clear the hover preview only
+  if (G.phase === 'tutEnd') return startRun(); if (G.phase === 'busy') { G.skip = true; return; }
+  if (G.phase !== 'player') return; G.hover = cellAt(mx,my); G.hoverOff = false; if (G.tut && G.tut.step === 1) G.tut.step = 2; act(hoverAction()); }
+function onUp(mx, my) { const b = btnAt(mx,my), id = UI.down; UI.down = null; if (b && b.id === id) press(id); }
+function onKey(k, e) { initAudio(); const stop = () => e && e.preventDefault && e.preventDefault();
+  if (k === 'escape') { window.location.href = 'index.html'; return; } if (k === 'm') return setMute(!muted);
+  if (k === 'r') return startRun(G && G.tut ? { tutorial:true } : {});
+  if (UI.screen === 'start') { if (k === 'enter' || k === ' ') { stop(); press('play'); } if (k === 't') press('tutorial'); return; }
+  if (k === 'h' || k === '?') return openHelp(!UI.help); if (UI.help) { if (k === 'enter' || k === ' ') { stop(); openHelp(false); } return; }
+  if (G.tut) { if (k === 'enter' || (G.phase === 'tutEnd' && k === ' ')) { stop(); UI.tutDone = true; store.set('proto_'+GID+'_tut','1'); startRun(); } return; }
+  if (G.phase === 'item') { if ('123'.includes(k)) pickItem(+k-1); return; }
+  if (G.phase === 'won') { if (k === 'enter') keepGoing(); return; } if (G.phase === 'dead') { if (k === 'enter' && UI.now > G.screenT) startRun(); return; }
+  if (k === 'z') { G.hoverOff = true; return; }
+  if (k === ' ') { stop(); if (G.phase === 'busy') G.skip = true; else act({ type:'wait', x:P.x, y:P.y }); return; }
+  const d = { arrowup:[0,-1], w:[0,-1], arrowdown:[0,1], s:[0,1], arrowleft:[-1,0], a:[-1,0], arrowright:[1,0], d:[1,0] }[k];
+  if (d) { stop(); act({ type:'step', x:P.x+d[0], y:P.y+d[1] }); } }
+cv.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+cv.addEventListener('mouseleave', () => { UI.mx = UI.my = -1; if (G) G.hover = null; });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('mousedown', e => onDown(e.clientX, e.clientY, e.button));
+window.addEventListener('mouseup', e => onUp(e.clientX, e.clientY));
+window.addEventListener('keydown', e => onKey(e.key === ' ' || e.code === 'Space' ? ' ' : e.key.toLowerCase(), e));
+window.addEventListener('resize', resize);
+
+// ---------- boot ----------
+for (let i = 0; i < 26; i++) UI.motes.push({ x:Math.random(), y:Math.random(), v:.004+Math.random()*.01, p:Math.random()*6, r:.8+Math.random()*1.4, a:.05+Math.random()*.1 });
+let last = 0;
+function frame(t) { const dt = Math.min(50, (t-last)||16); last = t; update(dt); render(); requestAnimationFrame(frame); }
+window.SM = { get G() { return G; }, get geo() { return { ox, oy, cs, W, H }; }, UI, startRun, legalActions, simulate, preview, act, pickItem, keepGoing, update, render, press, onKey, onDown, onUp, onMove, resize, ITEMS, TYPES, STAGES, MODES, MEDALS, medalFor };
+resize(); requestAnimationFrame(frame);
+</script></body></html>
