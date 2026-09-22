@@ -10,10 +10,9 @@ if (!BASE) { console.error('usage: node scripts/qa/hero/live-assets.mjs <base-ur
 const src = readFileSync(path.join(ROOT, 'src/components/hall/hallScene.ts'), 'utf8');
 const urls = new Set();
 for (const m of src.matchAll(/['"`](\/(?:models|textures)\/[^'"`\s]+?)(\?v=[0-9a-f]+)?['"`]/g)) urls.add(m[1] + (m[2] ?? ''));
-// blue + toys + hall-light + hero texture sets built from templates
+// hall-light + hero texture sets built from templates
 const extra = [
-  '/models/blue-rigged-v6f.glb', '/models/blue-v6f-closed.webp', '/models/blue-v6f-mips.webp',
-  '/models/blue-toy-ball-v1.glb', '/models/blue-toy-mouse-v1.glb', '/models/dennis.glb',
+  '/models/dennis.glb',
   '/models/phone-booth-v1.glb', '/models/tv-rig-v1.glb', '/models/claw-v2.glb',
 ];
 for (const s of ['floor', 'wall']) for (const k of ['bounce', 'contact']) extra.push(`/textures/hall-light/${s}-${k}-v1.webp`);

@@ -3,7 +3,9 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-const out = '.source-assets/blue/qa'; await fs.mkdir(out, { recursive: true });
+import path from 'node:path';
+import os from 'node:os';
+const out = process.env.QA_OUT || path.join(os.tmpdir(), 'blue-companion-qa'); await fs.mkdir(out, { recursive: true });
 const base = process.env.QA_BASE_URL || 'http://localhost:4321/';
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11'] });
 const report = {};
@@ -45,7 +47,7 @@ try {
     const perched = await until(page, s => s.pose !== 'hall' && s.focus === 0 && s.mood === 'perchidle', reduce ? 6000 : 45000, 'perch on About');
     const perchAt = world(perched.pos);
     assert.ok(Math.abs(perched.elevation * scale - 1.95) < .01 && Math.abs(perchAt[1] - 1.95) < .01, 'on the cabinet top: ' + JSON.stringify(perchAt));
-    assert.ok(Math.abs(perchAt[2] - .17) < .04 && Math.abs(perchAt[0]) < .04, 'at the front edge: ' + JSON.stringify(perchAt));
+    assert.ok(Math.abs(perchAt[2] - (.409942 - .371 * scale)) < .012 && Math.abs(perchAt[0]) < .04, 'wrists at the front edge at either body scale (LEDGE.wrist is the sphinx lie reach): ' + JSON.stringify(perchAt));
     assert.ok(Math.abs(perched.yaw) < .08, 'faces the viewer: ' + perched.yaw);
     await page.waitForTimeout(reduce ? 300 : 1500); await crop(page, tag + 'perch');
     report[tag + 'perch'] = perched;

@@ -12,6 +12,5 @@ run these against the preview or live. Output directories are arguments; keep th
 | `cold-start.mjs` | `node scripts/qa/live/cold-start.mjs <origin>` | `hall:*` performance marks, `data-ready-ms`, bytes by group, largest files. Trust these marks; screenshot polling slows the page it measures. |
 | `waterfall.mjs` | `node scripts/qa/live/waterfall.mjs <origin>` | Per-asset start/TTFB/download, protocol, long tasks. |
 | `lang-switch.mjs` | `node scripts/qa/live/lang-switch.mjs <origin> <outdir>` | The DE/EN switch keeps the hall (constant luminance, surviving `window` marker), links/labels/canonical follow, back/forward. |
-| `blue-wake.mjs` | `node scripts/qa/live/blue-wake.mjs <origin> <outdir>` | Blue sleeps through hover and station browsing and gets up on a click; no mascot requests. |
 | `claw.mjs` | `node scripts/qa/live/claw.mjs <origin> <outdir> [tag]` | Close-up of the claw machine on About and in the hall. |
 | `station-check.mjs` | `node scripts/qa/live/station-check.mjs <outdir> [origin]` | Steps to station 05, opens it, loads its page directly on desktop and phone. The slug and step count are written for VGM Battle; change them for another station. |

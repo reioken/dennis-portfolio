@@ -4,7 +4,9 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-const out = '.source-assets/blue/qa'; await fs.mkdir(out, { recursive: true });
+import path from 'node:path';
+import os from 'node:os';
+const out = process.env.QA_OUT || path.join(os.tmpdir(), 'blue-turn-qa'); await fs.mkdir(out, { recursive: true });
 const base = process.env.QA_BASE_URL || 'http://localhost:4321/';
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11'] });
 const report = {};
@@ -39,7 +41,9 @@ try {
   const walkRates = walking.map(f => Math.abs(f.rate));
   report.behind = { clips, scales: [...new Set(turns.map(f => +f.scale.toFixed(2)))], turnFrames: turns.length, turnYawDeg: +(turnYaw * 180 / Math.PI).toFixed(1),
     maxWalkYawRate: +Math.max(0, ...walkRates).toFixed(2), maxTurnYawRate: +Math.max(...turns.map(f => Math.abs(f.rate))).toFixed(2), endYawDeg: +(run.at(-1).yaw * 180 / Math.PI).toFixed(1), frames: run.length };
-  assert.ok(clips.every(c => /^turn[LR](45|90)$/.test(c)), 'turn clips: ' + clips);
+  assert.ok(clips.every(c => /^turn[LR](15|30|45|60|90|120|180)$/.test(c)), 'turn clips: ' + clips);
+  // Half a turn is one clip now, not a 120+60 chain with a hesitation in the middle.
+  assert.equal(clips.length, 1, 'one turn clip carried the whole 180°: ' + clips);
   assert.ok(Math.abs(turnYaw) > 1.7, 'the turn clips carried most of the 180°: ' + report.behind.turnYawDeg);
   assert.ok(report.behind.maxWalkYawRate < 1.15, 'walking yaw rate bounded: ' + report.behind.maxWalkYawRate);
   // One continuous sweep: 90° in about 0.6 s peaks near 4 rad/s, a stretched 135° turn a little higher.

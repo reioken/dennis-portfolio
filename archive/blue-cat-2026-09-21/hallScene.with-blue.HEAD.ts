@@ -11,14 +11,15 @@
 import * as THREE from 'three';
 import { createHallFloor } from './floorReflectionShader';
 import { HallLighting } from './hallLighting';
+import { BlueCat, BLUE_ASSET_BUILD } from './blueCat';
+import { BLUE_TOY_BUILD } from './blueToys';
 import { ScreenDissolve } from './screenDissolve';
 import { textTexture } from './marqueeTexture';
 import { tvPresentation } from './presentation.mjs';
-import { ROOM_POWER_MS, collectRoomPowerTargets, roomCircuitOffset, roomPowerLevels, withRoomPower } from './roomPower.mjs';
+import { ROOM_POWER_MS, collectRoomPowerTargets, withRoomPower } from './roomPower.mjs';
 import { visibleTimeout } from './visibleTimeout.mjs';
 import { makeGlassWear, clearScreenGlass, addPanelWear } from './hardwareWear';
 import { WallPaint } from './wallPaint';
-import { WallGame, WALL_GAME_LAMP_OVERHANG } from './wallGame';
 import { attachWallGrime } from './wallGrime';
 import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './hallLayout';
 import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMaterials';
@@ -554,10 +555,11 @@ export class HallScene {
   /** nur für Dev-Inspektion über window.__hall */
   machines: Machine[] = [];
   private roomLighting!: HallLighting;
+  private blue?: BlueCat;
   private neonLight!: THREE.PointLight;
   private loadingManager = new THREE.LoadingManager();
   private loader = new THREE.TextureLoader(this.loadingManager);
-  /** Hall models are Meshopt-compressed (geometry and animation). */
+  /** Blue's GLB is Meshopt-compressed (geometry, morphs and animation); the other models are plain. */
   private gltf = new GLTFLoader(this.loadingManager).setMeshoptDecoder(MeshoptDecoder);
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2(0, 0);
@@ -648,11 +650,6 @@ export class HallScene {
   private tvBlank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
   private wallX = 0;
   private wallPaint = new WallPaint();
-  /** Breakout painted onto the bricks left of the claw machine; only alive at station 0 in the hall pose. */
-  private wallGame?: WallGame;
-  private wallZ = -1.6;
-  private wallRay = new THREE.Vector2();
-  private wallGamePointer: number | null = null;
   private stationX: number[] = [];
   private surfaceMaps = makeSurfaceMaps();
   /** Scanned surfaces for hero machines, fetched with the first one (inside the startup gate). */
@@ -736,6 +733,22 @@ export class HallScene {
     items.forEach((it, i) => this.addMachine(it, i));
     // Shared hero maps can download alongside the models instead of waiting for the first GLB to decode.
     this.heroMaps = loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+    const blueDone = this.track(initial);
+    this.gltf.load(`/models/blue-rigged-${BLUE_ASSET_BUILD}.glb`, gltf => {
+      if (!this.disposed) {
+        this.blue = new BlueCat(gltf, container, this.stationX[0]);
+        this.scene.add(this.blue.root);
+        this.dirty = this.mirrorDirty = true;
+        // The closed-eye texture and the coat's mip sheet belong to the cat: no reveal with the GPU's own mip chain.
+        this.blue.ready.then(() => {
+          this.dirty = this.mirrorDirty = true; blueDone();
+          // Small optional props do not delay Blue or the hall reveal.
+          for (const name of ['ball', 'mouse']) this.gltf.load(`/models/blue-toy-${name}-${BLUE_TOY_BUILD}.glb`, toy => {
+            if (!this.disposed) { this.blue?.addToy(toy, name === 'ball'); this.dirty = this.mirrorDirty = true; }
+          }, undefined, () => { /* Keep the hall usable if an optional prop fails. */ });
+        });
+      } else blueDone();
+    }, undefined, error => { console.error('Blue failed to load', error); blueDone(); });
     this.focus = initial;
     this.camX = this.targetX = this.stationX[initial];
     this.wallX = this.camX;
@@ -779,9 +792,11 @@ export class HallScene {
     }).finally(fontDone);
 
     r.domElement.addEventListener('pointermove', this.onPointerMove);
-    r.domElement.addEventListener('pointerdown', this.onWallGamePointerDown);
-    r.domElement.addEventListener('pointerup', this.onWallGamePointerUp);
-    r.domElement.addEventListener('pointercancel', this.onWallGamePointerUp);
+    r.domElement.addEventListener('pointerdown', this.onBluePointerDown);
+    r.domElement.addEventListener('pointerup', this.onBluePointerUp);
+    r.domElement.addEventListener('pointercancel', this.onBluePointerUp);
+    this.container.addEventListener('pointerdown', this.onBlueButtonDown);
+    r.domElement.addEventListener('pointerleave', this.onPointerLeave);
     r.domElement.addEventListener('click', this.onClick);
     window.addEventListener('resize', this.onResize);
     if (import.meta.env.DEV) (window as unknown as { __hall?: HallScene }).__hall = this;
@@ -798,46 +813,7 @@ export class HallScene {
     const label=(isMachine(it)?(en?it.titleEn??it.title:it.title):it.kind==='kasse'?(en?'About me':'Über mich'):en?'Contact':'Kontakt').split(' – ')[0].toUpperCase();
     this.wallPaint.update(label,this.stationX[this.focus],this.container.clientWidth<900,this.pose==='hall' && this.container.clientWidth>=900,this.wallTitleKey!==label);
     this.wallTitleKey=label;
-    this.syncWallGame();
     this.dirty=true;
-  }
-
-  /**
-   * The field only exists where it can be seen and played: the hall pose at station 0 on a desktop window.
-   * The compact framing puts the whole viewport on the cabinet (it already hides the wall lettering too).
-   */
-  private syncWallGame() {
-    const game = this.wallGame;
-    if (!game) return;
-    const on = this.pose==='hall' && this.focus===0 && this.container.clientWidth>=900;
-    if (on) {
-      // Narrow windows play on fewer bricks (whole ones): the painted frame keeps 5 % of the screen to the left
-      // edge even at the far end of the parallax and the attract sway (which cost about one percent).
-      this.updateGoal();
-      const halfW = Math.tan(THREE.MathUtils.degToRad(this.goalFov / 2)) * (this.camera.aspect || 1.6) * (this.goalPos.z - this.wallZ);
-      let cols = WallGame.COLS_MAX;
-      while (cols > WallGame.COLS_MIN && .5 + (WallGame.paintedLeft(game.fieldRight, cols) - this.stationX[0]) / (2 * halfW) < .062) cols -= 1;
-      game.setCols(cols);
-    }
-    game.setVisible(on, this.reduce);
-  }
-
-  /** Where a screen point lands on the back wall, or null if it points away from it. */
-  private wallPoint(clientX: number, clientY: number) {
-    const r = this.renderer.domElement.getBoundingClientRect();
-    if (!r.width || !r.height) return null;
-    this.wallRay.set(((clientX - r.left) / r.width) * 2 - 1, -(((clientY - r.top) / r.height) * 2 - 1));
-    this.raycaster.setFromCamera(this.wallRay, this.camera);
-    return this.wallPointFromRay();
-  }
-
-  /** Same, for callers that have already aimed the raycaster. */
-  private wallPointFromRay() {
-    const o = this.raycaster.ray.origin, d = this.raycaster.ray.direction;
-    if (Math.abs(d.z) < 1e-6) return null;
-    const t = (this.wallZ - o.z) / d.z;
-    if (t <= 0) return null;
-    return { x: o.x + d.x * t, y: o.y + d.y * t };
   }
 
   private cabinetArtwork(mesh: THREE.Mesh, slug:string) {
@@ -891,11 +867,8 @@ export class HallScene {
     attachWallGrime(wall.material);
     this.roomLighting.decorate(wall.material,'wall');
     wall.name = 'hall-back-wall';
-    wall.position.set((this.stationX[0] + this.stationX[this.stationX.length - 1]) / 2, 12, this.wallZ);
+    wall.position.set((this.stationX[0] + this.stationX[this.stationX.length - 1]) / 2, 12, -1.6);
     s.add(wall);
-    // The game's blocks have to land on real bricks, so it takes the wall's own origin.
-    this.wallGame = new WallGame(this.wallPaint.game, wall.position.x, () => { this.dirty = true; }, () => this.renderer);
-    s.add(this.buildWallGameLamp(this.wallGame));
     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(90, 24), new THREE.MeshStandardMaterial({ color: 0x06070c, roughness: 1 }));
     ceiling.rotation.x = Math.PI / 2;
     // The former 4.2-unit ceiling occluded the top of the wall on tall viewports.
@@ -910,43 +883,6 @@ export class HallScene {
     this.neonLight.position.set(0, -1.07, -0.12);
     this.tv.hang.add(this.neonLight);
 
-  }
-
-  /**
-   * A linear wall washer over the painted game: one slim batten as long as the field is wide. The wash itself is
-   * done in the wall's shader (wallPaint.ts) — this is only its source, because a lit patch of wall with no lamp
-   * above it reads as a mistake. Four meshes, all on materials the hall already compiles. It follows the field
-   * when a narrow window plays on fewer bricks, and its glare is named so the room's power-up (roomPower.mjs)
-   * treats it as an emitter on the lamp's circuit.
-   */
-  private buildWallGameLamp(game: WallGame) {
-    const group = new THREE.Group();
-    group.name = 'wall-game-lamp';
-    const metal = new THREE.MeshStandardMaterial({ color: 0x1d2026, roughness: .46, metalness: .82 });
-    const y = game.lampY + .07;
-    const armGeo = new THREE.BoxGeometry(.03, .03, .22);
-    const arms = [-1, 0, 1].map(() => { const arm = new THREE.Mesh(armGeo, metal); arm.position.set(0, y + .01, this.wallZ + .11); return arm; });
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, 1, 12, 1, false, 0, Math.PI * 2), metal);
-    bar.rotation.z = Math.PI / 2;
-    bar.position.set(0, y, this.wallZ + .215);
-    // The tube's own glare, facing down the wall: unlit, so it needs no light budget.
-    const glow = new THREE.Mesh(new THREE.PlaneGeometry(1, .045), new THREE.MeshBasicMaterial({
-      color: 0xcdd5e6, transparent: true, opacity: .36, depthWrite: false, side: THREE.DoubleSide,
-    }));
-    glow.name = 'wall-game-lamp-glow';
-    glow.rotation.x = -Math.PI / 2.35;
-    glow.position.set(0, y - .026, this.wallZ + .205);
-    group.add(...arms, bar, glow);
-    const place = (centreX: number, width: number) => {
-      const length = width + 2 * WALL_GAME_LAMP_OVERHANG;
-      group.position.x = centreX;
-      bar.scale.y = length; glow.scale.x = length - .08;
-      arms[0].position.x = -length * .40; arms[2].position.x = length * .40;
-      this.dirty = true;
-    };
-    game.onLayout = place;
-    place(game.centreX, 2 * (game.fieldRight - game.centreX));
-    return group;
   }
 
   /* ---------- Automaten ---------- */
@@ -3005,7 +2941,6 @@ export class HallScene {
   }
   setReduce(r: boolean) {
     this.reduce = r;
-    this.syncWallGame();
     if (r) this.finishPower();
   }
 
@@ -3050,37 +2985,54 @@ export class HallScene {
   }
 
   /* ---------- Eingabe ---------- */
-  /** A press inside the painted field belongs to the game, not to the hall's swipe or station picking. */
-  private onWallGamePointerDown = (e: PointerEvent) => {
-    const game = this.wallGame;
-    if (!game || !e.isPrimary || e.button !== 0) return;
-    const p = this.wallPoint(e.clientX, e.clientY);
-    if (!p || !game.canPlayAt(p.x, p.y)) return;
-    this.wallGamePointer = e.pointerId;
-    e.stopPropagation();
-    if (e.pointerType !== 'mouse') {
-      // A touch drag steers the paddle; without this the hall would swipe to the next station under it.
-      // Preventing the default also suppresses the synthesised click, so the tap is handled here.
-      e.preventDefault();
-      game.press(p.x, p.y);
-      this.dirty = true;
-      // A pointer that is no longer down (a synthetic or already-released one) rejects capture.
-      try { this.renderer.domElement.setPointerCapture(e.pointerId); } catch { /* the drag still works without it */ }
-    }
+  private bluePointer: number | null = null;
+  private blueStrokeAt = 0;
+  private blueStrokeX = 0;
+  private blueStrokeY = 0;
+  private blueClickUntil = 0;
+
+  private blueAt(clientX: number, clientY: number) {
+    const r = this.renderer.domElement.getBoundingClientRect();
+    this.pointer.set((clientX - r.left) / r.width * 2 - 1, 1 - (clientY - r.top) / r.height * 2);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = this.blue?.hit(this.raycaster);
+    if (!hit) return null;
+    const objects = this.raycaster.intersectObjects(this.rayCandidates(), true);
+    return !objects.length || hit.distance < objects[0].distance ? hit : null;
+  }
+  private onBlueButtonDown = (e: PointerEvent) => {
+    if ((e.target as HTMLElement).closest('.hall__blue-pet')) this.onBluePointerDown(e);
   };
-  private onWallGamePointerUp = (e: PointerEvent) => {
-    if (this.wallGamePointer !== e.pointerId) return;
-    this.wallGamePointer = null;
+  private onBluePointerDown = (e: PointerEvent) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    this.blueClickUntil = 0;
+    const hit = this.blueAt(e.clientX, e.clientY);
+    const touchTarget = (e.target as HTMLElement).closest('.hall__blue-pet');
+    if (!hit && !touchTarget) return;
+    this.bluePointer = e.pointerId;
+    this.blueStrokeAt = performance.now(); this.blueStrokeX = e.clientX; this.blueStrokeY = e.clientY;
+    e.preventDefault(); e.stopPropagation();
+    this.renderer.domElement.setPointerCapture(e.pointerId);
+    this.blue?.pet(hit ?? undefined);
+    this.dirty = this.mirrorDirty = true;
+  };
+  private onBluePointerUp = (e: PointerEvent) => {
+    if (this.bluePointer !== e.pointerId) return;
+    this.bluePointer = null;
+    this.blueClickUntil = performance.now() + 350;
     if (this.renderer.domElement.hasPointerCapture(e.pointerId)) this.renderer.domElement.releasePointerCapture(e.pointerId);
+    e.preventDefault(); e.stopPropagation();
   };
   private onPointerMove = (e: PointerEvent) => {
-    if (this.wallGamePointer === e.pointerId) {
-      const p = this.wallPoint(e.clientX, e.clientY);
-      if (p && this.wallGame?.drag(p.x)) this.dirty = true;
-      e.stopPropagation();
-    } else if (this.wallGame?.wantsPointer) {
-      const p = this.wallPoint(e.clientX, e.clientY);
-      if (p && this.wallGame.move(p.x, p.y)) this.dirty = true;
+    if (this.bluePointer === e.pointerId) {
+      e.preventDefault(); e.stopPropagation();
+      const now = performance.now();
+      if (now - this.blueStrokeAt >= 70 && Math.hypot(e.clientX - this.blueStrokeX, e.clientY - this.blueStrokeY) >= 3) {
+        const hit = this.blueAt(e.clientX, e.clientY);
+        if (hit) { this.blue?.pet(hit, true); this.dirty = this.mirrorDirty = true; }
+        this.blueStrokeAt = now; this.blueStrokeX = e.clientX; this.blueStrokeY = e.clientY;
+      }
+      return;
     }
     const r = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
@@ -3090,11 +3042,22 @@ export class HallScene {
       this.updateCursor();
     }
   };
+  private onPointerLeave = () => {
+    this.blue?.look(null, false);
+  };
   /** Zeiger: Automat anklickbar, Bildschirm öffnet die Großansicht */
   private updateCursor() {
     if (this.tweenDur > 0 && performance.now() - this.tweenStart < this.tweenDur) return;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
+    const blueHit = this.blue?.hit(this.raycaster);
+    const onBlue = !!blueHit && (!hits.length || blueHit.distance < hits[0].distance);
+    // Blue watches the pointer wherever it rests and looks up at the viewer once it lands on him.
+    this.blue?.look(this.raycaster.ray, onBlue);
+    if (onBlue) {
+      this.renderer.domElement.style.cursor = 'pointer';
+      return;
+    }
     let cursor = '';
     if (hits.length) {
       let o: THREE.Object3D | null = hits[0].object;
@@ -3109,21 +3072,21 @@ export class HallScene {
       // Ins Leere klicken fährt zurück (Zoom → Halle, Close-up → Automat) — der Zeiger kündigt es an
       cursor = 'zoom-out';
     }
-    if (!cursor && !hits.length && this.wallGame) {
-      const p = this.wallPointFromRay();
-      if (p && this.wallGame.canPlayAt(p.x, p.y)) cursor = 'pointer';
-    }
     if (this.renderer.domElement.style.cursor !== cursor) this.renderer.domElement.style.cursor = cursor;
   }
   private onClick = (e: MouseEvent) => {
+    if (performance.now() < this.blueClickUntil) { e.preventDefault(); e.stopPropagation(); return; }
     const r = this.renderer.domElement.getBoundingClientRect();
     const p = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
     this.raycaster.setFromCamera(p, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
+    const blueHit = this.blue?.hit(this.raycaster);
+    if (blueHit && (!hits.length || blueHit.distance < hits[0].distance)) {
+      this.blue?.pet(blueHit);
+      this.dirty = this.mirrorDirty = true;
+      return;
+    }
     if (!hits.length) {
-      // Nothing in front of the wall: the painted game may take the click before the backdrop does.
-      const wall = this.wallGame ? this.wallPointFromRay() : null;
-      if (wall && this.wallGame?.press(wall.x, wall.y)) { this.dirty = true; return; }
       if (this.pose !== 'hall') this.cb.onBackdrop?.();
       return;
     }
@@ -3399,9 +3362,14 @@ export class HallScene {
     }
 
     for (const m of this.machines) if (m.dissolve?.tick(now)) brightMoving = true;
+    // Blue accompanies every station and climbs the claw cabinet while the About panel is open.
+    if (this.blue?.update(dt, this.camera, inHall || this.pose !== 'hall', this.reduce, { focus: this.focus, pose: this.pose, stationX: this.stationX, inHall })) {
+      this.dirty = true;
+      // A calm cat (asleep, sitting, on the ledge) only breathes: his floor reflection refreshes a few times a
+      // second instead of on every tick (the mirror pass cost 3-5x the bloom while nothing moved).
+      if (!this.blue.calm || now - this.mirrorAt > 350) this.mirrorDirty = true;
+    }
     if (this.tvDissolve?.tick(now)) wallMoving = true;
-    // The painted game asks for frames only while it moves; its idle state is a still picture.
-    if (this.wallGame?.update(now)) this.dirty = true;
 
     // Außerhalb der Halle nur rendern, wenn sich etwas bewegt — die Seite daneben bleibt flüssig
     if (inHall || camMoving || lightingMoving || brightMoving || fogMoving || wallMoving || ctlMoving || this.dirty || !this.readyDone) {
@@ -3419,7 +3387,6 @@ export class HallScene {
     if (!this.readyDone) { this.powerSkipped = true; return; }
     if (this.powerAt === null) return;
     this.powerAt = null;
-    this.wallGame?.setPower(1);
     delete this.container.dataset.power;
     this.flushDeferredScreens();
     this.mirrorDirty = true;
@@ -3438,8 +3405,6 @@ export class HallScene {
       if (!this.readyDone || elapsed < ROOM_POWER_MS) {
         this.scene.updateMatrixWorld();
         this.mirrorDirty = true;
-        // the painted game's batten is a wash in the wall shader, not a light object: hand it its circuit level
-        this.wallGame?.setPower(roomPowerLevels(elapsed, roomCircuitOffset(this.wallGame.centreX, this.stationX[this.initialFocus])).circuit);
         withRoomPower(this.scene, elapsed, this.stationX[this.initialFocus], draw, false, this.powerTargets);
         return;
       }
@@ -3516,9 +3481,11 @@ export class HallScene {
     this.deferredScreens.clear();
     this.stop();
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
-    this.renderer.domElement.removeEventListener('pointerdown', this.onWallGamePointerDown);
-    this.renderer.domElement.removeEventListener('pointerup', this.onWallGamePointerUp);
-    this.renderer.domElement.removeEventListener('pointercancel', this.onWallGamePointerUp);
+    this.renderer.domElement.removeEventListener('pointerdown', this.onBluePointerDown);
+    this.renderer.domElement.removeEventListener('pointerup', this.onBluePointerUp);
+    this.renderer.domElement.removeEventListener('pointercancel', this.onBluePointerUp);
+    this.container.removeEventListener('pointerdown', this.onBlueButtonDown);
+    this.renderer.domElement.removeEventListener('pointerleave', this.onPointerLeave);
     this.renderer.domElement.removeEventListener('click', this.onClick);
     window.removeEventListener('resize', this.onResize);
     this.renderer.domElement.remove();
@@ -3532,7 +3499,7 @@ export class HallScene {
   }
 
   private releaseResources() {
-    this.wallGame?.dispose();
+    this.blue?.dispose();
     this.wallPaint.dispose();
     this.glassWear.roughness.dispose();
     this.tvSlides.forEach(texture=>texture.dispose());this.tvSlides.clear();

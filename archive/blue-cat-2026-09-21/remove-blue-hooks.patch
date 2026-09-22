@@ -1,0 +1,481 @@
+diff --git a/scripts/models/pack-models.mjs b/scripts/models/pack-models.mjs
+index 1b91853..b8c171e 100644
+--- a/scripts/models/pack-models.mjs
++++ b/scripts/models/pack-models.mjs
+@@ -1,6 +1,6 @@
+ // Pack every hall model for the web: dedup buffers, prune, resample animations, quantize and Meshopt-compress.
+ // Textures are capped separately by shrink-textures.mjs (run it first; it must not share a process with the
+-// functions bundle). Blue has his own packer (blue-pack.mjs). Each file is rewritten in place after a structure
++// functions bundle). Each file is rewritten in place after a structure
+ // check: node, mesh, material, animation and skin names must be unchanged, because the hall addresses controls,
+ // screens and glow parts by name. A file the pass would make larger is restored from the original. Originals are
+ // kept in .source-assets/models-original/ for rollback.
+@@ -22,9 +22,9 @@ const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies(
+ async function* walk(dir) {
+   for (const entry of await readdir(dir, { withFileTypes: true })) {
+     const path = join(dir, entry.name);
+-    // Kenney props are not loaded by the hall and Blue has his own packer.
++    // Kenney props are not loaded by the hall.
+     if (entry.isDirectory()) { if (entry.name !== 'kenney') yield* walk(path); }
+-    else if (entry.name.endsWith('.glb') && !entry.name.startsWith('blue-rigged')) yield path;
++    else if (entry.name.endsWith('.glb')) yield path;
+   }
+ }
+ const names = document => {
+diff --git a/scripts/models/shrink-textures.mjs b/scripts/models/shrink-textures.mjs
+index 1aa1fa3..9c7c742 100644
+--- a/scripts/models/shrink-textures.mjs
++++ b/scripts/models/shrink-textures.mjs
+@@ -18,7 +18,7 @@ async function* walk(dir) {
+   for (const entry of await readdir(dir, { withFileTypes: true })) {
+     const path = join(dir, entry.name);
+     if (entry.isDirectory()) { if (entry.name !== 'kenney') yield* walk(path); }
+-    else if (entry.name.endsWith('.glb') && !entry.name.startsWith('blue-rigged')) yield path;
++    else if (entry.name.endsWith('.glb')) yield path;
+   }
+ }
+ 
+diff --git a/scripts/modulepreload.mjs b/scripts/modulepreload.mjs
+index b6a5da2..b864207 100644
+--- a/scripts/modulepreload.mjs
++++ b/scripts/modulepreload.mjs
+@@ -38,18 +38,16 @@ async function reachable(distDir, entry, cache) {
+ }
+ 
+ /**
+- * The first view's large files (environment, the claw machine's figure and plush, Blue). Measured live 2026-09-19:
+- * the network sat idle from 0.5 s (JS done) to 1.4 s (scene constructed, loaders started) while these 4.5 MB were
+- * still to come. `as="fetch" crossorigin` matches three's FileLoader and the environment fetch, so the preloaded
+- * response is reused. Phone case pages are native and never start the hall: they get a media condition.
++ * The first view's large files (environment, the claw machine's figure and plush). Measured live 2026-09-19:
++ * the network sat idle from 0.5 s (JS done) to 1.4 s (scene constructed, loaders started) while these megabytes
++ * were still to come. `as="fetch" crossorigin` matches three's FileLoader and the environment fetch, so the
++ * preloaded response is reused. Phone case pages are native and never start the hall: they get a media condition.
+  */
+ async function firstViewAssets(distDir, html) {
+-  const blue = (await readFile(path.join(process.cwd(), 'src/components/hall/blueCat.ts'), 'utf8')).match(/BLUE_ASSET_BUILD = '([^']+)'/)?.[1];
+   const figure = html.match(/\/models\/dennis\.glb\?v=[0-9a-f]+/)?.[0];
+   const wanted = [
+     '/textures/hall-environment-v2.bin.gz',
+     figure,
+-    blue && `/models/blue-rigged-${blue}.glb`,
+     '/models/plush/pile-back-v1.glb',
+     '/models/plush/pile-side-v1.glb',
+   ].filter(Boolean);
+diff --git a/scripts/qa/hero/live-assets.mjs b/scripts/qa/hero/live-assets.mjs
+index 7a4d0b6..e1e454c 100644
+--- a/scripts/qa/hero/live-assets.mjs
++++ b/scripts/qa/hero/live-assets.mjs
+@@ -10,10 +10,9 @@ if (!BASE) { console.error('usage: node scripts/qa/hero/live-assets.mjs <base-ur
+ const src = readFileSync(path.join(ROOT, 'src/components/hall/hallScene.ts'), 'utf8');
+ const urls = new Set();
+ for (const m of src.matchAll(/['"`](\/(?:models|textures)\/[^'"`\s]+?)(\?v=[0-9a-f]+)?['"`]/g)) urls.add(m[1] + (m[2] ?? ''));
+-// blue + toys + hall-light + hero texture sets built from templates
++// hall-light + hero texture sets built from templates
+ const extra = [
+-  '/models/blue-rigged-v6f.glb', '/models/blue-v6f-closed.webp', '/models/blue-v6f-mips.webp',
+-  '/models/blue-toy-ball-v1.glb', '/models/blue-toy-mouse-v1.glb', '/models/dennis.glb',
++  '/models/dennis.glb',
+   '/models/phone-booth-v1.glb', '/models/tv-rig-v1.glb', '/models/claw-v2.glb',
+ ];
+ for (const s of ['floor', 'wall']) for (const k of ['bounce', 'contact']) extra.push(`/textures/hall-light/${s}-${k}-v1.webp`);
+diff --git a/scripts/qa/hero/verify-hashes.mjs b/scripts/qa/hero/verify-hashes.mjs
+index 5d1954a..0bc6be0 100644
+--- a/scripts/qa/hero/verify-hashes.mjs
++++ b/scripts/qa/hero/verify-hashes.mjs
+@@ -9,7 +9,6 @@ const files = [
+   'src/components/hall/hallScene.ts',
+   'src/components/hall/hallLayout.ts',
+   'src/components/hall/heroMaterial.ts',
+-  'src/components/hall/blueCat.ts',
+   'src/components/hall/hardwareWear.ts',
+   'src/components/hall/floorReflectionShader.ts',
+ ];
+diff --git a/src/components/hall/hall.css b/src/components/hall/hall.css
+index ca90c60..7fe7d2b 100644
+--- a/src/components/hall/hall.css
++++ b/src/components/hall/hall.css
+@@ -1454,48 +1454,3 @@ body[data-mode='case'] .hall-panel__btn--coin {
+   opacity: 1;
+ }
+ 
+-/* Keyboard/touch target follows Blue; ordinary pointer hits use his actual mesh. */
+-.hall__blue-pet {
+-  touch-action: none;
+-  transition: none !important;
+-  animation: none !important;
+-  position: absolute;
+-  z-index: 2;
+-  width: 54px;
+-  height: 54px;
+-  transform: translate(-50%, -50%);
+-  background: transparent;
+-  border: 0;
+-  border-radius: 50%;
+-  cursor: pointer;
+-  color: transparent;
+-  pointer-events: none;
+-}
+-.hall__blue-pet[hidden] { display: none; }
+-.hall__blue-toy {
+-  transition: none !important;
+-  animation: none !important;
+-  position: absolute;
+-  z-index: 4;
+-  width: 44px;
+-  height: 44px;
+-  padding: 0;
+-  border: 0;
+-  border-radius: 50%;
+-  background: transparent;
+-  transform: translate(-50%, -50%);
+-  cursor: grab;
+-  touch-action: none;
+-}
+-.hall__blue-toy[hidden] { display: none; }
+-.hall__blue-toy.is-held { cursor: grabbing; }
+-.hall__blue-toy:hover { box-shadow: inset 0 0 0 1px rgb(206 192 239 / 45%); }
+-.hall__blue-toy:active { cursor: grabbing; }
+-.hall__blue-toy:focus-visible { outline: 2px solid #c4b5eb; outline-offset: 2px; }
+-.hall__blue-pet:focus-visible {
+-  outline: 2px solid #c8b6ea;
+-  outline-offset: 5px;
+-  box-shadow: 0 0 24px #b29ad633;
+-}
+-@media (pointer: coarse) { .hall__blue-pet { pointer-events: auto; } }
+-
+diff --git a/src/components/hall/hallScene.ts b/src/components/hall/hallScene.ts
+index 17aee77..02f3421 100644
+--- a/src/components/hall/hallScene.ts
++++ b/src/components/hall/hallScene.ts
+@@ -11,8 +11,6 @@
+ import * as THREE from 'three';
+ import { createHallFloor } from './floorReflectionShader';
+ import { HallLighting } from './hallLighting';
+-import { BlueCat, BLUE_ASSET_BUILD } from './blueCat';
+-import { BLUE_TOY_BUILD } from './blueToys';
+ import { ScreenDissolve } from './screenDissolve';
+ import { textTexture } from './marqueeTexture';
+ import { tvPresentation } from './presentation.mjs';
+@@ -20,6 +18,7 @@ import { ROOM_POWER_MS, collectRoomPowerTargets, withRoomPower } from './roomPow
+ import { visibleTimeout } from './visibleTimeout.mjs';
+ import { makeGlassWear, clearScreenGlass, addPanelWear } from './hardwareWear';
+ import { WallPaint } from './wallPaint';
++import { WallGame } from './wallGame';
+ import { attachWallGrime } from './wallGrime';
+ import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './hallLayout';
+ import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMaterials';
+@@ -555,11 +554,10 @@ export class HallScene {
+   /** nur für Dev-Inspektion über window.__hall */
+   machines: Machine[] = [];
+   private roomLighting!: HallLighting;
+-  private blue?: BlueCat;
+   private neonLight!: THREE.PointLight;
+   private loadingManager = new THREE.LoadingManager();
+   private loader = new THREE.TextureLoader(this.loadingManager);
+-  /** Blue's GLB is Meshopt-compressed (geometry, morphs and animation); the other models are plain. */
++  /** Hall models are Meshopt-compressed (geometry and animation). */
+   private gltf = new GLTFLoader(this.loadingManager).setMeshoptDecoder(MeshoptDecoder);
+   private raycaster = new THREE.Raycaster();
+   private pointer = new THREE.Vector2(0, 0);
+@@ -650,6 +648,11 @@ export class HallScene {
+   private tvBlank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+   private wallX = 0;
+   private wallPaint = new WallPaint();
++  /** Breakout painted onto the bricks left of the claw machine; only alive at station 0 in the hall pose. */
++  private wallGame?: WallGame;
++  private wallZ = -1.6;
++  private wallRay = new THREE.Vector2();
++  private wallGamePointer: number | null = null;
+   private stationX: number[] = [];
+   private surfaceMaps = makeSurfaceMaps();
+   /** Scanned surfaces for hero machines, fetched with the first one (inside the startup gate). */
+@@ -733,22 +736,6 @@ export class HallScene {
+     items.forEach((it, i) => this.addMachine(it, i));
+     // Shared hero maps can download alongside the models instead of waiting for the first GLB to decode.
+     this.heroMaps = loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+-    const blueDone = this.track(initial);
+-    this.gltf.load(`/models/blue-rigged-${BLUE_ASSET_BUILD}.glb`, gltf => {
+-      if (!this.disposed) {
+-        this.blue = new BlueCat(gltf, container, this.stationX[0]);
+-        this.scene.add(this.blue.root);
+-        this.dirty = this.mirrorDirty = true;
+-        // The closed-eye texture and the coat's mip sheet belong to the cat: no reveal with the GPU's own mip chain.
+-        this.blue.ready.then(() => {
+-          this.dirty = this.mirrorDirty = true; blueDone();
+-          // Small optional props do not delay Blue or the hall reveal.
+-          for (const name of ['ball', 'mouse']) this.gltf.load(`/models/blue-toy-${name}-${BLUE_TOY_BUILD}.glb`, toy => {
+-            if (!this.disposed) { this.blue?.addToy(toy, name === 'ball'); this.dirty = this.mirrorDirty = true; }
+-          }, undefined, () => { /* Keep the hall usable if an optional prop fails. */ });
+-        });
+-      } else blueDone();
+-    }, undefined, error => { console.error('Blue failed to load', error); blueDone(); });
+     this.focus = initial;
+     this.camX = this.targetX = this.stationX[initial];
+     this.wallX = this.camX;
+@@ -792,11 +779,9 @@ export class HallScene {
+     }).finally(fontDone);
+ 
+     r.domElement.addEventListener('pointermove', this.onPointerMove);
+-    r.domElement.addEventListener('pointerdown', this.onBluePointerDown);
+-    r.domElement.addEventListener('pointerup', this.onBluePointerUp);
+-    r.domElement.addEventListener('pointercancel', this.onBluePointerUp);
+-    this.container.addEventListener('pointerdown', this.onBlueButtonDown);
+-    r.domElement.addEventListener('pointerleave', this.onPointerLeave);
++    r.domElement.addEventListener('pointerdown', this.onWallGamePointerDown);
++    r.domElement.addEventListener('pointerup', this.onWallGamePointerUp);
++    r.domElement.addEventListener('pointercancel', this.onWallGamePointerUp);
+     r.domElement.addEventListener('click', this.onClick);
+     window.addEventListener('resize', this.onResize);
+     if (import.meta.env.DEV) (window as unknown as { __hall?: HallScene }).__hall = this;
+@@ -813,9 +798,36 @@ export class HallScene {
+     const label=(isMachine(it)?(en?it.titleEn??it.title:it.title):it.kind==='kasse'?(en?'About me':'Über mich'):en?'Contact':'Kontakt').split(' – ')[0].toUpperCase();
+     this.wallPaint.update(label,this.stationX[this.focus],this.container.clientWidth<900,this.pose==='hall' && this.container.clientWidth>=900,this.wallTitleKey!==label);
+     this.wallTitleKey=label;
++    this.syncWallGame();
+     this.dirty=true;
+   }
+ 
++  /**
++   * The field only exists where it can be seen and played: the hall pose at station 0 on a desktop window.
++   * The compact framing puts the whole viewport on the cabinet (it already hides the wall lettering too).
++   */
++  private syncWallGame() {
++    this.wallGame?.setVisible(this.pose==='hall' && this.focus===0 && this.container.clientWidth>=900, this.reduce);
++  }
++
++  /** Where a screen point lands on the back wall, or null if it points away from it. */
++  private wallPoint(clientX: number, clientY: number) {
++    const r = this.renderer.domElement.getBoundingClientRect();
++    if (!r.width || !r.height) return null;
++    this.wallRay.set(((clientX - r.left) / r.width) * 2 - 1, -(((clientY - r.top) / r.height) * 2 - 1));
++    this.raycaster.setFromCamera(this.wallRay, this.camera);
++    return this.wallPointFromRay();
++  }
++
++  /** Same, for callers that have already aimed the raycaster. */
++  private wallPointFromRay() {
++    const o = this.raycaster.ray.origin, d = this.raycaster.ray.direction;
++    if (Math.abs(d.z) < 1e-6) return null;
++    const t = (this.wallZ - o.z) / d.z;
++    if (t <= 0) return null;
++    return { x: o.x + d.x * t, y: o.y + d.y * t };
++  }
++
+   private cabinetArtwork(mesh: THREE.Mesh, slug:string) {
+     const deck=mesh.name.toLowerCase()==='deck_art';
+     if(deck || mesh.name.toLowerCase()==='front_art') {const material = new THREE.MeshPhysicalMaterial({
+@@ -867,8 +879,10 @@ export class HallScene {
+     attachWallGrime(wall.material);
+     this.roomLighting.decorate(wall.material,'wall');
+     wall.name = 'hall-back-wall';
+-    wall.position.set((this.stationX[0] + this.stationX[this.stationX.length - 1]) / 2, 12, -1.6);
++    wall.position.set((this.stationX[0] + this.stationX[this.stationX.length - 1]) / 2, 12, this.wallZ);
+     s.add(wall);
++    // The game's blocks have to land on real bricks, so it takes the wall's own origin.
++    this.wallGame = new WallGame(this.wallPaint.game, wall.position.x, () => { this.dirty = true; });
+     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(90, 24), new THREE.MeshStandardMaterial({ color: 0x06070c, roughness: 1 }));
+     ceiling.rotation.x = Math.PI / 2;
+     // The former 4.2-unit ceiling occluded the top of the wall on tall viewports.
+@@ -2941,6 +2955,7 @@ export class HallScene {
+   }
+   setReduce(r: boolean) {
+     this.reduce = r;
++    this.syncWallGame();
+     if (r) this.finishPower();
+   }
+ 
+@@ -2985,54 +3000,37 @@ export class HallScene {
+   }
+ 
+   /* ---------- Eingabe ---------- */
+-  private bluePointer: number | null = null;
+-  private blueStrokeAt = 0;
+-  private blueStrokeX = 0;
+-  private blueStrokeY = 0;
+-  private blueClickUntil = 0;
+-
+-  private blueAt(clientX: number, clientY: number) {
+-    const r = this.renderer.domElement.getBoundingClientRect();
+-    this.pointer.set((clientX - r.left) / r.width * 2 - 1, 1 - (clientY - r.top) / r.height * 2);
+-    this.raycaster.setFromCamera(this.pointer, this.camera);
+-    const hit = this.blue?.hit(this.raycaster);
+-    if (!hit) return null;
+-    const objects = this.raycaster.intersectObjects(this.rayCandidates(), true);
+-    return !objects.length || hit.distance < objects[0].distance ? hit : null;
+-  }
+-  private onBlueButtonDown = (e: PointerEvent) => {
+-    if ((e.target as HTMLElement).closest('.hall__blue-pet')) this.onBluePointerDown(e);
+-  };
+-  private onBluePointerDown = (e: PointerEvent) => {
+-    if (!e.isPrimary || e.button !== 0) return;
+-    this.blueClickUntil = 0;
+-    const hit = this.blueAt(e.clientX, e.clientY);
+-    const touchTarget = (e.target as HTMLElement).closest('.hall__blue-pet');
+-    if (!hit && !touchTarget) return;
+-    this.bluePointer = e.pointerId;
+-    this.blueStrokeAt = performance.now(); this.blueStrokeX = e.clientX; this.blueStrokeY = e.clientY;
+-    e.preventDefault(); e.stopPropagation();
+-    this.renderer.domElement.setPointerCapture(e.pointerId);
+-    this.blue?.pet(hit ?? undefined);
+-    this.dirty = this.mirrorDirty = true;
++  /** A press inside the painted field belongs to the game, not to the hall's swipe or station picking. */
++  private onWallGamePointerDown = (e: PointerEvent) => {
++    const game = this.wallGame;
++    if (!game || !e.isPrimary || e.button !== 0) return;
++    const p = this.wallPoint(e.clientX, e.clientY);
++    if (!p || !game.canPlayAt(p.x, p.y)) return;
++    this.wallGamePointer = e.pointerId;
++    e.stopPropagation();
++    if (e.pointerType !== 'mouse') {
++      // A touch drag steers the paddle; without this the hall would swipe to the next station under it.
++      // Preventing the default also suppresses the synthesised click, so the tap is handled here.
++      e.preventDefault();
++      game.press(p.x, p.y);
++      this.dirty = true;
++      // A pointer that is no longer down (a synthetic or already-released one) rejects capture.
++      try { this.renderer.domElement.setPointerCapture(e.pointerId); } catch { /* the drag still works without it */ }
++    }
+   };
+-  private onBluePointerUp = (e: PointerEvent) => {
+-    if (this.bluePointer !== e.pointerId) return;
+-    this.bluePointer = null;
+-    this.blueClickUntil = performance.now() + 350;
++  private onWallGamePointerUp = (e: PointerEvent) => {
++    if (this.wallGamePointer !== e.pointerId) return;
++    this.wallGamePointer = null;
+     if (this.renderer.domElement.hasPointerCapture(e.pointerId)) this.renderer.domElement.releasePointerCapture(e.pointerId);
+-    e.preventDefault(); e.stopPropagation();
+   };
+   private onPointerMove = (e: PointerEvent) => {
+-    if (this.bluePointer === e.pointerId) {
+-      e.preventDefault(); e.stopPropagation();
+-      const now = performance.now();
+-      if (now - this.blueStrokeAt >= 70 && Math.hypot(e.clientX - this.blueStrokeX, e.clientY - this.blueStrokeY) >= 3) {
+-        const hit = this.blueAt(e.clientX, e.clientY);
+-        if (hit) { this.blue?.pet(hit, true); this.dirty = this.mirrorDirty = true; }
+-        this.blueStrokeAt = now; this.blueStrokeX = e.clientX; this.blueStrokeY = e.clientY;
+-      }
+-      return;
++    if (this.wallGamePointer === e.pointerId) {
++      const p = this.wallPoint(e.clientX, e.clientY);
++      if (p && this.wallGame?.drag(p.x)) this.dirty = true;
++      e.stopPropagation();
++    } else if (this.wallGame?.wantsPointer) {
++      const p = this.wallPoint(e.clientX, e.clientY);
++      if (p && this.wallGame.move(p.x, p.y)) this.dirty = true;
+     }
+     const r = this.renderer.domElement.getBoundingClientRect();
+     this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
+@@ -3042,22 +3040,11 @@ export class HallScene {
+       this.updateCursor();
+     }
+   };
+-  private onPointerLeave = () => {
+-    this.blue?.look(null, false);
+-  };
+   /** Zeiger: Automat anklickbar, Bildschirm öffnet die Großansicht */
+   private updateCursor() {
+     if (this.tweenDur > 0 && performance.now() - this.tweenStart < this.tweenDur) return;
+     this.raycaster.setFromCamera(this.pointer, this.camera);
+     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
+-    const blueHit = this.blue?.hit(this.raycaster);
+-    const onBlue = !!blueHit && (!hits.length || blueHit.distance < hits[0].distance);
+-    // Blue watches the pointer wherever it rests and looks up at the viewer once it lands on him.
+-    this.blue?.look(this.raycaster.ray, onBlue);
+-    if (onBlue) {
+-      this.renderer.domElement.style.cursor = 'pointer';
+-      return;
+-    }
+     let cursor = '';
+     if (hits.length) {
+       let o: THREE.Object3D | null = hits[0].object;
+@@ -3072,21 +3059,21 @@ export class HallScene {
+       // Ins Leere klicken fährt zurück (Zoom → Halle, Close-up → Automat) — der Zeiger kündigt es an
+       cursor = 'zoom-out';
+     }
++    if (!cursor && !hits.length && this.wallGame) {
++      const p = this.wallPointFromRay();
++      if (p && this.wallGame.canPlayAt(p.x, p.y)) cursor = 'pointer';
++    }
+     if (this.renderer.domElement.style.cursor !== cursor) this.renderer.domElement.style.cursor = cursor;
+   }
+   private onClick = (e: MouseEvent) => {
+-    if (performance.now() < this.blueClickUntil) { e.preventDefault(); e.stopPropagation(); return; }
+     const r = this.renderer.domElement.getBoundingClientRect();
+     const p = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
+     this.raycaster.setFromCamera(p, this.camera);
+     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
+-    const blueHit = this.blue?.hit(this.raycaster);
+-    if (blueHit && (!hits.length || blueHit.distance < hits[0].distance)) {
+-      this.blue?.pet(blueHit);
+-      this.dirty = this.mirrorDirty = true;
+-      return;
+-    }
+     if (!hits.length) {
++      // Nothing in front of the wall: the painted game may take the click before the backdrop does.
++      const wall = this.wallGame ? this.wallPointFromRay() : null;
++      if (wall && this.wallGame?.press(wall.x, wall.y)) { this.dirty = true; return; }
+       if (this.pose !== 'hall') this.cb.onBackdrop?.();
+       return;
+     }
+@@ -3362,14 +3349,9 @@ export class HallScene {
+     }
+ 
+     for (const m of this.machines) if (m.dissolve?.tick(now)) brightMoving = true;
+-    // Blue accompanies every station and climbs the claw cabinet while the About panel is open.
+-    if (this.blue?.update(dt, this.camera, inHall || this.pose !== 'hall', this.reduce, { focus: this.focus, pose: this.pose, stationX: this.stationX, inHall })) {
+-      this.dirty = true;
+-      // A calm cat (asleep, sitting, on the ledge) only breathes: his floor reflection refreshes a few times a
+-      // second instead of on every tick (the mirror pass cost 3-5x the bloom while nothing moved).
+-      if (!this.blue.calm || now - this.mirrorAt > 350) this.mirrorDirty = true;
+-    }
+     if (this.tvDissolve?.tick(now)) wallMoving = true;
++    // The painted game asks for frames only while it moves; its idle state is a still picture.
++    if (this.wallGame?.update(now)) this.dirty = true;
+ 
+     // Außerhalb der Halle nur rendern, wenn sich etwas bewegt — die Seite daneben bleibt flüssig
+     if (inHall || camMoving || lightingMoving || brightMoving || fogMoving || wallMoving || ctlMoving || this.dirty || !this.readyDone) {
+@@ -3481,11 +3463,9 @@ export class HallScene {
+     this.deferredScreens.clear();
+     this.stop();
+     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
+-    this.renderer.domElement.removeEventListener('pointerdown', this.onBluePointerDown);
+-    this.renderer.domElement.removeEventListener('pointerup', this.onBluePointerUp);
+-    this.renderer.domElement.removeEventListener('pointercancel', this.onBluePointerUp);
+-    this.container.removeEventListener('pointerdown', this.onBlueButtonDown);
+-    this.renderer.domElement.removeEventListener('pointerleave', this.onPointerLeave);
++    this.renderer.domElement.removeEventListener('pointerdown', this.onWallGamePointerDown);
++    this.renderer.domElement.removeEventListener('pointerup', this.onWallGamePointerUp);
++    this.renderer.domElement.removeEventListener('pointercancel', this.onWallGamePointerUp);
+     this.renderer.domElement.removeEventListener('click', this.onClick);
+     window.removeEventListener('resize', this.onResize);
+     this.renderer.domElement.remove();
+@@ -3499,7 +3479,7 @@ export class HallScene {
+   }
+ 
+   private releaseResources() {
+-    this.blue?.dispose();
++    this.wallGame?.dispose();
+     this.wallPaint.dispose();
+     this.glassWear.roughness.dispose();
+     this.tvSlides.forEach(texture=>texture.dispose());this.tvSlides.clear();
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..6d825a7 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -5,10 +5,11 @@
+     "**/*"
+   ],
+   "exclude": [
+-    "dist"
++    "dist",
++    "archive"
+   ],
+   "compilerOptions": {
+     "jsx": "react-jsx",
+     "jsxImportSource": "react"
+   }
+-}
+\ No newline at end of file
++}

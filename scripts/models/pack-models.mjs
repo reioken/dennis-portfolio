@@ -1,6 +1,6 @@
 // Pack every hall model for the web: dedup buffers, prune, resample animations, quantize and Meshopt-compress.
 // Textures are capped separately by shrink-textures.mjs (run it first; it must not share a process with the
-// functions bundle). Blue has his own packer (blue-pack.mjs). Each file is rewritten in place after a structure
+// functions bundle). Each file is rewritten in place after a structure
 // check: node, mesh, material, animation and skin names must be unchanged, because the hall addresses controls,
 // screens and glow parts by name. A file the pass would make larger is restored from the original. Originals are
 // kept in .source-assets/models-original/ for rollback.
@@ -22,9 +22,9 @@ const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies(
 async function* walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
-    // Kenney props are not loaded by the hall and Blue has his own packer.
+    // Kenney props are not loaded by the hall.
     if (entry.isDirectory()) { if (entry.name !== 'kenney') yield* walk(path); }
-    else if (entry.name.endsWith('.glb') && !entry.name.startsWith('blue-rigged')) yield path;
+    else if (entry.name.endsWith('.glb')) yield path;
   }
 }
 const names = document => {

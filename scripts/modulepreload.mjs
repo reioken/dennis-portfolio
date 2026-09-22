@@ -38,18 +38,16 @@ async function reachable(distDir, entry, cache) {
 }
 
 /**
- * The first view's large files (environment, the claw machine's figure and plush, Blue). Measured live 2026-09-19:
- * the network sat idle from 0.5 s (JS done) to 1.4 s (scene constructed, loaders started) while these 4.5 MB were
- * still to come. `as="fetch" crossorigin` matches three's FileLoader and the environment fetch, so the preloaded
- * response is reused. Phone case pages are native and never start the hall: they get a media condition.
+ * The first view's large files (environment, the claw machine's figure and plush). Measured live 2026-09-19:
+ * the network sat idle from 0.5 s (JS done) to 1.4 s (scene constructed, loaders started) while these megabytes
+ * were still to come. `as="fetch" crossorigin` matches three's FileLoader and the environment fetch, so the
+ * preloaded response is reused. Phone case pages are native and never start the hall: they get a media condition.
  */
 async function firstViewAssets(distDir, html) {
-  const blue = (await readFile(path.join(process.cwd(), 'src/components/hall/blueCat.ts'), 'utf8')).match(/BLUE_ASSET_BUILD = '([^']+)'/)?.[1];
   const figure = html.match(/\/models\/dennis\.glb\?v=[0-9a-f]+/)?.[0];
   const wanted = [
     '/textures/hall-environment-v2.bin.gz',
     figure,
-    blue && `/models/blue-rigged-${blue}.glb`,
     '/models/plush/pile-back-v1.glb',
     '/models/plush/pile-side-v1.glb',
   ].filter(Boolean);

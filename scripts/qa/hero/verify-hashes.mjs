@@ -9,7 +9,6 @@ const files = [
   'src/components/hall/hallScene.ts',
   'src/components/hall/hallLayout.ts',
   'src/components/hall/heroMaterial.ts',
-  'src/components/hall/blueCat.ts',
   'src/components/hall/hardwareWear.ts',
   'src/components/hall/floorReflectionShader.ts',
 ];

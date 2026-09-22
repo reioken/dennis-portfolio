@@ -18,7 +18,7 @@ async function* walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) { if (entry.name !== 'kenney') yield* walk(path); }
-    else if (entry.name.endsWith('.glb') && !entry.name.startsWith('blue-rigged')) yield path;
+    else if (entry.name.endsWith('.glb')) yield path;
   }
 }
 

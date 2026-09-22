@@ -6,7 +6,7 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
-const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6f.glb';
+const FILE = process.env.BLUE_GLB || 'public/models/blue-rigged-v6h.glb';
 /** v4 and later (Meshy multi-view mesh, one PBR material, eyes painted into the coat) have no eyeball or lid nodes;
  * v6 is the v1 mesh with its original atlas: the coat plus the tinted `Blue amber eyes` polygons, no normal map.
  * The file-name suffix is the asset build (BLUE_ASSET_BUILD in blueCat.ts); the version is its digits. */
@@ -19,7 +19,7 @@ const BONES = ['Root', 'Pelvis', 'Spine', 'Chest', 'Neck', 'Head', 'Ear.L', 'Ear
   'HindUpper.L', 'HindLower.L', 'HindPaw.L', 'HindUpper.R', 'HindLower.R', 'HindPaw.R',
   'Tail0', 'Tail1', 'Tail2', 'Tail3', 'Tail4', 'Tail5'];
 const CLIPS = ['arch', 'bedin', 'bedout', 'catch', 'flick', 'happy', 'idle', 'jumpdown', 'jumpup', 'perch', 'perchidle', 'playready', 'pounce', 'settle', 'sit', 'sitarch', 'sitidle', 'sleep', 'stand', 'swat', 'swatL', 'trot',
-  'turnL45', 'turnL90', 'turnR45', 'turnR90', 'unperch', 'wake', 'walk'];
+  ...['L', 'R'].flatMap(side => [15, 30, 45, 60, 90, 120, 180].map(angle => `turn${side}${angle}`)), 'unperch', 'wake', 'walk'].sort();
 const MORPHS = ['BlueBlink', 'BlueGround', 'BlueSit', 'BluePerch'];
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
@@ -41,7 +41,9 @@ test('turn clips carry their yaw and jump clips their trajectory on the Root bon
   for (const animation of root.listAnimations()) {
     const name = animation.getName();
     const rootChannels = animation.listChannels().filter(c => c.getTargetNode()?.getName() === 'Root').map(c => c.getTargetPath());
-    if (name.startsWith('turn')) assert.ok(rootChannels.includes('rotation'), `${name} has a Root rotation channel`);
+    // A turn's hindquarter pivot rides on the skeleton (Pelvis), never on the Root: the runtime strips every
+    // Root track from a turn clip and would throw the offset away.
+    if (name.startsWith('turn')) { assert.ok(rootChannels.includes('rotation'), `${name} has a Root rotation channel`); assert.ok(!rootChannels.includes('translation'), `${name} has no Root translation`); }
     else if (name.startsWith('jump') || name.startsWith('bed')) assert.ok(rootChannels.includes('translation'), `${name} has a Root translation channel`);
     else assert.equal(rootChannels.length, 0, `${name} has no Root channel`);
   }
@@ -63,17 +65,38 @@ test('turn clips end at their nominal angle and jumps at their authored displace
         last[3] * inv[2] + last[0] * inv[1] - last[1] * inv[0] + last[2] * inv[3],
         last[3] * inv[3] - last[0] * inv[0] - last[1] * inv[1] - last[2] * inv[2]];
       const degrees = Math.abs(quatYaw(q)) * 180 / Math.PI;
-      assert.ok(Math.abs(degrees - (name.endsWith('90') ? 90 : 45)) < 1.5, `${name} ends at ${degrees.toFixed(1)}°`);
+      assert.ok(Math.abs(degrees - Number(name.match(/\d+$/)[0])) < 1.5, `${name} ends at ${degrees.toFixed(1)}°`);
     } else if (name.startsWith('bed')) {
       const dy = last[1] - first[1], dz = last[2] - first[2];
       assert.ok(Math.abs(dy - (name === 'bedin' ? .085 : -.085)) < .01, `${name} climbs/drops the cushion height (got ${dy.toFixed(3)})`);
       assert.ok(Math.abs(dz - .55) < .02, `${name} travels .55 m forward (got ${dz.toFixed(3)})`);
     } else {
       const dy = last[1] - first[1], dz = last[2] - first[2];
+      // .761 m is the real desktop span (take-off lane z .80 to the lying spot at .0389), so the runtime's warp
+      // is the identity there and the authored forepaw contact really lands on the cap edge.
       assert.ok(Math.abs(Math.abs(dy) - 1.95) < .02, `${name} rises/drops 1.95 m (got ${dy.toFixed(3)})`);
-      assert.ok(Math.abs(dz - .63) < .02, `${name} travels .63 m forward (got ${dz.toFixed(3)})`);
+      assert.ok(Math.abs(dz - .761) < .02, `${name} travels .761 m forward (got ${dz.toFixed(3)})`);
     }
   }
+});
+
+test('jump-up decelerates monotonically from the hook into the landing and never rises above the roof', () => {
+  const animation=root.listAnimations().find(a=>a.getName()==='jumpup');
+  const sampler=animation.listChannels().find(c=>c.getTargetNode()?.getName()==='Root'&&c.getTargetPath()==='translation').getSampler();
+  const times=sampler.getInput().getArray(),positions=sampler.getOutput();
+  let peak = -Infinity, worst = 0, previous = Infinity;
+  for (let i = 1; i < times.length; i++) {
+    const a = positions.getElement(i - 1, []), b = positions.getElement(i, []);
+    peak = Math.max(peak, b[1]);
+    if (times[i] < .92) { previous = Infinity; continue; }          // still in the ballistic rise
+    const dt = times[i] - times[i - 1];
+    if (dt <= 0) continue;
+    const speed = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / dt;
+    if (previous < Infinity) worst = Math.max(worst, speed - previous);
+    previous = speed;
+  }
+  assert.ok(peak <= 1.96, `the root never flies above the roof: peak ${peak.toFixed(3)} m`);
+  assert.ok(worst < .06, `no re-acceleration after the hook: worst gain ${worst.toFixed(3)} m/s`);
 });
 
 test('morph targets keep their names and order, the materials and eyeballs exist', () => {

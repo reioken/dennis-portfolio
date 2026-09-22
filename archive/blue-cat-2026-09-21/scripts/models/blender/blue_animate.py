@@ -60,6 +60,11 @@ def ease(t, a, b): return smooth((t - a) / (b - a))
 def pulse(t, start, dur):
     u = (t - start) / dur
     return math.sin(math.pi * u) ** 2 if 0 < u < 1 else 0.
+def lift_bump(t, start, dur):
+    """Foot lift: off the ground quickly, down slowly and softly. `pulse` starts with zero slope, so a paw using it
+    slides several millimetres before it is clear of the floor; this leaves within one frame."""
+    u = (t - start) / dur
+    return math.sin(math.pi * u ** .55) if 0 < u < 1 else 0.
 def track(t, keys):
     """Piecewise smoothstep through (time, value) keys; holds the end values."""
     if t <= keys[0][0]: return keys[0][1]
@@ -83,6 +88,11 @@ def curve(t, keys):
         if t <= k1[0]:
             u = clamp((t - k0[0]) / (k1[0] - k0[0])); return k0[1] + (k1[1] - k0[1]) * EASES[k1[2] if len(k1) > 2 else 'smooth'](u)
     return keys[-1][1]
+
+def hermite(t, a, b, p0, p1, v0=0., v1=0.):
+    """Position and velocity continuous trajectory segment (velocities in metres/second)."""
+    u = clamp((t - a) / (b - a)); d = b - a
+    return (2*u**3-3*u*u+1)*p0 + (u**3-2*u*u+u)*d*v0 + (-2*u**3+3*u*u)*p1 + (u**3-u*u)*d*v1
 def jitter(seed, spread=.12):
     """Deterministic ±spread variation so repeated motions never line up on a grid."""
     x = math.sin(seed * 12.9898 + 78.233) * 43758.5453
@@ -111,15 +121,18 @@ SIT_DROP = {'Pelvis': .115, 'Spine': .085, 'Chest': .03, 'Neck': 0., 'Head': 0.}
 FRONT_SPHINX = ((.072, -.365, .023), (0, .35, -1))
 HIND_TUCK = ((.088, .035, .023), (0, 1, -.15))
 HIND_SIT = ((.085, .05, .023), (0, 1, -.15))
-# Ledge perch. The marquee edge runs EDGE_Y in front of the body origin (the runtime places him so the
-# cabinet front face sits there). Foreleg length is .22 m; the elbow rests on the top just behind the lip
-# (2 cm back, skin on the surface), the wrist crosses the edge 4 cm below it and the paws curl down by
-# unequal amounts, so the weight visibly sits on the chest and elbows instead of on two straight legs.
-EDGE_Y = -.25
-# Only the paws look over the lip (Dennis): the forelegs lie on the top, the wrists rest at the edge and the paws curl
-# just past it, 1.5 cm below the top instead of hanging 7.5 cm down.
-FRONT_HANG = ((.062, -.262, -.015), (0, .3, -1))
-HANG_SIDE = {'L': {'dy': 0., 'dz': 0., 'pitch': .8}, 'R': {'dy': .005, 'dz': -.004, 'pitch': .62}}
+# Ledge perch (Dennis, 2026-09-20: "only his front paws reach over the claw-machine edge"). The old pose was an
+# upright half-sit: the wrist target sat 26 cm out and 1.5 cm below the top, so the elbows hung far below the
+# shoulders, the forelegs read as two vertical columns standing on the lip and the hind paws showed beside them.
+# Now it is a relaxed sphinx LIE on the roof. With the sphinx torso the shoulder sits at (±.064, -.222, .140); the
+# upper arm (.114 m) drops the elbow onto the roof at (±.064, -.266, .035), just behind the lip, and the forearm
+# (.106 m) lays the wrist on the lip itself. EDGE_Y is therefore the forewrist reach, and `LEDGE.wrist` in
+# blueCat.ts must carry the same number so the wrists land on the measured cap edge.
+EDGE_Y = -.371
+FRONT_LIE = ((.064, -.371, .020), (0, .3, -1))
+# Only the paws turn down over the lip: the wrist eases a few millimetres over the edge and the paw pitches down,
+# so the toes end 3-5 cm below the roof plane. Slightly unequal per side, the way a relaxed cat drapes them.
+HANG_SIDE = {'L': {'dy': -.006, 'dz': -.012, 'pitch': 1.30}, 'R': {'dy': .004, 'dz': -.018, 'pitch': 1.08}}
 
 def base():
     return {
@@ -137,10 +150,14 @@ def base():
         'tail_lift': 0., 'tail_wave': [0.] * 6, 'tail_lift_wave': [0.] * 6,
         'root_yaw': 0.,  # carried by the Root bone; the runtime strips it from the clip and turns the body instead
         'root_move': V((0, 0, 0)),  # likewise for translation: the jump clips carry their own trajectory
+        # Offset of the whole skeleton against the Root, applied after the root yaw. The runtime strips every Root
+        # track from a turn clip, so a turn that pivots around the hindquarters has to move the skeleton, not the
+        # Root: the body group still yaws about its own origin and the pelvis stays put on the floor.
+        'skel_move': V((0, 0, 0)),
         'body_pitch': 0.,  # whole-body pitch about the chest (negative = nose up); stays on the skeleton, not the Root
         # The curled sleep: explicit torso and tail positions, head rotations in the head's own frame and world paw
         # targets, all blended in by curl_amount (see apply_curl).
-        'curl_amount': 0., 'curl_side': -1, 'torso_curve': None, 'tail_world': None, 'head_local': {'yaw': 0., 'pitch': 0., 'roll': 0.}, 'paw_world': {},
+        'curl_amount': 0., 'curl_side': -1, 'torso_curve': None, 'tail_world': None, 'head_local': {'yaw': 0., 'pitch': 0., 'roll': 0.}, 'paw_world': {}, 'curl_paws': {},
     }
 
 def solve(P):
@@ -214,7 +231,7 @@ def solve(P):
             # Per-leg offsets apply after the pose target, so resting poses can carry asymmetry and small stirs.
             c = heads[paw].lerp(V((sx * tx, ty, tz)), amount) + V((L['dx'], L['dy'], L['dz']))
             w = P['paw_world'].get((leg, side))
-            if w is not None: c = c.lerp(V(w), P['curl_amount'])
+            if w is not None: c = c.lerp(V(w), P['curl_paws'].get((leg, side), P['curl_amount']))
             bend = V((0, 1, 0)).lerp(V(spec['bend']), amount)
             bend = bend.lerp(rot[parent] @ V((0, 1, 0)), P['curl_amount'])
             b = ik(a, c, (heads[low] - heads[up]).length, (heads[paw] - heads[low]).length, bend)
@@ -242,6 +259,9 @@ def solve(P):
     if P['root_yaw']:
         turn = Matrix.Rotation(P['root_yaw'], 4, 'Z')
         mats = {n: turn @ m for n, m in mats.items()}
+    if P['skel_move'].length:
+        shift = Matrix.Translation(P['skel_move'])
+        mats = {n: (shift @ m if n != 'Root' else m) for n, m in mats.items()}
     if P['root_move'].length:
         move = Matrix.Translation(P['root_move'])
         mats = {n: move @ m for n, m in mats.items()}
@@ -373,9 +393,11 @@ def curl_points(side):
         pts[n] = ((cx + CURL_R * math.cos(th)) * -side, cy + CURL_R * math.sin(th), CURL_Z[n])
     return pts
 
-def apply_curl(P, amount, side=CURL_SIDE):
+def apply_curl(P, amount, side=CURL_SIDE, rolls=None):
+    """`rolls` lets the lie-down roll the pelvis over first and the chest a beat later; at amount 1 every entry is
+    1 as well, so the final curl is exactly the same pose either way."""
     P['curl_amount'] = amount; P['curl_side'] = side; P['torso_curve'] = curl_points(side)
-    for n, r in CURL_ROLL.items(): P['roll'][n] += r * side * amount
+    for n, r in CURL_ROLL.items(): P['roll'][n] += r * side * (rolls.get(n, amount) if rolls else amount)
     P['head_local'] = {'roll': CURL_HEAD['roll'] * side * amount, 'pitch': CURL_HEAD['pitch'] * amount, 'yaw': CURL_HEAD['yaw'] * side * amount}
     swap = {'L': 'R', 'R': 'L'}
     for (leg, s_), w in CURL_PAWS.items():
@@ -384,10 +406,36 @@ def apply_curl(P, amount, side=CURL_SIDE):
     P['tail_rest'] *= 1 - amount
 
 def settle(t, D):
-    """Forelegs fold, weight lands, then a supported side curl; no airborne twist."""
+    """Lie down the way a cat does, in four readable beats instead of the old symmetric lift:
+    (a) 0-1.0 s the haunches sit down first, the pelvis drops and the hind legs fold while the shoulders stay high,
+        so the back slopes; (b) 0.9-2.0 s the forepaws walk forward in two discrete LIFTED steps (the old version
+        scrubbed both of them 22-43 cm along the floor) and the chest lowers between the elbows with a visible
+        weight landing; (c) 2.0-3.3 s the hip rolls onto the curl side, the pelvis shifts 3-4 cm sideways and the
+        chest counter-rolls later - the lateral weight shift is what reads at hall distance; (d) from 3.0 s the head
+        comes around and down, the paws tuck and the tail wraps into the existing final curl, unchanged."""
     P = base()
-    apply_rest(P, ease(t, .1, 1.3), ease(t, .25, 1.55), ease(t, .45, 1.7), ease(t, .8, 2.0), ease(t, .5, 1.6))
-    apply_curl(P, ease(t, 1.75, 4.4))
+    apply_rest(P, 1, ease(t, 1.00, 2.00), ease(t, .10, .95), ease(t, 2.20, 3.40), ease(t, 1.00, 2.10))
+    # Keep the wrists below the shoulders instead of pushing both straight out in mid-air.
+    P['front']['target'] = (.072, -.292, .025)
+    P['front_side'] = {'L': ease(t, .90, 1.38), 'R': ease(t, 1.30, 1.78)}
+    for side, t0 in (('L', .90), ('R', 1.30)):
+        L = P['legs'][('Front', side)]
+        L['dz'] += .030 * lift_bump(t, t0, .48); L['pitch'] += .45 * pulse(t, t0, .48)
+    P['drop']['Pelvis'] = .135 * ease(t, .10, .95)
+    P['drop']['Spine'] = .12 * ease(t, .55, 1.55)
+    P['drop']['Chest'] = .12 * ease(t, 1.05, 1.95)
+    P['bob'] += -.011 * pulse(t, 1.72, .44)                      # the chest lands with weight and rebounds
+    P['head']['pitch'] += .09 * pulse(t, .12, .55) + .13 * pulse(t, 1.70, .55)
+    # The hip rolls over first, the pelvis slides sideways, the chest follows a beat later.
+    apply_curl(P, ease(t, 2.45, 4.75), rolls={'Pelvis': ease(t, 2.05, 3.15), 'Spine': ease(t, 2.25, 3.40),
+                                              'Chest': ease(t, 2.55, 3.70), 'Neck': ease(t, 2.70, 3.95)})
+    P['sway'] += CURL_SIDE * .036 * pulse(t, 1.95, 2.35)
+    # The supporting side stays planted longer; the upper paws tuck first. Each paw lifts a little while it is drawn
+    # into the curl instead of scrubbing there along the floor (the offset fades out with the blend).
+    for leg in ('Front', 'Hind'):
+        for side, t0, t1 in (('L', 2.30, 4.20), ('R', 2.75, 4.75)):
+            P['curl_paws'][(leg, side)] = ease(t, t0, t1)
+            P['legs'][(leg, side)]['dz'] += .048 * lift_bump(t, t0, t1 - t0)
     return P
 
 def sleep(t, D):
@@ -522,51 +570,113 @@ def sitarch(t, D):
 # The Root bone carries the trajectory (JUMP_UP: 1.95 m up and 1.03 m forward onto the claw cabinet, JUMP_DOWN the
 # reverse from the lying spot to the floor in front). The runtime strips the Root track, replays the curve on the
 # body and warps it to the actual take-off and landing points, so the pose and the flight can never disagree.
-JUMP_UP = (.63, 1.95)
-JUMP_DOWN = (.63, 1.95)
+# Authored span = the real one on desktop (take-off lane z .80 to the lying spot at .0389, i.e. .761 m), so the
+# runtime's per-axis warp is the identity there and a paw contact authored against the lip actually lands on it.
+JUMP_SPAN = .761
+JUMP_UP = (JUMP_SPAN, 1.95)
+JUMP_DOWN = (JUMP_SPAN, 1.95)
 G = 9.81
+# Where the cap edge sits in the clip's own frame. Blue takes off .80 m out and lands on the lying spot, which is
+# EDGE_Y behind the edge; forward in the clip is -y, so the edge is JUMP_SPAN + EDGE_Y ahead of the take-off.
+LIP_Y = -(JUMP_SPAN + EDGE_Y)
+ROOF_Z = 1.95
+PAW_UP = .023    # paw-bone height above the surface it stands on
+
+def pitch_inverse(world, angle, root_move):
+    """Leg offsets are authored before the whole-body pitch and the root move, so a paw that has to hold a world
+    point is expressed by inverting both. Pitch rotates about `pivot` around X, the root move is added after it."""
+    pivot = V((0, -.05, .2))
+    c = V(world) - root_move - pivot
+    ca, sa = math.cos(-angle), math.sin(-angle)
+    return V((c.x, c.y * ca - c.z * sa, c.y * sa + c.z * ca)) + pivot
+
+def hold_or_step(t, keys):
+    """World point of a paw that holds a spot, lifts over an arc to the next one and holds that. `keys` is
+    [(hold_until, point), (t0, t1, point, lift), ...] in order; the paw never slides."""
+    point = keys[0][1]
+    for k in keys[1:]:
+        t0, t1, target, lift = k
+        if t >= t1: point = target; continue
+        if t >= t0:
+            u = (t - t0) / (t1 - t0)
+            reach = 1 - (1 - u) ** 2.1
+            p = V(point).lerp(V(target), reach)
+            p.z += math.sin(math.pi * u ** .85) * lift
+            return p
+        break
+    return V(point)
 
 def jumpup(t, D):
-    """Onto the ledge, the way a cat does it: sit back and stare at the spot, load the hindquarters, launch almost
-    straight up on a real parabola from 38 cm in front of the cabinet, hook the lip with the forepaws just short of
-    the top, haul the chest up and over while the hind legs scramble, then a soft landing crouch. Timings: crouch
-    .08-.40, launch .40-.46, flight .46-.98 (hook), pull-up .98-1.30, land 1.30-1.65. Every key uses `curve()`, so
-    the flight has no zero-velocity hitches; the old smoothstep tracks rose like a lift and slid forward at the top."""
+    """One continuous action onto the roof.
+
+    (a) .05-.40 look up and sink into a deep crouch with the haunches loaded (the pelvis drops 10 cm, clearly lower
+    than the shoulders), held to .48; (b) .48-.58 an explosive extension: the hind legs straighten past rest and the
+    body pitches 69° nose-up; (c) ONE ballistic arc, .48-.88, launched at 5.8 m/s and still rising 1.9 m/s at the
+    hook, close to the cabinet face; (d) at .88 the forepaws catch the cap edge and STAY on it, without sliding,
+    while the body hauls up over them, then they take one lifted step each onto the roof; the root never rises
+    above the roof height and never hovers; (e) the hind legs tuck tight to clear the edge, the hind paws set down
+    well inside it and the landing crouch absorbs 6 cm and rebounds (1.56-1.84).
+
+    The old version flew .4 s horizontally 15 cm ABOVE the roof in a rigid stretched pose (OVER_Y 2.10) and then
+    simply stood: no visible push-off, no contact with the edge and no absorption."""
     P = base()
-    T0, TH, TP, TL = .46, .98, 1.30, 1.65
-    HOOK_Y, HOOK_Z, OVER_Y = 1.62, .08, 2.10  # body origin at the hook (36 cm below the top, still 30 cm out) and over the lip
-    flight = TH - T0; tau = max(0., min(flight, t - T0))
-    vy = (HOOK_Y + .5 * G * flight * flight) / flight  # ≈ 5.7 m/s, still rising a little at the hook
-    if t < TH:
-        up = vy * tau - .5 * G * tau * tau; forward = HOOK_Z * tau / flight
+    T0, TH, TP, TL = .48, .88, 1.56, 1.84
+    HOOK_Y, HOOK_Z = 1.531, .091        # body origin at the hook: forepaws on the edge, body still out in front
+    flight = TH - T0
+    vy = (HOOK_Y + .5 * G * flight * flight) / flight   # ≈ 5.79 m/s; 1.87 m/s of rise is left at the hook, so the
+    vz = HOOK_Z / flight                                # root keeps decelerating all the way into the landing
+    if t <= T0:
+        up = forward = 0.
+    elif t < TH:
+        tau = t - T0
+        up = vy * tau - .5 * G * tau * tau; forward = vz * tau
     else:
-        up = curve(t, [(TH, HOOK_Y), (TP, OVER_Y, 'out'), (TL - .12, JUMP_UP[1], 'smooth')])
-        forward = curve(t, [(TH, HOOK_Z), (TP - .06, .18, 'in'), (TL - .15, JUMP_UP[0], 'out')])
-    P['root_move'] = V((0, -forward, up))
-    # Sit back and load, pitch nose-up through the launch and the rise, level out at the hook, over the edge in the pull-up.
-    load = curve(t, [(.08, 0), (.30, 1, 'smooth'), (.40, 1.05), (T0, .2, 'snap'), (.7, 0)])
-    for n, d in (('Pelvis', .09), ('Spine', .075), ('Chest', .05), ('Neck', .02), ('Head', .01)): P['drop'][n] = d * load
-    P['push'] = curve(t, [(.05, 0), (.30, .025), (T0, -.03, 'snap'), (.8, -.01), (TH, 0)])
+        up = hermite(t, TH, TP, HOOK_Y, JUMP_UP[1], vy - G * flight, 0.)
+        forward = hermite(t, TH, TP, HOOK_Z, JUMP_UP[0], vz, 0.)
+    move = V((0, -forward, up))
+    P['root_move'] = move
+    # Deep crouch: the pelvis goes down further than the shoulders, so the rear is visibly lower. Negative values
+    # after the launch are the hind legs extending fully.
+    load = curve(t, [(.05, 0), (.40, 1, 'smooth'), (T0, 1.02), (T0 + .09, -.40, 'snap'), (.74, -.12), (TH, 0)])
+    for n, d in (('Pelvis', .100), ('Spine', .082), ('Chest', .050), ('Neck', .022), ('Head', .010)): P['drop'][n] = d * load
+    P['push'] = curve(t, [(.05, 0), (.30, .030), (T0, -.030, 'snap'), (.80, -.010), (TH, 0)])
     # The nose-up pitch only starts once the hind paws have left the floor (it rotates about the chest, so an early
-    # pitch would push the rear through the ground).
-    P['body_pitch'] = curve(t, [(.2, 0), (.38, .06), (T0, .02), (T0 + .09, -.55, 'snap'), (.75, -.62), (TH, -.55), (TP, .25, 'smooth'), (TL - .1, 0, 'out')])
-    P['head']['pitch'] = curve(t, [(0, 0), (.14, -.32, 'out'), (.36, -.26), (T0, -.05), (.8, .10), (TH, .25), (TP, .30), (TL - .2, .05), (TL, 0)])
-    land = curve(t, [(TP - .02, 0), (TP + .12, 1, 'out'), (TL, 0, 'back')])
-    for n, d in (('Pelvis', .05), ('Spine', .045), ('Chest', .04), ('Neck', .015)): P['drop'][n] += d * land
+    # pitch would push the rear through the ground). 69° through the rise, level again over the roof.
+    P['body_pitch'] = curve(t, [(.2, 0), (.36, .10), (T0, .04), (T0 + .10, -1.05, 'snap'), (.72, -1.21), (TH, -1.02), (TP, .16, 'smooth'), (TL - .12, 0, 'out')])
+    P['head']['pitch'] = curve(t, [(0, 0), (.16, -.42, 'out'), (.40, -.36), (T0, -.10), (.72, .16), (TH, .30), (TP, .26), (TL - .18, .04), (TL, 0)])
+    # Landing absorption: the body dips about 6 cm and comes back with a small overshoot.
+    land = curve(t, [(TP - .02, 0), (TP + .14, 1, 'out'), (TL - .06, -.22, 'out'), (TL + .05, 0)])
+    for n, d in (('Pelvis', .062), ('Spine', .058), ('Chest', .052), ('Neck', .022), ('Head', .010)): P['drop'][n] += d * land
+    pitch_now = P['body_pitch']
+    plant = curve(t, [(TH - .09, 0), (TH + .03, 1, 'out'), (TP + .06, 1), (TL - .06, 0, 'smooth')])
     for side in 'LR':
-        P['ears'][side][0] = curve(t, [(.3, 0), (T0, .15), (.85, .05), (TH, .12), (TP, .18), (TL, 0)])
+        sx = 1 if side == 'L' else -1
+        off = 0. if side == 'L' else .05           # the two forepaws catch and re-step a beat apart
+        P['ears'][side][0] = curve(t, [(.3, 0), (T0, .18), (.78, .06), (TH, .14), (TP, .20), (TL, 0)])
         F, H = P['legs'][('Front', side)], P['legs'][('Hind', side)]
-        # Forepaws fold at launch, reach forward-up, hook the lip, then hold it while the body rises to meet them.
-        # (the body's own nose-up pitch already carries the paws upward, so the reach here is mostly forward)
-        F['dy'] = curve(t, [(T0 - .02, 0), (T0 + .1, -.05), (.8, -.15), (TH, -.20), (TP, -.10), (TL - .15, 0, 'out')])
-        F['dz'] = curve(t, [(T0 - .02, 0), (T0 + .1, .06), (.8, .12), (TH, .16), (TP, .02, 'out'), (TL - .15, 0)])
-        F['pitch'] = curve(t, [(T0, 0), (T0 + .15, .5), (.85, .25), (TH, -.35), (TP, -.1), (TL - .2, 0)])
-        # Hind legs drive, trail, then scramble up over the lip.
-        H['dy'] = curve(t, [(.36, 0), (T0 + .08, .13), (.85, .10), (TH, .08), (TP - .05, .04), (TL - .2, 0)])
-        H['dz'] = curve(t, [(.36, 0), (T0 + .04, 0), (.7, .12), (TH, .10), (TP - .10, .14, 'smooth'), (TP + .06, .02, 'out'), (TL - .2, 0)])
-        H['pitch'] = curve(t, [(T0, 0), (T0 + .1, .3), (TH, .1), (TL - .2, 0)])
-    P['tail_back'] = curve(t, [(.3, 0), (T0 + .1, .9, 'out'), (TH, .8), (TP, .5), (TL, 0, 'out')])
-    P['tail_lift'] = curve(t, [(0, 0), (.3, .3), (T0, 0)])
+        # Forepaws tuck at the launch, then reach up and forward for the edge.
+        F['dy'] = curve(t, [(T0 - .02, 0), (T0 + .10, .045), (.70, -.085), (TH, -.13), (TP, 0, 'out')])
+        F['dz'] = curve(t, [(T0 - .02, 0), (T0 + .10, .055), (.70, .015), (TH, -.01), (TP, 0, 'out')])
+        F['pitch'] = curve(t, [(T0, 0), (T0 + .14, .55), (.78, .20), (TH, -.30), (TP, -.08), (TL - .18, 0)])
+        # From the hook on, the forepaw owns a world point: it holds the cap edge while the body hauls over it, then
+        # lifts once onto the roof and holds its standing place. No sliding contact at any point.
+        if plant > 0:
+            world = hold_or_step(t, [
+                (TH, (sx * .066, LIP_Y - .012, ROOF_Z + PAW_UP)),
+                (TH + .24 + off, TH + .46 + off, (sx * .064, -JUMP_SPAN - .244, ROOF_Z + PAW_UP), .085),
+            ])
+            target = pitch_inverse(world, pitch_now, move) - heads[f'FrontPaw.{side}']
+            F['dx'] = target.x * plant
+            F['dy'] = F['dy'] * (1 - plant) + target.y * plant
+            F['dz'] = F['dz'] * (1 - plant) + target.z * plant
+        # Hind legs drive at the launch, trail through the rise, then tuck tight against the belly so they clear
+        # the edge while the body swings over, and set down well inside it.
+        H['dy'] = curve(t, [(.34, 0), (T0 + .08, .14), (.80, .10), (TH, .02), (TP - .28, -.06, 'smooth'), (TP - .04, .01, 'out'), (TL - .18, 0)])
+        H['dz'] = curve(t, [(.34, 0), (T0 + .05, -.01), (.66, .12), (TH, .14), (TP - .28, .16, 'smooth'), (TP - .04, .004, 'out'), (TL - .18, 0)])
+        H['pitch'] = curve(t, [(T0, 0), (T0 + .1, .35), (TH, .15), (TP - .22, .50), (TP - .02, 0, 'out'), (TL - .18, 0)])
+    # The tail streams back through the rise and counterbalances over the edge.
+    P['tail_back'] = curve(t, [(.3, 0), (T0 + .1, .95, 'out'), (TH, .85), (TP, .40), (TL, 0, 'out')])
+    P['tail_lift'] = curve(t, [(0, 0), (.30, .35), (T0, 0), (TP, 0), (TP + .16, .45, 'out'), (TL + .05, 0)])
     return P
 
 def jumpdown(t, D):
@@ -583,7 +693,7 @@ def jumpdown(t, D):
     CONTACT = JUMP_DOWN[1] - .12
     down = CONTACT * fall / fall_end if t >= T0 else 0.
     if t >= TL: down = curve(t, [(TL, CONTACT), (TL + .12, JUMP_DOWN[1], 'out')])
-    forward = curve(t, [(T0 - .06, 0), (T0, .02), (TL, .58, 'smooth'), (TE - .15, JUMP_DOWN[0], 'out')])
+    forward = curve(t, [(T0 - .06, 0), (T0, .024), (TL, .70, 'smooth'), (TE - .15, JUMP_DOWN[0], 'out')])
     P['root_move'] = V((0, -forward, -down))
     P['head']['pitch'] = curve(t, [(0, 0), (.16, .38, 'out'), (T0, .30), (.8, .45), (TL, .40), (TL + .1, .25), (TE, 0, 'out')])
     gather = curve(t, [(.05, 0), (.30, .8, 'smooth'), (T0, .3, 'snap'), (T0 + .1, 0)])
@@ -649,26 +759,48 @@ def jump(t, D):
     P['tail_lift'] = track(t, [(0, 0), (.30, .25), (.55, 0)])
     return P
 
-def apply_perch(P, front, torso, hind, tail, head):
+def apply_perch(P, front, torso, hind, tail, head, hang=None):
+    """Sphinx lie on the roof: chest and belly on the surface, elbows on it behind the lip, forearms lying forward,
+    wrists at the lip. `front` lays the forearms out, `hang` (per side) turns the paws down over the edge."""
+    if hang is None: hang = {'L': front, 'R': front}
     apply_rest(P, 0, torso, hind, tail, head)
-    P['front'] = {'amount': front, 'target': FRONT_HANG[0], 'bend': FRONT_HANG[1]}
+    P['front'] = {'amount': front, 'target': FRONT_LIE[0], 'bend': FRONT_LIE[1]}
     P['push'] += -.012 * torso  # shoulders protract towards the lip once the chest is down
     for side in 'LR':
         L, H = P['legs'][('Front', side)], HANG_SIDE[side]
-        L['dy'] += H['dy'] * front; L['dz'] += H['dz'] * front; L['pitch'] += H['pitch'] * front
-    P['head']['pitch'] += .06 * head; P['head_lift'] += .01 * head
+        a = hang[side]
+        L['dy'] += H['dy'] * a; L['dz'] += H['dz'] * a; L['pitch'] += H['pitch'] * a
+    # The head is lowered over the draped paws, not craned up.
+    P['head']['pitch'] += .20 * head
+    P['drop']['Neck'] += .014 * head; P['drop']['Head'] += .026 * head
+    P['head_lift'] += .004 * head
 
 def perch(t, D):
-    # Chest first, then the elbows slide to the lip and the wrists drop over it; the neck relaxes
-    # after the chest has settled and the tail finishes last.
-    P = base(); apply_perch(P, ease(t, .5, 1.7), ease(t, .1, 1.3), ease(t, .4, 1.9), ease(t, 1.1, 2.0), ease(t, .9, 2.0)); return P
+    """Lie down on the roof: the haunches fold first, then each forepaw takes a lifted step forward to the lip, the
+    chest lowers onto the surface with a small settle and rebound, and finally each paw drops over the lip in turn."""
+    P = base()
+    # the chest lands with a little weight and rebounds
+    torso = clamp(1.07 * ease(t, .80, 1.90) - .07 * ease(t, 1.90, 2.30))
+    hang = {'L': ease(t, 1.80, 2.30), 'R': ease(t, 2.10, 2.65)}
+    apply_perch(P, ease(t, .55, 1.80), torso, ease(t, .05, .95), ease(t, 1.55, 2.55), ease(t, 1.15, 2.35), hang)
+    # the forepaws advance as two distinct lifted steps, left then right
+    P['front_side'] = {'L': ease(t, .55, 1.20), 'R': ease(t, .95, 1.65)}
+    for side, t0, dur in (('L', .55, .62), ('R', .95, .68)):
+        L = P['legs'][('Front', side)]
+        L['dz'] += .038 * lift_bump(t, t0, dur); L['pitch'] += .55 * pulse(t, t0, dur)
+    P['head']['pitch'] += -.12 * pulse(t, .05, .55)     # a look over the edge before the chest goes down
+    P['bob'] += -.007 * pulse(t, 1.80, .42)
+    return P
 
 def perchidle(t, D):
+    """Alive but subtle on the roof: breathing against the surface, ear flicks, a slow paw knead."""
     P = base(); apply_perch(P, 1, 1, 1, 1, 1); w = math.tau * t / D
-    P['bob'] = .0016 * math.sin(math.tau * t / (D / 3))
-    P['head']['yaw'] += .06 * math.sin(w); P['head']['pitch'] += .03 * math.sin(2 * w); P['head']['roll'] += .02 * math.sin(w)
+    P['bob'] = .0024 * math.sin(math.tau * t / (D / 4))
+    P['head']['yaw'] += .05 * math.sin(w); P['head']['pitch'] += .025 * math.sin(2 * w); P['head']['roll'] += .02 * math.sin(w)
     P['ears']['L'][0] += .35 * pulse(t, .43 * D, .3); P['ears']['R'][0] += .35 * pulse(t, .82 * D, .3)
-    P['legs'][('Front', 'L')]['dz'] += .012 * pulse(t, .23 * D, .5); P['legs'][('Front', 'R')]['dy'] += -.008 * pulse(t, .62 * D, .6)
+    knead_l, knead_r = pulse(t, .16 * D, .24 * D), pulse(t, .58 * D, .26 * D)
+    P['legs'][('Front', 'L')]['pitch'] += .13 * knead_l; P['legs'][('Front', 'L')]['dz'] += .005 * knead_l
+    P['legs'][('Front', 'R')]['pitch'] += .10 * knead_r; P['legs'][('Front', 'R')]['dz'] += .004 * knead_r
     P['tail_wave'][5] += .010 * math.sin(2 * w); P['tail_wave'][4] += .005 * math.sin(2 * w)
     return P
 
@@ -681,16 +813,16 @@ def stand(t, D):
     return P
 
 def unperch(t, D):
-    """Off the ledge: one front paw after the other comes back onto the top, the chest lifts, then the hindquarters."""
+    """Off the lie: the paws come back up over the lip one after the other, the forelegs step back under the chest,
+    the chest lifts off the roof and the hindquarters follow."""
     P = base()
-    front_l, front_r = 1 - ease(t, .1, .75), 1 - ease(t, .35, 1.0)
-    apply_perch(P, 1, 1 - ease(t, .45, 1.35), 1 - ease(t, .7, 1.55), 1 - ease(t, .55, 1.45), 1 - ease(t, .2, .95))
+    hang = {'L': 1 - ease(t, .05, .55), 'R': 1 - ease(t, .28, .82)}
+    front_l, front_r = 1 - ease(t, .50, 1.15), 1 - ease(t, .75, 1.40)
+    apply_perch(P, 1, 1 - ease(t, .80, 1.70), 1 - ease(t, 1.00, 1.90), 1 - ease(t, .90, 1.80), 1 - ease(t, .45, 1.30), hang)
     P['front_side'] = {'L': front_l, 'R': front_r}
-    for side, amount in (('L', front_l), ('R', front_r)):
-        L, H = P['legs'][('Front', side)], HANG_SIDE[side]
-        L['pitch'] += H['pitch'] * (amount - 1)  # the curl follows its own paw, not the shared amount
-        L['dz'] += .025 * pulse(t, .1 if side == 'L' else .35, .65)  # lift over the lip
-    P['head']['pitch'] += -.06 * pulse(t, .05, .8); P['head_lift'] += .008 * pulse(t, .1, .9)
+    for side, t0 in (('L', .50), ('R', .75)):
+        P['legs'][('Front', side)]['dz'] += .030 * lift_bump(t, t0, .65)   # lift the paw back over the lip
+    P['head']['pitch'] += -.10 * pulse(t, .05, .8); P['head_lift'] += .008 * pulse(t, .1, .9)
     return P
 
 # ---------------------------------------------------------------- turning in place
@@ -698,77 +830,114 @@ def unperch(t, D):
 # air, in two (45°) or four (90°) distinct steps with a pause between them, so the turn reads as stepping
 # around rather than as a turntable. Authored in the turning frame: planted paws keep their world position,
 # the Root bone carries the yaw, the runtime strips it and rotates the body by the same curve.
-PIVOT = V((0, -.03, 0))
-# A cat turns in one motion: the head goes first, the body follows in a single decelerating sweep (about 0.4 s for
-# 45°, 0.6 s for 90°) and two or three quick diagonal steps reposition the paws while it happens. The old version
-# (four equal beats with full stops between them and a dead half second at the end) measured 2.1 s for 90° and
-# read as a turntable that ticks.
-TURN_LEAD, TURN_SETTLE = .10, .12
-TURN_LIFT = {'Front': .05, 'Hind': .04}
+# Dennis, 2026-09-20: the turns are "rigid" and need "convincing foot placement". The previous version rotated the
+# whole body about its own centre at a steady rate with a level, nearly straight spine, and the paws counter-rotated
+# about a point 3 cm ahead of the origin, so every planted paw drifted on a 3 cm circle while the root turned.
+# Now: the pivot sits at the hindquarters for the first part of the sweep (carried by `skel_move`, because the
+# runtime strips every Root track from a turn clip), the forepaws walk around in lifted cross-over side steps while
+# the hind paws shuffle, the head leads by up to 60°, the spine bends into a pronounced C, and every planted paw is
+# pinned to an exact world point instead of being approximated.
+TURN_LEAD, TURN_SETTLE = .10, .14
+TURN_LIFT = {'Front': .055, 'Hind': .038}
+TURN_PIVOT_Y = .065     # how far back the turn pivots while the forequarters walk around (pelvis head is at .095)
+# Swings per paw: a big turn needs two per forepaw (four cross-over front steps in all) and two small shuffles per
+# hind paw; anything up to a quarter turn is one step each.
+TURN_SPLIT = {'Front': math.radians(100), 'Hind': math.radians(115)}
 
 def turn_plan(theta, sign):
-    """A sweep length and a list of steps (start, end, pair, lead). `lead` is how far past the body's yaw at the
-    moment of landing the paw is set down, so the last step leaves every paw squared up to the new heading."""
-    big = theta >= math.radians(60)
-    sweep = .62 if big else .42
+    """Sweep length and, per leg pair, alternating swings (start, stop, side, landing angle). Both paws of a pair
+    step the same number of times and each one's last swing lands squared up on the new heading, so the clip ends
+    in the rest stance whatever the angle."""
+    sweep = .30 + .95 * (theta / math.pi) ** .85
     inner, outer = ('L', 'R') if sign > 0 else ('R', 'L')
-    A = [('Front', inner), ('Hind', outer)]; B = [('Front', outer), ('Hind', inner)]
-    steps = [(TURN_LEAD + .02, TURN_LEAD + .24, A, .10), (TURN_LEAD + .20, TURN_LEAD + .42, B, .12 if big else .10)]
-    if big: steps.append((TURN_LEAD + .40, TURN_LEAD + .62, A, 0.))
-    steps = [(s * jitter(i * 7 + 3, .05), min(e * jitter(i * 7 + 5, .05), TURN_LEAD + sweep), pair, lead) for i, (s, e, pair, lead) in enumerate(steps)]
-    return {'sweep': sweep, 'steps': steps}, TURN_LEAD + sweep + TURN_SETTLE
+    steps = {}
+    for leg, first in (('Front', inner), ('Hind', outer)):
+        per = 2 if theta > TURN_SPLIT[leg] else 1
+        events = per * 2
+        span = sweep / events
+        rows = []
+        for k in range(events):
+            t0 = TURN_LEAD + k * span + (.05 if leg == 'Hind' else 0.)
+            t1 = min(t0 + span * (.92 if events > 1 else .88), TURN_LEAD + sweep)
+            side = first if k % 2 == 0 else ('R' if first == 'L' else 'L')
+            rows.append([t0 * jitter(k * 7 + 3, .035), t1 * jitter(k * 7 + 5, .035), side, theta * ((k // 2) + 1) / per])
+        steps[leg] = [tuple(r) for r in rows]
+    return {'sweep': sweep, 'steps': steps}, round(TURN_LEAD + sweep + TURN_SETTLE, 3)
 
 def turn_yaw(t, plan, theta):
     u = clamp((t - TURN_LEAD) / plan['sweep'])
-    return theta * smooth(u ** .85)  # launches quickly, settles slowly
+    return theta * smooth(u ** .85)  # launches quickly, settles slowly; one continuous sweep, never a pause
 
-def turn_paw(t, plan, foot, theta):
-    """World angle, lift and pitch of one paw: planted until its step, then swung to a spot a little ahead of the body."""
+def turn_pivot(t, plan, theta, sign):
+    """Skeleton offset that keeps the turn's pivot fixed in the world: at the hindquarters while the forequarters
+    walk around, easing back to the body origin so the clip ends where it started."""
+    u = clamp((t - TURN_LEAD) / plan['sweep'])
+    py = TURN_PIVOT_Y * (1 - smooth(clamp((u - .50) / .50)))
+    if py <= 0: return V((0, 0, 0))
+    pv = V((0, py, 0))
+    return pv - Matrix.Rotation(sign * turn_yaw(t, plan, theta), 4, 'Z') @ pv
+
+def turn_paw(t, plan, leg, side, theta):
+    """Achieved world angle, lift, pitch and cross-over amount of one paw."""
     angle = 0.
-    for start, stop, pair, lead in plan['steps']:
-        if foot not in pair: continue
-        landing = min(theta, turn_yaw(stop, plan, theta) + theta * lead)
+    for start, stop, swinging, landing in plan['steps'][leg]:
+        if swinging != side: continue
         if t >= stop: angle = landing
         elif t >= start:
             u = (t - start) / (stop - start)
-            return angle + (landing - angle) * (1 - (1 - u) ** 2.4), math.sin(math.pi * u ** .9), .5 * math.sin(math.pi * u) * (1 - u) ** .5
-    return angle, 0., 0.
+            return (angle + (landing - angle) * (1 - (1 - u) ** 2.4), math.sin(math.pi * u ** .6),
+                    .55 * math.sin(math.pi * u) * (1 - u) ** .5, math.sin(math.pi * u))
+    return angle, 0., 0., 0.
 
 def turn(t, D, theta, sign, plan):
-    P = base(); y = turn_yaw(t, plan, theta); P['root_yaw'] = sign * y
+    P = base(); y = turn_yaw(t, plan, theta); Y = sign * y; P['root_yaw'] = Y
+    shift = turn_pivot(t, plan, theta, sign); P['skel_move'] = shift
     u = clamp(t / D); arc = math.sin(math.pi * u)
-    scale = theta / (math.pi / 2)
-    # Eyes and head go first, the spine bends into a C behind them and unwinds as the body catches up.
-    lead = curve(t, [(0, 0), (.12, .55, 'snap'), (TURN_LEAD + plan['sweep'] * .55, .22), (D - .05, 0, 'out')]) * sign * scale
-    P['head']['yaw'] = lead * .6
-    P['bend']['Neck'] = lead * .22; P['bend']['Chest'] = lead * .38; P['bend']['Spine'] = lead * .28
-    P['head']['roll'] = sign * .05 * arc; P['head']['pitch'] = -.04 * ease_out(t, 0, .2) * (1 - ease(t, D - .3, D))
-    P['yaw']['Pelvis'] = -sign * .05 * arc
-    P['roll']['Chest'] = -sign * .07 * arc
+    scale = min(2., theta / (math.pi / 2))
+    # Eyes and head go first (up to ~60° ahead of the body), the spine bends into a pronounced C behind them and
+    # unwinds as the rear catches up.
+    lead = curve(t, [(0, 0), (.13, .62, 'snap'), (TURN_LEAD + plan['sweep'] * .55, .26), (D - .05, 0, 'out')]) * sign * scale
+    P['head']['yaw'] = lead * .85
+    P['bend']['Neck'] = lead * .26; P['bend']['Chest'] = lead * .42; P['bend']['Spine'] = lead * .32
+    P['head']['roll'] = sign * .07 * arc; P['head']['pitch'] = -.05 * ease_out(t, 0, .2) * (1 - ease(t, D - .3, D))
+    P['yaw']['Pelvis'] = -sign * .06 * arc
+    P['roll']['Chest'] = -sign * .13 * arc           # shoulders dip towards the inside of the turn
+    P['roll']['Spine'] = -sign * .07 * arc
     inner = 'L' if sign > 0 else 'R'
     P['ears'][inner][1] += sign * .14 * arc; P['ears'][inner][0] += .06 * arc
     for side in 'LR': P['ears'][side][0] += .10 * ease_out(t, 0, .15) * (1 - ease(t, .25, .6))
-    P['tail_lift'] = .2 * arc
+    P['tail_lift'] = .22 * arc
     for i in range(6):
         k = i / 5
-        P['tail_wave'][i] += -sign * .08 * k ** 1.4 * math.sin(math.pi * clamp((t - .05) / (D - .1))) + sign * .02 * k * k * pulse(t, .55 * D, .35)
-        P['tail_lift_wave'][i] += .01 * k * pulse(t, .3 * D, .4)
-    # Weight rocks onto the planted diagonal while a pair swings, and the body dips as it lands.
-    for k, (start, stop, pair, lead_) in enumerate(plan['steps']):
-        swing = pulse(t, start, stop - start)
-        P['bob'] += -.005 * swing - .006 * pulse(t, stop - .04, .16)
-        P['sway'] += (sign if k % 2 == 0 else -sign) * .012 * swing
-        P['roll']['Pelvis'] += (1 if k % 2 == 0 else -1) * sign * .035 * swing
+        # the tail swings out as a counterweight and follows late: each segment lags a little further behind
+        phase = clamp((t - .05 - .06 * k) / (D - .1))
+        P['tail_wave'][i] += -sign * .115 * k ** 1.3 * math.sin(math.pi * phase) + sign * .025 * k * k * pulse(t, .6 * D, .35)
+        P['tail_lift_wave'][i] += .012 * k * pulse(t, .3 * D, .4)
+    # Weight visibly shifts onto the planted paws: the body sways towards the stance side while a paw swings and
+    # dips as it lands.
+    for leg in ('Front', 'Hind'):
+        for k, (start, stop, swinging, _land) in enumerate(plan['steps'][leg]):
+            swing = pulse(t, start, stop - start)
+            away = -1. if swinging == 'L' else 1.
+            P['bob'] += (-.006 if leg == 'Front' else -.004) * swing - .005 * pulse(t, stop - .04, .16)
+            P['sway'] += away * (.024 if leg == 'Front' else .012) * swing
+            P['roll']['Pelvis'] += away * (.02 if leg == 'Front' else .05) * swing
+            if leg == 'Front': P['roll']['Chest'] += away * .05 * swing
     for leg in ('Front', 'Hind'):
         for side in 'LR':
             paw = f'{leg}Paw.{side}'
-            a, lift, pitch = turn_paw(t, plan, (leg, side), theta)
-            rel = heads[paw] - PIVOT
-            pos = PIVOT + Matrix.Rotation(sign * (a - y), 4, 'Z') @ rel + V((0, 0, TURN_LIFT[leg] * lift))
-            outward = pos - PIVOT; outward.z = 0; outward = outward.normalized() * .02 * lift
-            pos = pos + outward
-            L = P['legs'][(leg, side)]; L['dx'], L['dy'], L['dz'], L['pitch'] = (pos - heads[paw]).x, (pos - heads[paw]).y, (pos - heads[paw]).z, pitch
-            L['root_dz'] = (.012 if leg == 'Front' else .008) * lift
+            a, lift, pitch, cross = turn_paw(t, plan, leg, side, theta)
+            # Exact world position of the paw: planted paws hold R(a)·rest, so they never drift while the root turns.
+            world = Matrix.Rotation(sign * a, 4, 'Z') @ heads[paw] + V((0, 0, TURN_LIFT[leg] * lift))
+            if cross > 0:
+                # cross-over: the swinging forepaw arcs across the midline in the turn's direction
+                lateral = Matrix.Rotation(sign * a, 4, 'Z') @ V((1., 0., 0.))
+                world = world + lateral * (sign * (.045 if leg == 'Front' else .018) * cross * (1 if side == inner else -.4))
+            body = Matrix.Rotation(-Y, 4, 'Z') @ (world - shift)
+            L = P['legs'][(leg, side)]
+            d = body - heads[paw]
+            L['dx'], L['dy'], L['dz'], L['pitch'] = d.x, d.y, d.z, pitch
+            L['root_dz'] = (.014 if leg == 'Front' else .008) * lift
     return P
 
 def playready(t, D):
@@ -819,14 +988,16 @@ def playjump(t, D, high=False):
     return P
 
 TURNS = []
-for degrees in (45, 90):
+# 180 is the turnaround Blue plays after landing on the claw machine, when he faces the back wall and has to come
+# round before lying down: one continuous eased sweep, four cross-over forepaw steps and three hind shuffles.
+for degrees in (15, 30, 45, 60, 90, 120, 180):
     for side, sign in (('L', 1), ('R', -1)):
         theta = math.radians(degrees); plan, D = turn_plan(theta, sign)
         TURNS.append((f'turn{side}{degrees}', round(D, 2), (lambda th, sg, pl: lambda t, D: turn(t, D, th, sg, pl))(theta, sign, plan)))
 
-CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 4.6, settle), ('sleep', 6.0, sleep), ('wake', 2.8, wake), ('happy', 4.0, happy), ('bedout', 2.2, bedout), ('bedin', 2.2, bedin),
-         ('sit', .9, sit), ('sitidle', 6.0, sitidle), ('sitarch', 1.6, sitarch), ('stand', .9, stand), ('jumpup', 1.7, jumpup), ('jumpdown', 1.5, jumpdown), ('perch', 2.0, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
-         ('unperch', 1.6, unperch), ('swat', 1.0, swat), ('swatL', 1.0, lambda t, D: swat(t, D, 'L')),
+CLIPS = [('idle', 8.0, idle), ('walk', WALK_CYCLE, walk), ('trot', TROT_CYCLE, trot), ('settle', 5.0, settle), ('sleep', 6.0, sleep), ('wake', 2.8, wake), ('happy', 4.0, happy), ('bedout', 2.2, bedout), ('bedin', 2.2, bedin),
+         ('sit', .9, sit), ('sitidle', 6.0, sitidle), ('sitarch', 1.6, sitarch), ('stand', .9, stand), ('jumpup', 1.9, jumpup), ('jumpdown', 1.5, jumpdown), ('perch', 2.8, perch), ('perchidle', 6.0, perchidle), ('arch', 2.6, arch), ('flick', 1.8, flick),
+         ('unperch', 2.0, unperch), ('swat', 1.0, swat), ('swatL', 1.0, lambda t, D: swat(t, D, 'L')),
          ('playready', .65, playready), ('pounce', 1.15, playjump), ('catch', 1.15, lambda t, D: playjump(t, D, True))] + TURNS
 
 # ---------------------------------------------------------------- floor contact correctives
