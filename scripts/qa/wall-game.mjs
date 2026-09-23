@@ -5,8 +5,9 @@
 //
 // Drives the can with real pointer events, then checks the rules, the pause behaviour, who owns the keyboard, the
 // frame cost while playing, that an idle field asks the hall for no frames — and the tag: it accumulates on the GPU
-// while the ball flies, stays through game over and idle, is buffed by the next start, comes back from
-// localStorage after a reload and survives a lost WebGL context.
+// while the ball flies, stays through game over and idle, is buffed by the next start, is buffed away on its own
+// once its time on the idle wall is up, is never stored (a reload finds a clean wall) and a lost WebGL context
+// throws nothing.
 import { chromium, firefox } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -351,21 +352,9 @@ try {
   assert.ok(idleAfter.asked < 100, `the field asked for ${idleAfter.asked} frames after the round`);
   assert.ok((await coverage(page)).coat >= c3.coat * 0.98, 'the tag faded while idle');
 
-  const stored = await page.evaluate(() => localStorage.getItem('hall.wall-game.tag.v2'));
-  assert.ok(stored && stored.length < 4300, `the stored tag is ${stored?.length} bytes`);
-  console.log('stored tag:', stored.length, 'bytes');
-  /* ---------- a reload finds the visitor's own tag on the wall ---------- */
-  await page.reload();
-  await ready(page);
-  await page.waitForFunction(() => !window.__hall.wallGame.state.replaying, null, { timeout: 10000 });
-  await page.waitForTimeout(2500);
-  const returned = await state(page);
+  const stored = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('hall.wall-game.tag')));
+  assert.deepEqual(stored, [], `the tag was stored: ${stored}`);
   const c5 = await coverage(page);
-  console.log('returning visitor:', JSON.stringify({ tagPoints: returned.tagPoints, tagSigned: returned.tagSigned, score: returned.score }), JSON.stringify(c5));
-  assert.equal(returned.tagPoints, done.tagPoints, 'the stored tag came back with a different number of points');
-  assert.equal(returned.tagSigned, 1);
-  assert.ok(c5.coat > c3.coat * 0.6, 'the returning visitor found a bare wall');
-  await page.screenshot({ path: `${OUT}/returning.png`, clip });
 
   /* ---------- the next start buffs it ---------- */
   const box3 = await fieldBox(page);
@@ -374,7 +363,6 @@ try {
   const c6 = await coverage(page);
   console.log('after the buff:', JSON.stringify(c6));
   assert.ok(c6.coat < c5.coat * 0.3, `the old tag was not buffed (${c6.coat} vs ${c5.coat})`);
-  assert.equal(await page.evaluate(() => localStorage.getItem('hall.wall-game.tag.v2')), null, 'the buffed tag stayed in storage');
 
   /* ---------- a whole minute of play: no allocation growth, no new shader programs ---------- */
   if (!SKIP.has('long')) {
@@ -395,6 +383,18 @@ try {
   assert.equal(crowned.tagSigned, 2, 'a cleared wall was not crowned');
   assert.equal(crowned.blocks, crowned.totalBlocks);
   await page.screenshot({ path: `${OUT}/cleared.png`, clip });
+  /* ---------- its time on the idle wall runs out: the roller buffs it away, no ghost ---------- */
+  const cCrowned = await coverage(page);
+  await page.evaluate(() => { window.__hall.wallGame.tagExpire = performance.now(); window.__hall.wallGame.request(); });
+  await page.waitForFunction(() => !window.__hall.wallGame.state.hasPaint, null, { timeout: 5000 });
+  await page.waitForTimeout(300);
+  const faded = await state(page);
+  const cFaded = await coverage(page);
+  console.log('tag expired on the idle wall:', JSON.stringify({ mode: faded.mode, tagPoints: faded.tagPoints, tagSigned: faded.tagSigned }), JSON.stringify(cFaded));
+  assert.equal(faded.mode, 'idle');
+  assert.equal(faded.tagPoints, 0, 'the expired tag kept its points');
+  assert.ok(cFaded.coat < cCrowned.coat * 0.02, `the expired tag is still on the wall (${cFaded.coat} vs ${cCrowned.coat})`);
+  await page.screenshot({ path: `${OUT}/expired.png`, clip });
   const programsAfter = await page.evaluate(() => window.__hall.renderer.info.programs.length);
   console.log(`shader programs: ${programsBefore} -> ${programsAfter}`);
   assert.equal(programsAfter, programsBefore, 'playing compiled a new shader program');
@@ -416,25 +416,20 @@ try {
   console.log(`frame times while playing, 2560x1440 (${f1440.n} frames): p50 ${f1440.p50.toFixed(1)} ms, p95 ${f1440.p95.toFixed(1)} ms, max ${f1440.max.toFixed(1)} ms`);
   assert.ok(f1440.p95 < 34, `p95 frame time at 2560x1440 ${f1440.p95.toFixed(1)} ms`);
   /* ---------- a lost WebGL context, mid-round: the hall falls back to its CSS backdrop (Stage3D.tsx), the game
-   * must not throw, and the piece must be in storage so the next load sprays it again ---------- */
-  await big.evaluate(() => localStorage.removeItem('hall.wall-game.tag.v2'));
-  const midRound = await state(big);
+   * must not throw, and the next load starts on a clean wall ---------- */
   await big.evaluate(() => new Promise(resolve => {
     const H = window.__hall, canvas = H.renderer.domElement;
     canvas.addEventListener('webglcontextlost', () => setTimeout(resolve, 800), { once: true });
     H.renderer.getContext().getExtension('WEBGL_lose_context').loseContext();
   }));
-  const savedOnLoss = await big.evaluate(() => localStorage.getItem('hall.wall-game.tag.v2'));
-  assert.ok(savedOnLoss, 'the lost context took the tag with it: nothing was stored');
   await big.reload();
   await ready(big);
-  await big.waitForFunction(() => !window.__hall.wallGame.state.replaying, null, { timeout: 10000 });
   await big.waitForTimeout(1500);
   const afterLoss = await state(big);
   const cLoss = await coverage(big);
-  console.log('context lost mid-round, then reloaded:', JSON.stringify({ before: midRound.tagPoints, after: afterLoss.tagPoints }), JSON.stringify(cLoss));
-  assert.ok(afterLoss.tagPoints >= midRound.tagPoints && afterLoss.tagPoints > 4, 'the tag did not come back after the lost context');
-  assert.ok(cLoss.coat > 0.002, 'the wall stayed bare after the lost context');
+  console.log('context lost mid-round, then reloaded:', JSON.stringify({ tagPoints: afterLoss.tagPoints }), JSON.stringify(cLoss));
+  assert.equal(afterLoss.tagPoints, 0, 'a reload brought an old tag back');
+  assert.ok(cLoss.coat < 0.002, 'a reload found paint on the wall');
   await big.close();
 
   /* ---------- placement: in frame with 5 % to the left edge, at every supported window ---------- */

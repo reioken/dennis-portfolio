@@ -8,8 +8,8 @@ import { WallTag } from './wallTag';
  *
  * The ball is a spray nozzle. Wherever it flies it leaves a sprayed line on the wall, and the line stays: by the
  * end of a round the visitor has scribbled a tag across the bricks that nobody else will ever make. It remains on
- * the wall (and in localStorage, so a returning visitor finds it again) until the next round starts, when it is
- * buffed and a new one begins.
+ * the wall for TAG_LIFE_MS after the round, then the roller buffs it away; a new round buffs it at once. It is not
+ * stored: every visit starts on a clean wall.
  *
  * Nothing here is geometry: every mark is pigment mixed into the wall's own diffuse inside the brick material's
  * `onBeforeCompile` (wallPaint.ts), through the same brick-luminance modulation, lit by the same normal map.
@@ -86,9 +86,12 @@ const MASK_H = Math.round(MASK_W * RECT_H / RECT_W);
 export const WALL_GAME_ACCENT: string | null = '#7e6cc2';
 const TRAIL_GREY = '#70767e';
 const LINE_R = 0.0092;                                // core radius of the flying line
-const TAG_KEY = 'hall.wall-game.tag.v2';                // v2: the painted rect grew, and the points are stored relative to it
+/** Keys earlier builds stored the tag under; removed on sight so an old piece never comes back. */
+const OLD_TAG_KEYS = ['hall.wall-game.tag.v1', 'hall.wall-game.tag.v2'];
 const BEST_KEY = 'hall.wall-game.best';
-const TAG_MAX = 560;                                  // impact points kept for replay: 5 bytes each, < 4 KB stored
+const TAG_MAX = 560;                                  // impact points kept to re-spray the tag after a lost context
+/** How long a finished piece stays on the wall once the round is over, before the roller buffs it away. */
+const TAG_LIFE_MS = 30000;
 /** What one pass of the ball leaves for good; passes add up. */
 const COAT = 0.19;
 const SETTLE_MS = 260;
@@ -232,6 +235,10 @@ export class WallGame {
   private buffSeed = 1;
   private hasPaint = false;
   private power = 1;
+  /** When the finished piece on an idle wall is due to be buffed away (0 = nothing due), and the fade's start. */
+  private tagExpire = 0;
+  private fadeAt = -1;
+  private fadeTimer = 0;
 
   /** Centre of the painted field and the lamp's height: the lamp and the pool hang off these. */
   centreX = 0;
@@ -272,6 +279,7 @@ export class WallGame {
       // a different wall: the round and the tag on it do not carry over
       this.mode = 'idle';
       this.clearTag(false);
+      this.tagExpire = 0;
       this.drawMask();
       this.writeStatics();
       this.writeBlocks();
@@ -332,7 +340,7 @@ export class WallGame {
     this.u.wallGameOpacity.value = on && this.built ? 0.91 : 0;
     // Walking away mid-round ends it: the piece is signed and kept, the wall is whole again when they come back.
     if (!on) { this.stopRound(true); this.pause(); }
-    else { this.last = performance.now(); this.acc = 0; this.sync(); }
+    else { this.last = performance.now(); this.acc = 0; this.dropExpiredTag(this.last); this.sync(); }
     this.request();
   }
 
@@ -367,17 +375,16 @@ export class WallGame {
     this.drawMask();
     this.writeBlocks();
     this.writeStatics();
-    this.loadTag();
+    try { for (const k of OLD_TAG_KEYS) localStorage.removeItem(k); } catch { /* storage blocked: nothing to forget */ }
     this.sync();
     document.addEventListener('visibilitychange', this.onVisibility);
-    window.addEventListener('pagehide', this.onPageHide);
     this.renderer().domElement.addEventListener('webglcontextlost', this.onContextLost);
     this.renderer().domElement.addEventListener('webglcontextrestored', this.onContextRestored);
   }
 
   dispose() {
     document.removeEventListener('visibilitychange', this.onVisibility);
-    window.removeEventListener('pagehide', this.onPageHide);
+    clearTimeout(this.fadeTimer);
     try {
       this.renderer().domElement.removeEventListener('webglcontextlost', this.onContextLost);
       this.renderer().domElement.removeEventListener('webglcontextrestored', this.onContextRestored);
@@ -393,15 +400,11 @@ export class WallGame {
   private onVisibility = () => {
     this.hidden = document.hidden;
     if (this.hidden) { this.stopRound(true); this.pause(); }
-    else { this.last = performance.now(); this.acc = 0; this.sync(); this.request(); }
+    else { this.last = performance.now(); this.acc = 0; this.dropExpiredTag(this.last); this.sync(); this.request(); }
   };
-  private onPageHide = () => { if (this.mode !== 'idle') this.saveTag(); };
 
-  /**
-   * A lost GL context takes the target's pixels with it. The hall answers a lost context by falling back to its
-   * CSS backdrop (Stage3D.tsx), so what matters is that the piece is in storage: the next load sprays it again.
-   */
-  private onContextLost = () => { this.saveTag(); this.pause(); };
+  /** A lost GL context takes the target's pixels with it; the hall falls back to its CSS backdrop (Stage3D.tsx). */
+  private onContextLost = () => { this.pause(); };
   /** Should a host keep the scene alive instead: spray the tag again from the points we kept. */
   private onContextRestored = () => {
     this.tag?.clear();
@@ -540,7 +543,8 @@ export class WallGame {
     this.tagSigned = 0;
     this.served = 0;
     this.penDown = false;
-    try { localStorage.removeItem(TAG_KEY); } catch { /* storage blocked: nothing to forget */ }
+    this.tagExpire = 0;
+    this.fadeAt = -1;
   }
 
   private launch() {
@@ -565,7 +569,6 @@ export class WallGame {
     this.mode = 'serve';
     this.phaseAt = performance.now();
     this.restBall();
-    this.saveTag();
   }
 
   /**
@@ -581,6 +584,7 @@ export class WallGame {
     if (instant) {
       this.finishJobs();
       this.mode = 'idle';
+      this.expireTagLater();
       this.resetField();
       this.paddleX = this.paddleGoal = this.centreX;
       this.restBall();
@@ -600,7 +604,6 @@ export class WallGame {
     // The piece is finished: sign it. A cleared wall gets the crown.
     this.tagSigned = cleared ? 2 : 1;
     if (this.tagN > 1) this.sign(this.tagSigned, this.reduce, short);
-    this.saveTag();
     this.sync();
   }
 
@@ -629,7 +632,7 @@ export class WallGame {
       } else this.iconInk = ICON_INK;
     } else { this.iconInk = ICON_INK; this.hintAt = 0; }
 
-    let busy = false;
+    let busy = this.tickFade(now);
     {
       if (this.mode === 'buff') {
         const t = Math.min(1, (now - this.phaseAt) / BUFF_MS);
@@ -678,6 +681,7 @@ export class WallGame {
     const painting = this.tickPaint(dt);
     if (this.mode === 'repaint' && !painting && this.repaintRow >= ROWS - 1) {
       this.mode = 'idle';
+      this.expireTagLater();
       this.resetField();
       this.paddleX = this.paddleGoal = this.centreX;
       this.restBall();
@@ -1114,43 +1118,40 @@ export class WallGame {
     return active;
   }
 
-  /* ---------- persistence: the visitor's last tag ---------- */
-  private saveTag() {
-    if (!this.built) return;
-    try {
-      const n = this.tagN;
-      if (!n) { localStorage.removeItem(TAG_KEY); return; }
-      const bytes = new Uint8Array(n * 5);
-      for (let i = 0; i < n; i++) {
-        bytes[i * 5] = this.tagPts[i * 2] >> 8; bytes[i * 5 + 1] = this.tagPts[i * 2] & 255;
-        bytes[i * 5 + 2] = this.tagPts[i * 2 + 1] >> 8; bytes[i * 5 + 3] = this.tagPts[i * 2 + 1] & 255;
-        bytes[i * 5 + 4] = this.tagKind[i];
-      }
-      let bin = '';
-      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-      localStorage.setItem(TAG_KEY, JSON.stringify({ v: 1, c: this.cols, s: this.tagSigned, p: this.score, d: btoa(bin) }));
-    } catch { /* storage blocked or full: the tag simply does not survive the reload */ }
+  /* ---------- the piece's life on an idle wall ---------- */
+  /** The round is over and the wall idle: the piece stays TAG_LIFE_MS, then is buffed away. */
+  private expireTagLater() {
+    if (!this.hasPaint) return;
+    this.tagExpire = performance.now() + TAG_LIFE_MS;
+    this.fadeAt = -1;
+    // the idle hall may render nothing at all, so make sure a frame comes when the time is up
+    clearTimeout(this.fadeTimer);
+    this.fadeTimer = window.setTimeout(() => this.request(), TAG_LIFE_MS + 50);
   }
 
-  private loadTag() {
-    try {
-      localStorage.removeItem('hall.wall-game.tag.v1');
-      const raw = localStorage.getItem(TAG_KEY);
-      if (!raw || raw.length > 6000) return;
-      const o = JSON.parse(raw) as { v?: number; c?: number; s?: number; p?: number; d?: string };
-      if (o.v !== 1 || typeof o.d !== 'string' || o.c !== this.cols) return;
-      const bin = atob(o.d);
-      const n = Math.min(TAG_MAX, Math.floor(bin.length / 5));
-      for (let i = 0; i < n; i++) {
-        this.tagPts[i * 2] = (bin.charCodeAt(i * 5) << 8) | bin.charCodeAt(i * 5 + 1);
-        this.tagPts[i * 2 + 1] = (bin.charCodeAt(i * 5 + 2) << 8) | bin.charCodeAt(i * 5 + 3);
-        this.tagKind[i] = bin.charCodeAt(i * 5 + 4);
-      }
-      this.tagN = n;
-      this.tagSigned = o.s === 1 || o.s === 2 ? o.s : 0;
-      if (this.tagSigned && Number.isFinite(o.p)) this.score = Math.max(0, Math.min(999, Math.round(o.p!)));
-      if (n) this.replayAt = 0;
-    } catch { this.tagN = 0; }
+  /** Coming back to a wall whose piece ran out while nobody watched: it is simply gone, no roller on arrival. */
+  private dropExpiredTag(now: number) {
+    if (this.mode !== 'idle' || !this.tagExpire || now < this.tagExpire || this.fadeAt >= 0) return;
+    this.clearTag(false);
+    this.tagExpire = 0;
+  }
+
+  /** The roller goes over the idle wall once, leaving no ghost. True while it moves. */
+  private tickFade(now: number) {
+    if (this.mode !== 'idle' || !this.tagExpire || now < this.tagExpire) return false;
+    if (!this.hasPaint || this.reduce) { this.clearTag(false); this.tagExpire = 0; this.sync(); return false; }
+    if (this.fadeAt < 0) { this.finishJobs(); this.fadeAt = now; this.buffFront = -0.2; this.buffSeed = 1 + ((this.rng() * 40) | 0); }
+    const t = Math.min(1, (now - this.fadeAt) / BUFF_MS);
+    const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const front = -0.2 + e * 1.4;
+    this.tag!.buff(this.buffFront, front, 0, this.buffSeed);
+    this.buffFront = front;
+    if (t < 1) return true;
+    this.clearTag(false);
+    this.tagExpire = 0;
+    this.fadeAt = -1;
+    this.sync();
+    return true;
   }
 
   /* ---------- uniforms ---------- */
