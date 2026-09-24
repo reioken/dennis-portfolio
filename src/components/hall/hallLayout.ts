@@ -1,5 +1,5 @@
 /** Cabinet footprints in metres at the hall's single station height (1.95 m): the Blender widths scaled with the model. */
-const widths: Record<string,number> = {'echo-frequency':.78,'saute-survivors':.78,'cab-no-9':.82,carillon:.79,nexus:1.2,riftback:.95,riftcast:1.2,lowlight:1.21,'vgm-battle':1.08,berry:.5,safeplate:.5,briefly:.5,mina:.68,hookline:1.05,kasse:.94,telefon:.92};
+const widths: Record<string,number> = {'echo-frequency':.78,'saute-survivors':.78,'cab-no-9':.82,carillon:.79,nexus:1.2,riftback:.95,riftcast:1.2,lowlight:1.21,'vgm-battle':1.08,berry:.5,safeplate:.5,briefly:.5,mina:.68,hookline:1.05,snapsize:1.24,kasse:.94,telefon:.92};
 export function cabinetWidth(slug:string) { return widths[slug]??.8; }
 type Station = {slug:string};
 // One clear edge-to-edge gap for every pair, including enough room for the taxi.

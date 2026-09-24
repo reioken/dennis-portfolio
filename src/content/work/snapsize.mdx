@@ -1,0 +1,98 @@
+---
+title: "Snapsize"
+summary: "Stellt das Fenster mit einem Klick auf exakte Geräte- und Breakpoint-Größen. Breakpoints durchlaufen, Größen nebeneinander vergleichen und bei jeder Größe einen Screenshot speichern."
+summaryEn: "Resize the window to exact device and breakpoint sizes in one click. Sweep through breakpoints, compare sizes side by side, and save screenshots at each size."
+role: "Solo Product Build"
+roleEn: "Solo Product Build"
+year: "2026"
+timeline: "2026 · live"
+timelineEn: "2026 · live"
+stack: ["WebExtensions (Manifest V3)", "JavaScript", "Firefox"]
+outcome: "Exakte Größen · Breakpoints · Sweep · Compare · Screenshots"
+outcomeEn: "Exact sizes · Breakpoints · Sweep · Compare · Screenshots"
+tags: ["product", "design"]
+featured: false
+cover: "/media/snapsize/shots/devices.webp"
+coverAlt: "Snapsize — Popup mit Geräte-Presets für Phone, Tablet und Desktop"
+coverAltEn: "Snapsize — popup with phone, tablet and desktop device presets"
+logo: "/media/snapsize/logo.svg"
+gallery:
+  - "/media/snapsize/shots/devices.webp"
+  - "/media/snapsize/shots/breakpoints.webp"
+  - "/media/snapsize/shots/sweep.webp"
+  - "/media/snapsize/shots/compare.webp"
+  - "/media/snapsize/shots/options.webp"
+  - "/media/snapsize/shots/devices-light.webp"
+hallScreens:
+  - "/media/snapsize/screens/vgm.webp"
+  - "/media/snapsize/screens/nexus.webp"
+  - "/media/snapsize/screens/lowlight.webp"
+  - "/media/snapsize/screens/work.webp"
+galleryAlts:
+  - "Geräte: Presets für Phone, Tablet und Desktop bis 4K"
+  - "Breakpoints: Tailwind, Bootstrap und MUI"
+  - "Sweep: Breakpoints oder Geräte nacheinander durchlaufen"
+  - "Compare: bis zu vier exakt bemessene Fenster nebeneinander"
+  - "Einstellungen: Presets umbenennen, ändern und neu ordnen"
+  - "Geräte im hellen Theme"
+galleryAltsEn:
+  - "Devices: phone, tablet and desktop presets up to 4K"
+  - "Breakpoints: Tailwind, Bootstrap and MUI"
+  - "Sweep: step through breakpoints or devices"
+  - "Compare: up to four exactly-sized windows side by side"
+  - "Options: rename, resize and reorder presets"
+  - "Devices in the light theme"
+order: 16
+status: "live"
+platform: ["tool"]
+engine: "WebExtensions"
+version: "2.0.0"
+externalUrl: "https://addons.mozilla.org/en-US/firefox/addon/snapsize/"
+brand:
+  primary: "#8e8cf5"
+  secondary: "#5b5bd6"
+---
+
+<div data-lang="de">
+
+**Exakte Größen, ein Klick.**
+
+Snapsize ist ein Fenster-Resizer für Leute, die Websites bauen, besonders auf großen Monitoren, wo Fensterziehen nie auf der Größe landet, die man braucht.
+
+**Exakte Größen** — Presets für Phone, Tablet und Desktop bis 4K; umbenennen, umsortieren, hinzufügen oder löschen. Snapsize bemisst den Seitenbereich, also das, was deine CSS-Media-Queries sehen, nicht nur das äußere Fenster. Toolbars und Seitenleisten werden gemessen und herausgerechnet. Phones und Tablets lassen sich ins Querformat drehen.
+
+**Breakpoints** — Tailwind-, Bootstrap- und MUI-Breakpoints sind eingebaut, eigene kommen dazu. Ein −1px-Schalter springt einen Pixel unter jeden Breakpoint, wo sich max-width-Bugs verstecken. Popup und Toolbar-Badge zeigen die aktuelle Breite und den Breakpoint-Bereich, auch während du das Fenster von Hand ziehst.
+
+**Sweep** — Alle Breakpoints oder Geräte im Takt durchlaufen, oder stufenlos von schmal nach breit gleiten und zusehen, wo das Layout springt. Auf Wunsch mit einem Screenshot bei jedem Schritt.
+
+**Compare** — Die aktuelle Seite in bis zu vier exakt bemessenen Fenstern nebeneinander öffnen und nach einer Code-Änderung alle mit einem Klick neu laden.
+
+**Screenshots** — Ein PNG in der aktuellen Größe, benannt nach Site und Größe (example.com-768x1024.png). Sichtbarer Bereich oder ganze Seite, native Schärfe oder exakte 1x-Pixel.
+
+**Was es nicht kann** — Snapsize ändert echte Fenster. Touch-Eingabe, Device Pixel Ratio oder einen mobilen User Agent emuliert es nicht; dafür gibt es den Responsive Design Mode von Firefox (Strg+Umschalt+M).
+
+**Datenschutz** — Snapsize sammelt keine Daten und stellt keine Netzwerkanfragen. Alles bleibt lokal im Browser; mit dem optionalen Sync speichert Firefox die Presets im eigenen Firefox-Konto.
+
+</div>
+
+<div data-lang="en">
+
+**Exact sizes, one click.**
+
+Snapsize is a window resizer for people who build websites, especially on big monitors where dragging the window never lands on the size you need.
+
+**Exact sizes** — Phone, tablet and desktop presets up to 4K. Rename, reorder, add or delete any of them. Snapsize sizes the page area (what your CSS media queries see), not just the outer window. Toolbars and sidebars are measured and corrected for. Rotate phones and tablets to landscape.
+
+**Breakpoint aware** — Tailwind, Bootstrap and MUI breakpoints built in, plus your own. A −1px toggle jumps to one pixel below each breakpoint, where max-width bugs hide. The popup and the toolbar badge show the live width and which breakpoint range you're in, even while you drag the window by hand.
+
+**Sweep** — Step through every breakpoint or device on a timer, or slide smoothly from narrow to wide and watch where the layout jumps. Optionally save a screenshot at every step.
+
+**Compare** — Open the current page in up to four exactly-sized windows, tiled side by side. Reload them all with one click after a code change.
+
+**Screenshots** — Save a PNG at the current size, named after the site and size (example.com-768x1024.png). Visible area or full page, native sharpness or exact 1x pixels.
+
+**What it can't do** — Snapsize resizes real windows. It does not emulate touch input, device pixel ratio or a mobile user agent. Use Firefox's Responsive Design Mode (Ctrl+Shift+M) for those.
+
+**Privacy** — Snapsize collects no data and makes no network requests. Everything is stored locally in your browser. If you turn on the optional sync setting, Firefox stores your presets in your own Firefox account.
+
+</div>

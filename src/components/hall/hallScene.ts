@@ -168,6 +168,12 @@ type ModelSpec = {
   screen?: { w: number; h: number; y: number; x?: number; zOffset?: number };
   /** Mesh-Namen, die als Bildschirm gelten */
   screenNames?: string[];
+  /**
+   * One `screen` mesh that is several physical screens (the Snapsize compare rig): their rects, normalised to the
+   * mesh's bounding box in image space (top-left origin). The hall loop shows composites made for this layout;
+   * a single capture shown in the close-up is drawn into every rect instead of across the whole box.
+   */
+  screenLayout?: { x: number; y: number; w: number; h: number }[];
   /** No nameplate on or above the machine: the wall title names it (terminal v3). */
   noMarquee?: boolean;
   /** Hero machines: how this one has aged. Every machine its own seed and kind of wear (heroMaterial.ts). */
@@ -210,6 +216,11 @@ export const MODELS_BY_SLUG: Record<string, ModelSpec> = {
     hero: { seed: 'briefly', lines: 'swirls', chips: 'pits', turn: 2, scale: 2.3, chip: .45, line: .5 } },
   mina: { url: '/models/mach-mina-v2.glb?v=117d2d01', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'mina', lines: 'scuffs', chips: 'chips', turn: .9, scale: 1.1, chip: .95, line: 1 } },
+  snapsize: { url: '/models/mach-snapsize-v1.glb?v=94b3af4b', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    // .source-assets/models-in/mach-snapsize/screen-layout.json: desktop, laptop, tablet, phone
+    screenLayout: [{ x: .168208, y: 0, w: .65968, h: .475433 }, { x: 0, y: .603806, w: .49476, h: .396194 },
+      { x: .550397, y: .549219, w: .263872, h: .450781 }, { x: .866002, y: .628458, w: .133998, h: .371542 }],
+    hero: { seed: 'snapsize', lines: 'scratches', chips: 'pits', turn: 1.3, scale: 1.3, chip: .7, line: .8 } },
   hookline: { url: '/models/mach-hookline-v2.glb?v=074db376', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'hookline', lines: 'scuffs', chips: 'pits', turn: 1, scale: 1.5, chip: .7, line: .6 } },
 };
@@ -1261,15 +1272,16 @@ export class HallScene {
    * Capture auf das Seitenverhältnis des Bildschirms bringen: weicht es um mehr als 12 % ab, wird es
    * mittig mit dunklen Balken auf eine Leinwand im Bildschirmformat gezeichnet (kein Verzerren).
    */
-  private fitTexture(tex: THREE.Texture, src: string, m: Machine, long = 1024): THREE.Texture {
+  private fitTexture(tex: THREE.Texture, src: string, m: Machine, long = 1024, spread = false): THREE.Texture {
     const img = tex.image as { width?: number; height?: number } | undefined;
     const sf = this.screenFrameOf(m);
     if (!img?.width || !img.height || !sf || sf.h <= 0) return tex;
     const screenAspect = sf.w / sf.h;
     const imgAspect = img.width / img.height;
+    const layout = spread ? MODELS_BY_SLUG[m.item.slug]?.screenLayout : undefined;
     // Kleine Bilder im passenden Format direkt; große immer auf die Zielkante bringen (Upload und Speicher)
-    if (Math.abs(imgAspect / screenAspect - 1) < 0.12 && Math.max(img.width, img.height) <= Math.min(1280, Math.round(long * 1.25))) return tex;
-    const key = `${src}|${screenAspect.toFixed(3)}|${m.gltfUv ? 'g' : 'p'}|${long}`;
+    if (!layout && Math.abs(imgAspect / screenAspect - 1) < 0.12 && Math.max(img.width, img.height) <= Math.min(1280, Math.round(long * 1.25))) return tex;
+    const key = `${src}|${screenAspect.toFixed(3)}|${m.gltfUv ? 'g' : 'p'}|${long}${layout ? '|L' : ''}`;
     const cached = this.fitCache.get(key);
     if (cached) return cached;
     const w = screenAspect >= 1 ? long : Math.round(long * screenAspect);
@@ -1280,10 +1292,13 @@ export class HallScene {
     const ctx = c.getContext('2d')!;
     ctx.fillStyle = '#04050a';
     ctx.fillRect(0, 0, w, h);
-    const scale = Math.min(w / img.width, h / img.height);
-    const dw = img.width * scale;
-    const dh = img.height * scale;
-    ctx.drawImage(tex.image as CanvasImageSource, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    for (const r of layout ?? [{ x: 0, y: 0, w: 1, h: 1 }]) {
+      const rw = r.w * w, rh = r.h * h;
+      const scale = Math.min(rw / img.width, rh / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      ctx.drawImage(tex.image as CanvasImageSource, r.x * w + (rw - dw) / 2, r.y * h + (rh - dh) / 2, dw, dh);
+    }
     const out = new THREE.CanvasTexture(c);
     out.colorSpace = THREE.SRGBColorSpace;
     out.anisotropy = 4;
@@ -2558,7 +2573,7 @@ export class HallScene {
         tex.needsUpdate = true;
       }
       if (tex.image) {
-        tex = this.fitTexture(tex, src, m, this.screenLong(m));
+        tex = this.fitTexture(tex, src, m, this.screenLong(m), true);
         this.renderer.initTexture(tex);
       }
     } else {
@@ -2625,7 +2640,7 @@ export class HallScene {
     if (!m?.screen || !isMachine(m.item)) return;
     const raw = this.texCache.get(this.override);
     if (!raw?.image) return;
-    const sharp = this.fitTexture(raw, this.override, m, this.screenLong(m));
+    const sharp = this.fitTexture(raw, this.override, m, this.screenLong(m), true);
     if (sharp === m.screen.material.map) return;
     this.renderer.initTexture(sharp);
     this.displayTexture(m, sharp, 0);

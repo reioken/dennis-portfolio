@@ -53,6 +53,7 @@ export const ORDER = [
   'cab-no-9',
   'hookline',
   'berry',
+  'snapsize',
   'carillon',
   'riftcast',
   'briefly',

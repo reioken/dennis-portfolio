@@ -95,6 +95,10 @@ const META_EN = {
     title: 'NEXUS — Dennis Bierreth-Fernandez',
     desc: 'Premium desktop game library — Steam, Riot, Blizzard and local libraries in one interface.',
   },
+  'work/snapsize/': {
+    title: 'Snapsize — Dennis Bierreth-Fernandez',
+    desc: 'Resize the window to exact device and breakpoint sizes in one click. Sweep through breakpoints, compare sizes side by side, and save screenshots at each size.',
+  },
   'work/berry/': {
     title: 'Berry — Dennis Bierreth-Fernandez',
     desc: 'Mobile collector app for card collections — product design, app UI and design system v3.',
