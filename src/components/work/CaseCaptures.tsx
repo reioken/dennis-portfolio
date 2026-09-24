@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useReducedMotion } from 'motion/react';
 import { copy, type Lang } from '../../lib/i18n';
 import { toAvif } from '../../lib/img';
-import GalleryLightbox, { altFor, readLang, type GalleryShot } from './GalleryLightbox';
+import GalleryLightbox, { altFor, asLoaded, readLang, thumbSrc, type GalleryShot } from './GalleryLightbox';
 import Closeup from './Closeup';
 import Icon from '../icons/Icon';
 import { CABINET_HOLD_MS } from '../hall/presentation.mjs';
@@ -42,9 +42,31 @@ function Bi({ de, en }: { de: string; en?: string }) {
 
 const nn = (i: number) => String(i + 1).padStart(2, '0');
 
-/** Der Automatenbildschirm ist die Galerie: eine Capture zeigen, `null` = Loop wieder frei */
+/**
+ * Der Automatenbildschirm ist die Galerie: eine Capture zeigen, `null` = Loop wieder frei.
+ * The texture wants the full capture; hand over the format the panel's <picture> elements load (AVIF where
+ * supported), so the screen and the close-up share one download instead of fetching the WebP twin too.
+ */
 function showOnCabinet(src: string | null) {
-  document.dispatchEvent(new CustomEvent('hall:screen', { detail: { src } }));
+  document.dispatchEvent(new CustomEvent('hall:screen', { detail: { src: src ? asLoaded(src) : null } }));
+}
+
+/** `@sm` + full-size candidates for one capture ("a@sm.webp 720w, a.webp 1600w"), or undefined without an @sm */
+function widthSet(shot: GalleryShot, avif: boolean): string | undefined {
+  if (!shot.srcSm || !shot.smWidth || !shot.width || shot.width <= shot.smWidth) return undefined;
+  const conv = (u: string) => (avif ? toAvif(u) ?? u : u);
+  return `${conv(shot.srcSm)} ${shot.smWidth}w, ${conv(shot.src)} ${shot.width}w`;
+}
+
+/**
+ * Rendered width of a phone-carousel slide (hall-panel.css, < 900 px): height min(52vw, 46svh) for 16:10
+ * captures, min(118vw, 60svh) for portrait ones, width capped at 84vw. At 900 px and up the carousel is hidden and
+ * only the first slide loads (eager); it then asks for the strip-thumb size and shares the thumb's @sm file.
+ */
+function heroSizes(shot: GalleryShot, phone: boolean): string {
+  const ratio = shot.width && shot.height ? shot.width / shot.height : phone ? 9 / 16 : 16 / 10;
+  const vw = Math.min(84, Math.ceil((phone ? 118 : 52) * ratio));
+  return `(max-width: 899px) ${vw}vw, 136px`;
 }
 
 /** Close-up an/aus — die Halle fährt die Kamera (Pose `screen`) und weicht mit dem Panel */
@@ -374,8 +396,21 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
             onClick={() => enterCloseup(i)}
           >
             <picture>
-              {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
-              <img src={shot.src} alt="" width={shot.width} height={shot.height} loading={i < 2 ? 'eager' : 'lazy'} decoding="async" draggable={false} />
+              {toAvif(shot.src) && (
+                <source type="image/avif" srcSet={widthSet(shot, true) ?? toAvif(shot.src)} sizes={widthSet(shot, true) ? heroSizes(shot, phone) : undefined} />
+              )}
+              <img
+                src={shot.src}
+                srcSet={widthSet(shot, false)}
+                sizes={widthSet(shot, false) ? heroSizes(shot, phone) : undefined}
+                alt=""
+                width={shot.width}
+                height={shot.height}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : undefined}
+                decoding="async"
+                draggable={false}
+              />
             </picture>
           </button>
         ))}
@@ -401,13 +436,13 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
               onPointerLeave={onLeave}
             >
               <picture>
-                {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
+                {toAvif(thumbSrc(shot)) && <source type="image/avif" srcSet={toAvif(thumbSrc(shot))} />}
                 <img
-                  src={shot.src}
+                  src={thumbSrc(shot)}
                   alt=""
                   width={phone ? 44 : 112}
                   height={phone ? 78 : 63}
-                  loading={i < 6 ? 'eager' : 'lazy'}
+                  loading="lazy"
                   decoding="async"
                   draggable={false}
                 />

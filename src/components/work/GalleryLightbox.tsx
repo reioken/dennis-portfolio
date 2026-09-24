@@ -14,10 +14,37 @@ export type GalleryShot = {
   /** Intrinsic capture size reserves the mobile carousel before image decode. */
   width?: number;
   height?: number;
+  /** 720 px `@sm` variant (scripts/build-thumbs.mjs) and its width: strip thumbs and the phone carousel's srcset */
+  srcSm?: string;
+  smWidth?: number;
 };
 
 export function readLang(): Lang {
   return document.documentElement.dataset.lang === 'en' ? 'en' : 'de';
+}
+
+let avifPicked: boolean | undefined;
+/** Whether this browser chose the AVIF <source> of the case captures (read once from a rendered <picture>). */
+function avifChosen(): boolean {
+  if (avifPicked !== undefined) return avifPicked;
+  const cur = document.querySelector<HTMLImageElement>('.captures picture img, .gallery-view picture img')?.currentSrc;
+  if (!cur) return false;
+  avifPicked = /\.avif(?:[?#]|$)/i.test(cur);
+  return avifPicked;
+}
+
+/**
+ * The URL a `<picture>` built from `src` actually loads here: the AVIF sibling where the browser picks AVIF.
+ * Anything that fetches a capture outside a <picture> (the cabinet screen texture, the close-up preload) goes
+ * through this so it hits the cache instead of downloading the WebP twin (2026-09-25).
+ */
+export function asLoaded(src: string): string {
+  return avifChosen() ? (toAvif(src) ?? src) : src;
+}
+
+/** Small file for thumbnails: the @sm sibling when it is actually smaller than the capture, else the capture. */
+export function thumbSrc(shot: GalleryShot): string {
+  return shot.srcSm && shot.smWidth && shot.width && shot.width > shot.smWidth ? shot.srcSm : shot.src;
 }
 
 /** Alt-Text in der aktiven Sprache (Attribute können keine data-lang-Spans tragen) */
@@ -270,8 +297,8 @@ export default function GalleryLightbox({
                   onClick={() => onChange(i)}
                 >
                   <picture>
-                    {toAvif(shot.src) && <source type="image/avif" srcSet={toAvif(shot.src)} />}
-                    <img src={shot.src} alt="" loading="lazy" decoding="async" draggable={false} />
+                    {toAvif(thumbSrc(shot)) && <source type="image/avif" srcSet={toAvif(thumbSrc(shot))} />}
+                    <img src={thumbSrc(shot)} alt="" loading="lazy" decoding="async" draggable={false} />
                   </picture>
                 </button>
               ))}

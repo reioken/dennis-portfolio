@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { navigate } from 'astro:transitions/client';
 import { copy, type Lang } from '../../lib/i18n';
 import { toAvif } from '../../lib/img';
-import { altFor, type GalleryShot } from './GalleryLightbox';
+import { altFor, asLoaded, type GalleryShot } from './GalleryLightbox';
 import type { CaptureGroup } from './CaseCaptures';
 import './closeup.css';
 import Icon from '../icons/Icon';
@@ -179,7 +179,8 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
     let alive = true;
     const img = new Image();
     img.decoding = 'async';
-    img.src = shot.srcHi;
+    // Same format the <picture> below will pick, so the preload is the download it uses
+    img.src = asLoaded(shot.srcHi);
     const done = () => {
       if (alive) setHiReady(shot.src);
     };
@@ -562,7 +563,7 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
       >
         {prevShot ? (
           <figure className="closeup__shot is-out" aria-hidden>
-            <img src={prevShot.srcHi || prevShot.src} alt="" decoding="async" draggable={false} />
+            <img src={asLoaded(prevShot.srcHi || prevShot.src)} alt="" decoding="async" draggable={false} />
           </figure>
         ) : null}
         {shot ? (

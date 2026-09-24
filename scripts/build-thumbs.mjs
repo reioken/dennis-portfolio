@@ -11,6 +11,21 @@ const MEDIA = path.resolve('public/media');
 const SM_WIDTH = 720; // desktop-shot display width tops out around 360px CSS → 720 covers 2x small screens
 const QUALITY = 74;
 
+/** `cover:` plus every list item under a `gallery:` key (any depth) in an MDX frontmatter, WebP/JPEG only. */
+function galleryRefs(text) {
+  const fm = text.split(/^---\s*$/m)[1] ?? '';
+  const refs = new Set();
+  let key = '';
+  for (const line of fm.split(/\r?\n/)) {
+    const k = line.match(/^\s*(?:-\s+)?(\w+):/);
+    if (k) key = k[1];
+    if (key !== 'gallery' && key !== 'cover') continue;
+    const m = line.match(/"(\/media\/[^"]+\.(?:webp|jpe?g))"/i);
+    if (m && !/@(2x|sm)\.\w+$/i.test(m[1])) refs.add(m[1]);
+  }
+  return refs;
+}
+
 async function main() {
   const projects = await readdir(MEDIA, { withFileTypes: true });
   let count = 0;
@@ -51,23 +66,25 @@ async function main() {
     }
     }
   }
-  // Case covers live wherever the content points (project root, shots/, jpg): the cards want a 720 px source too.
+  // Covers and every gallery image (top-level `gallery:` and `surfaces[].gallery:`) live wherever the content
+  // points (project root, shots/, jpg). The cards, the case-panel strip and the phone carousel's srcset all want a
+  // 720 px source (2026-09-25: 1600 px captures were shown at ~346 px CSS), so every one of them gets an @sm file.
   const { readFile } = await import('node:fs/promises');
   const workDir = path.resolve('src/content/work');
   for (const entry of await readdir(workDir)) {
     if (!entry.endsWith('.mdx')) continue;
     const text = await readFile(path.join(workDir, entry), 'utf8');
-    const m = text.match(/^cover:\s*"([^"]+)"/m);
-    if (!m || !/\.(webp|jpe?g)$/i.test(m[1])) continue;
-    const src = path.resolve('public', m[1].replace(/^\//, ''));
-    const out = src.replace(/\.(webp|jpe?g)$/i, '@sm.webp');
-    try { await stat(out); continue; } catch {}
-    try { await stat(src); } catch { continue; }
-    const img = sharp(src, { failOn: 'none' });
-    const meta = await img.metadata();
-    await img.resize({ width: meta.width && meta.width > SM_WIDTH ? SM_WIDTH : undefined, withoutEnlargement: true }).webp({ quality: QUALITY, effort: 5 }).toFile(out);
-    console.log(`${m[1]} → ${path.basename(out)}  ${((await stat(src)).size / 1024).toFixed(0)}KB → ${((await stat(out)).size / 1024).toFixed(0)}KB`);
-    count++;
+    for (const ref of galleryRefs(text)) {
+      const src = path.resolve('public', ref.replace(/^\//, ''));
+      const out = src.replace(/\.(webp|jpe?g)$/i, '@sm.webp');
+      try { await stat(out); continue; } catch {}
+      try { await stat(src); } catch { continue; }
+      const img = sharp(src, { failOn: 'none' });
+      const meta = await img.metadata();
+      await img.resize({ width: meta.width && meta.width > SM_WIDTH ? SM_WIDTH : undefined, withoutEnlargement: true }).webp({ quality: QUALITY, effort: 5 }).toFile(out);
+      console.log(`${ref} → ${path.basename(out)}  ${((await stat(src)).size / 1024).toFixed(0)}KB → ${((await stat(out)).size / 1024).toFixed(0)}KB`);
+      count++;
+    }
   }
   console.log(`done. ${count} @sm variants written`);
 }

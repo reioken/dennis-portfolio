@@ -117,6 +117,14 @@ await Promise.all(groups.flatMap(group => group.images).map(async shot => {
   const { width, height } = await sharp(file).metadata();
   shot.width = width;
   shot.height = height;
+  // 720 px sibling for the strip thumbs and the phone carousel srcset (scripts/build-thumbs.mjs writes one for
+  // every gallery image, build-avif.mjs its AVIF). Only referenced when both exist: a missing AVIF candidate
+  // shows the alt text instead of falling back.
+  const sm = file.replace(/\.(webp|jpe?g)$/i, '@sm.webp');
+  if (sm !== file && fs.existsSync(sm) && fs.existsSync(sm.replace(/\.webp$/, '.avif'))) {
+    shot.srcSm = shot.src.replace(/\.(webp|jpe?g)$/i, '@sm.webp');
+    shot.smWidth = (await sharp(sm).metadata()).width;
+  }
 }));
 
 /* ---------- Text ---------- */
