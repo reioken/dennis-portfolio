@@ -45,16 +45,19 @@ async function reachable(distDir, entry, cache) {
  * The figure and plush only on the pages that open at the claw machine (home, About); elsewhere the hall opens at
  * another station and 2.4 MB of claw files would compete with that station's own (measured 2026-09-25).
  * `fetchpriority="low"`: at normal priority they held React DOM back until 1.75 s; low still fills the idle line.
+ * Model URLs are read from what the loader will fetch (the figure from the page's hall data, the plush from the
+ * bundled hallScene chunk), `?v=` included, so a preload is never a second download under another name.
  */
 const CLAW_FIRST = /^(en[\\/])?(about[\\/])?index\.html$/;
-async function firstViewAssets(distDir, html, rel) {
-  const figure = html.match(/\/models\/dennis\.glb\?v=[0-9a-f]+/)?.[0];
+async function firstViewAssets(distDir, html, rel, chunkSources) {
+  const figure = html.match(/\/models\/dennis\.glb\.gz\?v=[0-9a-f]+/)?.[0];
+  const bundled = (name) => chunkSources.map((s) => s.match(new RegExp(`/models/plush/${name}\\.glb\\.gz\\?v=[0-9a-f]+`))?.[0]).find(Boolean);
   const claw = CLAW_FIRST.test(rel);
   const wanted = [
     '/textures/hall-environment-v2.bin.gz',
     claw && figure,
-    claw && '/models/plush/pile-back-v1.glb',
-    claw && '/models/plush/pile-side-v1.glb',
+    claw && bundled('pile-back-v1'),
+    claw && bundled('pile-side-v1'),
   ].filter(Boolean);
   const present = [];
   for (const href of wanted) {
@@ -74,7 +77,7 @@ export async function addModulePreloads(distDir) {
     // Match Hall.nativeCase and hall-panel.css: project pages below 900 px never boot the hall.
     const rel = path.relative(distDir, file);
     const media = /(^|[\\/])work[\\/]/.test(rel) ? ' media="(min-width: 900px)"' : '';
-    const firstView = await firstViewAssets(distDir, html, rel);
+    const firstView = await firstViewAssets(distDir, html, rel, chunks.map((href) => cache.get(href) ?? ''));
     const tags = chunks.map((href) => `<link rel="modulepreload" href="${href}">`).join('')
       + firstView.map((href) => `<link rel="preload" as="fetch" crossorigin fetchpriority="low" href="${href}"${media}>`).join('');
     await writeFile(file, html.replace('</head>', `${tags}</head>`), 'utf8');

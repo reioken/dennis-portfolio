@@ -24,7 +24,7 @@ import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './
 import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMaterials';
 import { loadHeroMaps, heroMaterial, isHeroMaterial, stripHeroLight, makeHeroGlow, marbleBall, type HeroMaps, type HeroGlow, type HeroLook } from './heroMaterial';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -61,10 +61,10 @@ export type Frame = {
 export type CtlAction = 'lit' | 'dim' | 'hover' | 'press' | 'release' | 'idle';
 /** Namen der Bedienelemente in den Modellen (scripts/models/blender/*_gen.py) */
 /** The ceiling track, the trolley and the TV (hero_tv_gen.py): dusty steel up in the dark, wiped glossy bezel. */
-const TV_RIG_MODEL = '/models/tv-rig-v1.glb?v=de482a9f';
+const TV_RIG_MODEL = '/models/tv-rig-v1.glb.gz?v=446cc7c8';
 const TV_RIG_LOOK: HeroLook = { seed: 'tvrig', lines: 'swirls', chips: 'chips', turn: .4, scale: 1.6, chip: .4, line: .5 };
 /** The claw machine, rebuilt as a hero machine; its wear is its own (wiped glass box, dinged steel). */
-const CLAW_MODEL = '/models/claw-v2.glb?v=8e82aa7c';
+const CLAW_MODEL = '/models/claw-v2.glb.gz?v=cfbc9595';
 const CLAW_LOOK: HeroLook = { seed: 'claw', lines: 'swirls', chips: 'chips', turn: .8, scale: .9, chip: .22, line: .3 };
 const SPIN_UP = new THREE.Vector3(0, 1, 0), SPIN_RIGHT = new THREE.Vector3(1, 0, 0);
 const CTL_NAME = /^(joy|btn|btn_\d+|start_\d+|trackball|tbtn_\d+|kbtn_\d+|sel_\d+)$/;
@@ -189,46 +189,46 @@ type ModelSpec = {
 /** One height for every station (Dennis, 2026-09-19: only tall machines, no zigzag skyline). Models scale uniformly. */
 const STATION_HEIGHT = 1.95;
 export const MODELS_BY_SLUG: Record<string, ModelSpec> = {
-  'echo-frequency': { url: '/models/cab-echo-frequency-v2.glb?v=b917abe3', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  'echo-frequency': { url: '/models/cab-echo-frequency-v2.glb.gz?v=c638047e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'echo', lines: 'swirls', chips: 'flakes', turn: .6, scale: 1.2, chip: 1.1, line: .5 } },
-  carillon: { url: '/models/cab-carillon-v2.glb?v=607f073b', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  carillon: { url: '/models/cab-carillon-v2.glb.gz?v=bd274b0e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'carillon', lines: 'scuffs', chips: 'flakes', turn: 2.7, scale: 1.25, chip: .7, line: .8 } },
-  'cab-no-9': { url: '/models/cab-cab-no-9-v2.glb?v=65539f64', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  'cab-no-9': { url: '/models/cab-cab-no-9-v2.glb.gz?v=84c98f41', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'cab9', lines: 'scratches', chips: 'flakes', turn: .5, scale: .75, chip: 1, line: 1.1 } },
-  'saute-survivors': { url: '/models/cab-saute-survivors-v2.glb?v=d11eccc3', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  'saute-survivors': { url: '/models/cab-saute-survivors-v2.glb.gz?v=9c53513e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'saute', lines: 'scuffs', chips: 'chips', turn: 2, scale: .8, chip: .8, line: .9 } },
   // Apps: Terminals (Desktop), Kiosk-Türme (Phone), Jukebox (Audio) — scripts/models/blender/machine_gen.py
-  nexus: { url: '/models/mach-nexus-v2.glb?v=42d044ae', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  nexus: { url: '/models/mach-nexus-v2.glb.gz?v=5185caf6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'nexus', lines: 'swirls', chips: 'pits', turn: 1.1, scale: 1.4, chip: .75, line: .85 } },
-  riftback: { url: '/models/mach-riftback-v4.glb?v=1a53a341', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true },
-  riftcast: { url: '/models/mach-riftcast-v2.glb?v=e862fdaf', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  riftback: { url: '/models/mach-riftback-v4.glb.gz?v=1eb2f0dc', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true },
+  riftcast: { url: '/models/mach-riftcast-v2.glb.gz?v=7590ec0a', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'riftcast', lines: 'swirls', chips: 'chips', turn: .2, scale: 1, chip: .7, line: .9 } },
-  lowlight: { url: '/models/mach-lowlight-v2.glb?v=3391f2f2', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  lowlight: { url: '/models/mach-lowlight-v2.glb.gz?v=11d97116', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'lowlight', lines: 'scratches', chips: 'pits', turn: 1.45, scale: 1.9, chip: .6, line: .55 } },
-  'vgm-battle': { url: '/models/cab-vgm-battle-v2.glb?v=3c35ff8c', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  'vgm-battle': { url: '/models/cab-vgm-battle-v2.glb.gz?v=7764d3f8', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'vgm', lines: 'scuffs', chips: 'flakes', turn: .3, scale: 1, chip: .8, line: 1 } },
-  berry: { url: '/models/mach-berry-v2.glb?v=59201a8f', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  berry: { url: '/models/mach-berry-v2.glb.gz?v=4222254d', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'berry', lines: 'scratches', chips: 'chips', turn: 2.2, scale: 2.2, chip: .45, line: .8 } },
-  safeplate: { url: '/models/mach-safeplate-v2.glb?v=28ce00d6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  safeplate: { url: '/models/mach-safeplate-v2.glb.gz?v=d8aa314f', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'safeplate', lines: 'swirls', chips: 'chips', turn: 2.6, scale: 1.7, chip: .5, line: .7 } },
-  angry: { url: '/models/mach-angry.glb', height: STATION_HEIGHT, screenNames: ['screen'] },
-  briefly: { url: '/models/mach-briefly-v2.glb?v=805e04fc', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  angry: { url: '/models/mach-angry.glb.gz?v=23099e88', height: STATION_HEIGHT, screenNames: ['screen'] },
+  briefly: { url: '/models/mach-briefly-v2.glb.gz?v=e79008a3', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'briefly', lines: 'swirls', chips: 'pits', turn: 2, scale: 2.3, chip: .45, line: .5 } },
-  mina: { url: '/models/mach-mina-v2.glb?v=117d2d01', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  mina: { url: '/models/mach-mina-v2.glb.gz?v=e0a024b6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'mina', lines: 'scuffs', chips: 'chips', turn: .9, scale: 1.1, chip: .95, line: 1 } },
-  snapsize: { url: '/models/mach-snapsize-v1.glb?v=94b3af4b', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  snapsize: { url: '/models/mach-snapsize-v1.glb.gz?v=2cc7a23e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     // .source-assets/models-in/mach-snapsize/screen-layout.json: desktop, laptop, tablet, phone
     screenLayout: [{ x: .168208, y: 0, w: .65968, h: .475433 }, { x: 0, y: .603806, w: .49476, h: .396194 },
       { x: .550397, y: .549219, w: .263872, h: .450781 }, { x: .866002, y: .628458, w: .133998, h: .371542 }],
     hero: { seed: 'snapsize', lines: 'scratches', chips: 'pits', turn: 1.3, scale: 1.3, chip: .7, line: .8 } },
-  hookline: { url: '/models/mach-hookline-v2.glb?v=074db376', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  hookline: { url: '/models/mach-hookline-v2.glb.gz?v=c91a2e2e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'hookline', lines: 'scuffs', chips: 'pits', turn: 1, scale: 1.5, chip: .7, line: .6 } },
 };
 export const MODELS: Partial<Record<MachineKind | 'kasse' | 'phone', ModelSpec>> = {
-  kiosk: { url: '/models/vending-machine.glb', height: 1.95, screen: { w: 0.42, h: 0.74, y: 1.3, x: -0.1, zOffset: 0.06 }, tintMaterials: ['VendingMachine_Albedo'] },
+  kiosk: { url: '/models/vending-machine.glb.gz?v=446d7dfc', height: 1.95, screen: { w: 0.42, h: 0.74, y: 1.3, x: -0.1, zOffset: 0.06 }, tintMaterials: ['VendingMachine_Albedo'] },
   // Kontakt: a classic yellow phone booth (hero_booth_gen.py). 1.95 m like every station, so it covers neither the wall
   // title nor the TV; its panes are enclosure glass, its lamp warms the inside.
-  phone: { url: '/models/phone-booth-v1.glb?v=31542388', height: STATION_HEIGHT, y: 0, z: 0, enclosure: true, lamp: 0xffe2b8,
+  phone: { url: '/models/phone-booth-v1.glb.gz?v=63a81a62', height: STATION_HEIGHT, y: 0, z: 0, enclosure: true, lamp: 0xffe2b8,
     hero: { seed: 'booth', lines: 'scuffs', chips: 'chips', turn: 1.3, scale: 1.3, chip: .8, line: .8 } },
 };
 
@@ -284,16 +284,42 @@ const FLOOR_CAST = false;
 /** Plush prizes inside the claw machine, in the machine's floor space (metres; x right, z towards the glass front). */
 const CLAW_PRIZES: { url: string; size: number; x: number; y?: number; z: number; rotY?: number }[] = [
   // Meshy models from generated reference images (scripts/models/claw-plush-generate.py); the heaps are single meshes, so the toys really press into each other.
-  { url: '/models/plush/pile-back-v1.glb', size: .64, x: 0, z: -.27 },
-  { url: '/models/plush/pile-side-v1.glb', size: .52, x: -.27, z: -.03, rotY: 1.25 },
-  { url: '/models/plush/whale-v1.glb', size: .25, x: .29, z: -.02, rotY: -1.0 },
-  { url: '/models/plush/axolotl-v1.glb', size: .2, x: .3, y: .075, z: -.05, rotY: -.75 },
-  { url: '/models/plush/cat-v1.glb', size: .2, x: .29, z: .27, rotY: -.45 },
-  { url: '/models/plush/axolotl-v1.glb', size: .17, x: -.2, z: .32, rotY: .35 },
-  { url: '/models/plush/whale-v1.glb', size: .21, x: .05, z: .33, rotY: -.35 },
+  { url: '/models/plush/pile-back-v1.glb.gz?v=32bd56e1', size: .64, x: 0, z: -.27 },
+  { url: '/models/plush/pile-side-v1.glb.gz?v=d9abc5c2', size: .52, x: -.27, z: -.03, rotY: 1.25 },
+  { url: '/models/plush/whale-v1.glb.gz?v=7c165f7a', size: .25, x: .29, z: -.02, rotY: -1.0 },
+  { url: '/models/plush/axolotl-v1.glb.gz?v=20a22ed4', size: .2, x: .3, y: .075, z: -.05, rotY: -.75 },
+  { url: '/models/plush/cat-v1.glb.gz?v=8d4675d9', size: .2, x: .29, z: .27, rotY: -.45 },
+  { url: '/models/plush/axolotl-v1.glb.gz?v=20a22ed4', size: .17, x: -.2, z: .32, rotY: .35 },
+  { url: '/models/plush/whale-v1.glb.gz?v=7c165f7a', size: .21, x: .05, z: .33, rotY: -.35 },
 ];
 // Dieselbe Datei (z. B. nori.glb als Figur und als Preis) nur einmal laden
 THREE.Cache.enabled = true;
+
+/**
+ * Hall models ship gzip-wrapped (`.glb.gz`, scripts/models/gzip-models.mjs): Pages serves model files uncompressed.
+ * One fetch per URL for the page's lifetime, shared by the early prefetch, the load itself and a model used twice
+ * (the plush prizes). Bytes without the gzip magic (a CDN that already inflated them, a plain `.glb`) pass through.
+ * A bare `fetch()` matches `<link rel="preload" as="fetch" crossorigin>` (scripts/modulepreload.mjs), so a preloaded
+ * model is not downloaded twice.
+ */
+const modelBytes = new Map<string, Promise<ArrayBuffer>>();
+function fetchModel(url: string): Promise<ArrayBuffer> {
+  let bytes = modelBytes.get(url);
+  if (!bytes) {
+    bytes = (async () => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Hall model unavailable (${response.status}): ${url}`);
+      const buffer = await response.arrayBuffer();
+      const magic = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
+      if (magic[0] !== 0x1f || magic[1] !== 0x8b) return buffer;
+      return new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    })();
+    // A failed download may be retried by the next load; a prefetch nobody awaits yet must not surface as unhandled.
+    bytes.catch(() => { if (modelBytes.get(url) === bytes) modelBytes.delete(url); });
+    modelBytes.set(url, bytes);
+  }
+  return bytes;
+}
 
 /**
  * Die Generatoren exportieren jedes Material als MeshPhysicalMaterial (Clearcoat/Specular-Erweiterungen) —
@@ -699,6 +725,14 @@ export class HallScene {
 
   constructor(container: HTMLElement, items: HallItem[], initial: number, cb: SceneCallbacks, opts: { reduce: boolean; lite: boolean; pose?: Pose; frame?: Frame }) {
     this.container = container;
+    // Model downloads first, nearest station first: they used to start only once the room was built, and the line sat
+    // idle from 1.77 to 2.16 s (measured 2026-09-25). Bytes only; every model is still parsed where it was before.
+    const order = items.map((_, i) => i).sort((a, b) => Math.abs(a - initial) - Math.abs(b - initial));
+    for (const i of order) {
+      const url = items[i].kind === 'kasse' ? CLAW_MODEL : (MODELS_BY_SLUG[items[i].slug] ?? MODELS[items[i].kind])?.url;
+      if (url) void fetchModel(url);
+    }
+    void fetchModel(TV_RIG_MODEL);
     container.dataset.power = 'loading';
     container.dataset.startupPhase = 'assets';
     this.loadingManager.onStart = () => { this.managedLoading = true; };
@@ -982,7 +1016,7 @@ export class HallScene {
     // Figur neben dem Automaten: echtes Modell, sonst Sprite
     if (FLOOR_CAST && isMachine(item) && item.characterModel) {
       const done = this.track(index);
-      this.gltf.load(
+      this.loadGltf(
         item.characterModel,
         (g) => {
         done();
@@ -1013,7 +1047,6 @@ export class HallScene {
         m.extent = undefined;
         this.dirty = true;
         },
-        undefined,
         () => done(),
       );
     } else if (FLOOR_CAST && isMachine(item) && (item.characterSheet || item.character)) {
@@ -1048,7 +1081,7 @@ export class HallScene {
   /** Requisite: auf Ziel-Länge normieren, am Boden aufsetzen, neben den Automaten stellen */
   private loadProp(m: Machine, prop: { url: string; size: number; x: number; z: number; rotY?: number; glow?: string[] }) {
     const done = this.track(m.index);
-    this.gltf.load(
+    this.loadGltf(
       prop.url,
       (g) => {
       done();
@@ -1078,7 +1111,6 @@ export class HallScene {
       m.extent = undefined;
       this.dirty = true;
       },
-      undefined,
       () => done(),
     );
   }
@@ -1094,7 +1126,7 @@ export class HallScene {
     // Platzhalter bleibt unsichtbar, bis das Modell da ist — sonst blitzt beim Laden die alte Geometrie auf
     m.group.visible = false;
     const done = this.track(m.index);
-    this.gltf.load(
+    this.loadGltf(
       spec.url,
       (g) => {
       done();
@@ -1265,7 +1297,6 @@ export class HallScene {
         else this.markGoalChanged();
       }
       },
-      undefined,
       () => {
         // Modell fehlt (404 o. ä.): Platzhalter zeigen statt Lücke
         done();
@@ -1336,6 +1367,27 @@ export class HallScene {
     texture.needsUpdate = true;
     this.scene.environment = texture;
     this.artworkTextures.add(texture);
+  }
+
+  /**
+   * Every hall GLB goes through here: GLTFLoader.load's contract (onLoad, onError, else console.error; LoadingManager
+   * itemStart / itemError / itemEnd, so a missing model still fails startup) over fetchModel's gzip-aware bytes.
+   */
+  private loadGltf(url: string, onLoad: (gltf: GLTF) => void, onError?: (error: unknown) => void) {
+    const manager = this.loadingManager;
+    manager.itemStart(url);
+    const fail = (error: unknown) => {
+      if (onError) onError(error);
+      else console.error(error);
+      manager.itemError(url);
+      manager.itemEnd(url);
+    };
+    fetchModel(url).then((buffer) => {
+      this.gltf.parse(buffer, THREE.LoaderUtils.extractUrlBase(url), (gltf) => {
+        onLoad(gltf);
+        manager.itemEnd(url);
+      }, fail);
+    }).catch(fail);
   }
 
   /** Explicit work complements LoadingManager (fonts, HTML logos and bitmap decoding). */
@@ -1806,7 +1858,7 @@ export class HallScene {
    */
   private loadTvRig(scene: THREE.Scene, rig: THREE.Group, hang: THREE.Group, wheels: THREE.Mesh[], crude: THREE.Object3D[], x0: number, x1: number, railY: number, z: number) {
     const done = this.track(0);
-    this.gltf.load(TV_RIG_MODEL, (res) => {
+    this.loadGltf(TV_RIG_MODEL, (res) => {
       done();
       if (this.disposed) return;
       const root = res.scene;
@@ -1868,7 +1920,7 @@ export class HallScene {
       held('tv', hang, 0, 0, 0);
       for (const o of crude) { o.removeFromParent(); const m = o as THREE.Mesh; m.geometry?.dispose(); }
       this.dirty = this.mirrorDirty = true;
-    }, undefined, () => done());
+    }, () => done());
   }
 
   /**
@@ -2016,7 +2068,7 @@ export class HallScene {
     g.visible = false;
     const brand = m.brand;
     const done = this.track(m.index);
-    this.gltf.load(
+    this.loadGltf(
       CLAW_MODEL,
       (res) => {
         done();
@@ -2101,7 +2153,7 @@ export class HallScene {
         g.userData.kasse = { disc, carriage, claw, carriageRest, clawRest, k };
         if (!isMachine(m.item) && m.item.figure) {
           const doneF = this.track(m.index);
-          this.gltf.load(
+          this.loadGltf(
             m.item.figure,
             (fig) => {
               doneF();
@@ -2147,7 +2199,6 @@ export class HallScene {
               }
               this.dirty = true;
             },
-            undefined,
             () => doneF(),
           );
         }
@@ -2161,7 +2212,7 @@ export class HallScene {
         const panes = glass ? localBox(glass) : undefined;
         for (const pz of prizes) {
           if (pz.url) {
-            this.gltf.load(pz.url, (pr) => {
+            this.loadGltf(pz.url, (pr) => {
               if (this.disposed) return;
               const r = pr.scene;
               r.traverse((o) => {
@@ -2215,7 +2266,6 @@ export class HallScene {
         this.dirty = true;
         this.applyFocus(true);
       },
-      undefined,
       () => {
         done();
         this.buildKassePlaceholder(m);
@@ -2302,7 +2352,7 @@ export class HallScene {
     m.model = stage;
     if (!isMachine(m.item) && m.item.figure) {
       const done = this.track(m.index);
-      this.gltf.load(
+      this.loadGltf(
         m.item.figure,
         (res) => {
         done();
@@ -2330,7 +2380,6 @@ export class HallScene {
         stage.add(root);
         this.dirty = true;
         },
-        undefined,
         () => done(),
       );
     } else if (!isMachine(m.item) && m.item.portrait) {
