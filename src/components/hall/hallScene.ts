@@ -61,10 +61,10 @@ export type Frame = {
 export type CtlAction = 'lit' | 'dim' | 'hover' | 'press' | 'release' | 'idle';
 /** Namen der Bedienelemente in den Modellen (scripts/models/blender/*_gen.py) */
 /** The ceiling track, the trolley and the TV (hero_tv_gen.py): dusty steel up in the dark, wiped glossy bezel. */
-const TV_RIG_MODEL = '/models/tv-rig-v1.glb.gz?v=446cc7c8';
+const TV_RIG_MODEL = '/models/tv-rig-v1.glb.gz?v=15b5eea7';
 const TV_RIG_LOOK: HeroLook = { seed: 'tvrig', lines: 'swirls', chips: 'chips', turn: .4, scale: 1.6, chip: .4, line: .5 };
 /** The claw machine, rebuilt as a hero machine; its wear is its own (wiped glass box, dinged steel). */
-const CLAW_MODEL = '/models/claw-v2.glb.gz?v=cfbc9595';
+const CLAW_MODEL = '/models/claw-v2.glb.gz?v=05095413';
 const CLAW_LOOK: HeroLook = { seed: 'claw', lines: 'swirls', chips: 'chips', turn: .8, scale: .9, chip: .22, line: .3 };
 const SPIN_UP = new THREE.Vector3(0, 1, 0), SPIN_RIGHT = new THREE.Vector3(1, 0, 0);
 const CTL_NAME = /^(joy|btn|btn_\d+|start_\d+|trackball|tbtn_\d+|kbtn_\d+|sel_\d+)$/;
@@ -189,46 +189,46 @@ type ModelSpec = {
 /** One height for every station (Dennis, 2026-09-19: only tall machines, no zigzag skyline). Models scale uniformly. */
 const STATION_HEIGHT = 1.95;
 export const MODELS_BY_SLUG: Record<string, ModelSpec> = {
-  'echo-frequency': { url: '/models/cab-echo-frequency-v2.glb.gz?v=c638047e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  'echo-frequency': { url: '/models/cab-echo-frequency-v2.glb.gz?v=cb517594', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'echo', lines: 'swirls', chips: 'flakes', turn: .6, scale: 1.2, chip: 1.1, line: .5 } },
-  carillon: { url: '/models/cab-carillon-v2.glb.gz?v=bd274b0e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  carillon: { url: '/models/cab-carillon-v2.glb.gz?v=ee110e02', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'carillon', lines: 'scuffs', chips: 'flakes', turn: 2.7, scale: 1.25, chip: .7, line: .8 } },
-  'cab-no-9': { url: '/models/cab-cab-no-9-v2.glb.gz?v=84c98f41', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  'cab-no-9': { url: '/models/cab-cab-no-9-v2.glb.gz?v=d82ef4ef', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'cab9', lines: 'scratches', chips: 'flakes', turn: .5, scale: .75, chip: 1, line: 1.1 } },
-  'saute-survivors': { url: '/models/cab-saute-survivors-v2.glb.gz?v=9c53513e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  'saute-survivors': { url: '/models/cab-saute-survivors-v2.glb.gz?v=15af1fd6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'saute', lines: 'scuffs', chips: 'chips', turn: 2, scale: .8, chip: .8, line: .9 } },
   // Apps: Terminals (Desktop), Kiosk-Türme (Phone), Jukebox (Audio) — scripts/models/blender/machine_gen.py
-  nexus: { url: '/models/mach-nexus-v2.glb.gz?v=5185caf6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  nexus: { url: '/models/mach-nexus-v2.glb.gz?v=cf5ba696', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'nexus', lines: 'swirls', chips: 'pits', turn: 1.1, scale: 1.4, chip: .75, line: .85 } },
-  riftback: { url: '/models/mach-riftback-v4.glb.gz?v=1eb2f0dc', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true },
-  riftcast: { url: '/models/mach-riftcast-v2.glb.gz?v=7590ec0a', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  riftback: { url: '/models/mach-riftback-v4.glb.gz?v=ce03273b', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true },
+  riftcast: { url: '/models/mach-riftcast-v2.glb.gz?v=5937d7e6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'riftcast', lines: 'swirls', chips: 'chips', turn: .2, scale: 1, chip: .7, line: .9 } },
-  lowlight: { url: '/models/mach-lowlight-v2.glb.gz?v=11d97116', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  lowlight: { url: '/models/mach-lowlight-v2.glb.gz?v=3a53cd93', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'lowlight', lines: 'scratches', chips: 'pits', turn: 1.45, scale: 1.9, chip: .6, line: .55 } },
-  'vgm-battle': { url: '/models/cab-vgm-battle-v2.glb.gz?v=7764d3f8', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  'vgm-battle': { url: '/models/cab-vgm-battle-v2.glb.gz?v=69830bfe', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'vgm', lines: 'scuffs', chips: 'flakes', turn: .3, scale: 1, chip: .8, line: 1 } },
-  berry: { url: '/models/mach-berry-v2.glb.gz?v=4222254d', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  berry: { url: '/models/mach-berry-v2.glb.gz?v=f1eaab0e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'berry', lines: 'scratches', chips: 'chips', turn: 2.2, scale: 2.2, chip: .45, line: .8 } },
-  safeplate: { url: '/models/mach-safeplate-v2.glb.gz?v=d8aa314f', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  safeplate: { url: '/models/mach-safeplate-v2.glb.gz?v=2be49829', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'safeplate', lines: 'swirls', chips: 'chips', turn: 2.6, scale: 1.7, chip: .5, line: .7 } },
-  angry: { url: '/models/mach-angry.glb.gz?v=23099e88', height: STATION_HEIGHT, screenNames: ['screen'] },
-  briefly: { url: '/models/mach-briefly-v2.glb.gz?v=e79008a3', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  angry: { url: '/models/mach-angry.glb.gz?v=26b43834', height: STATION_HEIGHT, screenNames: ['screen'] },
+  briefly: { url: '/models/mach-briefly-v2.glb.gz?v=888be694', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'briefly', lines: 'swirls', chips: 'pits', turn: 2, scale: 2.3, chip: .45, line: .5 } },
-  mina: { url: '/models/mach-mina-v2.glb.gz?v=e0a024b6', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  mina: { url: '/models/mach-mina-v2.glb.gz?v=041dc71b', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'mina', lines: 'scuffs', chips: 'chips', turn: .9, scale: 1.1, chip: .95, line: 1 } },
-  snapsize: { url: '/models/mach-snapsize-v1.glb.gz?v=2cc7a23e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  snapsize: { url: '/models/mach-snapsize-v1.glb.gz?v=68a77c6e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     // .source-assets/models-in/mach-snapsize/screen-layout.json: desktop, laptop, tablet, phone
     screenLayout: [{ x: .168208, y: 0, w: .65968, h: .475433 }, { x: 0, y: .603806, w: .49476, h: .396194 },
       { x: .550397, y: .549219, w: .263872, h: .450781 }, { x: .866002, y: .628458, w: .133998, h: .371542 }],
     hero: { seed: 'snapsize', lines: 'scratches', chips: 'pits', turn: 1.3, scale: 1.3, chip: .7, line: .8 } },
-  hookline: { url: '/models/mach-hookline-v2.glb.gz?v=c91a2e2e', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+  hookline: { url: '/models/mach-hookline-v2.glb.gz?v=18adccbc', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'hookline', lines: 'scuffs', chips: 'pits', turn: 1, scale: 1.5, chip: .7, line: .6 } },
 };
 export const MODELS: Partial<Record<MachineKind | 'kasse' | 'phone', ModelSpec>> = {
-  kiosk: { url: '/models/vending-machine.glb.gz?v=446d7dfc', height: 1.95, screen: { w: 0.42, h: 0.74, y: 1.3, x: -0.1, zOffset: 0.06 }, tintMaterials: ['VendingMachine_Albedo'] },
+  kiosk: { url: '/models/vending-machine.glb.gz?v=ef5c3a9e', height: 1.95, screen: { w: 0.42, h: 0.74, y: 1.3, x: -0.1, zOffset: 0.06 }, tintMaterials: ['VendingMachine_Albedo'] },
   // Kontakt: a classic yellow phone booth (hero_booth_gen.py). 1.95 m like every station, so it covers neither the wall
   // title nor the TV; its panes are enclosure glass, its lamp warms the inside.
-  phone: { url: '/models/phone-booth-v1.glb.gz?v=63a81a62', height: STATION_HEIGHT, y: 0, z: 0, enclosure: true, lamp: 0xffe2b8,
+  phone: { url: '/models/phone-booth-v1.glb.gz?v=7777dc20', height: STATION_HEIGHT, y: 0, z: 0, enclosure: true, lamp: 0xffe2b8,
     hero: { seed: 'booth', lines: 'scuffs', chips: 'chips', turn: 1.3, scale: 1.3, chip: .8, line: .8 } },
 };
 
@@ -284,13 +284,13 @@ const FLOOR_CAST = false;
 /** Plush prizes inside the claw machine, in the machine's floor space (metres; x right, z towards the glass front). */
 const CLAW_PRIZES: { url: string; size: number; x: number; y?: number; z: number; rotY?: number }[] = [
   // Meshy models from generated reference images (scripts/models/claw-plush-generate.py); the heaps are single meshes, so the toys really press into each other.
-  { url: '/models/plush/pile-back-v1.glb.gz?v=32bd56e1', size: .64, x: 0, z: -.27 },
-  { url: '/models/plush/pile-side-v1.glb.gz?v=d9abc5c2', size: .52, x: -.27, z: -.03, rotY: 1.25 },
-  { url: '/models/plush/whale-v1.glb.gz?v=7c165f7a', size: .25, x: .29, z: -.02, rotY: -1.0 },
-  { url: '/models/plush/axolotl-v1.glb.gz?v=20a22ed4', size: .2, x: .3, y: .075, z: -.05, rotY: -.75 },
-  { url: '/models/plush/cat-v1.glb.gz?v=8d4675d9', size: .2, x: .29, z: .27, rotY: -.45 },
-  { url: '/models/plush/axolotl-v1.glb.gz?v=20a22ed4', size: .17, x: -.2, z: .32, rotY: .35 },
-  { url: '/models/plush/whale-v1.glb.gz?v=7c165f7a', size: .21, x: .05, z: .33, rotY: -.35 },
+  { url: '/models/plush/pile-back-v1.glb.gz?v=db12b5c3', size: .64, x: 0, z: -.27 },
+  { url: '/models/plush/pile-side-v1.glb.gz?v=f0ec7149', size: .52, x: -.27, z: -.03, rotY: 1.25 },
+  { url: '/models/plush/whale-v1.glb.gz?v=f05d7dd6', size: .25, x: .29, z: -.02, rotY: -1.0 },
+  { url: '/models/plush/axolotl-v1.glb.gz?v=4c09fe29', size: .2, x: .3, y: .075, z: -.05, rotY: -.75 },
+  { url: '/models/plush/cat-v1.glb.gz?v=908b2c47', size: .2, x: .29, z: .27, rotY: -.45 },
+  { url: '/models/plush/axolotl-v1.glb.gz?v=4c09fe29', size: .17, x: -.2, z: .32, rotY: .35 },
+  { url: '/models/plush/whale-v1.glb.gz?v=f05d7dd6', size: .21, x: .05, z: .33, rotY: -.35 },
 ];
 // Dieselbe Datei (z. B. nori.glb als Figur und als Preis) nur einmal laden
 THREE.Cache.enabled = true;
