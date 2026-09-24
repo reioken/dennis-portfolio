@@ -726,6 +726,8 @@ export class HallScene {
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = .98;
+    // getShaderInfoLog after every compile stalls on the driver (~110 ms at startup); production shaders are fixed
+    r.debug.checkShaderErrors = import.meta.env.DEV;
     r.domElement.className = 'hall__canvas';
     r.domElement.setAttribute('aria-hidden', 'true');
     container.appendChild(r.domElement);
@@ -973,11 +975,9 @@ export class HallScene {
     const m: Machine = { index, item, group, screen, marquee, marqueeGlow, textures: [], raw: [], bitmaps: [], screenIdx: 0, loaded: false, brand, props: [], ctl: new Map() };
     this.machines.push(m);
 
-    // Leuchtschild: Logo + Name
-    if (marquee && isMachine(item)) {
-      marquee.material.map = textTexture(item.title, `#${brand.getHexString()}`, { aspect: artworkAspect(marquee) });
-      marquee.material.needsUpdate = true;
-    }
+    // Leuchtschild des Platzhalters: nur, wenn er auch zu sehen sein wird. Jeder Automat mit Modell verwirft ihn
+    // beim Laden (die Hero-Automaten tragen gar keins) — 16 Canvas-Schilder kosteten ~600 ms im Start-Task.
+    if (item.kind === 'kasse' || !(MODELS_BY_SLUG[item.slug] ?? MODELS[item.kind])) this.paintPlaceholderMarquee(m);
 
     // Figur neben dem Automaten: echtes Modell, sonst Sprite
     if (FLOOR_CAST && isMachine(item) && item.characterModel) {
@@ -1081,6 +1081,12 @@ export class HallScene {
       undefined,
       () => done(),
     );
+  }
+
+  private paintPlaceholderMarquee(m: Machine) {
+    if (!m.marquee || !isMachine(m.item)) return;
+    m.marquee.material.map = textTexture(m.item.title, `#${m.brand.getHexString()}`, { aspect: artworkAspect(m.marquee) });
+    m.marquee.material.needsUpdate = true;
   }
 
   /** GLB laden, auf Zielhöhe skalieren, am Boden zentrieren; Bildschirm per Namen oder als Fläche davor */
@@ -1263,7 +1269,9 @@ export class HallScene {
       () => {
         // Modell fehlt (404 o. ä.): Platzhalter zeigen statt Lücke
         done();
+        this.paintPlaceholderMarquee(m);
         m.group.visible = true;
+        this.dirty = true;
       },
     );
   }

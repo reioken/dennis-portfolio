@@ -42,14 +42,19 @@ async function reachable(distDir, entry, cache) {
  * the network sat idle from 0.5 s (JS done) to 1.4 s (scene constructed, loaders started) while these megabytes
  * were still to come. `as="fetch" crossorigin` matches three's FileLoader and the environment fetch, so the
  * preloaded response is reused. Phone case pages are native and never start the hall: they get a media condition.
+ * The figure and plush only on the pages that open at the claw machine (home, About); elsewhere the hall opens at
+ * another station and 2.4 MB of claw files would compete with that station's own (measured 2026-09-25).
+ * `fetchpriority="low"`: at normal priority they held React DOM back until 1.75 s; low still fills the idle line.
  */
-async function firstViewAssets(distDir, html) {
+const CLAW_FIRST = /^(en[\\/])?(about[\\/])?index\.html$/;
+async function firstViewAssets(distDir, html, rel) {
   const figure = html.match(/\/models\/dennis\.glb\?v=[0-9a-f]+/)?.[0];
+  const claw = CLAW_FIRST.test(rel);
   const wanted = [
     '/textures/hall-environment-v2.bin.gz',
-    figure,
-    '/models/plush/pile-back-v1.glb',
-    '/models/plush/pile-side-v1.glb',
+    claw && figure,
+    claw && '/models/plush/pile-back-v1.glb',
+    claw && '/models/plush/pile-side-v1.glb',
   ].filter(Boolean);
   const present = [];
   for (const href of wanted) {
@@ -67,10 +72,11 @@ export async function addModulePreloads(distDir) {
     if (!island || html.includes('rel="modulepreload"')) continue;
     const chunks = await reachable(distDir, island[1], cache);
     // Match Hall.nativeCase and hall-panel.css: project pages below 900 px never boot the hall.
-    const media = /(^|[\\/])work[\\/]/.test(path.relative(distDir, file)) ? ' media="(min-width: 900px)"' : '';
-    const firstView = await firstViewAssets(distDir, html);
+    const rel = path.relative(distDir, file);
+    const media = /(^|[\\/])work[\\/]/.test(rel) ? ' media="(min-width: 900px)"' : '';
+    const firstView = await firstViewAssets(distDir, html, rel);
     const tags = chunks.map((href) => `<link rel="modulepreload" href="${href}">`).join('')
-      + firstView.map((href) => `<link rel="preload" as="fetch" crossorigin href="${href}"${media}>`).join('');
+      + firstView.map((href) => `<link rel="preload" as="fetch" crossorigin fetchpriority="low" href="${href}"${media}>`).join('');
     await writeFile(file, html.replace('</head>', `${tags}</head>`), 'utf8');
     pages += 1; links += chunks.length; assets += firstView.length;
   }
