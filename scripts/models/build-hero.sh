@@ -56,4 +56,5 @@ node scripts/models/hero-attach-mask.mjs "$NAME" 2>&1 | tail -1 | cut -c1-60
 node scripts/models/optimize.mjs --only "$NAME" --keep-attributes --size "$ATLAS_SIZE" 2>&1 | grep "models\]"
 rm -f ".source-assets/models-original/$NAME.glb"
 node scripts/models/pack-models.mjs --only "$NAME" 2>&1 | tail -1
-sha256sum "public/models/$NAME.glb" | cut -c1-8
+# The hall loads the gzip twin: mask alpha lossy, Meshopt high, gzip -9. Prints the URL with its ?v= for hallScene.ts.
+node scripts/models/gzip-models.mjs --only "$NAME" | head -1

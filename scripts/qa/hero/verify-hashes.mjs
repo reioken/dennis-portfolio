@@ -17,7 +17,7 @@ for (const f of files) {
   const p = path.join(ROOT, f);
   if (!existsSync(p)) continue;
   const src = readFileSync(p, 'utf8');
-  const re = /['"`](\/[^'"`\s?]+\.(?:glb|webp|avif|png|jpg|ktx2|bin|bin\.gz|json))\?v=([0-9a-f]{6,})['"`]/g;
+  const re = /['"`](\/[^'"`\s?]+\.(?:glb|glb\.gz|webp|avif|png|jpg|ktx2|bin|bin\.gz|json))\?v=([0-9a-f]{6,})['"`]/g;
   let m;
   while ((m = re.exec(src))) {
     const [, url, v] = m;

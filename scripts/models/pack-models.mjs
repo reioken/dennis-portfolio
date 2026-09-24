@@ -6,6 +6,7 @@
 // kept in .source-assets/models-original/ for rollback.
 //   node scripts/models/shrink-textures.mjs && node scripts/models/pack-models.mjs [--dry] [--only <name>]
 // --only packs one file: a full run rewrites every GLB byte-wise, and those names are edge-cached for a day.
+// The hall does not load this output directly: gzip-models.mjs --only <name> turns it into <name>.glb.gz.
 import { NodeIO, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, prune, resample, meshopt } from '@gltf-transform/functions';

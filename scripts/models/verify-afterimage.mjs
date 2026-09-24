@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import zlib from 'node:zlib';
 const baseline='.source-assets/afterimage-baseline-2026-09-10/models/';
 const current='public/models/';
 const hash=p=>createHash('sha256').update(fs.readFileSync(p)).digest('hex');
@@ -55,6 +56,8 @@ for(const name of names){
 }
 assert.equal(hash(current+'dennis.glb'),hash(baseline+'dennis.glb'),'Puppet model changed');
 assert.equal(hash(current+'chars/nori.glb'),hash(baseline+'chars/nori.glb'),'Nori model changed');
+// The hall serves the gzip twins (gzip-models.mjs keeps these two byte-identical inside the .gz).
+for(const n of ['dennis.glb','chars/nori.glb'])if(fs.existsSync(current+n+'.gz'))assert.ok(zlib.gunzipSync(fs.readFileSync(current+n+'.gz')).equals(fs.readFileSync(current+n)),n+'.gz differs from '+n);
 const report={models:rows,puppetSha256:hash(current+'dennis.glb'),puppetUnchanged:true,noriUnchanged:true};
 fs.writeFileSync('.source-assets/models-afterimage/verification.json',JSON.stringify(report,null,2));
 console.log(JSON.stringify(report,null,2));
