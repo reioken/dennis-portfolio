@@ -18,6 +18,9 @@ document.addEventListener('astro:before-swap', event => {
     if (returning && (window as Window & { __glOk?: boolean }).__glOk !== false) next.documentElement.classList.add('gl-pending');
     return;
   }
+  // The running hall already has its first-view files; a preload the next page brings back (after a detour through a
+  // page without the hall, the router dropped it) would fetch them again and warn "preloaded but not used".
+  next.head.querySelectorAll('link[rel="preload"][as="fetch"]').forEach(link => link.remove());
   if (!returning) {
     const slot = next.createElement('div');
     slot.setAttribute('data-astro-transition-persist', 'hall');
