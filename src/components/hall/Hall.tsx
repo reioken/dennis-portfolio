@@ -106,6 +106,13 @@ function Bi({ de, en }: { de: string; en?: string }) {
   );
 }
 
+/** Station screens are `@sm.avif` (hall-items screenSrc); without an AVIF decoder take the `@sm.webp` beside it. */
+const webpFallback = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = e.currentTarget;
+  const alt = img.src.replace(/@sm\.avif$/, '@sm.webp');
+  if (alt !== img.src) img.src = alt;
+};
+
 export const isMachine = (it: HallItem): it is HallMachine => it.kind !== 'kasse' && it.kind !== 'phone';
 
 /**
@@ -1175,6 +1182,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
                         alt=""
                         loading="lazy"
                         decoding="async"
+                        onError={webpFallback}
                       />
                     ))}
                     <span className="m-screen__scan" />
@@ -1233,7 +1241,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
                 ) : null}
   
                 <span className="m-reflect" aria-hidden>
-                  {shots[0] ? <img src={shots[0]} alt="" loading="lazy" decoding="async" /> : null}
+                  {shots[0] ? <img src={shots[0]} alt="" loading="lazy" decoding="async" onError={webpFallback} /> : null}
                 </span>
                 <span className="m-glow" aria-hidden />
               </a>

@@ -54,6 +54,13 @@ html.gl-pending .hall__lamps {
 html.gl-pending .hall__row {
   display: none;
 }
+/* Below 900 px a project page is a native reading page and the hall behind it is never shown (Hall.tsx nativeCase,
+   HallGuard sets the class): its row would still fetch other stations' screens, characters and the portrait. */
+@media (max-width: 899px) {
+  html.hall-native .hall__row {
+    display: none;
+  }
+}
 /* Schild, Leiste, Pfeile und Hinweis kommen erst mit der Bühne — nichts baut sich sichtbar auf */
 .hall__plaque,
 .hall__track,

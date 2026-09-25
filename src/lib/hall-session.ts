@@ -10,6 +10,9 @@ document.addEventListener('astro:before-swap', event => {
   const hall = document.querySelector<HTMLElement>(hallSelector);
   if (!next) return;
   const returning = Boolean(next.querySelector(hallSelector));
+  // Same test as HallGuard: set before the swap, so the persisted CSS row never shows (and loads) for a moment.
+  const to = (swap as Event & { to?: URL }).to;
+  next.documentElement.classList.toggle('hall-native', window.innerWidth < 900 && /^\/(en\/)?work\/[^/]+\/?$/.test(to?.pathname ?? ''));
   if ((hall || returning) && swap.viewTransition) {
     void swap.viewTransition.ready.catch(() => {});
     swap.viewTransition.skipTransition();

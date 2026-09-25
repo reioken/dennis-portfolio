@@ -13,11 +13,18 @@ import { arcadeBuild } from './arcade-build';
 
 const asset = (src: string) => p(src.replace(/^\//, ''));
 
-/** Kleine Variante bevorzugen, wenn scripts/build-thumbs.mjs eine erzeugt hat */
+/**
+ * Kleine Variante bevorzugen, wenn scripts/build-thumbs.mjs eine erzeugt hat — als AVIF, das dieselbe Datei ist, die
+ * das Panel (CaseCaptures) lädt: sonst kam jede Aufnahme einer Station zweimal (WebP für die Halle, AVIF fürs Panel).
+ * Ohne AVIF-Decoder fallen Halle und CSS-Reihe auf das `@sm.webp` daneben zurück (hallScene.loadScreen, Hall.tsx).
+ */
 function screenSrc(src: string) {
   const clean = src.replace(/^\//, '');
-  const sm = clean.replace(/(\.\w+)$/, '@sm.webp');
-  return fs.existsSync(path.join(process.cwd(), 'public', sm)) ? p(sm) : p(clean);
+  for (const ext of ['@sm.avif', '@sm.webp']) {
+    const sm = clean.replace(/(\.\w+)$/, ext);
+    if (fs.existsSync(path.join(process.cwd(), 'public', sm))) return p(sm);
+  }
+  return p(clean);
 }
 
 /** Transparentes Logo fürs Leuchtschild, wenn public/media/<slug>/marquee.webp existiert */

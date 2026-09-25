@@ -2426,6 +2426,24 @@ export class HallScene {
     m.props.push(claw);
   }
 
+  /**
+   * A station screen image. hall-items serves the `@sm.avif` the panel also loads; a browser without an AVIF decoder
+   * gets the `@sm.webp` beside it. The AVIF attempt stays outside the LoadingManager, whose onError fails startup; the
+   * WebP fallback goes through it like every screen did before.
+   */
+  private loadScreen(src: string, onLoad: () => void, onError: () => void) {
+    const alt = src.replace(/@sm\.avif$/, '@sm.webp');
+    if (alt === src) return this.loader.load(src, onLoad, undefined, onError);
+    const t = new THREE.TextureLoader().load(src, onLoad, undefined, () => {
+      new THREE.ImageLoader(this.loadingManager).load(alt, (image) => {
+        t.image = image;
+        t.needsUpdate = true;
+        onLoad();
+      }, undefined, onError);
+    });
+    return t;
+  }
+
   private ensureTextures(m: Machine) {
     if (!isMachine(m.item) || !m.screen) return;
     if (m.textures.length) return;
@@ -2434,7 +2452,7 @@ export class HallScene {
     m.textures = m.item.screens.map((src, k) => {
       if (k > 0) {
         this.deferScreen(m.index, () => new Promise<void>(resolve => {
-          const t = this.loader.load(src, () => {
+          const t = this.loadScreen(src, () => {
             if (this.disposed || this.startupFailed) { resolve(); return; }
             // Decode off the main drawing path before any canvas fitting/upload.
             const image = t.image as HTMLImageElement;
@@ -2452,7 +2470,7 @@ export class HallScene {
                 });
               });
             }).finally(resolve);
-          }, undefined, () => resolve());
+          }, () => resolve());
           t.colorSpace = THREE.SRGBColorSpace;
           t.anisotropy = 4;
           // Keep pending ownership for disposal without making the slide displayable.
@@ -2461,7 +2479,7 @@ export class HallScene {
         return null;
       }
       const done = this.track(m.index);
-      const t = this.loader.load(src, () => {
+      const t = this.loadScreen(src, () => {
         done();
         if (this.disposed || this.startupFailed) return;
         m.raw[k] = t;
@@ -2472,7 +2490,7 @@ export class HallScene {
         m.textures[k] = use;
         if (m.screen && !(m.index === this.focus && this.override) && !this.blackout) this.displayTexture(m, use, 0);
         this.dirty = true;
-      }, undefined, () => done());
+      }, () => done());
       t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = 4;
       return t;
