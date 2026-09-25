@@ -24,7 +24,7 @@ import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './
 import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMaterials';
 import { loadHeroMaps, heroMaterial, isHeroMaterial, stripHeroLight, makeHeroGlow, marbleBall, type HeroMaps, type HeroGlow, type HeroLook } from './heroMaterial';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader, type GLTF, type GLTFParser } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -327,6 +327,36 @@ function fetchModel(url: string, priority?: 'high' | 'low' | 'auto'): Promise<Ar
 }
 
 /**
+ * Embedded GLB images decoded straight from their bytes. GLTFLoader wraps each image in a blob: URL and fetches it
+ * back; URL.createObjectURL blocked the main thread 15-50 ms per image (profile 2026-09-25), which a station arriving
+ * after the reveal showed as a hitch. Same createImageBitmap options as three's ImageBitmapLoader, so the pixels are
+ * identical; a failed image still reports to the LoadingManager, whose onError fails startup as before.
+ */
+function directImages(parser: GLTFParser, manager: THREE.LoadingManager) {
+  const load = parser.loadImageSource.bind(parser);
+  const cache = new Map<number, Promise<THREE.Texture>>();
+  parser.loadImageSource = (sourceIndex, loader) => {
+    const def = parser.json.images?.[sourceIndex] as { bufferView?: number; mimeType?: string; extras?: unknown; name?: string } | undefined;
+    if (!(loader as { isImageBitmapLoader?: boolean }).isImageBitmapLoader || def?.bufferView === undefined) return load(sourceIndex, loader);
+    const known = cache.get(sourceIndex);
+    if (known) return known.then(texture => texture.clone());
+    const texture = parser.getDependency('bufferView', def.bufferView)
+      .then((view: ArrayBuffer) => createImageBitmap(new Blob([view], { type: def.mimeType }), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' }))
+      .then(bitmap => {
+        const t = new THREE.Texture(bitmap);
+        t.needsUpdate = true;
+        if (def.extras && typeof def.extras === 'object') Object.assign(t.userData, def.extras);
+        t.userData.mimeType = def.mimeType;
+        return t;
+      });
+    texture.catch(() => manager.itemError(`glb-image:${def.name ?? sourceIndex}`));
+    cache.set(sourceIndex, texture);
+    return texture;
+  };
+  return { name: 'hall_direct_images' };
+}
+
+/**
  * Die Generatoren exportieren jedes Material als MeshPhysicalMaterial (Clearcoat/Specular-Erweiterungen) —
  * ohne echten Clearcoat kostet das nur Shader-Varianten und doppelte BRDF-Auswertung. Auf Standard zurück.
  */
@@ -600,7 +630,7 @@ export class HallScene {
   private loadingManager = new THREE.LoadingManager();
   private loader = new THREE.TextureLoader(this.loadingManager);
   /** Hall models are Meshopt-compressed (geometry and animation). */
-  private gltf = new GLTFLoader(this.loadingManager).setMeshoptDecoder(MeshoptDecoder);
+  private gltf = new GLTFLoader(this.loadingManager).setMeshoptDecoder(MeshoptDecoder).register(parser => directImages(parser, this.loadingManager));
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2(0, 0);
   private camX = 0;
@@ -717,7 +747,13 @@ export class HallScene {
     const done = this.track(this.focus);
     const k = Math.min(1, 1280 / Math.max(1, img.naturalWidth || img.width, img.naturalHeight || img.height));
     const opts: ImageBitmapOptions = k < 1 ? { resizeWidth: Math.round((img.naturalWidth || img.width) * k), resizeHeight: Math.round((img.naturalHeight || img.height) * k), resizeQuality: 'medium' } : {};
-    createImageBitmap(img, opts)
+    // From the file's bytes (a cache hit), not from the <img>: Chrome decodes and scales an element source on the
+    // main thread (50-90 ms per AVIF capture, profile 2026-09-25), a Blob source on a worker.
+    const src = img.currentSrc || img.src;
+    const source: Promise<ImageBitmapSource> = src && !src.startsWith('data:')
+      ? fetch(src).then((r): Promise<ImageBitmapSource> | ImageBitmapSource => (r.ok ? r.blob() : img)).catch(() => img)
+      : Promise.resolve(img);
+    source.then(s => createImageBitmap(s, opts))
       .then((bmp) => {
         if (!this.disposed) cb(bmp);
         else bmp.close();
@@ -2676,16 +2712,30 @@ export class HallScene {
       }
       const done = this.track(m.index);
       const t = this.loadScreen(src, () => {
-        done();
-        if (this.disposed || this.startupFailed) return;
-        m.raw[k] = t;
-        this.makeBitmap(t, bmp => { m.bitmaps[k] = bmp; this.dirty = true; });
-        if (m.gltfUv) t.flipY = false;
-        const use = this.fitTexture(t, src, m);
-        this.renderer.initTexture(use);
-        m.textures[k] = use;
-        if (m.screen && !(m.index === this.focus && this.override) && !this.blackout) this.displayTexture(m, use, 0);
-        this.dirty = true;
+        if (this.disposed || this.startupFailed) { done(); return; }
+        // Decode off the main thread. Uploading or scaling an <img> made Chrome decode the AVIF again on the main
+        // thread (50-90 ms each, profile 2026-09-25), a hitch for a station arriving after the reveal. A glTF screen
+        // (no flip) takes an ImageBitmap decoded on a worker from the cached file; anything else decodes first.
+        const image = t.image as HTMLImageElement;
+        const url = image.currentSrc || image.src;
+        const decoded = m.gltfUv && url && typeof createImageBitmap === 'function'
+          ? fetch(url).then(r => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+            .then(blob => createImageBitmap(blob, { premultiplyAlpha: 'none' }))
+            .then(bitmap => { (t as THREE.Texture).image = bitmap; t.flipY = false; t.needsUpdate = true; })
+            .catch(() => image.decode?.())
+          : Promise.resolve(image.decode?.());
+        decoded.catch(() => {}).then(() => {
+          done();
+          if (this.disposed || this.startupFailed) return;
+          m.raw[k] = t;
+          this.makeBitmap(t, bmp => { m.bitmaps[k] = bmp; this.dirty = true; });
+          if (m.gltfUv) t.flipY = false;
+          const use = this.fitTexture(t, src, m);
+          this.renderer.initTexture(use);
+          m.textures[k] = use;
+          if (m.screen && !(m.index === this.focus && this.override) && !this.blackout) this.displayTexture(m, use, 0);
+          this.dirty = true;
+        });
       }, () => done());
       t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = 4;
