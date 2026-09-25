@@ -2718,10 +2718,15 @@ export class HallScene {
         // (no flip) takes an ImageBitmap decoded on a worker from the cached file; anything else decodes first.
         const image = t.image as HTMLImageElement;
         const url = image.currentSrc || image.src;
+        // The worker path may take 4 s at most; then the element is used as before (startup counts this image).
+        const slow = new Promise<null>(resolve => window.setTimeout(() => resolve(null), 4000));
         const decoded = m.gltfUv && url && typeof createImageBitmap === 'function'
-          ? fetch(url).then(r => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
-            .then(blob => createImageBitmap(blob, { premultiplyAlpha: 'none' }))
-            .then(bitmap => { (t as THREE.Texture).image = bitmap; t.flipY = false; t.needsUpdate = true; })
+          ? Promise.race([fetch(url).then(r => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+            .then(blob => createImageBitmap(blob, { premultiplyAlpha: 'none' })), slow])
+            .then(bitmap => {
+              if (!bitmap) throw new Error('screen bitmap timeout');
+              (t as THREE.Texture).image = bitmap; t.flipY = false; t.needsUpdate = true;
+            })
             .catch(() => image.decode?.())
           : Promise.resolve(image.decode?.());
         decoded.catch(() => {}).then(() => {
