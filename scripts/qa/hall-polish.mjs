@@ -1,11 +1,14 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('polish-2026-09-11');
 const browser = await chromium.launch({headless:true,args:['--use-angle=d3d11']});
 const results=[];
 async function ready(page) {
- await page.goto('http://localhost:4322/',{waitUntil:'networkidle'});
- await page.waitForFunction(()=>document.querySelector('.hall.is-3d'),{timeout:20000});
+ await page.goto(BASE+'/',{waitUntil:'networkidle'});
+ await page.waitForFunction(()=>document.querySelector('.hall.is-3d'),null,{timeout:20000});
 }
 try {
  const context=await browser.newContext({viewport:{width:1440,height:900},reducedMotion:'reduce'});
@@ -29,9 +32,9 @@ try {
  assert.equal(await page.locator('dialog[open]').count(),0);
  results.push('Directory: wheel scrolls list without moving hall; Escape/backdrop close.');
  await page.locator('.hall-dock__open').click();await page.waitForURL('**/about/');await page.waitForTimeout(500);
- await page.keyboard.press('Escape');await page.waitForURL('http://localhost:4322/');await page.waitForTimeout(500);
+ await page.keyboard.press('Escape');await page.waitForURL(BASE+'/');await page.waitForTimeout(500);
  assert.deepEqual(errors,[]);results.push('About entry and Escape return: no unhandled browser errors.');
- await page.screenshot({path:'.source-assets/polish-2026-09-11/hall-interactions-desktop.png'});
+ await page.screenshot({path:out+'/hall-interactions-desktop.png'});
  await context.close();
  const phone=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});
  const mobile=await phone.newPage();await ready(mobile);
@@ -42,7 +45,7 @@ try {
  assert.equal(new URL(mobile.url()).pathname,'/');assert.equal(await mobile.locator('.hall-dock__stop').nth(1).getAttribute('aria-current'),'location');
  await mobile.locator('.hall-dock__open').tap();await mobile.waitForURL('**/work/**');
  results.push('Phone: swipe selects exactly one station without opening it; next deliberate tap opens project.');
- await mobile.screenshot({path:'.source-assets/polish-2026-09-11/hall-interactions-phone.png'});
+ await mobile.screenshot({path:out+'/hall-interactions-phone.png'});
  await phone.close();
- console.log(JSON.stringify({passed:results},null,2));await fs.writeFile('.source-assets/polish-2026-09-11/hall-interactions.json',JSON.stringify({passed:results},null,2));
+ console.log(JSON.stringify({passed:results},null,2));await fs.writeFile(out+'/hall-interactions.json',JSON.stringify({passed:results},null,2));
 }finally{await browser.close()}

@@ -1,7 +1,9 @@
 import {chromium} from 'playwright';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const out='.source-assets/smoothness-2026-09-11';await fs.mkdir(out,{recursive:true});
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('smoothness-2026-09-11');await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});const results=[];
 try {for(const warm of (process.env.CACHE_WARM_ONLY ? [true] : [false,true])) {
  const context=await browser.newContext({viewport:{width:1366,height:900},reducedMotion:'no-preference'});
@@ -14,7 +16,7 @@ try {for(const warm of (process.env.CACHE_WARM_ONLY ? [true] : [false,true])) {
  },{warm});
  const page=await context.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.stack??e.message));page.on('request',r=>{if(r.resourceType()==='document'||r.url().endsWith('.css'))requests.push({url:r.url(),type:r.resourceType()});});
  try{
-  await page.goto('http://localhost:4322/',{waitUntil:'domcontentloaded'});
+  await page.goto(BASE+'/',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('.hall__stage')&&!document.querySelector('.hall__stage').hasAttribute('data-power')&&!document.documentElement.classList.contains('gl-pending'),null,{timeout:45000});
   await page.waitForTimeout(1800);
   const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');await cdp.send('Network.emulateNetworkConditions',{offline:false,latency:450,downloadThroughput:250000,uploadThroughput:125000,connectionType:'cellular4g'});
@@ -29,9 +31,9 @@ try {for(const warm of (process.env.CACHE_WARM_ONLY ? [true] : [false,true])) {
   await fs.writeFile(`${out}/route-cache-${warm?'warm':'cold'}.json`,JSON.stringify({...data,requests,errors},null,2));
   await cdp.send('Network.emulateNetworkConditions',{offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1});
   if(warm){
-   await page.goBack();await page.waitForURL('http://localhost:4322/');await page.goForward();await page.waitForURL('**/about/');
+   await page.goBack();await page.waitForURL(BASE+'/');await page.goForward();await page.waitForURL('**/about/');
    await page.locator('.lang-switch').click();await page.waitForURL('**/en/about/');await page.waitForTimeout(1000);assert.equal(await page.locator('html').getAttribute('lang'),'en');
-   await page.locator('.site-nav__menu').click();await page.locator('.nav-dropdown__link[href="/en/"]').click();await page.waitForURL('http://localhost:4322/en/');await page.waitForFunction(()=>performance.getEntriesByName('hall:route-prepared').some(e=>e.detail?.path==='/en/about/'),null,{timeout:35000});
+   await page.locator('.site-nav__menu').click();await page.locator('.nav-dropdown__link[href="/en/"]').click();await page.waitForURL(BASE+'/en/');await page.waitForFunction(()=>performance.getEntriesByName('hall:route-prepared').some(e=>e.detail?.path==='/en/about/'),null,{timeout:35000});
    await page.locator('.hall-dock__open').click();await page.waitForURL('**/en/about/');await page.waitForTimeout(600);assert.equal(await page.locator('.hall').getAttribute('data-navigation-cache'),'hit','English About revisit cache');
    await cdp.send('Network.emulateNetworkConditions',{offline:false,latency:450,downloadThroughput:250000,uploadThroughput:125000,connectionType:'cellular4g'});
    await page.locator('.site-nav__direct[href="/en/contact/"]').click();

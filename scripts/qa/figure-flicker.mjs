@@ -1,7 +1,9 @@
 import {chromium} from 'playwright';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const out='.source-assets/polish-2026-09-11/figure-flicker';await fs.mkdir(out,{recursive:true});
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('polish-2026-09-11/figure-flicker');await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});
 const rows=[];
 try {
@@ -16,7 +18,7 @@ try {
    await route.fulfill({response,body});
   });
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://localhost:4322/about/',{waitUntil:'networkidle'});
+  await page.goto(BASE+'/about/',{waitUntil:'networkidle'});
   await page.waitForFunction(()=>window.__hall?.readyDone&&!document.documentElement.classList.contains('gl-pending'));
   await page.evaluate(variant=>{
    const s=window.__hall;s.stop();s.reduce=true;

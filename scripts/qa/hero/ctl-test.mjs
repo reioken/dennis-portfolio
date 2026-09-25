@@ -3,7 +3,7 @@
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
-const [BASE = 'http://localhost:4321', list = 'saute-survivors,berry,hookline,vgm-battle,riftcast', click = '480,420'] = process.argv.slice(2);
+const [BASE = 'http://localhost:4321', list = 'saute-survivors,berry,hookline,vgm-battle,snapsize', click = '480,420'] = process.argv.slice(2);
 const [CX, CY] = click.split(',').map(Number);
 const b = await chromium.launch({ headless: true, args: ['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist'] });
 const errs = [];

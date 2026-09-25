@@ -1,6 +1,8 @@
 import {chromium} from 'playwright';
 import fs from 'node:fs/promises';
-const out='.source-assets/smoothness-2026-09-11';await fs.mkdir(out,{recursive:true});
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('smoothness-2026-09-11');await fs.mkdir(out,{recursive:true});
 const name=process.env.PASS||'baseline';const width=Number(process.env.WIDTH||1366);
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});
 const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'no-preference'});
@@ -16,13 +18,13 @@ await context.addInitScript(()=>{
 });
 const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
 try{
- await page.goto('http://localhost:4322/',{waitUntil:'domcontentloaded'});
+ await page.goto(BASE+'/',{waitUntil:'domcontentloaded'});
  for(let i=0;i<4;i++){await page.waitForTimeout(1600);await page.screenshot({path:`${out}/${name}-${width}-startup-${i}.png`});}
  await page.waitForFunction(()=>window.__hall?.readyDone&&!document.querySelector('.hall__stage')?.hasAttribute('data-power'),null,{timeout:25000});
  await page.waitForTimeout(1000);
  for(const route of ['/about/','/','/work/riftback/','/work/lowlight/','/','/about/','/']){
   await page.evaluate(href=>{const a=[...document.querySelectorAll('a')].find(a=>a.getAttribute('href')===href&&!a.closest('[inert]'));if(!a)throw Error('no link '+href);a.click();},route);
-  await page.waitForURL('http://localhost:4322'+route);await page.waitForTimeout(1300);
+  await page.waitForURL(BASE+route);await page.waitForTimeout(1300);
  }
  const report=await page.evaluate(()=>({probe:window.__probe,resources:performance.getEntriesByType('resource').map(e=>({name:e.name,start:e.startTime,duration:e.duration,bytes:e.transferSize})),marks:performance.getEntriesByType('mark').map(e=>e.toJSON())}));
  await fs.writeFile(`${out}/${name}-${width}.json`,JSON.stringify({...report,errors}));

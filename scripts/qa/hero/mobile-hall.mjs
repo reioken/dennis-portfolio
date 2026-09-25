@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { writeFile } from 'node:fs/promises';
 import { outDir } from './_out.mjs';
+import { MACHINES, CONTENT_ONLY, STOP_COUNT } from './_stations.mjs';
 const [out, base = 'http://127.0.0.1:4322', before] = process.argv.slice(2);
 const dir = outDir(out, 'mobile-hall.mjs OUT BASE [--before]');
 const browser = await chromium.launch({headless:true,args:['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist']});
@@ -18,9 +19,10 @@ try {
   await page.waitForSelector('.hall.is-3d .hall__stage[data-startup-phase="ready"]', {timeout:60000});
   await page.waitForTimeout(4500);
   if(!before) {
-    assert.equal(await page.locator('.hall-dock__stop').count(),12,'Ten project machines plus About and Contact');
-    const railText=await page.locator('.hall-dock__rail').textContent();
-    for(const title of ['Mina','Briefly','Riftcast','Carillon']) assert.ok(!railText.includes(title), `${title} removed from hall stops`);
+    // Stops follow src/lib/hall-items.ts: ORDER without CONTENT_ONLY, plus About and Contact.
+    assert.equal(await page.locator('.hall-dock__stop').count(),STOP_COUNT,`${MACHINES.length} project machines plus About and Contact`);
+    const railText=(await page.locator('.hall-dock__rail').textContent()).toLowerCase();
+    for(const slug of CONTENT_ONLY) assert.ok(!railText.includes(slug.replace(/-/g,' ')), `content-only ${slug} is not a hall stop`);
   }
   await page.screenshot({path:`${dir}/claw-phone.png`});
   await page.locator('.hall-dock__arrow--next').tap();

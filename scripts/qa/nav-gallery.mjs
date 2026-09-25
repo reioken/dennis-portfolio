@@ -1,7 +1,9 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const out='.source-assets/polish-2026-09-11';
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('polish-2026-09-11');
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});
 const results=[];
 try {for(const mode of ['reduce','no-preference','no-js']) for(const width of [320,1366]) {
@@ -10,7 +12,7 @@ try {for(const mode of ['reduce','no-preference','no-js']) for(const width of [3
  for(const route of ['/work/forever/','/work/visual-craft/','/en/work/web-clients/']) {
   errors=[]; let result={mode,width,route};
   try {
-   await page.goto('http://localhost:4322'+route,{waitUntil:'networkidle'});
+   await page.goto(BASE+route,{waitUntil:'networkidle'});
    const first=page.locator('.shot-gallery__card,.shot-gallery__cover-trigger').first();
    await first.scrollIntoViewIfNeeded();
    await first.locator('img').evaluate(e=>e.decode());

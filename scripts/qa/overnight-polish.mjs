@@ -1,7 +1,9 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-const out='.source-assets/polish-2026-09-11';
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('polish-2026-09-11');
 const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});
 const results=[];
 try {
@@ -18,12 +20,10 @@ try {
    assert.deepEqual(errors,[]);steps.push({route,...state});
   }
   try {
-   await page.goto('http://localhost:4322/',{waitUntil:'networkidle'});await check('/');
+   await page.goto(BASE+'/',{waitUntil:'networkidle'});await check('/');
    const secondary=await context.newPage();await secondary.goto('about:blank');await secondary.bringToFront();await page.waitForTimeout(3000);await secondary.close();await page.bringToFront();await check('/');
    await page.locator('.hall-dock__open').tap();await check('/about/');
-   await page.locator('.hall-panel__reading').tap();
-   await page.screenshot({path:`${out}/overnight-reading-${width}.png`});
-   await page.keyboard.press('Escape');
+   await page.screenshot({path:`${out}/overnight-about-${width}.png`});
    await page.locator('.site-nav__menu').tap();await page.locator('.nav-dropdown__link[href="/contact/"]').tap();await check('/contact/');
    await page.locator('.hall-panel__body').evaluate(el=>el.scrollTop=el.scrollHeight);
    await page.locator('.site-nav__brand').tap();await check('/');

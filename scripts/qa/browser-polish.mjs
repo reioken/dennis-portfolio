@@ -1,7 +1,9 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-const out='.source-assets/polish-2026-09-11';
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('polish-2026-09-11');
 async function allRoutes(dir,rel=''){let out=[];for(const e of await fs.readdir(dir,{withFileTypes:true})){if(e.isDirectory()&&!['_astro','game-builds','media','models','fonts','textures','brand'].includes(e.name))out.push(...await allRoutes(path.join(dir,e.name),rel+e.name+'/'));else if(e.name==='index.html')out.push('/'+rel)}return out;}
 const routes=process.env.POLISH_ALL ? await allRoutes('dist') : process.env.POLISH_ROUTES?.split(',') ?? ['/', '/about/', '/contact/', '/work/', '/work/saute-survivors/', '/work/nexus/', '/work/berry/', '/work/mina/', '/arcade/', '/lab/', '/en/contact/', '/en/work/'];
 const widths=(process.env.POLISH_WIDTHS ?? '320,768,1440').split(',').map(Number);
@@ -13,13 +15,13 @@ try {
   const context=await browser.newContext({viewport:{width,height:Number(process.env.POLISH_HEIGHT)||(width<600?844:900)},deviceScaleFactor:1,isMobile:width<600,hasTouch:width<600,reducedMotion:'reduce'});
   const page=await context.newPage(); let errors=[];let failed=[];
   page.on('pageerror',e=>errors.push(e.message));
-  page.on('response',r=>{if(r.status()>=400&&r.url().startsWith('http://localhost:4322'))failed.push({status:r.status(),url:r.url()})});
+  page.on('response',r=>{if(r.status()>=400&&r.url().startsWith(BASE))failed.push({status:r.status(),url:r.url()})});
   // Form tests may only send to a local mock, never to the contact backend.
   await page.route('**/api/contact',route=>route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
   for(const route of routes){
    errors=[];failed=[];
    try {
-    await page.goto('http://localhost:4322'+route,{waitUntil:'networkidle',timeout:45000});
+    await page.goto(BASE+route,{waitUntil:'networkidle',timeout:45000});
     await page.waitForFunction(() => !document.documentElement.classList.contains('gl-pending'), null, {timeout:18000}).catch(() => {});
     await page.waitForTimeout(500);
     await page.evaluate(() => {const panel=document.querySelector('.hall-panel__body');if(panel) panel.scrollTop=panel.scrollHeight;else window.scrollTo(0,document.body.scrollHeight);});

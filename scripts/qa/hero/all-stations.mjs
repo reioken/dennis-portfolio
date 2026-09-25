@@ -1,12 +1,14 @@
-// One case-page screenshot per station (14), for the side-by-side wear sheet.
+// One case-page screenshot per machine station, for the side-by-side wear sheet (sheet.py). The station list comes from
+// src/lib/hall-items.ts (ORDER without CONTENT_ONLY, via _stations.mjs): 11 machines as of 2026-09-24.
 // usage: node scripts/qa/hero/all-stations.mjs <out-dir-outside-repo> [base-url] [slug,slug]
 import { createRequire } from 'node:module';
 import { outDir } from './_out.mjs';
+import { MACHINES } from './_stations.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const [outArg, BASE = 'http://localhost:4321', only = ''] = process.argv.slice(2);
 const S = outDir(outArg, 'node scripts/qa/hero/all-stations.mjs <out-dir-outside-repo> [base-url] [slug,slug]');
-const SLUGS = ['riftback', 'nexus', 'lowlight', 'vgm-battle', 'saute-survivors', 'echo-frequency', 'safeplate', 'cab-no-9', 'hookline', 'berry', 'carillon', 'riftcast', 'briefly', 'mina'];
+const SLUGS = MACHINES;
 const b = await chromium.launch({ headless: true, args: ['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist'] });
 const errs = [];
 const ctx = await b.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });

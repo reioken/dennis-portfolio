@@ -1,6 +1,12 @@
+// Project panel, close-up, fullscreen and lightbox (preview server, 4322) at 390x844, 844x390 and 1366x900.
+// Below 900 px project pages are native since d58c490 (2026-09-17): no hall and no close-up there, the captures are a
+// carousel and a tap opens the lightbox, so those viewports check that flow instead. The reading-mode steps were
+// removed with the reading mode (012b6da, 2026-09-12).
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
-const out = '.source-assets/polish-2026-09-11';
+import {base,outDir,expectNativeCase,openNativeLightbox} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('polish-2026-09-11');
 const pass = process.env.GALLERY_PASS || 'gallery';
 await fs.mkdir(out, {recursive:true});
 const browser = await chromium.launch({headless:true,args:['--use-angle=d3d11']});
@@ -13,21 +19,40 @@ async function geometry(page){return page.evaluate(()=>{
 async function capture(page,row,name){row.geometry[name]=await geometry(page);await page.screenshot({path:`${out}/${pass}-${row.viewport}-${name}.png`});}
 async function sceneReady(page){await page.waitForFunction(()=>!document.documentElement.classList.contains('gl-pending'),null,{timeout:25000});await page.waitForTimeout(500);}
 async function openCapture(page){await page.locator('.captures__large').click();await page.locator('.closeup__screen').waitFor({state:'visible'});await page.waitForTimeout(300);}
+const settle=p=>p.then(s=>({ok:true,s}),e=>({ok:false,s:String(e)}));
+async function nativeFlow(page,row){
+ const native=await settle(expectNativeCase(page));
+ check(row,'native project page: hall not booted, captures carousel, full-width panel',native.ok,native.s);
+ const fit=await openNativeLightbox(page,0);await capture(page,row,'lightbox');
+ check(row,'slide tap opens lightbox with the image fitted and centered',fit.ok,fit);
+ check(row,'lightbox thumbnail buttons all named',await page.locator('.gallery-view__film-item').evaluateAll(es=>es.every(e=>!!e.getAttribute('aria-label'))));
+ const before=await page.locator('.gallery-view__count').innerText();await page.keyboard.press('ArrowRight');await page.waitForTimeout(160);
+ check(row,'lightbox keyboard navigation',await page.locator('.gallery-view__count').innerText()!==before);
+ await page.keyboard.press('Escape');await page.waitForTimeout(220);
+ check(row,'Escape closes the lightbox and stays on the project',await page.locator('.gallery-view').count()===0&&page.url().includes('/work/saute-survivors'));
+ await page.goto(BASE+'/about/',{waitUntil:'networkidle',timeout:60000});await sceneReady(page);
+ await capture(page,row,'about');
+ check(row,'about panel stays inside viewport',await page.locator('.hall-panel').evaluate(e=>{const r=e.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1}));
+ await page.goto(BASE+'/work/riftback/',{waitUntil:'networkidle',timeout:60000});await sceneReady(page);
+ check(row,'riftback is native too',(await settle(expectNativeCase(page))).ok);
+ const src=()=>page.locator('.captures__slide img').first().getAttribute('src');
+ const oldSource=await src();
+ await page.locator('.captures__chips button').nth(1).click();await page.waitForTimeout(240);
+ check(row,'surface switch changes the carousel images',await src()!==oldSource);
+ check(row,'phone surface uses the portrait carousel',await page.locator('.captures').evaluate(e=>e.classList.contains('captures--phone')));
+ await capture(page,row,'phone-surface');
+}
 try{
  for(const v of [{width:390,height:844},{width:844,height:390},{width:1366,height:900}]){
   const context=await browser.newContext({viewport:v,deviceScaleFactor:1,isMobile:v.width<900,hasTouch:v.width<900,reducedMotion:'reduce'});
   const page=await context.newPage();const row={viewport:`${v.width}x${v.height}`,checks:[],geometry:{},errors:[]};results.push(row);
   page.on('pageerror',e=>row.errors.push(e.message));
   try{
-   await page.goto('http://localhost:4322/work/saute-survivors/',{waitUntil:'networkidle',timeout:60000});
-   await page.locator('.captures__large').waitFor();await sceneReady(page);
+   await page.goto(BASE+'/work/saute-survivors/',{waitUntil:'networkidle',timeout:60000});
+   await page.locator('.captures').first().waitFor();await sceneReady(page);
    await capture(page,row,'panel');
    check(row,'panel stays inside viewport',await page.locator('.hall-panel').evaluate(e=>{const r=e.getBoundingClientRect();return r.left>=-1&&r.right<=innerWidth+1}));
-   await page.locator('.hall-panel__reading').click();await page.waitForTimeout(150);
-   check(row,'reading view opens and has room',await page.locator('.hall-panel').evaluate(e=>document.documentElement.classList.contains('is-reading')&&e.getBoundingClientRect().height>120));
-   await capture(page,row,'reading');
-   await page.keyboard.press('Escape');
-   check(row,'Escape leaves reading view on same route',!await page.locator('html').evaluate(e=>e.classList.contains('is-reading'))&&page.url().includes('/work/saute-survivors'));
+   if(v.width<900)await nativeFlow(page,row);else{
    await openCapture(page);await capture(page,row,'capture');
    if(v.width<900)check(row,'physical control labels hidden on mobile',await page.locator('.closeup__tag').evaluateAll(es=>es.every(e=>getComputedStyle(e).display==='none')));
    const next=page.locator(v.width<900?'.closeup__count button:last-child':'.closeup__rail-nav button:nth-child(2)');
@@ -79,10 +104,10 @@ try{
    check(row,'fallback Escape leaves closeup open',await page.locator('.gallery-view').count()===0&&await page.locator('.closeup').count()===1);
    check(row,'fallback restores fullscreen control focus',await page.evaluate(()=>document.activeElement?.classList.contains('closeup__fs')||document.activeElement?.classList.contains('closeup__rail-btn--grow')));
    await page.keyboard.press('Escape');
-   await page.goto('http://localhost:4322/about/',{waitUntil:'networkidle',timeout:60000});await sceneReady(page);
+   await page.goto(BASE+'/about/',{waitUntil:'networkidle',timeout:60000});await sceneReady(page);
    await capture(page,row,'about');
    check(row,'about panel stays inside viewport',await page.locator('.hall-panel').evaluate(e=>{const r=e.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1}));
-   await page.goto('http://localhost:4322/work/riftback/',{waitUntil:'networkidle',timeout:60000});await sceneReady(page);
+   await page.goto(BASE+'/work/riftback/',{waitUntil:'networkidle',timeout:60000});await sceneReady(page);
    await openCapture(page);
    const oldSource=await page.locator('.closeup__shot.is-current img').getAttribute('src');
    await page.locator('.closeup__chips button').nth(1).click();await page.waitForTimeout(240);
@@ -92,7 +117,7 @@ try{
    await capture(page,row,'phone-surface');
    await page.keyboard.press('Escape');
    if(v.width===1366){
-    await page.goto('http://localhost:4322/work/echo-frequency/',{waitUntil:'networkidle',timeout:60000});await sceneReady(page);
+    await page.goto(BASE+'/work/echo-frequency/',{waitUntil:'networkidle',timeout:60000});await sceneReady(page);
     await openCapture(page);
     const hasArcade=await page.locator('.closeup__rail-btn--play').count()===1;
     if(!hasArcade)row.playableShortcutLimitation='No published arcade build is available on this route; play-shortcut branch cannot be exercised.';
@@ -100,6 +125,7 @@ try{
     await page.locator('.closeup__rail-nav button:nth-child(2)').focus();await page.keyboard.press('Space');await page.waitForTimeout(220);
     check(row,'Space on Echo Frequency activates next',page.url().includes('/work/echo-frequency')&&await page.locator('.closeup__count span').innerText()!==countBefore);
     await capture(page,row,'playable');
+   }
    }
    check(row,'no page errors',row.errors.length===0,row.errors);
   }catch(error){row.fatal=String(error);console.log(row.fatal);}

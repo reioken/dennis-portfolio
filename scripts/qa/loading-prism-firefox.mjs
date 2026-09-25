@@ -4,8 +4,10 @@
 import fs from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4321');
 
-const out = '.source-assets/firefox-qa';
+const out=outDir('firefox-qa');
 await fs.mkdir(out, {recursive: true});
 const driver = spawn(process.env.GECKODRIVER || 'geckodriver', ['--port', '4445', '--allow-system-access'], {windowsHide: true});
 let log = '', session;
@@ -110,7 +112,7 @@ try {
 
   console.log(JSON.stringify(results[0]));
   await context('content');
-  await command('/url', {url: process.env.QA_BASE_URL || 'http://localhost:4321/'});
+  await command('/url', {url: BASE+'/'});
   await wait(100);
   await context('chrome');
   const startup = await command('/execute/async', {script: `

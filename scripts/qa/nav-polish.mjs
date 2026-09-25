@@ -1,7 +1,9 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const out = '.source-assets/polish-2026-09-11';
+import {base,outDir} from './_env.mjs';
+const BASE=base('http://localhost:4322');
+const out=outDir('polish-2026-09-11');
 await fs.mkdir(out, {recursive:true});
 const browser = await chromium.launch({headless:true,args:['--use-angle=d3d11']});
 const results=[];
@@ -17,7 +19,7 @@ try {
   const page=await context.newPage(); let errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
-  await page.goto('http://localhost:4322/work/',{waitUntil:'networkidle'});
+  await page.goto(BASE+'/work/',{waitUntil:'networkidle'});
   await check(`${width}: header geometry`,async()=>{
     const boxes=await page.locator('.site-nav__brand,.site-nav__direct,.site-nav__menu,.lang-switch').evaluateAll(els=>els.filter(e=>e.getBoundingClientRect().width).map(e=>{const r=e.getBoundingClientRect();return {name:e.className,x:r.x,right:r.right,y:r.y,bottom:r.bottom,width:r.width,height:r.height};}));
     for(const b of boxes) {assert(b.x>=0&&b.right<=width+1,JSON.stringify(b));assert(b.height>=44,JSON.stringify(b));}
@@ -76,7 +78,7 @@ try {
   });
   await check(`${width}: EN contact hydration and language switch`,async()=>{
     errors=[];
-    await page.goto('http://localhost:4322/en/contact/',{waitUntil:'networkidle'});
+    await page.goto(BASE+'/en/contact/',{waitUntil:'networkidle'});
     await page.waitForFunction(()=>!document.documentElement.classList.contains('gl-pending'));
     await page.getByRole('button',{name:'Auf Deutsch wechseln'}).waitFor();
     assert.equal(await page.locator('html').getAttribute('lang'),'en');
@@ -86,7 +88,7 @@ try {
     assert.equal(await page.locator('#site-menu [aria-current="page"]').getAttribute('href'),'/en/contact/');
     await page.locator('.site-nav__dismiss').click();
     await page.getByRole('button',{name:'Auf Deutsch wechseln'}).click();
-    await page.waitForURL('http://localhost:4322/contact/');
+    await page.waitForURL(BASE+'/contact/');
     await page.getByRole('button',{name:'Switch to English'}).waitFor();
     return {errors};
   });

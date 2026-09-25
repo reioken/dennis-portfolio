@@ -20,7 +20,7 @@ until mkdir "$TMP/gpu.lock" 2>/dev/null; do sleep 20; done
 rmdir "$TMP/gpu.lock"
 ```
 
-Keep the number of captures low. Prefer one run over 14 stations to 14 separate runs.
+Keep the number of captures low. Prefer one run over all stations to one run per station.
 
 ## Tools
 
@@ -29,8 +29,8 @@ argument is optional.
 
 | Tool | Usage | What to look at |
 | --- | --- | --- |
-| `all-stations.mjs` | `node scripts/qa/hero/all-stations.mjs OUT [BASE] [slug,slug]` | `01-case.png` … `14-case.png`, one per station. `ERRORS 0` at the end. |
-| `sheet.py` | `python scripts/qa/hero/sheet.py OUT sheet.jpg` | 7x2 contact sheet of those 14 shots. Scan for a wear feature (a chipped corner, a scuff band, a scratch fan) that repeats across machines. |
+| `all-stations.mjs` | `node scripts/qa/hero/all-stations.mjs OUT [BASE] [slug,slug]` | `01-case.png` … `NN-case.png`, one per machine station (11 since 2026-09-24; the list comes from `src/lib/hall-items.ts` via `_stations.mjs`). `ERRORS 0` at the end. |
+| `sheet.py` | `python scripts/qa/hero/sheet.py OUT sheet.jpg` | Two-row contact sheet of those shots. Scan for a wear feature (a chipped corner, a scuff band, a scratch fan) that repeats across machines. |
 | `station-zoom.mjs` | `node scripts/qa/hero/station-zoom.mjs OUT [BASE] [steps-right]` | `zoom-top.png` (hood and screen) and `zoom-machine.png` at dpr 2. Screen recess, bevel highlights, seams, dots in the wear. |
 | `claw-shots.mjs` | `node scripts/qa/hero/claw-shots.mjs OUT [BASE]` | Claw in the hall and on its case page. Run after every `claw-v2` bake. |
 | `booth-shots.mjs` | `node scripts/qa/hero/booth-shots.mjs OUT [BASE]` | `/contact/` booth and the hall behind it. Run after every `phone-booth-v1` bake. |
@@ -50,11 +50,11 @@ argument is optional.
 | `tris.mjs` | `node scripts/qa/hero/tris.mjs file.glb [...]` | Triangle count and byte size per GLB. Uncompressed GLB only — run it on `.source-assets`, not on packed output. |
 | `inspect-models.mjs` | `node scripts/qa/hero/inspect-models.mjs mach-berry-v2 [...]` | World bounding size, screen plate size and aspect, and the control node names the close-up maps to. |
 
-`_out.mjs` is not a tool: it holds the repo root and the out-dir guard the capture tools share.
+`_out.mjs` and `_stations.mjs` are not tools: the first holds the repo root and the out-dir guard the capture tools share, the second reads the machine stations (`ORDER` without `CONTENT_ONLY`) from `src/lib/hall-items.ts`.
 
 ## Review routine
 
-1. **Wear repetition.** `all-stations.mjs` over all 14 slugs, then `sheet.py`. Look at the sheet as
+1. **Wear repetition.** `all-stations.mjs` over all machine stations, then `sheet.py`. Look at the sheet as
    one image: no wear feature may read twice. A repeat is a defect: change the recipe's `seed` / `wear` zones or the machine's `HeroLook` in `hallScene.ts`.
 2. **Close-up quality.** `station-zoom.mjs` at dpr 2 for the stations you touched. Screen sitting deep in its
    shroud, bevels catching light, no dots in the wear, no stretched texels on the sides.
