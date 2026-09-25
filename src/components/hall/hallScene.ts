@@ -1363,6 +1363,9 @@ export class HallScene {
         done();
         this.paintPlaceholderMarquee(m);
         m.group.visible = true;
+        // The placeholder is what this station shows from now on: culled with the others, its screen loaded.
+        m.loaded = true;
+        this.ensureTextures(m);
         this.dirty = true;
         settled?.();
       },
