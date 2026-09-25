@@ -258,6 +258,10 @@ type Machine = {
   screenIdx: number;
   dissolve?: ScreenDissolve;
   loaded: boolean;
+  /** Not in the first view: downloaded after the startup assets and attached after the reveal (startStations). */
+  late?: boolean;
+  /** Starts the station's model (loadModel / buildKasse); `settled` fires once it is shown or has failed. */
+  start?: (settled?: () => void) => void;
   sprite?: THREE.Sprite;
   /** Sprite-Sheet-Animation der Figur (Frame-Raster, fps) */
   spriteAnim?: { tex: THREE.Texture; cols: number; rows: number; frames: number; fps: number; frame: number };
@@ -303,11 +307,12 @@ THREE.Cache.enabled = true;
  * model is not downloaded twice.
  */
 const modelBytes = new Map<string, Promise<ArrayBuffer>>();
-function fetchModel(url: string): Promise<ArrayBuffer> {
+function fetchModel(url: string, priority?: 'high' | 'low' | 'auto'): Promise<ArrayBuffer> {
   let bytes = modelBytes.get(url);
   if (!bytes) {
     bytes = (async () => {
-      const response = await fetch(url);
+      // A priority only where asked for: a bare fetch() is what the first-view <link rel=preload> matches.
+      const response = await fetch(url, priority ? { priority } : undefined);
       if (!response.ok) throw new Error(`Hall model unavailable (${response.status}): ${url}`);
       const buffer = await response.arrayBuffer();
       const magic = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
@@ -725,11 +730,11 @@ export class HallScene {
 
   constructor(container: HTMLElement, items: HallItem[], initial: number, cb: SceneCallbacks, opts: { reduce: boolean; lite: boolean; pose?: Pose; frame?: Frame }) {
     this.container = container;
-    // Model downloads first, nearest station first: they used to start only once the room was built, and the line sat
-    // idle from 1.77 to 2.16 s (measured 2026-09-25). Bytes only; every model is still parsed where it was before.
-    const order = items.map((_, i) => i).sort((a, b) => Math.abs(a - initial) - Math.abs(b - initial));
-    for (const i of order) {
-      const url = items[i].kind === 'kasse' ? CLAW_MODEL : (MODELS_BY_SLUG[items[i].slug] ?? MODELS[items[i].kind])?.url;
+    // The first station and its neighbours are in every first view: their downloads start before the room is built.
+    // The rest of the first view follows from startStations; everything else loads after the startup assets.
+    for (const i of [initial, initial - 1, initial + 1]) {
+      const it = items[i];
+      const url = !it ? undefined : it.kind === 'kasse' ? CLAW_MODEL : (MODELS_BY_SLUG[it.slug] ?? MODELS[it.kind])?.url;
       if (url) void fetchModel(url);
     }
     void fetchModel(TV_RIG_MODEL);
@@ -792,6 +797,7 @@ export class HallScene {
     this.updateWallTitle();
     this.updateGoal();
     this.snapCamera();
+    this.startStations();
 
     if (!opts.lite) {
       const pr = r.getPixelRatio();
@@ -1076,10 +1082,15 @@ export class HallScene {
       m.sprite = sp;
     }
 
-    if (item.kind === 'kasse') this.buildKasse(m);
+    // Started by startStations once the first pose is known: at once for the first view, after the reveal otherwise.
+    if (item.kind === 'kasse') m.start = (settled) => this.buildKasse(m, settled);
     else {
       const spec = MODELS_BY_SLUG[item.slug] ?? MODELS[item.kind];
-      if (spec) this.loadModel(m, spec);
+      if (spec) {
+        // Placeholder stays hidden until the model is in; otherwise the old geometry flashes up while loading.
+        group.visible = false;
+        m.start = (settled) => this.loadModel(m, spec, settled);
+      }
     }
     if (FLOOR_CAST && isMachine(item) && item.props) for (const prop of item.props) this.loadProp(m, prop);
   }
@@ -1128,7 +1139,7 @@ export class HallScene {
   }
 
   /** GLB laden, auf Zielhöhe skalieren, am Boden zentrieren; Bildschirm per Namen oder als Fläche davor */
-  private loadModel(m: Machine, spec: ModelSpec) {
+  private loadModel(m: Machine, spec: ModelSpec, settled?: () => void) {
     // Platzhalter bleibt unsichtbar, bis das Modell da ist — sonst blitzt beim Laden die alte Geometrie auf
     m.group.visible = false;
     const done = this.track(m.index);
@@ -1286,22 +1297,30 @@ export class HallScene {
         m.group.add(plane);
         m.screen = plane as Machine['screen'];
       }
-      m.group.visible = true;
-      m.loaded = true;
-      m.textures = [];
-      m.raw = [];
-      m.extent = undefined;
-      m.screenFrame = undefined;
-      this.ensureTextures(m);
-      this.applyFocus(true);
-      this.dirty = true;
-      if (m.index === this.focus) {
-        this.applyScreen();
-        this.updateGoal();
-        // Direktaufruf: das Modell kam kurz nach dem Start — Kamera sofort passend stellen, kein Nachrutschen
-        if (performance.now() - this.bornAt < 1800) this.snapCamera();
-        else this.markGoalChanged();
-      }
+      const show = () => {
+        if (this.disposed) return;
+        m.group.visible = true;
+        m.loaded = true;
+        m.textures = [];
+        m.raw = [];
+        m.extent = undefined;
+        m.screenFrame = undefined;
+        this.ensureTextures(m);
+        // A late model must not snap the other stations' brightness in the middle of a camera move.
+        this.applyFocus(!m.late);
+        this.dirty = this.mirrorDirty = true;
+        if (m.index === this.focus) {
+          this.applyScreen();
+          this.updateGoal();
+          // Direktaufruf: das Modell kam kurz nach dem Start — Kamera sofort passend stellen, kein Nachrutschen
+          if (performance.now() - this.bornAt < 1800) this.snapCamera();
+          else this.markGoalChanged();
+        }
+        settled?.();
+      };
+      // A late model is uploaded and compiled while it is still hidden, so it appears without a hitch.
+      if (m.late) void this.prepareLate(root).then(show);
+      else show();
       },
       () => {
         // Modell fehlt (404 o. ä.): Platzhalter zeigen statt Lücke
@@ -1309,6 +1328,7 @@ export class HallScene {
         this.paintPlaceholderMarquee(m);
         m.group.visible = true;
         this.dirty = true;
+        settled?.();
       },
     );
   }
@@ -1396,6 +1416,152 @@ export class HallScene {
     }).catch(fail);
   }
 
+  /* ---------- Early reveal (2026-09-25): the first view first, every other station after the reveal ---------- */
+  private lateQueue: Machine[] = [];
+  private lateFetching = new Set<Machine>();
+  private lateFetched = new Set<Machine>();
+  private lateBackground = false;
+  private lateAttaching = false;
+  private lateTimer = 0;
+
+  /**
+   * Stations the first pose shows: each station's full box against the start camera's frustum (actual pose and aspect;
+   * home at 2560 x 1080 shows the claw, Riftback and NEXUS), widened by one neighbour each side for the first step.
+   */
+  private startupStations() {
+    this.camera.updateMatrixWorld();
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse));
+    const box = new THREE.Box3();
+    let lo = this.focus, hi = this.focus;
+    this.machines.forEach((m, i) => {
+      const w = cabinetWidth(m.item.slug) / 2 + .1;
+      box.min.set(this.stationX[i] - w, 0, -.7);
+      box.max.set(this.stationX[i] + w, STATION_HEIGHT + .4, .7);
+      if (frustum.intersectsBox(box)) { lo = Math.min(lo, i); hi = Math.max(hi, i); }
+    });
+    const first = new Set<number>();
+    for (let i = Math.max(0, lo - 1); i <= Math.min(this.machines.length - 1, hi + 1); i++) first.add(i);
+    return first;
+  }
+
+  /** First-view stations load now and count for the reveal; the others queue for after it (no startup tracking). */
+  private startStations() {
+    const first = this.startupStations();
+    for (const m of this.machines) {
+      if (!m.start) continue;
+      if (first.has(m.index)) { m.start(); continue; }
+      m.late = true;
+      // The claw machine's placeholder would stand in for it until the model is in: nothing shows instead.
+      if (m.item.kind === 'kasse') { m.group.clear(); m.group.visible = false; }
+      this.lateQueue.push(m);
+    }
+    this.container.dataset.startupStations = String(first.size);
+  }
+
+  private lateUrls(m: Machine): string[] {
+    if (m.item.kind !== 'kasse') {
+      const url = (MODELS_BY_SLUG[m.item.slug] ?? MODELS[m.item.kind])?.url;
+      return url ? [url] : [];
+    }
+    return [...new Set([CLAW_MODEL, ...(!isMachine(m.item) && m.item.figure ? [m.item.figure] : []), ...CLAW_PRIZES.map(p => p.url)])];
+  }
+
+  /** Background downloads, two at a time, nearest to the current focus first; `urgent` jumps the queue. */
+  private fetchLate(urgent?: Machine) {
+    if (this.disposed || this.startupFailed) return;
+    const waiting = this.lateQueue.filter(m => !this.lateFetching.has(m) && !this.lateFetched.has(m));
+    const start = (m: Machine, priority: 'low' | 'auto') => {
+      this.lateFetching.add(m);
+      void Promise.allSettled(this.lateUrls(m).map(url => fetchModel(url, priority))).then(() => {
+        this.lateFetching.delete(m);
+        this.lateFetched.add(m);
+        this.fetchLate();
+        this.pumpLate();
+      });
+    };
+    if (urgent && waiting.includes(urgent)) start(urgent, 'auto');
+    if (!this.lateBackground) return;
+    waiting.sort((a, b) => Math.abs(a.index - this.focus) - Math.abs(b.index - this.focus));
+    for (const m of waiting) {
+      if (this.lateFetching.size >= 2) break;
+      if (!this.lateFetching.has(m)) start(m, 'low');
+    }
+  }
+
+  /** The line is free once the first view's assets are in (GPU preparation needs no network). */
+  private startLateDownloads() {
+    if (this.lateBackground) return;
+    this.lateBackground = true;
+    this.fetchLate();
+  }
+
+  /**
+   * Attach downloaded late stations one at a time, nearest to the focus first, once the room is revealed and the
+   * ignition is over (the power sequence dims only what was there at the reveal).
+   */
+  private pumpLate() {
+    if (this.disposed || this.startupFailed || this.lateAttaching || this.lateTimer) return;
+    const ready = this.lateQueue.filter(m => this.lateFetched.has(m));
+    if (!ready.length) return;
+    if (!this.readyDone || this.powerAt !== null) {
+      this.lateTimer = window.setTimeout(() => { this.lateTimer = 0; this.pumpLate(); }, 250);
+      return;
+    }
+    ready.sort((a, b) => Math.abs(a.index - this.focus) - Math.abs(b.index - this.focus));
+    const m = ready[0];
+    this.lateQueue.splice(this.lateQueue.indexOf(m), 1);
+    this.lateAttaching = true;
+    let settled = false;
+    m.start!(() => {
+      if (settled) return;
+      settled = true;
+      this.lateAttaching = false;
+      this.lateTimer = window.setTimeout(() => { this.lateTimer = 0; this.pumpLate(); }, 50);
+    });
+  }
+
+  /**
+   * A late model, still hidden: its textures go to the GPU one per idle slot, then its programs are compiled
+   * asynchronously for every render path compiled so far (KHR_parallel_shader_compile where available). Nothing is
+   * built on the frame it first shows. Its drawables join the list a later render path is compiled from.
+   */
+  private async prepareLate(obj: THREE.Object3D) {
+    const slot = () => new Promise<void>(resolve => {
+      if ('requestIdleCallback' in window) window.requestIdleCallback(() => resolve(), { timeout: 120 });
+      else globalThis.setTimeout(resolve, 16);
+    });
+    const textures = new Set<THREE.Texture>();
+    const renderables: THREE.Object3D[] = [];
+    obj.traverse(object => {
+      const material = (object as THREE.Mesh).material;
+      for (const mat of material ? (Array.isArray(material) ? material : [material]) : []) {
+        for (const value of Object.values(mat)) if (value instanceof THREE.Texture && !value.isRenderTargetTexture && value.image) textures.add(value);
+      }
+      const drawable = object as THREE.Mesh;
+      if (drawable.isMesh || (object as THREE.Sprite).isSprite || (object as THREE.Line).isLine || (object as THREE.Points).isPoints) renderables.push(object);
+    });
+    for (const texture of textures) {
+      await slot();
+      if (this.disposed) return;
+      this.renderer.initTexture(texture);
+    }
+    obj.updateMatrixWorld(true);
+    this.compileRenderables.push(...renderables);
+    for (const target of [...this.compiledTargets]) {
+      await slot();
+      if (this.disposed) return;
+      const previousTarget = this.renderer.getRenderTarget();
+      let pending: Promise<unknown>;
+      try {
+        this.renderer.setRenderTarget(target);
+        pending = this.renderer.compileAsync(obj, this.camera, this.scene);
+      } finally {
+        this.renderer.setRenderTarget(previousTarget);
+      }
+      await pending.catch(() => undefined);
+    }
+  }
+
   /** Explicit work complements LoadingManager (fonts, HTML logos and bitmap decoding). */
   private track(_index: number) {
     if (this.readyDone || this.disposed || this.startupFailed) return () => {};
@@ -1451,6 +1617,7 @@ export class HallScene {
     if (this.disposed || this.startupFailed || this.readyDone || this.warming || this.pending || this.managedLoading) return;
     this.warming = true;
     this.container.dataset.assetReadyMs = String(Math.round(performance.now() - this.bornAt));
+    this.startLateDownloads();
     this.container.dataset.startupPhase = 'gpu';
     void this.prepareStartup().catch(error => this.failStartup(error instanceof Error ? error : new Error(String(error))));
   }
@@ -1642,6 +1809,8 @@ export class HallScene {
     this.readyRejectors = [];
     resolves.forEach(resolve => resolve());
     this.start();
+    this.startLateDownloads();
+    this.pumpLate();
   }
 
   private deferScreen(index: number, task: () => Promise<void> | void) {
@@ -2068,7 +2237,7 @@ export class HallScene {
    * Maskottchen liegen als Preise drumherum, der Greifer fährt über allem. Fehlt das Modell,
    * bleibt der einfache Automat aus Grundkörpern (buildKassePlaceholder).
    */
-  private buildKasse(m: Machine) {
+  private buildKasse(m: Machine, settled?: () => void) {
     const g = m.group;
     g.clear();
     g.visible = false;
@@ -2185,6 +2354,8 @@ export class HallScene {
               const fc = fb.getCenter(new THREE.Vector3());
               fr.scale.setScalar(fk);
               fr.position.set(-fc.x * fk, -fb.min.y * fk, -fc.z * fk);
+              const place = () => {
+              if (this.disposed) return;
               stage.add(fr);
               // Dennis: the claw must be connected to the figure. It comes down onto his head, a size larger so it reads as
               // the gripper for the main prize, and from then on it stays over him and turns with the turntable.
@@ -2204,6 +2375,9 @@ export class HallScene {
                 this.markGoalChanged();
               }
               this.dirty = true;
+              };
+              if (m.late) void this.prepareLate(fr).then(place);
+              else place();
             },
             () => doneF(),
           );
@@ -2240,6 +2414,8 @@ export class HallScene {
               holder.add(r);
               holder.position.set(pz.x, floorTop + (pz.y ?? 0), pz.z);
               holder.rotation.y = pz.rotY ?? 0;
+              const place = () => {
+              if (this.disposed) return;
               g.add(holder);
               if (panes) {
                 holder.updateWorldMatrix(true, true);
@@ -2252,6 +2428,9 @@ export class HallScene {
                 }
               }
               this.dirty = true;
+              };
+              if (m.late) void this.prepareLate(holder).then(place);
+              else place();
             });
           } else if (pz.sprite) {
             const tex = this.loader.load(pz.sprite, () => {
@@ -2266,15 +2445,22 @@ export class HallScene {
         }
         // Schild und Kopf der Kasse bleiben unter der Bloom-Schwelle
         g.userData.marqueeMax = 0.8;
-        g.visible = true;
-        m.loaded = true;
-        m.extent = undefined;
-        this.dirty = true;
-        this.applyFocus(true);
+        const show = () => {
+          if (this.disposed) return;
+          g.visible = true;
+          m.loaded = true;
+          m.extent = undefined;
+          this.dirty = this.mirrorDirty = true;
+          this.applyFocus(!m.late);
+          settled?.();
+        };
+        if (m.late) void this.prepareLate(g).then(show);
+        else show();
       },
       () => {
         done();
         this.buildKassePlaceholder(m);
+        settled?.();
       },
     );
   }
@@ -2284,6 +2470,8 @@ export class HallScene {
     const g = m.group;
     g.clear();
     g.visible = true;
+    // applyFocus culls it with the other stations from here on.
+    m.loaded = true;
     const brand = m.brand;
     const W = 1.15;
     const D = 0.95;
@@ -2452,6 +2640,8 @@ export class HallScene {
 
   private ensureTextures(m: Machine) {
     if (!isMachine(m.item) || !m.screen) return;
+    // A late station loads its screens once its model is shown, not for the hidden placeholder.
+    if (m.late && !m.loaded) return;
     if (m.textures.length) return;
     m.raw = [];
     m.bitmaps = [];
@@ -2534,6 +2724,9 @@ export class HallScene {
       }
     }
     this.focus = next;
+    // A station that is not in yet: the camera goes there anyway, its download moves to the front.
+    const late = this.lateQueue.find(m => m.index === next);
+    if (late) this.fetchLate(late);
     this.targetX = this.stationX[this.focus];
     this.updateWallTitle();
     this.applyFocus(false);
@@ -3111,7 +3304,7 @@ export class HallScene {
       const d = Math.abs(m.index - this.focus);
       // Jenseits von sechs Stationen steht alles im Nebel — gar nicht erst zeichnen (Modelle, die noch laden,
       // bleiben in der Hand von loadModel)
-      if (m.loaded || !(MODELS_BY_SLUG[m.item.slug] ?? MODELS[m.item.kind])) m.group.visible = d <= 6;
+      if (m.loaded || !(m.item.kind === 'kasse' || MODELS_BY_SLUG[m.item.slug] || MODELS[m.item.kind])) m.group.visible = d <= 6;
       if (d <= NEAR) this.ensureTextures(m);
       const bright = d === 0 ? 1 : this.pose !== 'hall' ? 0.14 : d === 1 ? 0.62 : 0.4;
       m.group.userData.targetBright = bright;
@@ -3602,6 +3795,7 @@ export class HallScene {
     if (this.disposed) return;
     this.disposed = true;
     window.clearTimeout(this.readinessTimer);
+    window.clearTimeout(this.lateTimer);
     this.readyTimeouts.forEach(cancel => cancel());
     this.readyTimeouts.clear();
     this.readyRejectors.splice(0).forEach(reject => reject(new Error('Hall disposed during startup')));
