@@ -938,7 +938,13 @@ export class HallScene {
     attachWallGrime(wall.material);
     this.roomLighting.decorate(wall.material,'wall');
     wall.name = 'hall-back-wall';
-    wall.position.set((this.stationX[0] + this.stationX[this.stationX.length - 1]) / 2, 12, this.wallZ);
+    // The brick texture repeats every 2 m from the plane's own origin, and the game snaps its field to that grid. The
+    // centre between the first and last station moved with every new station (Snapsize: 0.12 m, the field lost a
+    // column at 1920 x 1080). So the wall sits on whole 2 m tiles from the centre it had when Dennis placed the game
+    // (13.26, Sept 21-24): the bricks and the field stand where they stood then, whatever the station count.
+    const WALL_TILE = 2, WALL_ANCHOR = 13.26;
+    const wallMid = (this.stationX[0] + this.stationX[this.stationX.length - 1]) / 2;
+    wall.position.set(WALL_ANCHOR + Math.round((wallMid - WALL_ANCHOR) / WALL_TILE) * WALL_TILE, 12, this.wallZ);
     s.add(wall);
     // The game's blocks have to land on real bricks, so it takes the wall's own origin.
     this.wallGame = new WallGame(this.wallPaint.game, wall.position.x, () => { this.dirty = true; }, () => this.renderer);
