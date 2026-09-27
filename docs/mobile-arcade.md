@@ -158,6 +158,14 @@ the isolated claw starts only when visible, pauses offscreen/when hidden, suppor
 a pause button and reduced motion, and leaves the real cabinet poster if WebGL fails.
 Home/About share a named claw view transition; desktop keeps its existing hall.
 
+Released as source commit `01d8f1a`, Pages deployment `fef787b8`. TypeScript,
+31 review tests and the 57-page audit passed. The actual built profile was checked
+in DE/EN at 320/390/768/844 px and the desktop composition at 1440 px. The live
+home-to-claw profile and return were checked with no browser errors; animation
+pause and profile anchors were exercised locally. Local preview updated too.
+All 49 deployed JS/CSS assets matched the release build byte-for-byte. Home and
+both About pages matched after accounting for Cloudflare removing email-off comments.
+
 Zoom-out follow-up: commit `910d5bae034b26dc670b0cca02aff0870f1a62c3`, production
 deployment `95dfee86`. Return alignment stays within 0.032 px before/after parking
 on first entry, reopen and a scrolled page. Interrupted entry reverses from the
