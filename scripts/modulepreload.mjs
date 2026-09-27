@@ -74,11 +74,12 @@ export async function addModulePreloads(distDir) {
     const island = html.match(/component-url="(\/_astro\/Hall\.[^"]+\.js)"/);
     if (!island || html.includes('rel="modulepreload"')) continue;
     const chunks = await reachable(distDir, island[1], cache);
-    // Match Hall.nativeCase and hall-panel.css: project pages below 900 px never boot the hall.
+    // Phone home and project pages defer the 3D chunk chain and model preloads.
     const rel = path.relative(distDir, file);
-    const media = /(^|[\\/])work[\\/]/.test(rel) ? ' media="(min-width: 900px)"' : '';
+    const nativePhone = /(^|[\\/])work[\\/]/.test(rel) || /^(en[\\/])?index\.html$/.test(rel);
+    const media = nativePhone ? ' media="(min-width: 900px)"' : '';
     const firstView = await firstViewAssets(distDir, html, rel, chunks.map((href) => cache.get(href) ?? ''));
-    const tags = chunks.map((href) => `<link rel="modulepreload" href="${href}">`).join('')
+    const tags = chunks.map((href) => `<link rel="modulepreload" href="${href}"${media}>`).join('')
       + firstView.map((href) => `<link rel="preload" as="fetch" crossorigin fetchpriority="low" href="${href}"${media}>`).join('');
     await writeFile(file, html.replace('</head>', `${tags}</head>`), 'utf8');
     pages += 1; links += chunks.length; assets += firstView.length;

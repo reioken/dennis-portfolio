@@ -652,6 +652,7 @@ export class HallScene {
   private prevGoalLook = new THREE.Vector3(NaN, NaN, NaN);
   private prevGoalFov = NaN;
   private settledFlag = false;
+  private exhibitOffset: { x: number; y: number } | null = null;
   /** Außerhalb der Halle wird nur gerendert, wenn sich etwas geändert hat */
   private dirty = true;
   /** Capture, das die Seite auf den Bildschirm legt (statt des Loops) */
@@ -695,6 +696,7 @@ export class HallScene {
   private running = false;
   private reduce: boolean;
   private lite: boolean;
+  private exhibit: boolean;
   private container: HTMLElement;
   private cb: SceneCallbacks;
   private items: HallItem[] = [];
@@ -764,8 +766,9 @@ export class HallScene {
   /** Maskottchen für den Greifautomaten (Character-Bilder der Produkte) */
   private kassePlush: string[] = [];
 
-  constructor(container: HTMLElement, items: HallItem[], initial: number, cb: SceneCallbacks, opts: { reduce: boolean; lite: boolean; pose?: Pose; frame?: Frame }) {
+  constructor(container: HTMLElement, items: HallItem[], initial: number, cb: SceneCallbacks, opts: { reduce: boolean; lite: boolean; pose?: Pose; frame?: Frame; exhibit?: boolean }) {
     this.container = container;
+    this.exhibit = Boolean(opts.exhibit);
     // The first station and its neighbours are in every first view: their downloads start before the room is built.
     // The rest of the first view follows from startStations; everything else loads after the startup assets.
     for (const i of [initial, initial - 1, initial + 1]) {
@@ -773,7 +776,7 @@ export class HallScene {
       const url = !it ? undefined : it.kind === 'kasse' ? CLAW_MODEL : (MODELS_BY_SLUG[it.slug] ?? MODELS[it.kind])?.url;
       if (url) void fetchModel(url);
     }
-    void fetchModel(TV_RIG_MODEL);
+    if (!this.exhibit) void fetchModel(TV_RIG_MODEL);
     container.dataset.power = 'loading';
     container.dataset.startupPhase = 'assets';
     this.loadingManager.onStart = () => { this.managedLoading = true; };
@@ -1697,6 +1700,9 @@ export class HallScene {
         // KHR_parallel_shader_compile builds them on its worker threads at once. Awaiting batch by
         // batch held the driver to twelve programs at a time (2026-09-19: 4.5 s of a 10.7 s start).
         submitted.push(pending.catch(() => undefined));
+        // Navigation can dispose the scene during the yield between batches.
+        // Protect already-submitted programs immediately, not only after the loop.
+        this.warmupPromise = Promise.all(submitted);
       } else {
         this.warmupPromise = pending;
         try {
@@ -2062,7 +2068,7 @@ export class HallScene {
     this.tvBlank.needsUpdate = true;
     this.tvDissolve = new ScreenDissolve(screen.material, true);
     this.tvDissolve.set(this.tvBlank, 0, 0);
-    this.loadTvRig(s, rig, hang, wheels, crude, x0, x1, RAIL_Y, Z);
+    if (!this.exhibit) this.loadTvRig(s, rig, hang, wheels, crude, x0, x1, RAIL_Y, Z);
   }
 
   /**
@@ -2821,6 +2827,49 @@ export class HallScene {
     this.markGoalChanged();
   }
 
+  /** Reuse a prepared mobile cabinet at its overview without replaying startup. */
+  resetExhibitView(frame: Frame) {
+    if (!this.exhibit) return;
+    this.setPose('zoom', frame);
+    this.snapCamera();
+  }
+
+  /** Draw the same three-quarter view as the mobile poster, while its loop is parked. */
+  renderExhibitPoster() {
+    if (!this.exhibit || this.disposed || !this.readyDone) return;
+    this.stop();
+    this.exhibitOffset = null;
+    this.camera.clearViewOffset();
+    this.onResize();
+    this.setPose('zoom');
+    const x = this.machines[this.focus].group.position.x;
+    this.goalPos.set(x - 1.25, 1.45, 3.8);
+    this.goalLook.set(x, 1.03, 0);
+    this.goalFov = 39;
+    this.snapCamera();
+    const m = this.machines[this.focus];
+    if (m.screen?.material.map) this.displayTexture(m, m.screen.material.map, 0);
+    this.renderFrame();
+  }
+
+  /** Preserve the clicked cabinet's projection when moving its canvas to a full-screen dialog. */
+  enterExhibitFrom(rect: { left: number; top: number; width: number; height: number }) {
+    if (!this.exhibit || this.disposed) return;
+    this.stop();
+    this.camera.clearViewOffset();
+    this.onResize();
+    const w = this.container.clientWidth, h = this.container.clientHeight;
+    const x = this.machines[this.focus].group.position.x;
+    this.goalPos.set(x - 1.25, 1.45, 3.8);
+    this.goalLook.set(x, 1.03, 0);
+    this.goalFov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(39 / 2)) * h / rect.height));
+    this.snapCamera();
+    this.exhibitOffset = { x: w / 2 - rect.left - rect.width / 2, y: h / 2 - rect.top - rect.height / 2 };
+    this.camera.setViewOffset(w, h, this.exhibitOffset.x, this.exhibitOffset.y, w, h);
+    // Resize clears the drawing buffer. Paint the matching origin before exposing it.
+    this.renderFrame();
+  }
+
   /** Löst aus, sobald die Fahrt zu ~80 % durch ist (oder nach `timeoutMs`) — hält den Seitenwechsel */
   settled(timeoutMs = 900) {
     return new Promise<void>((resolve) => {
@@ -2840,7 +2889,7 @@ export class HallScene {
     this.tweenFrom.look.copy(this.camLook);
     this.tweenFrom.fov = this.fov;
     this.tweenStart = now;
-    this.tweenDur = this.reduce ? 0 : this.pose === 'hall' ? 260 : 220;
+    this.tweenDur = this.reduce ? 0 : this.exhibit ? 720 : this.pose === 'hall' ? 260 : 220;
     // Jede neue Fahrt endet mit einer neuen Ankunft: Bildschirm- und Bedienelement-Rechtecke werden dann
     // erneut projiziert — sonst bleibt die Seite auf einem Rechteck von unterwegs sitzen
     this.settledFlag = false;
@@ -3011,6 +3060,20 @@ export class HallScene {
     // On phones the cabinet is the exhibit; the dock supplies its title and navigation.
     // Keep the overhead rig out of this closer framing instead of showing a cut-off TV.
     if (this.tv) this.tv.rig.visible = !compact;
+    if (this.exhibit && m && this.pose === 'zoom') {
+      // The exhibition starts at the same three-quarter angle as its real poster.
+      // Moving to `screen` then rotates onto the monitor normal, not a scaled image.
+      const f = this.frame;
+      const ex = this.extentOf(m);
+      const tan = Math.tan(THREE.MathUtils.degToRad(39 / 2));
+      const distance = Math.max(3.8, ex.h / (.86 * f.fh * 2 * tan), ex.w / (.8 * f.fw * aspect * 2 * tan));
+      const offset = (f.cy - .5) * 2 * distance * tan;
+      const x = m.group.position.x;
+      this.goalPos.set(x - distance * 1.25 / 3.8, 1.45 + offset, distance);
+      this.goalLook.set(x, 1.03 + offset, 0);
+      this.goalFov = 39;
+      return;
+    }
     if (this.pose === 'hall' || !m) {
       if (compact && m) {
         // About's case-view extent follows the figurine. Hall browsing must fit the entire claw cabinet.
@@ -3505,6 +3568,7 @@ export class HallScene {
   /* ---------- Loop ---------- */
   start() {
     if (this.container.closest('[data-hall-parked]')) return;
+    if (!this.exhibit && window.innerWidth < 900 && document.documentElement.classList.contains('hall-native')) return;
     if (this.running || !this.readyDone || this.disposed || this.startupFailed) return;
     const ratio = this.renderer.getPixelRatio();
     if (this.renderer.domElement.width !== Math.floor(this.container.clientWidth * ratio) || this.renderer.domElement.height !== Math.floor(this.container.clientHeight * ratio)) this.onResize();
@@ -3558,13 +3622,18 @@ export class HallScene {
     if (!vecOk(this.camPos) || !vecOk(this.camLook) || !Number.isFinite(this.fov)) this.snapCamera();
     // Out-Expo über feste Dauer: die Ankunft ist weich, die Dauer immer gleich
     const el = this.tweenDur > 0 ? Math.min(1, (now - this.tweenStart) / this.tweenDur) : 1;
-    const k = this.reduce || el >= 1 ? 1 : 1 - Math.pow(2, -10 * el);
+    const k = this.reduce || el >= 1 ? 1 : this.exhibit ? el * el * (3 - 2 * el) : 1 - Math.pow(2, -10 * el);
     this.camPos.lerpVectors(this.tweenFrom.pos, this.goalPos, k);
     this.camLook.lerpVectors(this.tweenFrom.look, this.goalLook, k);
     this.fov = this.tweenFrom.fov + (this.goalFov - this.tweenFrom.fov) * k;
     if (Math.abs(this.camera.fov - this.fov) > 0.01) {
       this.camera.fov = this.fov;
       this.camera.updateProjectionMatrix();
+    }
+    if (this.exhibitOffset) {
+      const w = this.container.clientWidth, h = this.container.clientHeight;
+      this.camera.setViewOffset(w, h, this.exhibitOffset.x * (1 - k), this.exhibitOffset.y * (1 - k), w, h);
+      if (k >= 1) { this.camera.clearViewOffset(); this.exhibitOffset = null; }
     }
     this.camX = this.camPos.x;
     const sway = inHall && this.attract && !this.reduce ? Math.sin(t * 0.6) * 0.25 : 0;

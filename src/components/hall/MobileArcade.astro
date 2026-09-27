@@ -1,0 +1,144 @@
+---
+import { getCollection } from 'astro:content';
+import type { HallMachine } from './Hall';
+import Icon from '../icons/Icon';
+import { copy } from '../../lib/i18n';
+import { p } from '../../lib/paths';
+import { site } from '../../lib/site';
+import './mobile-arcade.css';
+
+interface Props { machines: HallMachine[] }
+const { machines } = Astro.props;
+const entries = new Map((await getCollection('work')).map(entry => [entry.id, entry.data]));
+const blank = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+const poster = (slug: string) => p(`media/mobile-arcade/${slug}.webp`).replace(/\.webp$/, '');
+---
+
+<div class="mobile-arcade">
+  {machines.map((machine, index) => {
+    const entry = entries.get(machine.slug)!;
+    const shot = (src: string, alt?: string, altEn?: string) => ({ src: p(src.replace(/^\//, '')), alt: alt ?? entry.title, altEn });
+    const cover = shot(entry.cover, entry.coverAlt, entry.coverAltEn);
+    const groups = entry.surfaces?.length ? entry.surfaces.map(surface => ({
+      labelDe: surface.labelDe, labelEn: surface.labelEn,
+      images: surface.gallery.map((src, i) => shot(src, surface.alts?.[i], surface.altsEn?.[i])),
+    })) : [{ labelDe: 'Screenshots', labelEn: 'Screenshots', images: [cover, ...entry.gallery.filter(src => src !== entry.cover).map((src) => {
+      const i = entry.gallery.indexOf(src);
+      return shot(src, entry.galleryAlts?.[i], entry.galleryAltsEn?.[i]);
+    })] }];
+    if (groups[0].images[0]?.src !== cover.src) groups[0].images.unshift(cover);
+    return (
+      <article class="mobile-arcade__exhibit" id={`exhibit-${machine.slug}`} data-exhibit={machine.slug}>
+        <script type="application/json" data-mobile-gallery set:html={JSON.stringify({ machine, groups }).replace(/</g, '\\u003c')} />
+        <header class="mobile-arcade__heading">
+          <div class="mobile-arcade__eyebrow">
+            <span class="mobile-arcade__number">{String(index + 1).padStart(2, '0')} / {String(machines.length).padStart(2, '0')}</span>
+            {index === 0 && <a class="mobile-arcade__index" href={p('work')}>
+              <span data-lang="de">{copy.de.home.allProjects}</span><span data-lang="en">{copy.en.home.allProjects}</span>
+              <Icon name="grid" size={15} />
+            </a>}
+          </div>
+          <h2><a href={machine.href}><span data-lang="de">{machine.title}</span><span data-lang="en">{machine.titleEn ?? machine.title}</span></a></h2>
+          <p class="mobile-arcade__role"><span data-lang="de">{entry.role}</span><span data-lang="en">{entry.roleEn ?? entry.role}</span></p>
+        </header>
+        <a class="mobile-arcade__machine" href={machine.href} aria-label={machine.title} data-mobile-enter>
+          <picture>
+            <source media="(max-width: 899px)" srcset={`${poster(machine.slug)}-sm.webp 390w, ${poster(machine.slug)}.webp 780w`} sizes="(min-width: 600px) 520px, 100vw" />
+            <img src={blank} alt="" width="780" height="940" loading={index === 0 ? 'eager' : 'lazy'} fetchpriority={index === 0 ? 'high' : 'auto'} decoding="async" />
+          </picture>
+        </a>
+        <div class="mobile-arcade__caption">
+          <p><span data-lang="de">{machine.summary}</span><span data-lang="en">{machine.summaryEn ?? machine.summary}</span></p>
+          <a class="mobile-arcade__open" href={machine.href} data-mobile-enter>
+            <span data-lang="de">Projekt ansehen</span><span data-lang="en">View project</span><Icon name="arrow-up-right" size={19} />
+          </a>
+        </div>
+      </article>
+    );
+  })}
+  <article class="mobile-arcade__exhibit mobile-arcade__exhibit--about" id="exhibit-kasse" data-exhibit="kasse">
+    <header class="mobile-arcade__heading">
+      <h2><a href={p('about')}><span data-lang="de">{copy.de.nav.about}</span><span data-lang="en">{copy.en.nav.about}</span></a></h2>
+      <p class="mobile-arcade__role">{site.name}</p>
+    </header>
+    <a class="mobile-arcade__machine" href={p('about')} aria-label={site.name}>
+      <picture><source media="(max-width: 899px)" srcset={`${poster('kasse')}-sm.webp 390w, ${poster('kasse')}.webp 780w`} sizes="(min-width: 600px) 520px, 100vw" /><img src={blank} alt="" width="780" height="940" loading="lazy" decoding="async" /></picture>
+    </a>
+    <div class="mobile-arcade__caption">
+      <p><span data-lang="de">{copy.de.about.posterLead}</span><span data-lang="en">{copy.en.about.posterLead}</span></p>
+      <a class="mobile-arcade__open" href={p('about')}><span data-lang="de">{copy.de.nav.about}</span><span data-lang="en">{copy.en.nav.about}</span><Icon name="arrow-up-right" size={19} /></a>
+    </div>
+  </article>
+  <footer class="mobile-arcade__footer">
+    <a class="mobile-arcade__contact" href={p('contact')}><span data-lang="de">{copy.de.nav.contact}</span><span data-lang="en">{copy.en.nav.contact}</span><Icon name="arrow-up-right" size={28} /></a>
+    <nav aria-label="Portfolio">
+      <a href={p('work')}><span data-lang="de">{copy.de.home.allProjects}</span><span data-lang="en">{copy.en.home.allProjects}</span></a>
+      <a href={p('impressum')}><span data-lang="de">Impressum</span><span data-lang="en">Legal notice</span></a>
+      <a href={p('privacy')}><span data-lang="de">Datenschutz</span><span data-lang="en">Privacy</span></a>
+    </nav>
+  </footer>
+</div>
+
+<script>
+  // Save an exhibit-relative position, so Back to hall and language changes
+  // return to the same machine even when translated copy changes section heights.
+  const home = (path: string) => /^\/(en\/?)?$/.test(path);
+  let returnPosition: { slug: string; offset: number } | null = null;
+  let restore = false;
+  let opening = false;
+  // Prepare just the cabinet the visitor has paused on. No whole-hall preload,
+  // no continuously running canvas, and no speculative work on data-saver links.
+  let warmTimer = 0;
+  const warmVisible = () => {
+    clearTimeout(warmTimer);
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (innerWidth >= 900 || document.hidden || !home(location.pathname) || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? '')) return;
+    warmTimer = window.setTimeout(() => {
+      if (document.querySelector('.mobile-viewer') || document.hidden || !home(location.pathname)) return;
+      const target = [...document.querySelectorAll<HTMLElement>('[data-mobile-gallery]')]
+        .map(el => el.closest<HTMLElement>('[data-exhibit]')!)
+        .find(el => { const r = el.getBoundingClientRect(); return r.top < innerHeight * .55 && r.bottom > innerHeight * .55; });
+      if (target) void import('./mobile-arcade-viewer').then(module => module.warmMobileArcade(target)).catch(() => {});
+    }, 450);
+  };
+  window.addEventListener('scroll', warmVisible, { passive: true });
+  window.addEventListener('resize', warmVisible, { passive: true });
+  document.addEventListener('visibilitychange', warmVisible);
+  document.addEventListener('astro:page-load', warmVisible);
+  document.addEventListener('astro:before-preparation', () => clearTimeout(warmTimer));
+  warmVisible();
+  document.addEventListener('click', event => {
+    if (window.innerWidth >= 900 || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const entry = (event.target as Element)?.closest<HTMLAnchorElement>('a[data-mobile-enter]');
+    const exhibit = entry?.closest<HTMLElement>('[data-exhibit]');
+    if (!entry || !exhibit) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (opening) return;
+    opening = true;
+    import('./mobile-arcade-viewer').then(module => {
+      opening = false;
+      return module.openMobileArcade(exhibit, entry.href);
+    })
+      .catch(() => { window.location.href = entry.href; })
+      .finally(() => { opening = false; });
+  }, true);
+  document.addEventListener('astro:before-preparation', event => {
+    const ev = event as Event & { from: URL; to: URL; loader: () => Promise<void>; signal: AbortSignal };
+    if (!ev.to || window.innerWidth >= 900) return;
+    if (home(ev.from.pathname)) {
+      const exhibit = [...document.querySelectorAll<HTMLElement>('[data-exhibit]')].find(el => el.getBoundingClientRect().bottom > 100);
+      if (exhibit) returnPosition = { slug: exhibit.dataset.exhibit!, offset: exhibit.getBoundingClientRect().top };
+    }
+    restore = home(ev.to.pathname) && !ev.to.hash && Boolean(returnPosition);
+  });
+  document.addEventListener('astro:page-load', () => {
+    if (!restore || !returnPosition || window.innerWidth >= 900) return;
+    restore = false;
+    const saved = returnPosition;
+    requestAnimationFrame(() => {
+      const exhibit = document.getElementById(`exhibit-${saved.slug}`);
+      if (exhibit) window.scrollTo({ top: window.scrollY + exhibit.getBoundingClientRect().top - saved.offset, behavior: 'instant' });
+    });
+  });
+</script>

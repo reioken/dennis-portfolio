@@ -122,6 +122,10 @@ export const isMachine = (it: HallItem): it is HallMachine => it.kind !== 'kasse
 export const nativeCase = (mode: HallMode, it?: HallItem) =>
   typeof window !== 'undefined' && window.innerWidth < 900 && mode === 'case' && Boolean(it) && isMachine(it as HallItem);
 
+/** Phone home is a server-rendered exhibition; only About/Contact/Play need the live room. */
+const nativeView = (mode: HallMode, it?: HallItem) =>
+  typeof window !== 'undefined' && window.innerWidth < 900 && (mode === 'hall' || nativeCase(mode, it));
+
 /** Position eines Automaten relativ zum Fokus — Reihe, die in die Halle zurückweicht */
 function placement(d: number) {
   const a = Math.abs(d);
@@ -447,8 +451,8 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
       const small = window.matchMedia('(max-width: 760px)').matches;
       const weak = (navigator as { hardwareConcurrency?: number }).hardwareConcurrency ? (navigator.hardwareConcurrency ?? 8) <= 4 : false;
       setLite(small || weak);
-      if (nativeCase(initialMode, items[focusRef.current])) {
-        // No three.js download and no 10 s warm-up for a page that never shows the hall; booted on the way back.
+      if (nativeView(initialMode, items[focusRef.current])) {
+        // No three.js download for the phone exhibition or reading pages; boot on a route/size that needs it.
         deferredBoot.current = true;
         document.documentElement.classList.remove('gl-pending');
         return;
@@ -507,7 +511,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
       modeRef.current = r.mode;
       if (r.index >= 0) focusRef.current = r.index;
       const sc = sceneRef.current;
-      const native = nativeCase(r.mode, r.index >= 0 ? items[r.index] : undefined);
+      const native = nativeView(r.mode, r.index >= 0 ? items[r.index] : undefined);
       if (sc) {
         if (r.index >= 0) sc.setFocus(r.index);
         sc.setPose(poseFor(r.mode), measureFrame(r.mode, r.index >= 0 && items[r.index].kind === 'kasse'));
@@ -547,6 +551,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
       }
       const sc = sceneRef.current;
       if (!sc) return;
+      if (nativeView(r.mode, r.index >= 0 ? items[r.index] : undefined)) { sc.stop(); return; }
       if (r.index >= 0) {
         setFocus(r.index);
         focusRef.current = r.index;
@@ -610,10 +615,27 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
+        if (routeState(location.pathname, items).exit) return;
+        const native = nativeView(modeRef.current, items[focusRef.current]);
+        document.documentElement.classList.toggle('hall-native', native);
         const sc = sceneRef.current;
+        if (native) {
+          sc?.stop();
+          document.documentElement.classList.remove('gl-pending');
+          return;
+        }
+        if (!sc && deferredBoot.current && glRef.current === 'css') {
+          deferredBoot.current = false;
+          bootMode.current = modeRef.current;
+          frameRef.current = measureFrame(modeRef.current, items[focusRef.current]?.kind === 'kasse');
+          document.documentElement.classList.add('gl-pending');
+          setGl('load');
+          return;
+        }
         if (!sc) return;
         frameRef.current = measureFrame(closeupRef.current ? 'screen' : modeRef.current, items[focusRef.current]?.kind === 'kasse');
         sc.setFrame(frameRef.current);
+        sc.start();
       });
     };
     window.addEventListener('resize', onResize);
@@ -714,6 +736,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
   /* ---------- Tastatur ---------- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (nativeView(modeRef.current, items[focusRef.current]) && modeRef.current === 'hall') return;
       if (rootRef.current?.closest('[data-hall-parked]')) return;
       if (directoryRef.current?.open) return;
       if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
@@ -890,7 +913,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
     let lastMove = 0;
     let prev: boolean[] = [];
     const poll = (t: number) => {
-      if (rootRef.current?.closest('[data-hall-parked]')) {
+      if (rootRef.current?.closest('[data-hall-parked]') || (modeRef.current === 'hall' && nativeView('hall'))) {
         prev = [];
         raf = requestAnimationFrame(poll);
         return;
@@ -1070,7 +1093,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
               if (closeupRef.current) document.dispatchEvent(new CustomEvent('hall:backdrop'));
               else if (modeRef.current === 'case') go(homeHref);
             }}
-            onReady={() => setGl('on')}
+            onReady={() => { setGl('on'); if (nativeView(modeRef.current, items[focusRef.current])) sceneRef.current?.stop(); }}
             onFail={() => { rootRef.current?.setAttribute('data-startup-fallback', 'true'); setGl('css'); }}
           />
         </Suspense>

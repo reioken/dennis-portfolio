@@ -26,9 +26,9 @@ import './hall-loading.css';
   try {
     var d = document.documentElement;
     d.classList.remove('gl-pending');
-    // Below 900 px a project page is a native reading page without the hall (Hall.tsx nativeCase): no
-    // loading emblem there, the panel must not wait for a stage that is never booted.
-    var nativeCase = window.innerWidth < 900 && /^\/(en\/)?work\/[^/]+\/?$/.test(location.pathname);
+    // Phone home is the native exhibition; projects are native reading pages.
+    // Neither waits for (or boots) the hidden 3D room.
+    var nativeCase = window.innerWidth < 900 && (/^\/(en\/)?work\/[^/]+\/?$/.test(location.pathname) || /^\/(en\/?)?$/.test(location.pathname));
     // hall.css takes the hidden CSS row out of the render tree there: its lazy images (other stations' screens,
     // characters, the portrait, ~1.1 MB) loaded behind the reading page. hall-session.ts sets it on client swaps.
     d.classList.toggle('hall-native', nativeCase);
