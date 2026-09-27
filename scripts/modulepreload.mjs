@@ -76,7 +76,7 @@ export async function addModulePreloads(distDir) {
     const chunks = await reachable(distDir, island[1], cache);
     // Phone home and project pages defer the 3D chunk chain and model preloads.
     const rel = path.relative(distDir, file);
-    const nativePhone = /(^|[\\/])work[\\/]/.test(rel) || /^(en[\\/])?index\.html$/.test(rel);
+    const nativePhone = /(^|[\\/])work[\\/]/.test(rel) || /^(en[\\/])?(about[\\/])?index\.html$/.test(rel);
     const media = nativePhone ? ' media="(min-width: 900px)"' : '';
     const firstView = await firstViewAssets(distDir, html, rel, chunks.map((href) => cache.get(href) ?? ''));
     const tags = chunks.map((href) => `<link rel="modulepreload" href="${href}"${media}>`).join('')

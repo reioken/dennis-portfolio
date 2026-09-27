@@ -33,7 +33,7 @@ try {
     assert.equal(state.stage, false);
     assert.equal(state.pending, false);
     assert.equal(state.exhibits, 12);
-    assert.equal(state.first, 'riftback');
+    assert.equal(state.first, 'kasse');
     assert.ok(state.height > state.viewport * 3);
     assert.equal(requests.filter(url => /\/Stage3D\./.test(url)).length, 0, 'mobile home must not load the hidden hall');
     assert.ok(requests.filter(url => /\/models\//.test(url)).every(url => url.includes('mach-riftback-')), 'only the visible cabinet may prepare');
@@ -87,10 +87,11 @@ try {
       await page.locator('.mobile-arcade').waitFor({ state: 'visible' });
       assert.equal(await page.locator('.hall').isVisible(), false);
 
-      // Utility stations still boot the room and return to the exhibition.
+      // About has its own visible claw and returns to the exhibition.
       await page.locator('.mobile-arcade__exhibit--about .mobile-arcade__open').click();
       await page.waitForURL('**/en/about/');
       await page.locator('.hall-panel').waitFor();
+      await page.locator('.mobile-claw.is-ready').waitFor({ timeout: 45000 });
       await page.locator('.hall-panel__back').click();
       await page.waitForURL('**/en/');
       await page.locator('.mobile-arcade').waitFor({ state: 'visible' });

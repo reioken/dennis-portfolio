@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { useReducedMotion } from 'motion/react';
 import { navigate } from 'astro:transitions/client';
 import { warmHallRoute, usePreparedHallRoute } from '../../lib/hall-route-cache';
+import { mobileAboutTransition } from '../../lib/mobile-about-transition';
 import { copy } from '../../lib/i18n';
 import LiveMark from '../launcher/LiveMark';
 import Icon from '../icons/Icon';
@@ -117,12 +118,12 @@ export const isMachine = (it: HallItem): it is HallMachine => it.kind !== 'kasse
 
 /**
  * Below 900 px a project page is a native reading page (hall-panel.css, CaseCaptures native mode, 2026-09-17):
- * the hall behind it is hidden, so it is neither booted nor rendered there. About and Contact keep the hall.
+ * the hall behind it is hidden, so it is neither booted nor rendered there. About has its own single claw.
  */
 export const nativeCase = (mode: HallMode, it?: HallItem) =>
-  typeof window !== 'undefined' && window.innerWidth < 900 && mode === 'case' && Boolean(it) && isMachine(it as HallItem);
+  typeof window !== 'undefined' && window.innerWidth < 900 && mode === 'case' && Boolean(it) && it!.kind !== 'phone';
 
-/** Phone home is a server-rendered exhibition; only About/Contact/Play need the live room. */
+/** Phone home is a server-rendered exhibition; only Contact/Play need the live room. */
 const nativeView = (mode: HallMode, it?: HallItem) =>
   typeof window !== 'undefined' && window.innerWidth < 900 && (mode === 'hall' || nativeCase(mode, it));
 
@@ -537,7 +538,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
       const now = performance.now();
       navigationStarted = inputAt && now - inputAt < 1000 ? inputAt : now;
       const r = routeState(ev.to.pathname, items);
-      hallNavigation = !r.exit;
+      hallNavigation = !r.exit && !mobileAboutTransition(ev.from?.pathname ?? location.pathname, ev.to.pathname);
       if (hallNavigation) {
         const cached = usePreparedHallRoute(ev);
         if (rootRef.current) rootRef.current.dataset.navigationCache = cached ? 'hit' : 'miss';

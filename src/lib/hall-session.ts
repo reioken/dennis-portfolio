@@ -2,6 +2,7 @@
  * Astro only persists nodes present in both documents, so supply a parking slot.
  * Nothing is constructed on a direct visit to a legal/product page.
  */
+import { mobileAboutTransition } from './mobile-about-transition';
 const hallSelector = '[data-astro-transition-persist="hall"]';
 
 document.addEventListener('astro:before-swap', event => {
@@ -12,9 +13,10 @@ document.addEventListener('astro:before-swap', event => {
   const returning = Boolean(next.querySelector(hallSelector));
   // Same test as HallGuard: set before the swap, so the persisted CSS row never shows (and loads) for a moment.
   const to = (swap as Event & { to?: URL }).to;
-  const native = window.innerWidth < 900 && (/^\/(en\/)?work\/[^/]+\/?$/.test(to?.pathname ?? '') || /^\/(en\/?)?$/.test(to?.pathname ?? ''));
+  const native = window.innerWidth < 900 && (/^\/(en\/)?(?:work\/[^/]+|about)\/?$/.test(to?.pathname ?? '') || /^\/(en\/?)?$/.test(to?.pathname ?? ''));
   next.documentElement.classList.toggle('hall-native', native);
-  if ((hall || returning) && swap.viewTransition) {
+  const from = (swap as Event & { from?: URL }).from;
+  if ((hall || returning) && swap.viewTransition && !mobileAboutTransition(from?.pathname ?? location.pathname, to?.pathname ?? '')) {
     void swap.viewTransition.ready.catch(() => {});
     swap.viewTransition.skipTransition();
   }

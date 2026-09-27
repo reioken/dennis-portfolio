@@ -1,5 +1,6 @@
 /* About: a photographic poster followed by the complete editorial profile.
    The outer hall geometry and its navigation stay owned by hall-panel.css. */
+.mobile-about-intro { display: none; }
 @font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 600; font-display: swap; src: url('../../assets/fonts/barlow-condensed-latin-600.woff2') format('woff2'); }
 :root .hall-panel--about .about-poster-body { display: block; padding: 0; background: #101216; scroll-padding-top: 76px; }
 .hall-panel--about { --about-ink: #f0f0f3; --about-muted: #b3b6c1; --about-line: #ffffff17; --about-display: 'Barlow Condensed', 'Arial Narrow', sans-serif; }
@@ -152,4 +153,49 @@
 @container hall-panel (max-width: 599px) {
  .about-poster__image img { width: 100%; height: auto; mask-image: linear-gradient(180deg,#000 0%,#000 83%,transparent 100%); }
  .about-poster::before { bottom: auto; height: 340px; opacity: .7; }
+}
+
+/* A full reading page on phones, introduced by Dennis's own claw cabinet. */
+@media (max-width: 899px) {
+  html:has(.hall-panel--about) main.is-bare { height: auto; min-height: 100svh; overflow: visible; }
+  html:has(.hall-panel--about) .hall,
+  html:has(.hall-panel--about) .hall-startup,
+  .hall-panel--about ~ .hall-panel__hint { display: none; }
+  :root .hall-panel.hall-panel--about { position: relative; inset: auto; width: 100%; max-width: 680px; margin: 0 auto; padding-top: calc(var(--nav-h) + 60px); padding-bottom: env(safe-area-inset-bottom); }
+  :root .hall-panel--about .hall-panel__chrome { position: absolute; inset: calc(var(--nav-h) + 8px) 20px auto; height: 44px; animation: none; }
+  .hall-panel--about .hall-panel__back { min-height: 44px; }
+  .hall-panel--about .hall-panel__station,
+  .hall-panel--about .hall-panel__key,
+  .hall-panel--about .hall-panel__handle,
+  .hall-panel--about .hall-panel__detent { display: none; }
+  :root .hall-panel--about .hall-panel__card { position: relative; inset: auto; overflow: visible; border: 0; border-radius: 0; box-shadow: none; background: #090b10; transform: none; animation: none; }
+  :root .hall-panel--about .about-poster-body { height: auto; max-height: none; overflow: visible; padding: 0; background: #090b10; }
+  .mobile-about-intro { display: block; }
+  .mobile-about-intro__down { transform: rotate(180deg); }
+  .hall-panel--about #case-title:focus { outline: none; }
+  .mobile-about-intro__heading { display: flex; justify-content: space-between; align-items: center; padding: 8px 24px 0; font-size: 14px; color: #c1b1e6; }
+  .mobile-about-intro__heading > a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; color: #b7b8c6; text-decoration: none; }
+  .mobile-claw { position: relative; max-width: 440px; margin: -12px auto 0; }
+  .mobile-claw__view { position: relative; aspect-ratio: 780 / 940; overflow: hidden; view-transition-name: about-claw; }
+  ::view-transition-group(about-claw) { animation-duration: 420ms; animation-timing-function: cubic-bezier(.4,0,.2,1); }
+  .mobile-claw__view::after { content: ''; position: absolute; inset: 0; background: linear-gradient(#090b10, transparent 18%, transparent 85%, #090b10); pointer-events: none; }
+  .mobile-claw picture, .mobile-claw img { display: block; width: 100%; height: auto; }
+  .mobile-claw__stage { position: absolute; inset: 0; opacity: 0; transition: opacity 250ms ease; }
+  .mobile-claw.is-ready .mobile-claw__stage { opacity: 1; }
+  .mobile-claw canvas { display: block; width: 100%; height: 100%; }
+  .mobile-claw__pause { position: absolute; bottom: 8px; right: 24px; min-height: 44px; padding: 8px 12px; border: 1px solid #c8daf426; border-radius: 10px; background: #090b10cc; font: 11px var(--font-display); color: #bbb5cc; }
+  :root .hall-panel--about .about-poster { background: #090b10; }
+  .hall-panel--about .about-poster__copy { padding-top: 24px; }
+  .hall-panel--about .about-poster__image { top: 24px; }
+  .hall-panel--about .about-index { position: sticky; top: var(--nav-h); z-index: 4; background: #101216f5; }
+  .hall-panel--about .about-section { scroll-margin-top: calc(var(--nav-h) + 104px); }
+  .hall-panel--about #about-intro { scroll-margin-top: var(--nav-h); }
+  .hall-panel--about .hall-panel__corridor { position: relative; margin-top: 0; flex: none; }
+}
+@media (max-width: 899px) and (max-height: 500px) {
+  .mobile-claw { max-width: 300px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-claw__stage { transition: none; }
+  ::view-transition-group(about-claw) { animation-duration: 0s; }
 }

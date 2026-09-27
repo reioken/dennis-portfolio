@@ -15,6 +15,23 @@ const poster = (slug: string) => p(`media/mobile-arcade/${slug}.webp`).replace(/
 ---
 
 <div class="mobile-arcade">
+  <article class="mobile-arcade__exhibit mobile-arcade__exhibit--about" id="exhibit-kasse" data-exhibit="kasse">
+    <header class="mobile-arcade__heading">
+      <div class="mobile-arcade__eyebrow">
+        <span class="mobile-arcade__number"><span data-lang="de">DER KOPF DAHINTER</span><span data-lang="en">MEET THE MAKER</span></span>
+        <a class="mobile-arcade__index" href="#exhibit-riftback"><span data-lang="de">Die Projekte</span><span data-lang="en">The projects</span><Icon name="arrow-up" className="mobile-arcade__down" size={15} /></a>
+      </div>
+      <h2><a href={p('about')}><span data-lang="de">{copy.de.nav.about}</span><span data-lang="en">{copy.en.nav.about}</span></a></h2>
+      <p class="mobile-arcade__role">{site.name}</p>
+    </header>
+    <a class="mobile-arcade__machine mobile-arcade__claw" href={p('about')} aria-label={site.name}>
+      <picture><source media="(max-width: 899px)" srcset={`${poster('kasse')}-sm.webp 390w, ${poster('kasse')}.webp 780w`} sizes="(min-width: 600px) 520px, 100vw" /><img src={blank} alt="" width="780" height="940" loading="eager" fetchpriority="high" decoding="async" /></picture>
+    </a>
+    <div class="mobile-arcade__caption">
+      <p><span data-lang="de">{copy.de.about.posterLead}</span><span data-lang="en">{copy.en.about.posterLead}</span></p>
+      <a class="mobile-arcade__open" href={p('about')}><span data-lang="de">Lern mich kennen</span><span data-lang="en">Get to know me</span><Icon name="arrow-up-right" size={19} /></a>
+    </div>
+  </article>
   {machines.map((machine, index) => {
     const entry = entries.get(machine.slug)!;
     const shot = (src: string, alt?: string, altEn?: string) => ({ src: p(src.replace(/^\//, '')), alt: alt ?? entry.title, altEn });
@@ -44,7 +61,7 @@ const poster = (slug: string) => p(`media/mobile-arcade/${slug}.webp`).replace(/
         <a class="mobile-arcade__machine" href={machine.href} aria-label={machine.title} data-mobile-enter>
           <picture>
             <source media="(max-width: 899px)" srcset={`${poster(machine.slug)}-sm.webp 390w, ${poster(machine.slug)}.webp 780w`} sizes="(min-width: 600px) 520px, 100vw" />
-            <img src={blank} alt="" width="780" height="940" loading={index === 0 ? 'eager' : 'lazy'} fetchpriority={index === 0 ? 'high' : 'auto'} decoding="async" />
+            <img src={blank} alt="" width="780" height="940" loading="lazy" decoding="async" />
           </picture>
         </a>
         <div class="mobile-arcade__caption">
@@ -56,19 +73,6 @@ const poster = (slug: string) => p(`media/mobile-arcade/${slug}.webp`).replace(/
       </article>
     );
   })}
-  <article class="mobile-arcade__exhibit mobile-arcade__exhibit--about" id="exhibit-kasse" data-exhibit="kasse">
-    <header class="mobile-arcade__heading">
-      <h2><a href={p('about')}><span data-lang="de">{copy.de.nav.about}</span><span data-lang="en">{copy.en.nav.about}</span></a></h2>
-      <p class="mobile-arcade__role">{site.name}</p>
-    </header>
-    <a class="mobile-arcade__machine" href={p('about')} aria-label={site.name}>
-      <picture><source media="(max-width: 899px)" srcset={`${poster('kasse')}-sm.webp 390w, ${poster('kasse')}.webp 780w`} sizes="(min-width: 600px) 520px, 100vw" /><img src={blank} alt="" width="780" height="940" loading="lazy" decoding="async" /></picture>
-    </a>
-    <div class="mobile-arcade__caption">
-      <p><span data-lang="de">{copy.de.about.posterLead}</span><span data-lang="en">{copy.en.about.posterLead}</span></p>
-      <a class="mobile-arcade__open" href={p('about')}><span data-lang="de">{copy.de.nav.about}</span><span data-lang="en">{copy.en.nav.about}</span><Icon name="arrow-up-right" size={19} /></a>
-    </div>
-  </article>
   <footer class="mobile-arcade__footer">
     <a class="mobile-arcade__contact" href={p('contact')}><span data-lang="de">{copy.de.nav.contact}</span><span data-lang="en">{copy.en.nav.contact}</span><Icon name="arrow-up-right" size={28} /></a>
     <nav aria-label="Portfolio">

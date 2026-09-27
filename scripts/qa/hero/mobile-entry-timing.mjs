@@ -9,6 +9,7 @@ try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     const page = await context.newPage();
     await page.goto(process.argv[3] ?? 'http://localhost:4322');
+    await page.locator('[data-exhibit="riftback"] .mobile-arcade__machine').scrollIntoViewIfNeeded();
     await page.waitForTimeout(dwell);
     for (let attempt = 0; attempt < 2; attempt++) {
       await page.evaluate(() => {

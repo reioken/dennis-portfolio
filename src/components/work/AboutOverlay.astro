@@ -7,6 +7,7 @@ import { site, skills, timeline, education, languages } from '../../lib/site';
 import './hall-panel.css';
 import Icon from '../icons/Icon';
 import PanelBack from './PanelBack.astro';
+import MobileClaw from '../hall/MobileClaw.astro';
 import './about-panel.css';
 
 interface Props {
@@ -85,6 +86,10 @@ const nextLabel = labelOf(next);
     <label for="hall-panel-tall" class="hall-panel__handle" aria-hidden="true"></label>
 
     <div class="hall-panel__body about-poster-body">
+      <section class="mobile-about-intro" aria-label="Über mich / About me">
+        <div class="mobile-about-intro__heading"><span data-lang="de">Über mich</span><span data-lang="en">About me</span><a href="#about-story"><span data-lang="de">Zum Profil</span><span data-lang="en">Read my profile</span><Icon name="arrow-up" className="mobile-about-intro__down" size={16} /></a></div>
+        <MobileClaw item={items[index]} />
+      </section>
       <header class="about-poster" id="about-intro">
         <div class="about-poster__image">
           <img src={portrait} srcset={`${p('media/me/portrait-wide-v2-640.webp')} 640w, ${portrait} 1200w`} sizes="(max-width: 599px) 53vw, (min-width: 1200px) 640px, 54vw" alt={site.name} width="1200" height="1138" loading="eager" decoding="async" />

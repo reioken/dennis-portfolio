@@ -6,9 +6,9 @@ production release: “Ja mach auf live seite.” Release verification is record
 
 ## Experience
 
-Below 900 px the homepage starts with Riftback and lists the eleven machine projects
-in their existing order. Each has its existing title, role, summary, a real cabinet
-render and a project link. The claw/About exhibit follows the projects; Contact,
+Below 900 px the homepage starts with the claw/About introduction, then lists the
+eleven machine projects in their existing order, starting with Riftback. Each has
+its existing title, role, summary, a real cabinet render and a project link. Contact,
 all projects and legal links finish the page. The four content-only projects remain
 in the complete Projects index. Desktop retains the live hall.
 
@@ -145,6 +145,18 @@ The desktop hall reached startupPhase=ready with no browser errors.
 Results and captures: `%TEMP%/mobile-production-exhibition` and
 `%TEMP%/mobile-production-camera`. TypeScript, 31 review tests, 27 model hashes and
 the 57-page release audit passed.
+
+## Mobile About introduction
+
+Dennis requested Über mich first, with his own page presented through the claw.
+The opening exhibit now shows the claw, his name and introduction, a “Lern mich
+kennen” link and a direct jump to the projects. The first project retains 01 / 11.
+On phones /about/ is a full document-scroll profile, with a single animated claw
+above the existing portrait, biography, experience, education and skills. Section
+links stay available while reading. The full desktop hall is deferred on this route;
+the isolated claw starts only when visible, pauses offscreen/when hidden, supports
+a pause button and reduced motion, and leaves the real cabinet poster if WebGL fails.
+Home/About share a named claw view transition; desktop keeps its existing hall.
 
 Zoom-out follow-up: commit `910d5bae034b26dc670b0cca02aff0870f1a62c3`, production
 deployment `95dfee86`. Return alignment stays within 0.032 px before/after parking

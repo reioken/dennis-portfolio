@@ -1,7 +1,10 @@
 /* A native scrolling exhibition. The desktop hall keeps its original layout. */
 .mobile-arcade { display: none; }
+.mobile-arcade__down { transform: rotate(180deg); }
 
 @media (max-width: 899px) {
+  .mobile-arcade__claw { view-transition-name: about-claw; }
+  ::view-transition-group(about-claw) { animation-duration: 420ms; animation-timing-function: cubic-bezier(.4,0,.2,1); }
   body[data-mode="hall"] main.is-bare { height: auto; min-height: 100svh; overflow: visible; }
   body[data-mode="hall"] .hall,
   body[data-mode="hall"] .hall-startup { display: none; }
@@ -107,4 +110,5 @@ html.mobile-viewer-open { overflow: hidden; scrollbar-gutter: stable; }
 @media (prefers-reduced-motion: reduce) {
   .mobile-arcade__machine img { transition: none; }
   .mobile-arcade__machine:active img { transform: none; }
+  ::view-transition-group(about-claw) { animation-duration: 0s; }
 }

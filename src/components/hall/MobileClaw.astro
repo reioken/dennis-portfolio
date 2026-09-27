@@ -1,0 +1,32 @@
+---
+import type { HallItem } from './Hall';
+import { p } from '../../lib/paths';
+interface Props { item: HallItem }
+const { item } = Astro.props;
+---
+<div class="mobile-claw" data-mobile-claw>
+  <script type="application/json" data-claw-item set:html={JSON.stringify(item).replace(/</g, '\\u003c')} />
+  <div class="mobile-claw__view">
+    <picture><source media="(max-width: 899px)" srcset={`${p('media/mobile-arcade/kasse-sm.webp')} 390w, ${p('media/mobile-arcade/kasse.webp')} 780w`} sizes="(min-width: 600px) 440px, 100vw" /><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Dennis im Greifautomaten / Dennis in the claw machine" width="780" height="940" decoding="async" /></picture>
+    <div class="mobile-claw__stage" aria-hidden="true"></div>
+  </div>
+  <button class="mobile-claw__pause" type="button" aria-pressed="false" hidden><span data-lang="de">Animation pausieren</span><span data-lang="en">Pause animation</span></button>
+</div>
+
+<script>
+  import { mountMobileClaw } from './mobile-claw';
+  let current: HTMLElement | null = null;
+  let dispose: (() => void) | undefined;
+  const media = matchMedia('(max-width: 899px)');
+  const clear = () => { dispose?.(); dispose = undefined; current = null; };
+  const sync = () => {
+    const root = media.matches ? document.querySelector<HTMLElement>('[data-mobile-claw]') : null;
+    if (root === current) return;
+    clear();
+    if (root) { current = root; dispose = mountMobileClaw(root); }
+  };
+  media.addEventListener('change', sync);
+  document.addEventListener('astro:before-swap', clear);
+  document.addEventListener('astro:page-load', sync);
+  sync();
+</script>

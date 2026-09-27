@@ -11,6 +11,7 @@ try {
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto(process.argv[3] ?? 'http://localhost:4321');
+  await page.locator('[data-exhibit="riftback"] .mobile-arcade__machine').scrollIntoViewIfNeeded();
   await page.locator('[data-exhibit="riftback"] .mobile-arcade__live').waitFor({ timeout: 45000 });
   await page.waitForTimeout(250);
   for (const attempt of ['first', 'reopen', 'scrolled']) {
