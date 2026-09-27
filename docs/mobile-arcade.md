@@ -145,3 +145,13 @@ The desktop hall reached startupPhase=ready with no browser errors.
 Results and captures: `%TEMP%/mobile-production-exhibition` and
 `%TEMP%/mobile-production-camera`. TypeScript, 31 review tests, 27 model hashes and
 the 57-page release audit passed.
+
+Zoom-out follow-up: commit `910d5bae034b26dc670b0cca02aff0870f1a62c3`, production
+deployment `95dfee86`. Return alignment stays within 0.032 px before/after parking
+on first entry, reopen and a scrolled page. Interrupted entry reverses from the
+current camera and reopens cleanly. The full mobile-camera suite, TypeScript,
+31 tests and 57-page audit passed. Live portrait (390 px) and landscape (844 px)
+first/repeated close preserve the canvas and scroll position, with no browser
+errors; captures inspected under `%TEMP%/mobile-return-live`. All 48 live HTML,
+JavaScript and CSS files checked match the isolated release build's SHA-256.
+The localhost:4322 preview was updated and reloaded too.
