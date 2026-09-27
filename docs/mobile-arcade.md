@@ -119,4 +119,21 @@ Camera screenshots/results: %TEMP%/portfolio-mobile-camera-qa.
 Use scripts/qa/hero/mobile-exhibition.mjs OUT BASE for this design. The older
 mobile-hall.mjs still describes the previous horizontal mobile homepage.
 
-Production publication authorized September 27; deployment verification pending.
+## Production release — September 27
+
+Released commit `4a2cfe5c7b80a00a6c8cda1256875d378c8bb845` as Pages deployment
+`88dfe847` at https://www.dennisbf.design. Built from an isolated checkout under
+`.preview-drive/mobile-release`; the unrelated local `src/data/werkstatt.json`
+edits and experimental untracked assets were excluded.
+
+The deployment URL and custom domain each serve all 72 checked HTML, JavaScript,
+CSS and mobile poster files byte-for-byte equal to the release build (SHA-256).
+Production mobile-exhibition.mjs passed at 320/390/768/844 px, including navigation,
+language switching, browser history, desktop resizing and no-JS links, with no
+console/page errors. The production camera check verified first entry and reopening
+reuse the same canvas without an intermediate poster; screenshot navigation,
+enlarge and close passed. Live transition and screen captures were inspected.
+The desktop hall reached startupPhase=ready with no browser errors.
+Results and captures: `%TEMP%/mobile-production-exhibition` and
+`%TEMP%/mobile-production-camera`. TypeScript, 31 review tests, 27 model hashes and
+the 57-page release audit passed.
