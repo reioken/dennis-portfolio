@@ -24,6 +24,7 @@ try {
           return { x: r.x + (p.x + 1) * r.width / 2, y: r.y + (1 - p.y) * r.height / 2 };
         });
       };
+      window.handoffPoints = points;
       window.handoff = { before: points(), stopped: !h.running, screenBlend: h.machines[0].dissolve?.uniforms.screenBlend.value };
       const original = h.enterExhibitFrom.bind(h);
       h.enterExhibitFrom = rect => { original(rect); window.handoff.after = points(); };
@@ -42,9 +43,32 @@ try {
     assert.ok(sample.maxJump < .5, `handoff moved the cabinet ${sample.maxJump}px`);
     assert.equal(await page.locator('.mobile-viewer__poster').isVisible(), false, 'no recentered poster during entry');
     await page.locator('.mobile-viewer [data-next]').click();
+    await page.evaluate(() => {
+      const h = window.__hall;
+      const arrived = event => {
+        if (event.detail.pose !== 'zoom' || document.querySelector('.mobile-viewer')?.dataset.state !== 'closing') return;
+        window.handoff.exitBefore = window.handoffPoints();
+        document.removeEventListener('hall:settled', arrived);
+      };
+      document.addEventListener('hall:settled', arrived);
+      const original = h.renderExhibitPoster.bind(h);
+      h.renderExhibitPoster = () => {
+        original();
+        window.handoff.exitAfter = window.handoffPoints();
+        h.renderExhibitPoster = original;
+      };
+    });
     await page.locator('.mobile-viewer [data-close]').click();
+    await page.locator('.mobile-viewer[data-state="closing"]').waitFor();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${out}/${attempt}-returning.png` });
     await page.locator('.mobile-viewer').waitFor({ state: 'detached' });
     await page.locator('[data-exhibit="riftback"] .mobile-arcade__live').waitFor();
+    const exit = await page.evaluate(() => window.handoff);
+    assert.ok(exit.exitBefore && exit.exitAfter, 'return reaches the list before parking');
+    sample.exitJump = Math.max(...exit.exitBefore.map((p,i) => Math.hypot(p.x-exit.exitAfter[i].x,p.y-exit.exitAfter[i].y)));
+    assert.ok(sample.exitJump < .5, `return handoff moved the cabinet ${sample.exitJump}px`);
+    await page.screenshot({ path: `${out}/${attempt}-returned.png` });
     results.push({ attempt, ...sample });
   }
   assert.deepEqual(errors, []);

@@ -72,6 +72,14 @@ canvas back in the exhibit. mobile-handoff.mjs checks projected reference points
 before/after reparenting on first open, reopen and after scrolling (under 0.5 px
 tolerance), captures intermediate frames, and verifies the list render loop stops.
 
+Return continuity: the original close moved to the generic overview, then snapped
+to the smaller list camera. Close now reverses the camera position, field of view
+and projection offset to the source image's current viewport rectangle. The view
+contracts into that rectangle while the controls and backdrop fade; the list's
+edge shading fades in before parking the same canvas. Closing during entry starts
+from the current camera without waiting for entry to finish. mobile-handoff.mjs
+also checks the final return projection against the parked canvas, within 0.5 px.
+
 Local built-preview timings from mobile-entry-timing.mjs (390×844, Chromium; one
 before/after probe, not a physical-phone benchmark): after 6 s reading time,
 entry began at 615 → 42 ms; reopening at 495 → 36 ms. Immediate first entry was

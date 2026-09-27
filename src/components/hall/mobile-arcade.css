@@ -37,8 +37,14 @@ html.mobile-viewer-open { overflow: hidden; scrollbar-gutter: stable; }
 .mobile-viewer { position: fixed; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; overflow: hidden; color: #f3f1fa; background: transparent; }
 .mobile-viewer::backdrop { background: transparent; }
 .mobile-viewer { transition: background-color 220ms ease; }
-.mobile-viewer[data-state="entering"], .mobile-viewer[data-state="ready"], .mobile-viewer[data-state="closing"] { background-color: #090b10; }
+.mobile-viewer[data-state="entering"], .mobile-viewer[data-state="ready"] { background-color: #090b10; }
+.mobile-viewer[data-state="closing"] { background-color: transparent; transition-duration: 720ms; pointer-events: none; }
+.mobile-viewer__header { transition: opacity 180ms ease; }
+.mobile-viewer[data-state="closing"] .mobile-viewer__header,
+.mobile-viewer[data-state="closing"] .mobile-viewer__footer { opacity: 0; pointer-events: none; }
 .mobile-viewer__stage { position: absolute; inset: 0; }
+.mobile-viewer[data-state="closing"] .mobile-viewer__stage::after { content: ''; position: absolute; top: var(--return-top); left: var(--return-left); width: var(--return-width); height: var(--return-height); background: linear-gradient(#090b10, transparent 18%, transparent 88%, #090b10); opacity: 0; animation: mobile-return-shade 180ms 500ms forwards; pointer-events: none; }
+@keyframes mobile-return-shade { to { opacity: 1; } }
 .mobile-viewer__parked { position: fixed; width: 100vw; height: 100dvh; visibility: hidden; pointer-events: none; contain: strict; }
 .mobile-viewer__stage canvas { display: block; width: 100%; height: 100%; }
 .mobile-viewer__poster { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #090b10; pointer-events: none; }
@@ -94,7 +100,7 @@ html.mobile-viewer-open { overflow: hidden; scrollbar-gutter: stable; }
   .mobile-viewer__links { flex: 1; margin: 0; padding: 0; border: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mobile-viewer, .mobile-viewer__poster, .mobile-viewer__footer, .mobile-viewer__controls button { transition: none; }
+  .mobile-viewer, .mobile-viewer__poster, .mobile-viewer__header, .mobile-viewer__footer, .mobile-viewer__controls button { transition: none; }
   .mobile-viewer__controls button:active:not(:disabled) { transform: none; }
 }
 

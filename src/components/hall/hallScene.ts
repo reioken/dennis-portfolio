@@ -652,7 +652,8 @@ export class HallScene {
   private prevGoalLook = new THREE.Vector3(NaN, NaN, NaN);
   private prevGoalFov = NaN;
   private settledFlag = false;
-  private exhibitOffset: { x: number; y: number } | null = null;
+  private exhibitOffset: { fromX: number; fromY: number; toX: number; toY: number } | null = null;
+  private exhibitReturn: { left: number; top: number; width: number; height: number } | null = null;
   /** Außerhalb der Halle wird nur gerendert, wenn sich etwas geändert hat */
   private dirty = true;
   /** Capture, das die Seite auf den Bildschirm legt (statt des Loops) */
@@ -2839,6 +2840,7 @@ export class HallScene {
     if (!this.exhibit || this.disposed || !this.readyDone) return;
     this.stop();
     this.exhibitOffset = null;
+    this.exhibitReturn = null;
     this.camera.clearViewOffset();
     this.onResize();
     this.setPose('zoom');
@@ -2856,6 +2858,7 @@ export class HallScene {
   enterExhibitFrom(rect: { left: number; top: number; width: number; height: number }) {
     if (!this.exhibit || this.disposed) return;
     this.stop();
+    this.exhibitReturn = null;
     this.camera.clearViewOffset();
     this.onResize();
     const w = this.container.clientWidth, h = this.container.clientHeight;
@@ -2864,10 +2867,28 @@ export class HallScene {
     this.goalLook.set(x, 1.03, 0);
     this.goalFov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(39 / 2)) * h / rect.height));
     this.snapCamera();
-    this.exhibitOffset = { x: w / 2 - rect.left - rect.width / 2, y: h / 2 - rect.top - rect.height / 2 };
-    this.camera.setViewOffset(w, h, this.exhibitOffset.x, this.exhibitOffset.y, w, h);
+    this.exhibitOffset = { fromX: w / 2 - rect.left - rect.width / 2, fromY: h / 2 - rect.top - rect.height / 2, toX: 0, toY: 0 };
+    this.camera.setViewOffset(w, h, this.exhibitOffset.fromX, this.exhibitOffset.fromY, w, h);
     // Resize clears the drawing buffer. Paint the matching origin before exposing it.
     this.renderFrame();
+  }
+
+  /** Reverse entry all the way to the cabinet's actual place in the scrolling list. */
+  leaveExhibitTo(rect: { left: number; top: number; width: number; height: number }) {
+    if (!this.exhibit || this.disposed) return;
+    this.exhibitReturn = rect;
+    const w = this.container.clientWidth, h = this.container.clientHeight;
+    const view = this.camera.view;
+    this.exhibitOffset = {
+      fromX: view?.enabled ? view.offsetX : 0, fromY: view?.enabled ? view.offsetY : 0,
+      toX: w / 2 - rect.left - rect.width / 2, toY: h / 2 - rect.top - rect.height / 2,
+    };
+    this.setPose('zoom');
+    this.updateGoal();
+    this.retarget(performance.now());
+    const m = this.machines[this.focus];
+    if (m.screen?.material.map) this.displayTexture(m, m.screen.material.map, 0);
+    this.start();
   }
 
   /** Löst aus, sobald die Fahrt zu ~80 % durch ist (oder nach `timeoutMs`) — hält den Seitenwechsel */
@@ -3061,6 +3082,13 @@ export class HallScene {
     // Keep the overhead rig out of this closer framing instead of showing a cut-off TV.
     if (this.tv) this.tv.rig.visible = !compact;
     if (this.exhibit && m && this.pose === 'zoom') {
+      if (this.exhibitReturn) {
+        const x = m.group.position.x;
+        this.goalPos.set(x - 1.25, 1.45, 3.8);
+        this.goalLook.set(x, 1.03, 0);
+        this.goalFov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(39 / 2)) * this.container.clientHeight / this.exhibitReturn.height));
+        return;
+      }
       // The exhibition starts at the same three-quarter angle as its real poster.
       // Moving to `screen` then rotates onto the monitor normal, not a scaled image.
       const f = this.frame;
@@ -3632,8 +3660,9 @@ export class HallScene {
     }
     if (this.exhibitOffset) {
       const w = this.container.clientWidth, h = this.container.clientHeight;
-      this.camera.setViewOffset(w, h, this.exhibitOffset.x * (1 - k), this.exhibitOffset.y * (1 - k), w, h);
-      if (k >= 1) { this.camera.clearViewOffset(); this.exhibitOffset = null; }
+      const o = this.exhibitOffset;
+      this.camera.setViewOffset(w, h, o.fromX + (o.toX - o.fromX) * k, o.fromY + (o.toY - o.fromY) * k, w, h);
+      if (k >= 1 && !this.exhibitReturn) { this.camera.clearViewOffset(); this.exhibitOffset = null; }
     }
     this.camX = this.camPos.x;
     const sway = inHall && this.attract && !this.reduce ? Math.sin(t * 0.6) * 0.25 : 0;

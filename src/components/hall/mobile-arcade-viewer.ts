@@ -208,7 +208,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     const bottom = q('.mobile-viewer__footer').getBoundingClientRect().top - 16;
     return { cx: .5, cy: (top + bottom) / 2 / h, fw: .94, fh: Math.max(.3, (bottom - top) / h), tight: false };
   };
-  const move = (pose: 'zoom' | 'screen') => new Promise<void>(resolve => {
+  const move = (pose: 'zoom' | 'screen', target?: DOMRect) => new Promise<void>(resolve => {
     // setPose retargets on the next animation frame, so its previous tween's
     // settled() value is not evidence that this new camera move has finished.
     const done = () => { clearTimeout(timeout); document.removeEventListener('hall:settled', arrived); resolve(); };
@@ -216,14 +216,33 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     const timeout = window.setTimeout(done, 1600);
     document.addEventListener('hall:settled', arrived, { signal });
     signal.addEventListener('abort', done, { once: true });
-    scene?.setPose(pose, frame());
+    if (target) scene?.leaveExhibitTo(target);
+    else scene?.setPose(pose, frame());
   });
   const close = async () => {
     if (closing) return;
     if (!full.hidden) { shrink(); return; }
     closing = true;
+    const canReturn = scene && resident && (ready || dialog.dataset.state === 'entering');
+    const currentClip = getComputedStyle(stage).clipPath;
+    reveal?.cancel();
     dialog.dataset.state = 'closing';
-    if (ready && scene && !reduce) await move('zoom');
+    if (canReturn && !reduce) {
+      const target = sourceImage.getBoundingClientRect();
+      const top = Math.max(target.top, exhibit.querySelector('.mobile-arcade__heading')!.getBoundingClientRect().bottom);
+      const bottom = Math.min(target.bottom, exhibit.querySelector('.mobile-arcade__caption')!.getBoundingClientRect().top);
+      const clip = `inset(${Math.max(0, top)}px ${Math.max(0, dialog.clientWidth - target.right)}px ${Math.max(0, dialog.clientHeight - bottom)}px ${Math.max(0, target.left)}px)`;
+      stage.style.setProperty('--return-top', `${target.top}px`);
+      stage.style.setProperty('--return-left', `${target.left}px`);
+      stage.style.setProperty('--return-width', `${target.width}px`);
+      stage.style.setProperty('--return-height', `${target.height}px`);
+      reveal = stage.animate([{ clipPath: currentClip === 'none' ? 'inset(0px)' : currentClip }, { clipPath: clip }], {
+        duration: 720, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards',
+      });
+      await Promise.all([move('zoom', target), reveal.finished.catch(() => {})]);
+      if (closed) return;
+      ready = true;
+    }
     dispose();
   };
   active = dispose;
@@ -326,12 +345,13 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
       { clipPath: clipOrigin, opacity: 1, offset: .12 },
       { clipPath: 'inset(0px)', opacity: 1 },
     ], { duration: reduce ? 0 : 720, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' });
+    const entryReveal = reveal;
     const movement = move('screen');
     scene.start();
-    await Promise.all([movement, reveal.finished.catch(() => {})]);
-    stage.style.clipPath = 'none';
-    reveal.cancel();
+    await Promise.all([movement, entryReveal.finished.catch(() => {})]);
     if (closed || closing) return;
+    stage.style.clipPath = 'none';
+    entryReveal.cancel();
     ready = true;
     dialog.dataset.state = 'ready';
     status.textContent = '';
