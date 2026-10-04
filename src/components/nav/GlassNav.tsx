@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import Icon, { type IconName } from '../icons/Icon';
 import LangSwitch from '../i18n/LangSwitch';
+import SignatureLogo from '../brand/SignatureLogo';
 import { copy, type Lang } from '../../lib/i18n';
 import './site-nav.css';
 
@@ -167,9 +168,10 @@ export default function GlassNav({ items, currentPath, brand, homeHref = '/', mo
       <div className="site-nav__bar">
         <div className="site-nav__left">
           <a href={homeHref} className="site-nav__brand" aria-label={`${brand} — Home`}>
-
-            <span className="site-nav__name" data-edit="site.name">
-              {brand.split(' ')[0]}
+            <span className="site-nav__wordmark"><SignatureLogo instance="header" decorative /></span>
+            <span className="site-nav__identity" aria-hidden="true">
+              <span className="site-nav__name"><span>{brand.split(' ')[0]}</span>{' '}<span>{brand.split(' ').slice(1).join(' ')}</span></span>
+              <span className="site-nav__role">Art Direction · UX/UI · Product Builder</span>
             </span>
           </a>
         </div>
@@ -193,9 +195,8 @@ export default function GlassNav({ items, currentPath, brand, homeHref = '/', mo
 
         <div className="site-nav__right">
           {items.filter((it) => it.labelKey === 'work' || it.labelKey === 'about' || it.labelKey === 'contact').map((item) => (
-            <a key={item.href} href={item.href} className={`site-nav__direct site-nav__direct--${item.labelKey}`} aria-current={isActive(item.href) ? 'page' : undefined}>{label(item.labelKey)}</a>
+            <a key={item.href} href={item.href} className={`site-nav__direct site-nav__direct--${item.labelKey}`} aria-current={isActive(item.href) ? 'page' : undefined}><span className="site-nav__route-number" aria-hidden="true">{item.labelKey === 'work' ? '01' : item.labelKey === 'about' ? '02' : '03'}</span>{label(item.labelKey)}</a>
           ))}
-          <LangSwitch initialLang={initialLang} />
 
           <button
             ref={btnRef}
@@ -207,18 +208,19 @@ export default function GlassNav({ items, currentPath, brand, homeHref = '/', mo
             aria-haspopup="dialog"
             onClick={() => setOpen((v) => !v)}
           >
-            <Icon name={open ? 'close' : 'menu'} size={18} />
+            <Icon name={open ? 'close' : 'grid'} size={18} />
             <span className="site-nav__menu-label">
-              <span data-lang="de">{copy.de.nav.menu}</span>
-              <span data-lang="en">{copy.en.nav.menu}</span>
+              <span data-lang="de">Menü</span>
+              <span data-lang="en">Menu</span>
             </span>
           </button>
+          <LangSwitch initialLang={initialLang} />
         </div>
 
         {open ? (
           <div ref={panelRef} id="site-menu" className="nav-dropdown site-nav__sheet" role="dialog" aria-modal="true" aria-label={lang === 'en' ? 'Menu' : 'Menü'}>
             <div className="site-nav__sheet-heading">
-              <p className="site-nav__directory">Navigation</p>
+              <p className="site-nav__directory"><span data-lang="de">Einmal umsehen.</span><span data-lang="en">Take a look around.</span></p>
               <button type="button" className="site-nav__dismiss" aria-label={lang === 'en' ? 'Close menu' : 'Menü schließen'} onClick={() => { setOpen(false); btnRef.current?.focus(); }}>
                 <Icon name="close" size={18} />
               </button>

@@ -1,0 +1,65 @@
+/* A machined, physical control deck. Native controls remain the hit targets. */
+.hall-dock.hall-console { max-width: 1060px; padding: 43px 27px 20px; grid-template-columns: 76px minmax(0,1fr) auto; gap: 18px; border-radius: 12px; isolation: isolate; }
+.hall-console > :not(canvas) { position: relative; z-index: 1; }
+.hall-console > .hall-dock__rail { position: absolute; inset-inline: 120px 27px; }
+.hall-console .hall-dock__center { grid-template-columns: 52px minmax(0,1fr) auto 52px; gap: 16px; }
+.hall-console .hall-dock__arrow { width: 52px; height: 52px; border-radius: 50%; color: #242033; }
+.hall-console .hall-dock__open,.hall-console .hall-dock__directory { min-height: 48px; border-radius: 7px; font-size: 11px; letter-spacing: .025em; }
+.hall-console .hall-dock__directory { min-width: 118px; }
+.hall-console .hall-dock__count { border: 0; height: 72px; align-self: center; flex-direction: column; justify-content: flex-end; gap: 7px; font-size: 9px; letter-spacing: .1em; }
+.hall-console__ball { width: 50px; height: 50px; flex: 0 0 50px; border-radius: 50%; cursor: grab; touch-action: none; background: radial-gradient(circle at 35% 25%,#e0d4f5,#85799e 55%,#15121e 78%); box-shadow: 0 0 0 3px #08090e,0 0 0 5px #5b5a6b; }
+.hall-console__ball:active { cursor: grabbing; }
+.hall-console .hall-dock__identity { position: relative; min-height: 52px; border-radius: 4px; padding-inline: 12px; }
+.hall-console .hall-dock__title { font: 11px/1.5 var(--font-mono); letter-spacing: .025em; color: #e2dbf6; text-shadow: 0 0 10px #c3a4ff50; }
+.hall-console .hall-dock__status { font-size: 9px; }
+.hall-console .hall-dock__lamp { width: 3px; flex-basis: 3px; height: 20px; }
+.hall-console__canvas { position: absolute; inset: -16px; width: calc(100% + 32px); height: calc(100% + 32px); pointer-events: none; z-index: 0; }
+.hall-dock.hall-console[data-hardware="ready"] { background: transparent; border-color: transparent; box-shadow: 0 18px 35px #0008; }
+.hall-console[data-hardware="ready"]::before,.hall-console[data-hardware="ready"]::after { display:none; }
+.hall-console[data-hardware="ready"] .hall-dock__arrow,.hall-console[data-hardware="ready"] .hall-dock__open,.hall-console[data-hardware="ready"] .hall-dock__directory,.hall-console[data-hardware="ready"] .hall-dock__identity,.hall-console[data-hardware="ready"] .hall-console__ball { background: transparent; border-color: transparent; box-shadow: none; }
+.hall-console[data-hardware="ready"] .hall-dock__arrow:hover,.hall-console[data-hardware="ready"] .hall-dock__open:hover { color: #0e0c17; }
+.hall-console[data-hardware="ready"] .hall-dock__directory:hover { color: white; }
+.hall-console .hall-dock__arrow:disabled { opacity: .3; }
+.hall-console .hall-dock__arrow:hover:not(:disabled) svg { filter: drop-shadow(0 0 3px #fff8); }
+.hall-console .hall-dock__open:hover { text-shadow: 0 0 12px #fff8; }
+.hall-console .hall-dock__identity::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,#c6b9e709,transparent 50%),repeating-linear-gradient(0deg,transparent 0 3px,#0002 3px 4px); }
+@media (min-width:900px) and (max-width:1100px) {
+ .hall-dock.hall-console { gap: 12px; padding-inline: 20px; grid-template-columns: 60px minmax(0,1fr) auto; }
+ .hall-console .hall-dock__center { gap: 10px; }
+ .hall-console .hall-dock__open { padding-inline: 10px; }
+ .hall-console .hall-dock__directory { min-width: 104px; padding-inline: 10px; }
+}
+@media (max-width:899px) {
+ .hall-dock.hall-console { padding: 10px; grid-template-columns: 48px minmax(0,1fr) minmax(0,1fr) 48px; gap: 8px; }
+ .hall-console .hall-dock__center { display: contents; }
+ .hall-console .hall-dock__count { display:none; }
+ .hall-console .hall-dock__identity { min-height:52px; }
+ .hall-console .hall-dock__directory { min-width:0; }
+}
+
+/* Blender assembly: all visible lettering, controls and readouts live on the GLB.
+   These DOM controls only follow the projected moving parts for native input. */
+@media (min-width:900px) {
+ /* The persistent assembly is retained off-page, never painted over a case or
+    screen close-up. This outranks the ready-model display:block rule below. */
+ :root .hall:not([data-mode="hall"]) .hall-dock.hall-console,
+ :root .hall.is-screen .hall-dock.hall-console { display:none; }
+ .hall.is-3d .hall-console:not([data-hardware]),
+ .hall-console[data-hardware="loading"] { visibility:hidden; opacity:0; pointer-events:none; }
+ .hall-dock.hall-console[data-hardware="ready"] { display:block; width:calc(100% - 48px); max-width:1160px; height:auto; aspect-ratio:4.3; padding:0; border:0; border-radius:0; background:none; box-shadow:none; bottom:0; }
+ .hall-console[data-hardware="ready"] > .hall-console__canvas { inset:0; width:100%; height:100%; filter:drop-shadow(0 14px 15px #0008); }
+ .hall-console[data-hardware="ready"] .hall-dock__center,.hall-console[data-hardware="ready"] .hall-dock__count { display:contents; }
+ .hall-console[data-hardware="ready"] .hall-dock__rail { display:contents; }
+ .hall-console[data-hardware="ready"] .hall-dock__spectrum,.hall-console[data-hardware="ready"] .hall-dock__cursor { display:none; }
+ .hall-console[data-hardware="ready"] .hall-dock__identity,.hall-console[data-hardware="ready"] .hall-dock__count > span { position:absolute; width:1px; height:1px; min-height:0; padding:0; overflow:hidden; clip-path:inset(50%); pointer-events:none; }
+ .hall-dock.hall-console[data-hardware="ready"] :is(.hall-dock__stop,.hall-dock__arrow,.hall-dock__open,.hall-dock__directory,.hall-console__ball) { position:absolute; left:var(--hit-x); top:var(--hit-y); width:var(--hit-w); height:var(--hit-h); min-width:0; min-height:0; padding:0; margin:0; border:0; border-radius:8px; background:none; box-shadow:none; color:transparent; text-shadow:none; transform:none; transition:none; z-index:2; }
+ .hall-dock.hall-console[data-hardware="ready"] :is(.hall-dock__stop,.hall-dock__arrow,.hall-dock__open,.hall-dock__directory) > * { opacity:0; pointer-events:none; }
+ .hall-dock.hall-console[data-hardware="ready"] :is(.hall-dock__stop,.hall-dock__arrow,.hall-dock__open,.hall-dock__directory):hover { background:none; color:transparent; box-shadow:none; text-shadow:none; }
+ /* Input proxies have no visual hover box. Hardware light and travel provide feedback. */
+ :root .hall-dock.hall-console[data-hardware="ready"] :is(button,a,[role="slider"]):is(:hover,:active,:focus) { background:none; border-color:transparent; box-shadow:none; outline:none; transform:none; text-shadow:none; }
+ :root .hall-dock.hall-console[data-hardware="ready"] :is(button,a,[role="slider"])::before,
+ :root .hall-dock.hall-console[data-hardware="ready"] :is(button,a,[role="slider"])::after { display:none; }
+ :root .hall-dock.hall-console[data-hardware="ready"] :is(button,a,[role="slider"]):focus-visible { outline:2px solid #deccff; outline-offset:3px; border-radius:20px; }
+ :root .hall-dock.hall-console[data-hardware="ready"] .hall-console__ball:focus-visible { border-radius:50%; }
+ .hall-console[data-hardware="ready"][data-lighting="off"] { pointer-events:none; }
+}

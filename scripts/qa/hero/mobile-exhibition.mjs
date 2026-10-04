@@ -71,7 +71,7 @@ try {
       await page.locator('.mobile-arcade__machine img').first().evaluate(img => img.decode());
       await page.screenshot({ path: `${out}/home-en.png` });
       assert.equal(await page.locator('.hall__stage').count(), 0);
-      await page.locator('.mobile-arcade__index').click();
+      await page.locator('.mobile-arcade__index[href="/en/work/"]').click();
       await page.waitForURL('**/en/work/');
       assert.ok(await page.locator('a[href="/en/work/mina/"]').count());
       await page.goBack();

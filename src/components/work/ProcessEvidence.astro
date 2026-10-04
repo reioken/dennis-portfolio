@@ -1,0 +1,47 @@
+---
+const { href } = Astro.props;
+const pages = [
+  { page: '03', de: 'Erkenntnisse', en: 'Findings', text: 'Vertrauen, Absprachen und flexible Hilfe: die Probleme, auf die Mina antwortet.', textEn: 'Trust, clear arrangements and flexible help: the problems Mina addresses.' },
+  { page: '09', de: 'User Journey', en: 'User journey', text: 'Hildes Weg durch die App macht Unsicherheit und wichtige Entscheidungspunkte sichtbar.', textEn: 'Hilde’s journey through the app exposes uncertainty and important decision points.' },
+  { page: '10', de: 'Wireframes', en: 'Wireframes', text: 'Der Clickflow verbindet die Hilfsanfrage mit Profilen, Nachrichten und Bewertungen.', textEn: 'The clickflow connects a request for help with profiles, messages and reviews.' },
+  { page: '06', de: 'Design-System', en: 'Design system', text: 'Farben, Typografie und Interaktionsmuster geben der Oberfläche gemeinsame Regeln.', textEn: 'Colour, typography and interaction patterns give the interface shared rules.' },
+];
+---
+<fieldset class="process-evidence">
+  <legend><span data-lang="de">Ein Blick in die Arbeit · Mina</span><span data-lang="en">Inside the work · Mina</span></legend>
+  <div class="process-evidence__selectors">
+    {pages.map((page, i) => <label>
+      <input type="radio" name="mina-evidence" value={page.page} checked={i === 0} aria-controls={`mina-evidence-${page.page}`} />
+      <span><small aria-hidden="true">0{i + 1}</small><span data-lang="de">{page.de}</span><span data-lang="en">{page.en}</span></span>
+    </label>)}
+  </div>
+  {pages.map(page => <div class="process-evidence__page" id={`mina-evidence-${page.page}`} data-evidence={page.page}>
+    <a href={href} target="_blank" rel="noopener" data-astro-reload class="process-evidence__image" aria-label={`Mina — Original-PDF / Original PDF — ${page.de} / ${page.en}`}><img src={`/media/mina/study-${page.page}.webp`} width="1400" height="1465" loading="lazy" decoding="async" alt={`Mina · ${page.de} / ${page.en}`} /></a>
+    <div class="process-evidence__caption"><span class="mono">MINA / {page.page}</span><h3><span data-lang="de">{page.de}</span><span data-lang="en">{page.en}</span></h3><p><span data-lang="de">{page.text}</span><span data-lang="en">{page.textEn}</span></p><a href={href} target="_blank" rel="noopener" data-astro-reload><span data-lang="de">Original-PDF öffnen ↗</span><span data-lang="en">Open original PDF ↗</span></a></div>
+  </div>)}
+  <p class="process-evidence__credit"><span data-lang="de">Originalseiten aus der UX/UI-Gruppenarbeit mit Aurel Cornea und Laura Kolde.</span><span data-lang="en">Original pages from the UX/UI group project with Aurel Cornea and Laura Kolde. Documents in German.</span></p>
+</fieldset>
+<style>
+.process-evidence { min-width: 0; margin: 28px 0; padding: 18px; border: 1px solid #c8bbdc30; background: linear-gradient(130deg,#22202b,#11151c); box-shadow: inset 0 1px #fff1,0 4px 0 #080a10; }
+legend { padding: 0 10px; color: #d3c6e6; font: 10px/1.5 var(--font-mono); letter-spacing: .06em; }
+.process-evidence__selectors { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; margin-bottom: 18px; }
+label { position: relative; min-width: 0; cursor: pointer; }
+input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+label > span { display: flex; flex-direction: column; gap: 6px; min-height: 52px; justify-content: center; padding: 8px; border-bottom: 2px solid #51475e; color: #bdb5c9; font-size: 11px; line-height: 1.3; transition: color 180ms,border-color 180ms,background 180ms; }
+small { color: #a997c0; font: 9px var(--font-mono); }
+input:checked + span { border-color: #e1cbff; background: #c7afff12; color: #f0e9fb; }
+input:focus-visible + span { outline: 2px solid var(--ice); outline-offset: 2px; }
+.process-evidence__page { display: none; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 24px; align-items: center; animation: evidence-in 220ms ease-out both; }
+.process-evidence:has(input[value='03']:checked) [data-evidence='03'],.process-evidence:has(input[value='09']:checked) [data-evidence='09'],.process-evidence:has(input[value='10']:checked) [data-evidence='10'],.process-evidence:has(input[value='06']:checked) [data-evidence='06'] { display: grid; }
+.process-evidence__image { display: block; background: #e8e7e5; box-shadow: 0 8px 16px #0005; transform: rotate(-1deg); transition: transform 180ms; }
+.process-evidence__image:hover { transform: rotate(0); }
+img { display: block; width: 100%; height: auto; }
+.process-evidence__caption > span { font-size: 10px; color: #af9bc9; }
+.process-evidence__caption h3 { margin: 12px 0; font-size: 20px; }
+.process-evidence__caption p { color: #c2becd; font-size: 13px; line-height: 1.7; }
+.process-evidence__caption a { display: inline-flex; align-items: center; min-height: 44px; color: #e2cff9; font-size: 12px; }
+.process-evidence__credit { margin: 18px 0 0; color: #a6a0b2; font-size: 10px; line-height: 1.6; }
+@keyframes evidence-in { from { opacity: .5; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@media (max-width: 599px) { .process-evidence { padding: 12px; } .process-evidence__page { grid-template-columns: 1fr; gap: 12px; } .process-evidence__image { max-width: 280px; margin-inline: auto; } label > span { font-size: 10px; padding-inline: 3px; } }
+@media (prefers-reduced-motion: reduce) { *,*::after { animation: none !important; transition: none !important; } .process-evidence__image { transform: none; } }
+</style>

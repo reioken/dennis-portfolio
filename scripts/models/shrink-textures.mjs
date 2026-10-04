@@ -8,9 +8,10 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptEncoder, MeshoptDecoder } from 'meshoptimizer';
 import sharp from 'sharp';
 import { readdir, stat } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join, relative, basename } from 'node:path';
 
 const ROOT = 'public/models';
+const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 await MeshoptEncoder.ready; await MeshoptDecoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 
@@ -24,6 +25,7 @@ async function* walk(dir) {
 
 let changed = 0;
 for await (const file of walk(ROOT)) {
+  if (only && basename(file) !== `${only}.glb`) continue;
   const document = await io.read(file);
   const root = document.getRoot();
   const log = [];

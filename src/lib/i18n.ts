@@ -54,8 +54,8 @@ export const copy = {
     about: {
       label: 'Über mich',
       role: 'Art Director · UX/UI · Product Builder',
-      posterLead: 'Ich gestalte Marken, digitale Erlebnisse und eigene Produkte.',
-      lead: '6+ Jahre Agentur und Inhouse — Richtung, Branding und eigene Builds.',
+      posterLead: "Art Direction mit UX/UI-Fundament. Von Markenauftritten bis zum Produkt",
+      lead: 'Staatlich anerkannter Mediendesigner. UX/UI-Weiterbildung bei neuefische. 6+ Jahre Agentur und Inhouse.',
       body: 'Fest bei Floordirekt. Freelance willkommen.',
       linkedin: 'LinkedIn',
       contact: 'Kontakt',
@@ -274,8 +274,8 @@ export const copy = {
     about: {
       label: 'About',
       role: 'Art Director · UX/UI · Product Builder',
-      posterLead: 'I design brands, digital experiences and products of my own.',
-      lead: '6+ years agency and in-house — direction, branding, and self-built products.',
+      posterLead: 'Art direction grounded in UX/UI — from brand identities to working products.',
+      lead: 'State-certified media designer. UX/UI training at neuefische. 6+ years of agency and in-house experience.',
       body: 'Full-time at Floordirekt. Freelance welcome.',
       linkedin: 'LinkedIn',
       contact: 'Contact',

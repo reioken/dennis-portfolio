@@ -3,18 +3,18 @@ import * as THREE from 'three';
 /**
  * The visitor's tag, accumulated on the GPU.
  *
- * The ball is a spray nozzle; the line it leaves has to stay on the wall for the whole round and beyond. Redrawing
+ * The ball is a spray nozzle; its short-lived trail fades without leaving a permanent coat. Redrawing
  * a canvas and uploading it every frame is exactly what the hall cannot afford, so the paint is laid down where it
  * lives: a small render target covering the painted rect, into which every frame stamps only the few centimetres
  * of line that are new. The wall's brick shader (wallPaint.ts) samples it as one more pigment source, so the line
  * goes through the same mortar / normal-map / wear path as the lettering.
  *
  * Channels:
- *   R  (max) fresh paint — what was just sprayed; a slow multiply pass lets it settle
- *   G  (max) paint that stays at full strength: the signature, the crown
+ *   R  (max) fresh paint — what was just sprayed
+ *   G  (max) the signature and crown
  *   B  (max) overspray haze around the line
  *   A  (add) the coat every pass leaves behind. It ADDS UP: where the ball has been often the wall gets denser,
- *            so by the end of a round the tag is also a picture of how the round was played. Flight pieces are
+ *            until the shared fade removes it. Flight pieces are
  *            butt-ended in this channel, so consecutive frames tile without beading.
  *
  * One batched draw per frame, preallocated buffers, no readbacks, nothing at all while nothing moves.
@@ -146,7 +146,9 @@ export class WallTag {
     this.pxPerM = width / rect.w;
     const height = Math.round(width * rect.h / rect.w);
     this.target = new THREE.WebGLRenderTarget(width, height, {
-      format: THREE.RGBAFormat, type: THREE.UnsignedByteType, depthBuffer: false, stencilBuffer: false,
+      // Frame-by-frame multiplication needs sub-byte precision: an RGBA8 target
+      // rounds faint trails back to the same value and leaves a visible residue.
+      format: THREE.RGBAFormat, type: THREE.HalfFloatType, depthBuffer: false, stencilBuffer: false,
       magFilter: THREE.LinearFilter, minFilter: THREE.LinearMipmapLinearFilter, generateMipmaps: true,
     });
     this.target.texture.name = 'wall-game-tag';
@@ -231,9 +233,9 @@ export class WallTag {
     this.mesh.material = on ? this.eraser : this.material;
   }
 
-  /** Fresh paint settles: R is multiplied down a little; the coat in A is what remains. */
+  /** Fade fresh strokes, signatures, haze and accumulated pigment together, leaving no permanent trail. */
   settle(factor: number) {
-    this.wash.uniforms.uFade.value.set(factor, 1, 1, 1);
+    this.wash.uniforms.uFade.value.setScalar(factor);
     this.wash.uniforms.uBand.value.x = 0; this.wash.uniforms.uBand.value.y = 0;
     this.washPending = true;
   }

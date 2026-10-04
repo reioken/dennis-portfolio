@@ -1895,7 +1895,7 @@ a:hover .brand-mark--nav {
   display: inline-block;
   max-width: 100%;
   overflow: visible;
-  text-wrap: balance;
+  text-wrap: wrap;
   white-space: normal;
 }
 @keyframes gradient-shift {
@@ -2054,13 +2054,13 @@ html.js-reveal [data-reveal].is-in {
 }
 .case-page__summary {
   margin: 0 0 1.1rem;
-  max-width: 48ch;
+  max-width: 100%;
   font-size: 1.05rem;
   line-height: 1.5;
   color: var(--dim);
 }
 .case-page__copy {
-  max-width: 48ch;
+  max-width: 100%;
 }
 .case-page__copy.prose-case {
   font-size: 0.92rem;
@@ -2570,7 +2570,7 @@ html.js-reveal [data-reveal].is-in {
 }
 .case-stack__blurb {
   margin: 0;
-  max-width: 46ch;
+  max-width: 100%;
   font-size: 0.9rem;
   line-height: 1.4;
   color: var(--dim);
@@ -3250,7 +3250,7 @@ html[data-lang='en'] .lang-switch [data-part='en'] {
 }
 .timeline__body {
   margin: 0;
-  max-width: 52ch;
+  max-width: 100%;
   font-size: 1rem;
   font-weight: 400;
   letter-spacing: normal;

@@ -4,10 +4,12 @@ import type { HallItem, HallMachine } from '../hall/Hall';
 import { copy } from '../../lib/i18n';
 import { p } from '../../lib/paths';
 import { site, skills, timeline, education, languages } from '../../lib/site';
+import { aboutContent as editorial } from '../../lib/about-content';
 import './hall-panel.css';
 import Icon from '../icons/Icon';
 import PanelBack from './PanelBack.astro';
 import MobileClaw from '../hall/MobileClaw.astro';
+import ProcessEvidence from './ProcessEvidence.astro';
 import './about-panel.css';
 
 interface Props {
@@ -86,10 +88,6 @@ const nextLabel = labelOf(next);
     <label for="hall-panel-tall" class="hall-panel__handle" aria-hidden="true"></label>
 
     <div class="hall-panel__body about-poster-body">
-      <section class="mobile-about-intro" aria-label="Über mich / About me">
-        <div class="mobile-about-intro__heading"><span data-lang="de">Über mich</span><span data-lang="en">About me</span><a href="#about-story"><span data-lang="de">Zum Profil</span><span data-lang="en">Read my profile</span><Icon name="arrow-up" className="mobile-about-intro__down" size={16} /></a></div>
-        <MobileClaw item={items[index]} />
-      </section>
       <header class="about-poster" id="about-intro">
         <div class="about-poster__image">
           <img src={portrait} srcset={`${p('media/me/portrait-wide-v2-640.webp')} 640w, ${portrait} 1200w`} sizes="(max-width: 599px) 53vw, (min-width: 1200px) 640px, 54vw" alt={site.name} width="1200" height="1138" loading="eager" decoding="async" />
@@ -105,23 +103,15 @@ const nextLabel = labelOf(next);
           </div>
         </div>
       </header>
-      <section class="about-highlights" aria-label="Design &amp; Profil">
-        <div class="about-highlights__inner">
-          <a class="about-specialty" href="#about-expertise"><span class="about-specialty__top"><Icon name="pen-nib" size={32} /><span>01</span></span><span class="about-specialty__title">Art Direction</span><span class="about-specialty__line" aria-hidden="true"></span></a>
-          <a class="about-specialty" href="#about-expertise"><span class="about-specialty__top"><Icon name="cursor" size={32} /><span>02</span></span><span class="about-specialty__title">UX/UI</span><span class="about-specialty__line" aria-hidden="true"></span></a>
-          <a class="about-specialty" href="#about-expertise"><span class="about-specialty__top"><Icon name="cube" size={32} /><span>03</span></span><span class="about-specialty__title"><span data-lang="de">Eigene Produkte</span><span data-lang="en">Own products</span></span><span class="about-specialty__line" aria-hidden="true"></span></a>
-          <ul class="about-highlights__facts">
-            <li><Icon name="work" size={20} /><span data-lang="de">{avail.de.role} bei {avail.de.employer}</span><span data-lang="en">{avail.en.role} at {avail.en.employer}</span></li>
-            <li><Icon name="education" size={22} /><span data-lang="de">6+ Jahre Agentur &amp; Inhouse</span><span data-lang="en">6+ years agency &amp; in-house</span></li>
-            <li><Icon name="location" size={20} /><span>Mannheim / Heidelberg</span></li>
-          </ul>
-        </div>
+      <section class="mobile-about-intro" aria-label="Greifautomat / Claw machine">
+        <div class="mobile-about-intro__heading"><span data-lang="de">Der Kopf hinter den Automaten</span><span data-lang="en">The person behind the cabinets</span><a href="#about-process"><span data-lang="de">Zur Arbeitsweise</span><span data-lang="en">How I work</span><Icon name="arrow-up" className="mobile-about-intro__down" size={16} /></a></div>
+        <MobileClaw item={items[index]} />
       </section>
       <nav class="about-index" aria-label="Über mich / About sections">
-        <a href="#about-story"><span class="about-index__number">01</span><span data-lang="de">Über mich</span><span data-lang="en">About</span></a>
-        <a href="#about-experience"><span class="about-index__number">02</span><span data-lang="de">Erfahrung</span><span data-lang="en">Experience</span></a>
-        <a href="#about-training"><span class="about-index__number">03</span><span data-lang="de">Ausbildung</span><span data-lang="en">Education</span></a>
-        <a href="#about-expertise"><span class="about-index__number">04</span><span>Skills</span></a>
+        <a href="#about-process"><span data-lang="de">Arbeitsweise</span><span data-lang="en">Approach</span></a>
+        <a href="#about-current"><span data-lang="de">Aktuell</span><span data-lang="en">Currently</span></a>
+        <a href="#about-experience"><span data-lang="de">Erfahrung</span><span data-lang="en">Experience</span></a>
+        <a href="#about-expertise"><span>Skills</span></a>
       </nav>
       <div class="about-editorial">
         <section class="about-story about-section" id="about-story" aria-labelledby="about-story-title">
@@ -131,14 +121,45 @@ const nextLabel = labelOf(next);
             <p><span data-lang="de" data-edit="about.body.de">{A.body}</span><span data-lang="en" data-edit="about.body.en">{AE.body}</span></p>
           </div>
           <dl class="about-facts">
-            <div><dt><Icon name="work" size={18} /><span data-lang="de">{P.role}</span><span data-lang="en">{PE.role}</span></dt><dd><span data-lang="de">{avail.de.role} bei {avail.de.employer}</span><span data-lang="en">{avail.en.role} at {avail.en.employer}</span></dd></div>
             <div><dt><span data-lang="de">{D.contact.location}</span><span data-lang="en">{E.contact.location}</span></dt><dd><span data-lang="de">{site.location}</span><span data-lang="en">Mannheim/Heidelberg area</span></dd></div>
             <div><dt><span data-lang="de">{A.languagesLabel}</span><span data-lang="en">{AE.languagesLabel}</span></dt><dd>{languages.map(l => <span class="about-facts__language"><span data-lang="de">{l.name.de} · {l.level.de}</span><span data-lang="en">{l.name.en} · {l.level.en}</span></span>)}</dd></div>
             <div><dt><Icon name="contact" size={18} />E-Mail</dt><dd><!--email_off--><a href={`mailto:${site.email}`}>{site.email}</a><!--/email_off--></dd></div>
           </dl>
+          <div class="about-production" id="about-production">
+            <p class="about-production__label mono"><span data-lang="de">Aus meiner Arbeit</span><span data-lang="en">From my work</span></p>
+            <h3><span data-lang="de">{editorial.production.heading.de}</span><span data-lang="en">{editorial.production.heading.en}</span></h3>
+            <p><span data-lang="de">{editorial.production.body.de}</span><span data-lang="en">{editorial.production.body.en}</span></p>
+          </div>
         </section>
+        <section class="about-section about-process" id="about-process" aria-labelledby="about-process-title">
+          <div class="about-section__heading"><span class="about-section__number">02</span><h2 id="about-process-title"><span data-lang="de">Arbeitsweise</span><span data-lang="en">How I work</span></h2></div>
+          <p class="about-editorial__display"><span data-lang="de">{editorial.process.de}</span><span data-lang="en">{editorial.process.en}</span></p>
+          <p class="about-editorial__lead"><span data-lang="de">{editorial.processLead.de}</span><span data-lang="en">{editorial.processLead.en}</span></p>
+          <ol class="about-working-notes">
+            {editorial.notes.map((note, i) => <li>
+              <div class="about-working-notes__label"><span class="mono">{String(i + 1).padStart(2, '0')}</span></div>
+              <div><h3><span data-lang="de">{note.heading.de}</span><span data-lang="en">{note.heading.en}</span></h3><p><span data-lang="de">{note.body.de}</span><span data-lang="en">{note.body.en}</span></p></div>
+            </li>)}
+          </ol>
+          <ProcessEvidence href={p('media/mina/case-study-mina.pdf')} />
+          <p class="about-process__examples"><span data-lang="de">Eigene Produkte in der Ausstellung</span><span data-lang="en">My products in the exhibition</span><a href={p('work/riftback')}>Riftback<Icon name="arrow-up-right" size={17} /></a><a href={p('work/snapsize')}>Snapsize<Icon name="arrow-up-right" size={17} /></a></p>
+        </section>
+        <section class="about-section about-current" id="about-current" aria-labelledby="about-current-title">
+          <div class="about-section__heading"><span class="about-section__number">03</span><h2 id="about-current-title"><span data-lang="de">Woran ich gerade arbeite</span><span data-lang="en">What I’m working on</span></h2></div>
+          <p class="about-editorial__lead"><span data-lang="de">{editorial.currentLead.de}</span><span data-lang="en">{editorial.currentLead.en}</span></p>
+          <div class="about-current__games"><h3><span data-lang="de">Spiele</span><span data-lang="en">Games</span></h3><ul>{editorial.games.map(game => <li>{game}</li>)}</ul></div>
+          <div class="about-current__music" id="about-music"><span class="mono"><span data-lang="de">Musik</span><span data-lang="en">Music</span></span>
+            <a class="memoryrot-tape" href={editorial.music.url} target="_blank" rel="noopener noreferrer">
+              <span class="memoryrot-tape__label"><strong>{editorial.music.artist}</strong><span>{editorial.music.title}</span></span>
+              <span class="memoryrot-tape__window" aria-hidden="true"><i></i><b></b><i></i></span>
+              <span class="memoryrot-tape__action"><span data-lang="de">Auf Spotify hören</span><span data-lang="en">Listen on Spotify</span><Icon name="external" size={17} /></span>
+            </a>
+          </div>
+        </section>
+        <details class="about-career-fold" id="about-career">
+          <summary><span class="about-section__number">04</span><span class="about-career-fold__title"><span data-lang="de">Berufserfahrung</span><span data-lang="en">Career</span><small><span data-lang="de">Agentur, Inhouse &amp; eigene Projekte</span><span data-lang="en">Agency, in-house &amp; independent work</span></small></span><Icon name="chevron-right" size={22} /></summary>
         <section class="about-section" id="about-experience" aria-labelledby="about-timeline">
-          <div class="about-section__heading"><span class="about-section__number">02</span><h2 id="about-timeline"><span data-lang="de">{A.timelineLabel}</span><span data-lang="en">{AE.timelineLabel}</span></h2><Icon name="work" size={24} /></div>
+          <div class="about-section__heading"><h2 id="about-timeline"><span data-lang="de">{A.timelineLabel}</span><span data-lang="en">{AE.timelineLabel}</span></h2><Icon name="work" size={24} /></div>
           <ol class="about-career">
             {timeline.map((t,i) => <li class={`about-career__entry${i === 0 ? ' about-career__entry--current' : ''}`}>
               <span class="about-career__year"><span data-lang="de" data-edit={`timeline.${i}.year`}>{t.year}</span><span data-lang="en" data-edit={`timeline.${i}.yearEn`}>{t.yearEn}</span></span>
@@ -146,8 +167,9 @@ const nextLabel = labelOf(next);
             </li>)}
           </ol>
         </section>
+        </details>
         <section class="about-section" id="about-training" aria-labelledby="about-education">
-          <div class="about-section__heading"><span class="about-section__number">03</span><h2 id="about-education"><span data-lang="de">{A.educationLabel}</span><span data-lang="en">{AE.educationLabel}</span></h2><Icon name="education" size={24} /></div>
+          <div class="about-section__heading"><span class="about-section__number">05</span><h2 id="about-education"><span data-lang="de">{A.educationLabel}</span><span data-lang="en">{AE.educationLabel}</span></h2><Icon name="education" size={24} /></div>
           <div class="about-education">
             {education.map((e,i) => <article class="about-education__entry">
               <span class="about-career__year" data-edit={`education.${i}.year`}>{e.year}</span>
@@ -158,7 +180,7 @@ const nextLabel = labelOf(next);
           </div>
         </section>
         <section class="about-section" id="about-expertise" aria-labelledby="about-skills">
-          <div class="about-section__heading"><span class="about-section__number">04</span><h2 id="about-skills"><span data-lang="de">{A.skillsLabel}</span><span data-lang="en">{AE.skillsLabel}</span></h2><Icon name="pen-nib" size={24} /></div>
+          <div class="about-section__heading"><span class="about-section__number">06</span><h2 id="about-skills"><span data-lang="de">{A.skillsLabel}</span><span data-lang="en">{AE.skillsLabel}</span></h2><Icon name="pen-nib" size={24} /></div>
           <div class="about-expertise">{skills.map(s => <div class="about-expertise__group"><h3><span data-lang="de">{s.group.de}</span><span data-lang="en">{s.group.en}</span></h3><ul>{s.items.de.map((item,j) => <li><span data-lang="de">{item}</span><span data-lang="en">{s.items.en[j]}</span></li>)}</ul></div>)}</div>
         </section>
         <div class="about-signoff"><a href={p('contact')}><span data-lang="de">{A.contact}</span><span data-lang="en">{AE.contact}</span><Icon name="external" size={25} /></a><a href="#about-intro" class="about-signoff__top"><span data-lang="de">Nach oben</span><span data-lang="en">Back to top</span><Icon name="arrow-up" size={18} /></a></div>
@@ -224,3 +246,33 @@ const nextLabel = labelOf(next);
   <span data-lang="de">{P.zoomHint}</span>
   <span data-lang="en">{PE.zoomHint}</span>
 </p>
+
+<script>
+  // Native disclosure remains usable without JS; deep links also reveal its content.
+  const revealCareerTarget = (hash = location.hash, scroll = false) => {
+    if (!hash) return;
+    let id: string;
+    try { id = decodeURIComponent(hash.slice(1)); } catch { return; }
+    const target = document.getElementById(id);
+    const details = target?.closest<HTMLDetailsElement>('.about-career-fold');
+    if (!details) return;
+    details.open = true;
+    if (scroll) requestAnimationFrame(() => target?.scrollIntoView({ block: 'start', behavior: 'instant' }));
+  };
+  document.addEventListener('click', event => {
+    const anchor = (event.target as Element)?.closest<HTMLAnchorElement>('a[href]');
+    if (!anchor) return;
+    const url = new URL(anchor.href, location.href);
+    if (url.pathname === location.pathname && url.origin === location.origin) revealCareerTarget(url.hash);
+  });
+  window.addEventListener('hashchange', () => revealCareerTarget(location.hash, true));
+  document.addEventListener('pointermove', event => {
+    const banner=(event.target as Element)?.closest<HTMLElement>('.about-index');
+    if(!banner)return;
+    const bounds=banner.getBoundingClientRect();
+    banner.style.setProperty('--foil-x',`${(event.clientX-bounds.left)/bounds.width*100}%`);
+    banner.style.setProperty('--foil-y',`${(event.clientY-bounds.top)/bounds.height*100}%`);
+  },{passive:true});
+  document.addEventListener('astro:page-load', () => revealCareerTarget(location.hash, true));
+  revealCareerTarget(location.hash, true);
+</script>

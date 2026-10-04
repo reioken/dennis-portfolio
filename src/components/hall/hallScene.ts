@@ -9,6 +9,7 @@
  * optional "marquee" (Leuchtschild), auf die wir Texturen legen.
  */
 import * as THREE from 'three';
+import { prepareDockAsset, DOCK_MODEL } from './dock-asset';
 import { createHallFloor } from './floorReflectionShader';
 import { HallLighting } from './hallLighting';
 import { ScreenDissolve } from './screenDissolve';
@@ -288,8 +289,9 @@ const FLOOR_CAST = false;
 /** Plush prizes inside the claw machine, in the machine's floor space (metres; x right, z towards the glass front). */
 const CLAW_PRIZES: { url: string; size: number; x: number; y?: number; z: number; rotY?: number }[] = [
   // Meshy models from generated reference images (scripts/models/claw-plush-generate.py); the heaps are single meshes, so the toys really press into each other.
-  { url: '/models/plush/pile-back-v1.glb.gz?v=db12b5c3', size: .64, x: 0, z: -.27 },
-  { url: '/models/plush/pile-side-v1.glb.gz?v=f0ec7149', size: .52, x: -.27, z: -.03, rotY: 1.25 },
+  { url: '/models/plush/pile-back-v1.glb.gz?v=db12b5c3', size: .58, x: 0, z: -.31 },
+  // Leave the turning figure's shoe arc clear; the pink side pile sits behind its own smaller footprint.
+  { url: '/models/plush/pile-side-v1.glb.gz?v=f0ec7149', size: .36, x: -.32, z: -.13, rotY: 1.25 },
   { url: '/models/plush/whale-v1.glb.gz?v=f05d7dd6', size: .25, x: .29, z: -.02, rotY: -1.0 },
   { url: '/models/plush/axolotl-v1.glb.gz?v=4c09fe29', size: .2, x: .3, y: .075, z: -.05, rotY: -.75 },
   { url: '/models/plush/cat-v1.glb.gz?v=908b2c47', size: .2, x: .29, z: .27, rotY: -.45 },
@@ -779,6 +781,12 @@ export class HallScene {
     }
     if (!this.exhibit) void fetchModel(TV_RIG_MODEL);
     container.dataset.power = 'loading';
+    if (!this.exhibit && container.clientWidth >= 900 && (!opts.pose || opts.pose === 'hall')) {
+      this.managedLoading = true;
+      this.loadingManager.itemStart(DOCK_MODEL);
+      // A failed decorative console falls back to native controls; it cannot fail the whole hall.
+      void prepareDockAsset().catch(() => {}).finally(() => this.loadingManager.itemEnd(DOCK_MODEL));
+    }
     container.dataset.startupPhase = 'assets';
     this.loadingManager.onStart = () => { this.managedLoading = true; };
     this.loadingManager.onProgress = (_url, loaded, total) => {
@@ -896,7 +904,7 @@ export class HallScene {
   }
 
   /**
-   * The field only exists where it can be seen and played: the hall pose at station 0 on a desktop window.
+   * Paint stays on the wall throughout desktop navigation; station 0 owns the running game and input.
    * The compact framing puts the whole viewport on the cabinet (it already hides the wall lettering too).
    */
   private syncWallGame() {
@@ -912,7 +920,7 @@ export class HallScene {
       while (cols > WallGame.COLS_MIN && .5 + (WallGame.paintedLeft(game.fieldRight, cols) - this.stationX[0]) / (2 * halfW) < .062) cols -= 1;
       game.setCols(cols);
     }
-    game.setVisible(on, this.reduce);
+    game.setVisible(on, this.reduce, this.pose==='hall' && this.container.clientWidth>=900);
   }
 
   /** Where a screen point lands on the back wall, or null if it points away from it. */
@@ -1843,6 +1851,7 @@ export class HallScene {
     this.container.dataset.startupPhase = 'ready';
     if (!this.reduce && !this.powerSkipped && this.pose === 'hall') {
       this.powerAt = performance.now();
+      this.container.dataset.powerAt = String(this.powerAt);
       // Replace the concealed full-light warm-up frame with darkness before CSS reveals it.
       this.renderFrame();
       this.container.dataset.power = 'on';
@@ -3864,6 +3873,7 @@ export class HallScene {
     if (!this.readyDone) { this.powerSkipped = true; return; }
     if (this.powerAt === null) return;
     this.powerAt = null;
+    delete this.container.dataset.powerAt;
     this.wallGame?.setPower(1);
     delete this.container.dataset.power;
     this.flushDeferredScreens();

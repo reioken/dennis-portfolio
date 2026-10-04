@@ -1,5 +1,9 @@
 ---
 import './hall-loading.css';
+import { site } from '../../lib/site';
+import { entrance } from '../../lib/entrance-copy';
+import { p } from '../../lib/paths';
+import SignatureLogo from '../brand/SignatureLogo';
 /**
  * Vor dem ersten Paint (und nach jedem Client-Seitenwechsel, data-astro-rerun): mit WebGL bleibt
  * die CSS-Kulisse verborgen, bis die 3D-Bühne steht — kein kurzes Aufblitzen der alten Reihe.
@@ -8,9 +12,7 @@ import './hall-loading.css';
  */
 ---
 
-<div class="hall-startup" role="status" aria-live="polite">
-  <span class="hall-startup__label" data-lang="de">Die Raumbeleuchtung startet.</span>
-  <span class="hall-startup__label" data-lang="en">The room lights are starting.</span>
+<div class="hall-startup">
   <span class="hall-startup__emblem" aria-hidden="true">
     <span class="hall-startup__orbit">
       <i></i><i></i><i></i><i></i>
@@ -20,6 +22,16 @@ import './hall-loading.css';
     </span>
     <span class="hall-startup__signal"><i></i><i></i><i></i><i></i><i></i></span>
   </span>
+  <div class="hall-startup__identity">
+    <div class="hall-startup__logo"><SignatureLogo instance="startup" /></div>
+    <p class="hall-startup__name"><span data-lang="de"><span class="hall-startup__line">{entrance.first.de}</span><em class="hall-startup__line">{entrance.second.de}</em></span><span data-lang="en"><span class="hall-startup__line">{entrance.first.en}</span><em class="hall-startup__line">{entrance.second.en}</em></span></p>
+    <p class="hall-startup__role">{site.role}</p>
+    <p class="hall-startup__label" role="status" aria-live="polite"><span data-lang="de">Gleich geht das Licht an.</span><span data-lang="en">Lights on in a moment.</span></p>
+    <nav class="hall-startup__routes" aria-label="Portfolio">
+      <a href={p('work')}><span data-lang="de">Schon mal die Projekte ansehen</span><span data-lang="en">Take a look at the projects</span><span aria-hidden="true">↗</span></a>
+      <a href={p('contact')}><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span><span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
 </div>
 
 <script is:inline data-astro-rerun>
@@ -28,7 +40,7 @@ import './hall-loading.css';
     d.classList.remove('gl-pending');
     // Phone home is the native exhibition; projects are native reading pages.
     // Neither waits for (or boots) the hidden 3D room.
-    var nativeCase = window.innerWidth < 900 && (/^\/(en\/)?(?:work\/[^/]+|about)\/?$/.test(location.pathname) || /^\/(en\/?)?$/.test(location.pathname));
+    var nativeCase = window.innerWidth < 900 && (/^\/(en\/)?(?:work\/[^/]+|about|contact)\/?$/.test(location.pathname) || /^\/(en\/?)?$/.test(location.pathname));
     // hall.css takes the hidden CSS row out of the render tree there: its lazy images (other stations' screens,
     // characters, the portrait, ~1.1 MB) loaded behind the reading page. hall-session.ts sets it on client swaps.
     d.classList.toggle('hall-native', nativeCase);
@@ -44,4 +56,31 @@ import './hall-loading.css';
       if (ok) d.classList.add('gl-pending');
     }
   } catch (e) {}
+</script>
+
+<script>
+  // The entry links remain usable during preparation. If readiness dismisses
+  // a focused link, continue at its persistent counterpart in the header.
+  let stopWatching: (() => void) | undefined;
+  function watchStartupFocus() {
+    stopWatching?.();
+    const startup = document.querySelector('.hall-startup');
+    if (!startup) return;
+    const observer = new MutationObserver(() => {
+      const ready = document.querySelector('.hall__stage[data-power="on"], .hall[data-startup-fallback]');
+      if (!ready) return;
+      const focused = document.activeElement;
+      if (focused instanceof HTMLAnchorElement && startup.contains(focused)) {
+        const destination = [...document.querySelectorAll<HTMLAnchorElement>('.site-nav a')]
+          .find(link => link.href === focused.href && link.getClientRects().length > 0);
+        destination?.focus({ preventScroll: true });
+      }
+      observer.disconnect();
+    });
+    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-power', 'data-startup-fallback'] });
+    stopWatching = () => observer.disconnect();
+  }
+  document.addEventListener('astro:page-load', watchStartupFocus);
+  document.addEventListener('astro:before-swap', () => stopWatching?.());
+  watchStartupFocus();
 </script>

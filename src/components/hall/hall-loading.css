@@ -2,11 +2,16 @@
 .hall .hall__stage[data-power='loading'] { opacity: 0; transition: none; }
 .hall .hall__stage[data-power='on'] { opacity: 1; transition: none; }
 html.gl-pending .hall:not(.is-3d) .hall-dock { visibility: hidden; }
-html.gl-pending .hall-panel,
-html:has(.hall__stage[data-power='loading']) .hall-panel {
-  visibility: hidden;
-  pointer-events: none;
+/* Header joins the room reveal, including its keyboard focus targets. Native
+   pages and the fallback keep their navigation immediately available. */
+html.gl-pending:not(.hall-native):not(:has(.hall[data-startup-fallback])) .site-nav,
+html:not(.hall-native):has(.hall__stage[data-power='loading']):not(:has(.hall[data-startup-fallback])) .site-nav {
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-12px); transition: none;
 }
+html.gl-pending:not(.hall-native):not(:has(.hall[data-startup-fallback])) .site-nav__fallback,
+html:not(.hall-native):has(.hall__stage[data-power='loading']):not(:has(.hall[data-startup-fallback])) .site-nav__fallback { visibility: hidden; }
+/* Reading and contact never wait for the decorative room. Its geometry stays
+   hidden above until prepared; server-rendered content remains available. */
 
 /* A centered console-era emblem, rendered before the 3D bundle executes.
    Six prepainted panels rotate on compositor layers, with no image decode or JS frame loop. */
@@ -15,20 +20,50 @@ html:has(.hall__stage[data-power='loading']) .hall-panel {
   z-index: 45;
   left: 50%;
   top: 50%;
-  width: 72px;
-  height: 78px;
-  transform: translate(-50%, -50%) scale(2.2);
-  pointer-events: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  width: min(860px, calc(100vw - 48px));
+  padding: 0;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
   opacity: 0;
   visibility: hidden;
 }
 .hall-startup__label {
-  position: absolute; width: 1px; height: 1px;
-  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  margin: 20px 0 0; color: #b0b8cd;
+  font: 11px/1.6 var(--font-mono); letter-spacing: .035em;
 }
 .hall-startup__emblem {
-  position: absolute; inset: 0;
+  position: relative; display: block; width: 72px; height: 78px;
+  margin: 66px auto 60px; transform: scale(2.7); pointer-events: none;
 }
+.hall-startup__name { margin: 0; font: 600 clamp(36px, 4.5vw, 64px)/1.06 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: -.025em; color: #efedf5; }
+.hall-startup__logo { width: clamp(160px, 18vw, 220px); margin: 0 auto 22px; }
+.hall-startup__name em { font-style: normal; color: #bba6d9; }
+.hall-startup__line { display: block; white-space: nowrap; }
+.hall-startup__role { margin: 14px 0 0; color: #c1c5d2; font-size: 14px; line-height: 1.65; white-space: nowrap; }
+.hall-startup__routes { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 24px; margin-top: 10px; }
+.hall-startup__routes a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: #dcc9fc; font-size: 13px; text-decoration: none; }
+.hall-startup__routes a:hover { color: #fff; }
+.hall-startup__routes a:focus-visible { outline: 2px solid var(--ice); outline-offset: 4px; }
+/* The emblem leads; the copy follows down the same axis without delaying readiness. */
+html.gl-pending .hall-startup__identity > *,
+html:has(.hall__stage[data-power]) .hall-startup__identity > * { animation: hall-startup-copy 560ms var(--copy-delay, 0ms) cubic-bezier(.2,.7,.25,1) both; }
+.hall-startup__name { --copy-delay: 140ms; }
+.hall-startup__role { --copy-delay: 200ms; }
+.hall-startup__label { --copy-delay: 260ms; }
+.hall-startup__routes { --copy-delay: 320ms; }
+@keyframes hall-startup-copy { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+/* A direct case landing has readable content at the right. Keep preparation
+   feedback in the scene area, without repeating the whole home introduction. */
+body[data-mode='case'] .hall-startup { left: 21%; width: min(320px, 36vw); display: block; text-align: center; border: 0; pointer-events: none; }
+body[data-mode='case'] .hall-startup__emblem { margin: 50px auto; }
+body[data-mode='case'] .hall-startup__name,
+body[data-mode='case'] .hall-startup__role,
+body[data-mode='case'] .hall-startup__routes { display: none; }
 .hall-startup__prism {
   position: absolute; left: 4px; top: 1px;
   width: 64px; height: 64px;
@@ -136,6 +171,10 @@ html:has(.hall__stage[data-power]) .hall-startup__orbit > i { animation: hall-or
 html.gl-pending .hall-startup__signal > i,
 html:has(.hall__stage[data-power]) .hall-startup__signal > i { animation: hall-signal 2400ms var(--signal-delay, 0ms) ease-in-out infinite; }
 html:has(.hall__stage[data-power='on']) .hall-startup { animation: hall-emblem-dismiss 320ms ease-out both; }
+/* The signal resolves as the existing room ignition begins; it adds no waiting time. */
+html:has(.hall__stage[data-power='on']) .hall-startup__signal > i { animation: none; opacity: 1; background: #eadbff; box-shadow: 0 0 10px #c9afff99; }
+html:has(.hall__stage[data-power='on']) .hall-startup__emblem { animation: hall-emblem-light 320ms ease-out both; }
+@keyframes hall-emblem-light { from { filter: drop-shadow(0 0 0 #c9afff00); } to { filter: drop-shadow(0 0 18px #c9afff99); } }
 @keyframes hall-orbit-turn {
   from { transform: rotate(0deg); }
   to { transform: rotate(-360deg); }
@@ -146,16 +185,26 @@ html:has(.hall__stage[data-power='on']) .hall-startup { animation: hall-emblem-d
 }
 @keyframes hall-signal { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
 @keyframes hall-emblem-dismiss { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
-@media (prefers-reduced-motion: no-preference) {
-  .hall:has(.hall__stage[data-power='on']) .hall-dock { animation: hall-controls-power 4080ms ease-out both; }
-}
-@keyframes hall-controls-power { 0%, 35% { opacity: .04; } 68% { opacity: .5; } 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
+  .site-nav { transition: none; }
   html .hall__stage { transition: none; }
   html .hall-startup, html .hall-startup * { animation: none !important; }
   .hall-startup__signal > i { opacity: .6; }
   html:has(.hall__stage[data-power='on']) .hall-startup { opacity: 0; visibility: hidden; }
 }
 @media (max-width: 600px) {
-  .hall-startup { transform: translate(-50%, -50%) scale(1.8); }
+  .hall-startup { gap: 20px; }
+  .hall-startup__emblem { transform: scale(2.1); margin-block: 44px 40px; }
+  .hall-startup__name { font-size: clamp(32px, 8vw, 46px); }
+  .hall-startup__role { margin-inline: auto; font-size: clamp(10px, 2.55vw, 14px); }
+  .hall-startup__routes { justify-content: center; }
+}
+@media (max-height: 700px) and (min-width: 601px) {
+  .hall-startup { gap: 20px; }
+  .hall-startup__emblem { transform: scale(2.2); margin-block: 44px 42px; }
+  .hall-startup__name { font-size: clamp(36px, 4vw, 52px); }
+  .hall-startup__label { margin-top: 14px; }
+}
+@media (max-width: 899px) {
+  html.hall-native .hall-startup { display: none; }
 }

@@ -120,8 +120,8 @@ export const timeline = [
       en: 'Art Director — Floordirekt',
     },
     body: {
-      de: 'Visuelle Richtung für Marke und Shop: Design-Systeme, Kampagnen, Bildsprache und UX/UI quer über Touchpoints.',
-      en: 'Visual direction for brand and shop: design systems, campaigns, imagery language, and UX/UI across touchpoints.',
+      de: 'Visuelle Richtung für Marke und Shop: Design-Systeme, Kampagnen, Bildsprache und UX/UI quer über Touchpoints. Entwicklung und Umsetzung funktionsfähiger Produktbild-Pipelines für mehrere Serien, Sprachen und Marken.',
+      en: 'Visual direction for brand and shop: design systems, campaigns, imagery language, and UX/UI across touchpoints. Development and implementation of functional product-image pipelines for multiple series, languages and brands.',
     },
   },
   {

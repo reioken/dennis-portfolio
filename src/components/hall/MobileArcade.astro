@@ -5,6 +5,9 @@ import Icon from '../icons/Icon';
 import { copy } from '../../lib/i18n';
 import { p } from '../../lib/paths';
 import { site } from '../../lib/site';
+import { entrance } from '../../lib/entrance-copy';
+import { getProjectActivity } from '../../lib/project-activity';
+import '../work/project-activity.css';
 import './mobile-arcade.css';
 
 interface Props { machines: HallMachine[] }
@@ -18,22 +21,24 @@ const poster = (slug: string) => p(`media/mobile-arcade/${slug}.webp`).replace(/
   <article class="mobile-arcade__exhibit mobile-arcade__exhibit--about" id="exhibit-kasse" data-exhibit="kasse">
     <header class="mobile-arcade__heading">
       <div class="mobile-arcade__eyebrow">
-        <span class="mobile-arcade__number"><span data-lang="de">DER KOPF DAHINTER</span><span data-lang="en">MEET THE MAKER</span></span>
+        <span class="mobile-arcade__number"><span data-lang="de">IDEEN WERDEN PROJEKTE</span><span data-lang="en">IDEAS BECOME PROJECTS</span></span>
         <a class="mobile-arcade__index" href="#exhibit-riftback"><span data-lang="de">Die Projekte</span><span data-lang="en">The projects</span><Icon name="arrow-up" className="mobile-arcade__down" size={15} /></a>
       </div>
-      <h2><a href={p('about')}><span data-lang="de">{copy.de.nav.about}</span><span data-lang="en">{copy.en.nav.about}</span></a></h2>
-      <p class="mobile-arcade__role">{site.name}</p>
+      <h2 class="mobile-arcade__manifesto"><span data-lang="de">{entrance.first.de}{' '}<em>{entrance.second.de}</em></span><span data-lang="en">{entrance.first.en}{' '}<em>{entrance.second.en}</em></span></h2>
+      <p class="mobile-arcade__intro-role">{site.role}</p>
     </header>
     <a class="mobile-arcade__machine mobile-arcade__claw" href={p('about')} aria-label={site.name}>
       <picture><source media="(max-width: 899px)" srcset={`${poster('kasse')}-sm.webp 390w, ${poster('kasse')}.webp 780w`} sizes="(min-width: 600px) 520px, 100vw" /><img src={blank} alt="" width="780" height="940" loading="eager" fetchpriority="high" decoding="async" /></picture>
     </a>
     <div class="mobile-arcade__caption">
-      <p><span data-lang="de">{copy.de.about.posterLead}</span><span data-lang="en">{copy.en.about.posterLead}</span></p>
-      <a class="mobile-arcade__open" href={p('about')}><span data-lang="de">Lern mich kennen</span><span data-lang="en">Get to know me</span><Icon name="arrow-up-right" size={19} /></a>
+      <p><span data-lang="de">{entrance.note.de}</span><span data-lang="en">{entrance.note.en}</span></p>
+      <a class="mobile-arcade__open" href={p('about')}><span data-lang="de">Der Kopf hinter den Ideen</span><span data-lang="en">The mind behind the ideas</span><Icon name="arrow-up-right" size={19} /></a>
+      <a class="mobile-arcade__story" href={`${p('about')}#about-current`}><span data-lang="de">Woran ich gerade arbeite</span><span data-lang="en">What I'm working on now</span><Icon name="arrow-up-right" size={16} /></a>
     </div>
   </article>
   {machines.map((machine, index) => {
     const entry = entries.get(machine.slug)!;
+    const activity = getProjectActivity(machine.slug);
     const shot = (src: string, alt?: string, altEn?: string) => ({ src: p(src.replace(/^\//, '')), alt: alt ?? entry.title, altEn });
     const cover = shot(entry.cover, entry.coverAlt, entry.coverAltEn);
     const groups = entry.surfaces?.length ? entry.surfaces.map(surface => ({
@@ -57,6 +62,7 @@ const poster = (slug: string) => p(`media/mobile-arcade/${slug}.webp`).replace(/
           </div>
           <h2><a href={machine.href}><span data-lang="de">{machine.title}</span><span data-lang="en">{machine.titleEn ?? machine.title}</span></a></h2>
           <p class="mobile-arcade__role"><span data-lang="de">{entry.role}</span><span data-lang="en">{entry.roleEn ?? entry.role}</span></p>
+          {activity && <p class="project-activity" data-activity={activity.id}><span data-lang="de">{activity.de}</span><span data-lang="en">{activity.en}</span></p>}
         </header>
         <a class="mobile-arcade__machine" href={machine.href} aria-label={machine.title} data-mobile-enter>
           <picture>
@@ -67,8 +73,9 @@ const poster = (slug: string) => p(`media/mobile-arcade/${slug}.webp`).replace(/
         <div class="mobile-arcade__caption">
           <p><span data-lang="de">{machine.summary}</span><span data-lang="en">{machine.summaryEn ?? machine.summary}</span></p>
           <a class="mobile-arcade__open" href={machine.href} data-mobile-enter>
-            <span data-lang="de">Projekt ansehen</span><span data-lang="en">View project</span><Icon name="arrow-up-right" size={19} />
+            <span data-lang="de">Screens erkunden</span><span data-lang="en">Explore screens</span><Icon name="arrow-up-right" size={19} />
           </a>
+          <a class="mobile-arcade__story" href={machine.href}><span data-lang="de">Über das Projekt</span><span data-lang="en">About the project</span><Icon name="arrow-up-right" size={16} /></a>
         </div>
       </article>
     );

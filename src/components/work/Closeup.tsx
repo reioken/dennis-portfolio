@@ -4,6 +4,7 @@ import { navigate } from 'astro:transitions/client';
 import { copy, type Lang } from '../../lib/i18n';
 import { toAvif } from '../../lib/img';
 import { altFor, asLoaded, type GalleryShot } from './GalleryLightbox';
+import { screenImageRect, travelScreen } from '../../lib/screen-transition';
 import type { CaptureGroup } from './CaseCaptures';
 import './closeup.css';
 import Icon from '../icons/Icon';
@@ -93,6 +94,9 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
   /** Große Variante erst zeigen, wenn sie abseits des Hauptthreads dekodiert ist — sonst hängt der Klick */
   const [hiReady, setHiReady] = useState<string | null>(null);
   const screenRef = useRef<HTMLElement>(null);
+  const fullscreenOrigin = useRef<DOMRect | null>(null);
+  const fullscreenBounds = useRef<DOMRect | null>(null);
+  const screenTravel = useRef<ReturnType<typeof travelScreen> | null>(null);
   const uiTimer = useRef<number | undefined>(undefined);
   const wheelAt = useRef(0);
   const wheelAcc = useRef(0);
@@ -231,6 +235,9 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
   );
   const enterFullscreen = useCallback(() => {
     const el = screenRef.current;
+    const image = el?.querySelector<HTMLImageElement>('.is-current img');
+    screenTravel.current?.cancel();
+    if (image) fullscreenOrigin.current = screenImageRect(image);
     ctl(ctlRects.btn_0 ? 'btn_0' : 'btn', 'press');
     if (!el || typeof el.requestFullscreen !== 'function') {
       onFullscreenFallback();
@@ -283,10 +290,25 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
 
   /* ---------- Vollbild-Zustand ---------- */
   useEffect(() => {
-    const onFs = () => setFs(Boolean(document.fullscreenElement) && document.fullscreenElement === screenRef.current);
+    let frame = 0;
+    const onFs = () => {
+      const active = Boolean(screenRef.current) && document.fullscreenElement === screenRef.current;
+      setFs(active);
+      cancelAnimationFrame(frame);
+      screenTravel.current?.cancel();
+      frame = requestAnimationFrame(() => {
+        const el = screenRef.current;
+        const image = el?.querySelector<HTMLImageElement>('.is-current img');
+        if (!el || !image) return;
+        const target = screenImageRect(image);
+        const origin = active ? fullscreenOrigin.current : fullscreenBounds.current;
+        if (active) fullscreenBounds.current = target;
+        if (origin) screenTravel.current = travelScreen(image, origin, target, active ? el : document.body, reduce);
+      });
+    };
     document.addEventListener('fullscreenchange', onFs);
-    return () => document.removeEventListener('fullscreenchange', onFs);
-  }, []);
+    return () => { document.removeEventListener('fullscreenchange', onFs); cancelAnimationFrame(frame); screenTravel.current?.cancel(); };
+  }, [reduce]);
 
   /* ---------- Tastatur (document: vor der Halle, die auf window hört) ---------- */
   useEffect(() => {

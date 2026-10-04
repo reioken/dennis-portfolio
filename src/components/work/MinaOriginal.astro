@@ -1,0 +1,34 @@
+---
+import sharp from 'sharp';
+import { p } from '../../lib/paths';
+const pdf = p('media/mina/case-study-mina.pdf');
+const pages = await Promise.all(Array.from({ length: 11 }, async (_, i) => {
+  const file = `media/mina/study-${String(i + 1).padStart(2, '0')}.webp`;
+  const { width, height } = await sharp(`public/${file}`).metadata();
+  return { src: p(file), width, height };
+}));
+---
+<section class="mina-original-study" id="mina-original" aria-labelledby="mina-original-title">
+  <header>
+    <h2 id="mina-original-title"><span data-lang="de">Die originale Case Study</span><span data-lang="en">The original case study</span></h2>
+    <p><span data-lang="de">Die vollständige Präsentation mit Research, User Journey, Wireframes und Design-System.</span><span data-lang="en">The complete presentation with research, user journey, wireframes and design system. Original document in German.</span></p>
+    <div class="mina-original-study__actions">
+      <a class="btn btn--primary" href={pdf} target="_blank" rel="noopener" data-astro-reload><span data-lang="de">Original-PDF öffnen ↗</span><span data-lang="en">Open original PDF ↗</span></a>
+      <a href={pdf} download="Mina-UXUI-Case-Study.pdf" data-astro-reload><span data-lang="de">PDF herunterladen</span><span data-lang="en">Download PDF</span><small>10.3 MB</small></a>
+    </div>
+  </header>
+  <div class="mina-original-study__pages">
+    {pages.map((page, i) => <img src={page.src} width={page.width} height={page.height} loading="lazy" decoding="async" alt={`Mina · Original Case Study · ${i + 1}/11`} />)}
+  </div>
+</section>
+<style>
+.mina-original-study { margin-block: 24px 40px; scroll-margin-top: calc(var(--nav-h) + 24px); }
+header { margin-bottom: 24px; }
+h2 { font-size: clamp(24px,3vw,34px); line-height: 1.2; margin: 0 0 12px; }
+p { color: var(--dim); font-size: 14px; line-height: 1.65; }
+.mina-original-study__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+.mina-original-study__actions a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: 13px; }
+small { color: var(--faint); font: 10px var(--font-mono); }
+.mina-original-study__pages { overflow: hidden; background: white; }
+img { display: block; width: 100%; height: auto; margin: 0; }
+</style>

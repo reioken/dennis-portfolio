@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import ProjectCard from './ProjectCard';
 import { copy, type Lang } from '../../lib/i18n';
+import { getProjectActivity } from '../../lib/project-activity';
+import './project-activity.css';
 
 export type WorkItem = {
   slug: string;
@@ -132,32 +134,41 @@ export default function WorkFilter({ items, basePath = '/' }: Props) {
         </p>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {visible.map((item, index) => (
-            <ProjectCard
-              key={item.slug}
-              href={`${root}work/${item.slug}/`}
-              title={item.title}
-              summary={item.summary}
-              year={item.year}
-              role={item.role}
-              titleEn={item.titleEn}
-              summaryEn={item.summaryEn}
-              yearEn={item.yearEn}
-              roleEn={item.roleEn}
-              cover={item.cover}
-              coverSm={item.coverSm}
-              coverAlt={lang === 'en' ? item.coverAltEn ?? item.coverAlt : item.coverAlt}
-              previews={item.previews}
-              preview
-              priority={index === 0}
-              status={item.status}
-              logo={item.logo}
-              logoLive={item.logoLive}
-              tags={item.tags}
-              caseStudy={item.slug === 'mina'}
-              headingLevel="h2"
-            />
-          ))}
+          {visible.map((item, index) => {
+            const activity = getProjectActivity(item.slug);
+            return (
+              <div key={item.slug} className="work-project">
+                <ProjectCard
+                  href={`${root}work/${item.slug}/`}
+                  title={item.title}
+                  summary={item.summary}
+                  year={item.year}
+                  role={item.role}
+                  titleEn={item.titleEn}
+                  summaryEn={item.summaryEn}
+                  yearEn={item.yearEn}
+                  roleEn={item.roleEn}
+                  cover={item.cover}
+                  coverSm={item.coverSm}
+                  coverAlt={lang === 'en' ? item.coverAltEn ?? item.coverAlt : item.coverAlt}
+                  previews={item.previews}
+                  preview
+                  priority={index === 0}
+                  status={item.status}
+                  activity={activity?.id}
+                  logo={item.logo}
+                  logoLive={item.logoLive}
+                  tags={item.tags}
+                  caseStudy={item.slug === 'mina'}
+                  headingLevel="h2"
+                />
+                {activity && <p className="work-project__activity project-activity" data-activity={activity.id}>
+                  <span data-lang="de">{activity.de}</span>
+                  <span data-lang="en">{activity.en}</span>
+                </p>}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

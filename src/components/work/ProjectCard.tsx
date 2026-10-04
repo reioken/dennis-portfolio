@@ -8,6 +8,7 @@ import MinaLiveLogo from './MinaLiveLogo';
 import WebsitesStackLogo from './WebsitesStackLogo';
 import { toAvif } from '../../lib/img';
 import Icon from '../icons/Icon';
+import type { ProjectActivityId } from '../../lib/project-activity';
 
 /** Tag slugs are data values — show localized labels on the cards. */
 const TAG_LABELS: Record<string, { de: string; en: string }> = {
@@ -58,6 +59,8 @@ type Props = {
   priority?: boolean;
   previews?: string[];
   status?: string;
+  /** Confirmed editorial activity, separate from delivery status. */
+  activity?: ProjectActivityId;
   /** Smaller card — homepage archive strip */
   compact?: boolean;
   coverAlt?: string;
@@ -86,6 +89,7 @@ export default function ProjectCard({
   priority = false,
   previews = [],
   status,
+  activity,
   compact = false,
   coverAlt,
   caseStudy = false,
@@ -102,6 +106,7 @@ export default function ProjectCard({
   const ambient = !reduce && !compact;
   const liveActive = hovering && !reduce;
   const Heading = headingLevel;
+  const pausedPrototype = status === 'wip' && activity === 'paused';
 
   const onMove = (e: React.MouseEvent) => {
     if (preview || reduce || window.matchMedia('(pointer: coarse)').matches) return;
@@ -254,7 +259,7 @@ export default function ProjectCard({
           }`}
         >
           <Bi de={year} en={yearEn} />
-          {status ? <> · <Bi de={({ live: 'Live', wip: 'In Entwicklung', private: 'Privat', archived: 'Archiv', released: 'Veröffentlicht', case: 'Case Study' } as Record<string,string>)[status] ?? status} en={({ live: 'Live', wip: 'In development', private: 'Private', archived: 'Archive', released: 'Released', case: 'Case study' } as Record<string,string>)[status] ?? status} /></> : null}
+          {status ? <> · <Bi de={pausedPrototype ? 'Prototyp' : ({ live: 'Live', wip: 'In Entwicklung', private: 'Privat', archived: 'Archiv', released: 'Veröffentlicht', case: 'Case Study' } as Record<string,string>)[status] ?? status} en={pausedPrototype ? 'Prototype' : ({ live: 'Live', wip: 'In development', private: 'Private', archived: 'Archive', released: 'Released', case: 'Case study' } as Record<string,string>)[status] ?? status} /></> : null}
         </span>
       </div>
       <div
@@ -283,7 +288,7 @@ export default function ProjectCard({
         <p
           className={`text-[var(--dim)] ${
             featured
-              ? 'mb-4 line-clamp-3 max-w-[40ch] text-[0.95rem]'
+              ? 'mb-4 line-clamp-3 text-[0.95rem]'
               : compact
                 ? 'mb-2.5 line-clamp-2 text-[0.8rem] leading-snug'
                 : 'mb-4 line-clamp-2 text-[0.95rem]'

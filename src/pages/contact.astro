@@ -50,6 +50,7 @@ const formEn = {
     <div class="hall-panel__chrome"><PanelBack homeHref={p()} /></div>
     <div class="hall-panel__card">
       <div class="hall-panel__body">
+        <picture class="contact-poster" aria-hidden="true"><source media="(max-width: 899px)" srcset={p('media/contact/booth.webp')} /><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" width="240" height="440" decoding="async" /></picture>
         <p class="hall-panel__kind"><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span></p>
         <h1 id="contact-title" class="hall-panel__title"><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span></h1>
         <p class="hall-panel__summary"><span data-lang="de">{copy.de.contact.body}</span><span data-lang="en">{copy.en.contact.body}</span></p>
@@ -66,9 +67,23 @@ const formEn = {
   </aside>
 </BaseLayout>
 <style>
+.contact-poster { display: none; }
 .contact-direct { margin: 18px 0 24px; overflow-wrap: anywhere; font-size: clamp(16px, 1.3vw, 18px); color: var(--ice); }
 .contact-profile { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--stroke); color: var(--dim); font-size: 14px; }
 .contact-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; padding: 12px var(--pad); font-size: 13px; }
 .contact-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
 @media (max-width: 599px) { .contact-links { gap: 4px 20px; } }
+@media (max-width: 899px) {
+  :global(html:has(.hall-panel--contact) main.is-bare) { height: auto; min-height: 100svh; overflow: visible; }
+  :global(html:has(.hall-panel--contact) .hall) { display: none; }
+  .hall-panel--contact { --pad: clamp(24px, 6vw, 40px); position: relative; inset: auto; width: 100%; max-width: 680px; min-height: 100svh; margin-inline: auto; padding-top: calc(var(--nav-h) + 76px); }
+  .hall-panel--contact .hall-panel__chrome { position: absolute; top: calc(var(--nav-h) + 16px); left: var(--pad); }
+  .hall-panel--contact .hall-panel__card { position: relative; inset: auto; overflow: visible; display: block; border-radius: 0; box-shadow: none; background: #0b0d13; }
+  .hall-panel--contact .hall-panel__body { display: block; overflow: visible; padding-top: 24px; scrollbar-gutter: auto; }
+  .contact-poster { display: block; float: right; width: 52px; margin: -10px -8px 8px 16px; }
+  .contact-poster img { display: block; width: 100%; height: auto; mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent); }
+  .hall-panel--contact .hall-panel__summary { clear: both; }
+  .contact-direct { clear: both; padding-block: 18px; border-block: 1px solid var(--stroke); font-size: clamp(15px, 4vw, 19px); }
+  .contact-links { padding-block: 12px max(24px, env(safe-area-inset-bottom)); }
+}
 </style>

@@ -1,6 +1,7 @@
 import type { HallMachine } from './Hall';
 import type { HallScene, Frame } from './hallScene';
 import { controlTargets } from '../work/control-targets.mjs';
+import { screenImageRect, travelScreen } from '../../lib/screen-transition';
 
 type Shot = { src: string; alt: string; altEn?: string };
 type Gallery = { machine: HallMachine; groups: { labelDe: string; labelEn: string; images: Shot[] }[] };
@@ -103,6 +104,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
       <select aria-label="Screenshots"></select>
       <div class="mobile-viewer__controls"><button type="button" data-prev>←</button><span aria-live="polite"></span><button type="button" data-next>→</button></div>
       </div>
+      <p class="mobile-viewer__caption"></p>
       <p class="mobile-viewer__hint"></p>
       <div class="mobile-viewer__links"><button type="button" data-full></button><a></a></div>
     </footer>
@@ -120,11 +122,11 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
   q('.mobile-viewer__header span').textContent = en ? machine.titleEn ?? machine.title : machine.title;
   q('[data-prev]').setAttribute('aria-label', t('Vorheriger Screenshot', 'Previous screenshot'));
   q('[data-next]').setAttribute('aria-label', t('Nächster Screenshot', 'Next screenshot'));
-  q('[data-full]').textContent = t('Vergrößern ↗', 'Enlarge ↗');
+  q('[data-full]').textContent = t('Vollbild ↗', 'Fullscreen ↗');
   q('.mobile-viewer__screen').setAttribute('aria-label', t('Screenshot vergrößern', 'Enlarge screenshot'));
   q('.mobile-viewer__hint').textContent = t('Wischen oder die Tasten am Automaten nutzen', 'Swipe or use the cabinet buttons');
   q<HTMLAnchorElement>('.mobile-viewer__links a').href = href;
-  q('.mobile-viewer__links a').textContent = t('Zum Projekt →', 'Project details →');
+  q('.mobile-viewer__links a').textContent = t('Über das Projekt →', 'About the project →');
   const select = q<HTMLSelectElement>('select');
   groups.forEach((group, i) => select.add(new Option(en ? group.labelEn : group.labelDe, String(i))));
   select.value = String(gi);
@@ -149,6 +151,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     galleryPositions.set(machine.slug, { group: gi, index });
     const request = ++imageRequest;
     const alt = en ? shot.altEn ?? shot.alt : shot.alt;
+    q('.mobile-viewer__caption').textContent = alt;
     full.setAttribute('aria-busy', 'true');
     q('.mobile-viewer__screen').setAttribute('aria-busy', 'true');
     void preload(shot.src).decode().then(() => {
@@ -184,13 +187,41 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
   const inertBackground = (value: boolean) => {
     for (const el of dialog.children) if (el !== full) (el as HTMLElement).inert = value;
   };
-  const enlarge = () => { full.hidden = false; inertBackground(true); q('[data-full-close]').focus(); };
-  const shrink = () => { full.hidden = true; inertBackground(false); q('[data-full]').focus(); };
+  let fullTravel: ReturnType<typeof travelScreen> | undefined;
+  let fullFade: Animation | undefined;
+  let fullClosing = false;
+  const sourceScreen = () => dialog.dataset.state === 'fallback' ? poster : screenImage;
+  const enlarge = () => {
+    if (!full.hidden || fullClosing) return;
+    const origin = screenImageRect(sourceScreen());
+    fullTravel?.cancel(); fullFade?.cancel();
+    full.hidden = false;
+    inertBackground(true);
+    q('[data-full-close]').focus();
+    fullTravel = travelScreen(fullImage, origin, screenImageRect(fullImage), dialog, reduce);
+    if (!reduce) fullFade = full.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, easing: 'ease-out' });
+  };
+  const shrink = async () => {
+    if (full.hidden || fullClosing) return;
+    fullClosing = true;
+    fullTravel?.cancel(); fullFade?.cancel();
+    fullTravel = travelScreen(fullImage, screenImageRect(fullImage), screenImageRect(sourceScreen()), dialog, reduce);
+    if (!reduce) fullFade = full.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 360, fill: 'forwards', easing: 'ease-out' });
+    await fullTravel.finished;
+    if (closed) return;
+    full.hidden = true;
+    fullFade?.cancel();
+    inertBackground(false);
+    q('[data-full]').focus();
+    fullClosing = false;
+  };
   const dispose = () => {
     if (closed) return;
     closed = true;
     reveal?.cancel();
     imageMotion?.cancel();
+    fullTravel?.cancel();
+    fullFade?.cancel();
     preloads.clear();
     abort.abort();
     if (resident && ready && prepared === resident) {

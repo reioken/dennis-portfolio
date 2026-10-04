@@ -9,12 +9,13 @@ import type { CollectionEntry } from 'astro:content';
 import CaseMedia from './CaseMedia';
 import CaseSurfaceStack from './CaseSurfaceStack';
 import CaseDocument from './CaseDocument';
-import MinaStudyEn from './MinaStudyEn.astro';
-import MinaStudyDe from './MinaStudyDe.astro';
+import MinaOriginal from './MinaOriginal.astro';
 import CertificateCard from './CertificateCard.astro';
 import CaseAdjacent from './CaseAdjacent.astro';
 import { toAvif } from '../../lib/img';
 import { p } from '../../lib/paths';
+import { getProjectActivity } from '../../lib/project-activity';
+import './project-activity.css';
 
 type WorkLite = { id: string; data: { title: string; role: string; cover: string; titleEn?: string; roleEn?: string } };
 
@@ -30,6 +31,7 @@ interface Props {
 
 const { entry, prev, next, index, total, hasBody } = Astro.props;
 const data = entry.data;
+const activity = getProjectActivity(entry.id);
 const asset = (src: string) => p(src.replace(/^\//, ''));
 
 function hiAsset(sitePath: string): string | undefined {
@@ -135,6 +137,10 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
         <span data-lang="de">{data.title}</span>
         <span data-lang="en">{data.titleEn ?? data.title}</span>
       </h1>
+      {activity && <p class="project-activity" data-activity={activity.id}>
+        <span data-lang="de">{activity.de}</span>
+        <span data-lang="en">{activity.en}</span>
+      </p>}
       <p class="case-page__summary">
         <span data-lang="de">{data.summary}</span>
         <span data-lang="en">{data.summaryEn ?? data.summary}</span>
@@ -143,6 +149,16 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
         hasBody && (
           <div class="case-page__copy prose-case">
             <slot />
+          </div>
+        )
+      }
+      {
+        entry.id === 'mina' && (
+          <div class="mt-7 flex flex-wrap gap-3">
+            <a class="btn btn--primary" href={p('media/mina/case-study-mina.pdf')} target="_blank" rel="noopener" data-astro-reload>
+              <span data-lang="de">Original-PDF öffnen ↗</span>
+              <span data-lang="en">Open original PDF ↗</span>
+            </a>
           </div>
         )
       }
@@ -205,21 +221,7 @@ const logoSrc = data.logo ? asset(data.logo) : undefined;
       <CaseSurfaceStack client:load title={data.title} surfaces={surfaces} />
     ) : docPages.length > 0 && data.document ? (
       entry.id === 'mina' ? (
-        <>
-          <div data-lang="de">
-            <CaseDocument client:load labelDe={data.document.labelDe} labelEn={data.document.labelEn}>
-              <MinaStudyDe />
-              <details><summary>Original-Präsentation ansehen · 11 Abschnitte</summary>
-                {docPages.map((page) => <img src={page.src} alt={page.alt} loading="lazy" width="1400" height="1465" style="max-width:100%;height:auto" />)}
-              </details>
-            </CaseDocument>
-          </div>
-          <div data-lang="en">
-            <CaseDocument client:load labelDe={data.document.labelDe} labelEn={data.document.labelEn}>
-              <MinaStudyEn />
-            </CaseDocument>
-          </div>
-        </>
+        <div class="wrap"><MinaOriginal /></div>
       ) : (
         <CaseDocument client:load labelDe={data.document.labelDe} labelEn={data.document.labelEn} pages={docPages} />
       )

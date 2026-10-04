@@ -6,10 +6,9 @@ import { WallTag } from './wallTag';
 /**
  * "Your tag" — Breakout sprayed on the hall's brick wall, left of the claw machine.
  *
- * The ball is a spray nozzle. Wherever it flies it leaves a sprayed line on the wall, and the line stays: by the
- * end of a round the visitor has scribbled a tag across the bricks that nobody else will ever make. It remains on
- * the wall for TAG_LIFE_MS after the round, then the roller buffs it away; a new round buffs it at once. It is not
- * stored: every visit starts on a clean wall.
+ * The ball is a spray nozzle. Wherever it flies it leaves a short-lived sprayed line on the wall. Every pigment
+ * channel fades together over the next couple of seconds. After a round the roller clears the remainder;
+ * leaving the station clears it immediately. Every visit starts on a clean wall.
  *
  * Nothing here is geometry: every mark is pigment mixed into the wall's own diffuse inside the brick material's
  * `onBeforeCompile` (wallPaint.ts), through the same brick-luminance modulation, lit by the same normal map.
@@ -91,11 +90,11 @@ const OLD_TAG_KEYS = ['hall.wall-game.tag.v1', 'hall.wall-game.tag.v2'];
 const BEST_KEY = 'hall.wall-game.best';
 const TAG_MAX = 560;                                  // impact points kept to re-spray the tag after a lost context
 /** How long a finished piece stays on the wall once the round is over, before the roller buffs it away. */
-const TAG_LIFE_MS = 30000;
-/** What one pass of the ball leaves for good; passes add up. */
+const TAG_LIFE_MS = 1000;
+/** Pigment strength per pass; all channels fade over the next couple of seconds. */
 const COAT = 0.19;
-const SETTLE_MS = 260;
-const SETTLE_K = 0.962;
+// Continuous exponential decay: the previous lifetime, without 260ms opacity steps.
+const TRAIL_DECAY_PER_SECOND = -Math.log(0.58) / 0.26;
 const BUFF_MS = 820;
 const BUFF_GHOST = 0.10;
 const MAX_DRIPS = 10;
@@ -230,7 +229,6 @@ export class WallGame {
   private jobs: StrokeJob[] = [];
   private replayAt = -1;
   private restamp = false;
-  private settleAt = 0;
   private buffFront = 0;
   private buffSeed = 1;
   private hasPaint = false;
@@ -330,16 +328,26 @@ export class WallGame {
   }
 
   /* ---------- lifecycle ---------- */
-  setVisible(on: boolean, reduce = this.reduce) {
+  setVisible(on: boolean, reduce = this.reduce, painted = on) {
     this.reduce = reduce;
+    // Paint is part of the wall even when the selected station no longer owns game input.
+    if (painted && !this.built) this.build();
+    const opacity = painted && this.built ? 0.91 : 0;
+    if (this.u.wallGameOpacity.value !== opacity) {
+      this.u.wallGameOpacity.value = opacity;
+      this.request();
+    }
     if (on === this.visible) return;
     this.visible = on;
     // Build here and now. An idle callback looked cheaper, but the hall renders every frame in the hall pose, so a
     // real browser may never report an idle slice and the field then stays unpainted for the whole visit.
     if (on && !this.built) this.build();
-    this.u.wallGameOpacity.value = on && this.built ? 0.91 : 0;
     // Walking away mid-round ends it: the piece is signed and kept, the wall is whole again when they come back.
-    if (!on) { this.stopRound(true); this.pause(); }
+    if (!on) {
+      this.stopRound(true); this.pause(); this.clearTag(false);
+      // Simulation stops off-station, but the visible wall must receive the clear immediately.
+      if (this.tag?.pending) this.tag.flush(this.renderer());
+    }
     else { this.last = performance.now(); this.acc = 0; this.dropExpiredTag(this.last); this.sync(); }
     this.request();
   }
@@ -677,7 +685,10 @@ export class WallGame {
       if (this.playing) this.movePaddle(dt);
     }
 
-    if (this.mode !== 'idle' && this.mode !== 'buff' && now - this.settleAt > SETTLE_MS) { this.settleAt = now; this.tag!.settle(SETTLE_K); }
+    if (this.mode !== 'idle' && this.mode !== 'buff' && dt > 0) {
+      this.tag!.settle(Math.exp(-TRAIL_DECAY_PER_SECOND * dt));
+      busy = true;
+    }
     const painting = this.tickPaint(dt);
     if (this.mode === 'repaint' && !painting && this.repaintRow >= ROWS - 1) {
       this.mode = 'idle';

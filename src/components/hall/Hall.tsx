@@ -4,11 +4,13 @@ import { navigate } from 'astro:transitions/client';
 import { warmHallRoute, usePreparedHallRoute } from '../../lib/hall-route-cache';
 import { mobileAboutTransition } from '../../lib/mobile-about-transition';
 import { copy } from '../../lib/i18n';
+import { getProjectActivity } from '../../lib/project-activity';
 import LiveMark from '../launcher/LiveMark';
 import Icon from '../icons/Icon';
 import type { CtlAction, Frame, HallScene, Pose } from './hallScene';
 import './hall.css';
 import './hall-loading.css';
+import './dock-hardware.css';
 
 /** WebGL-Bühne nur im Browser laden — three.js bleibt aus dem Hauptbundle */
 const Stage3D = lazy(() => import('./Stage3D'));
@@ -121,9 +123,9 @@ export const isMachine = (it: HallItem): it is HallMachine => it.kind !== 'kasse
  * the hall behind it is hidden, so it is neither booted nor rendered there. About has its own single claw.
  */
 export const nativeCase = (mode: HallMode, it?: HallItem) =>
-  typeof window !== 'undefined' && window.innerWidth < 900 && mode === 'case' && Boolean(it) && it!.kind !== 'phone';
+  typeof window !== 'undefined' && window.innerWidth < 900 && mode === 'case' && Boolean(it);
 
-/** Phone home is a server-rendered exhibition; only Contact/Play need the live room. */
+/** Phone home and reading/contact pages are native; only Play needs the live room. */
 const nativeView = (mode: HallMode, it?: HallItem) =>
   typeof window !== 'undefined' && window.innerWidth < 900 && (mode === 'hall' || nativeCase(mode, it));
 
@@ -314,6 +316,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
   const [attract, setAttract] = useState(false);
   const [pad, setPad] = useState(false);
   const directoryRef = useRef<HTMLDialogElement>(null);
+  const dockRef = useRef<HTMLElement>(null);
   /** 'css' beim SSR und ohne WebGL; 'load' sobald der Browser kann; 'on' wenn die Bühne steht */
   const [gl, setGl] = useState<'css' | 'load' | 'on'>('css');
   const glRef = useRef(gl);
@@ -338,7 +341,25 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
   const LE = copy.en.launcher;
 
   const current = items[focus];
+  const activity = getProjectActivity(current.slug);
   const inHall = mode === 'hall';
+  useEffect(() => {
+    // Keep the assembled console with the persistent hall. Rebuilding it on
+    // every case return briefly exposed the old CSS fallback and reloaded GPUs.
+    let cancelled = false;
+    let dispose: (() => void) | undefined;
+    const desktop = matchMedia('(min-width: 900px)');
+    const setup = () => {
+      dispose?.(); dispose = undefined;
+      if (!desktop.matches) return;
+      if (dockRef.current) dockRef.current.dataset.hardware = 'loading';
+      void import('./dock-hardware').then(({ mountDockHardware }) => {
+        if (!cancelled && desktop.matches && dockRef.current && !dispose) dispose = mountDockHardware(dockRef.current, !!reduceMq);
+      }).catch(() => { if (!cancelled && dockRef.current) dockRef.current.dataset.hardware = 'fallback'; });
+    };
+    setup(); desktop.addEventListener('change', setup);
+    return () => { cancelled = true; desktop.removeEventListener('change', setup); dispose?.(); };
+  }, [reduceMq]);
 
   /* Die Leiste oben zeigt die Station: bei jedem Fokus- oder Moduswechsel melden */
   useEffect(() => {
@@ -744,8 +765,8 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
       const t = e.target as HTMLElement | null;
       if (t?.closest('.site-nav')) return;
       // Eingabefelder behalten ihre Tasten — die Sheet-Raste (Checkbox) nicht, sonst ist nach dem Tippen Esc tot
-      const isCheck = t?.tagName === 'INPUT' && /^(checkbox|radio)$/.test((t as HTMLInputElement).type);
-      if (t && !isCheck && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      // Form controls own their arrow keys, including About's evidence selector.
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       const m = modeRef.current;
       // Im Close-up gehören alle Tasten der Seite (CaseCaptures hört auf document und blockt vorher)
       if (m === 'case' && closeupRef.current) return;
@@ -1274,9 +1295,10 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
         </div>
         )}
 
-      <nav className="hall-dock" aria-label={lang === 'en' ? 'Arcade navigation' : 'Hallen-Navigation'}>
+      <nav ref={dockRef} className="hall-dock hall-console" style={{ '--station-color': isMachine(current) ? current.brand.primary : '#c8b5e9' } as React.CSSProperties} aria-label={lang === 'en' ? 'Arcade navigation' : 'Hallen-Navigation'}>
         <div className="hall-dock__rail" role="group" aria-label={lang === 'en' ? 'Jump to a machine' : 'Direkt zu einem Automaten'} style={{gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`}}>
           <span className="hall-dock__spectrum" aria-hidden="true" />
+          <span className="hall-dock__cursor" aria-hidden="true" style={{ width: `${100 / n}%`, transform: `translateX(${focus * 100}%)` }} />
           {items.map((it, i) => {
             const title = isMachine(it) ? (lang === 'en' ? it.titleEn ?? it.title : it.title) : it.kind === 'kasse' ? (lang === 'en' ? 'About me' : 'Über mich') : (lang === 'en' ? 'Contact' : 'Kontakt');
             return <button type="button" key={it.slug} className={`hall-dock__stop${i === focus ? ' is-current' : ''}`} tabIndex={inHall && i === focus ? 0 : -1}
@@ -1290,19 +1312,31 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
                 event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus();
               }}>
               <span className="hall-dock__tick" aria-hidden="true" />
+              <span className="hall-dock__station-number" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
               <span className="hall-dock__stop-label" aria-hidden="true"><small>{String(i + 1).padStart(2, '0')}</small>{title}</span>
             </button>;
           })}
         </div>
-        <span className="hall-dock__count">{String(focus + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}</span>
+        <div className="hall-dock__count">
+          <div className="hall-console__ball" role="slider" tabIndex={inHall ? 0 : -1} aria-label={lang === 'en' ? 'Joystick: choose a station' : 'Joystick: Station wählen'} aria-valuemin={1} aria-valuemax={n} aria-valuenow={focus + 1} aria-valuetext={isMachine(current) ? current.title : current.kind === 'kasse' ? (lang === 'en' ? 'About me' : 'Über mich') : (lang === 'en' ? 'Contact' : 'Kontakt')} title={lang === 'en' ? 'Drag left / right · Arrow keys' : 'Nach links / rechts ziehen · Pfeiltasten'} onKeyDown={event => {
+            if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key)) return;
+            event.preventDefault(); event.stopPropagation(); stopAttract();
+            setFocus(event.key === 'Home' ? 0 : event.key === 'End' ? n-1 : Math.max(0,Math.min(n-1,focus + (['ArrowRight','ArrowUp'].includes(event.key) ? 1 : -1))));
+          }} />
+          <span>{String(focus + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}</span>
+        </div>
         <div className="hall-dock__center">
         <button type="button" className="hall-dock__arrow hall-dock__arrow--prev" onClick={() => move(-1)} disabled={focus === 0} aria-label={lang === 'en' ? 'Previous machine' : 'Vorheriger Automat'} tabIndex={inHall ? 0 : -1}><Icon name="chevron-left" size={20} /></button>
-        <div className="hall-dock__identity" aria-live="polite">
+        <div className="hall-dock__identity" aria-live="polite" data-activity={activity?.id}>
+          <span className="hall-dock__lamp" aria-hidden="true" />
+          <div className="hall-dock__label" key={current.slug}>
           <h2 className="hall-dock__title">{isMachine(current) ? <Bi de={current.title} en={current.titleEn} /> : current.kind === 'kasse' ? <Bi de={H.kasseSub} en={HE.kasseSub} /> : <Bi de={H.phoneSub} en={HE.phoneSub} />}</h2>
+          {activity ? <span className="hall-dock__status"><Bi de={activity.de} en={activity.en} /></span> : null}
+          </div>
           <span className="hall-dock__mobile-count" aria-hidden="true">{String(focus + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}</span>
         </div>
         <a className="hall-dock__open" href={pageHref(current.href)} tabIndex={inHall ? 0 : -1} onClick={(e) => { if (modifiedClick(e)) return; e.preventDefault(); go(current.href); }}>
-          {isMachine(current) ? <Bi de="Projekt ansehen" en="Explore project" /> : <Bi de={H.open} en={HE.open} />} <Icon name="arrow-up-right" size={18} />
+          {isMachine(current) ? <Bi de="Projekt ansehen" en="Explore project" /> : current.kind === 'kasse' ? <Bi de="Lern mich kennen" en="Meet the maker" /> : <Bi de="Ins Gespräch kommen" en="Let’s talk" />} <Icon name="arrow-up-right" size={18} />
         </a>
         <button type="button" className="hall-dock__arrow hall-dock__arrow--next" onClick={() => move(1)} disabled={focus === n - 1} aria-label={lang === 'en' ? 'Next machine' : 'Nächster Automat'} tabIndex={inHall ? 0 : -1}><Icon name="chevron-right" size={20} /></button>
         </div>

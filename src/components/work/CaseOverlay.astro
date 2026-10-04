@@ -14,11 +14,12 @@ import { copy } from '../../lib/i18n';
 import { base, p } from '../../lib/paths';
 import CaseCaptures, { type CaptureGroup } from './CaseCaptures';
 import CaseDocument from './CaseDocument';
-import MinaStudyEn from './MinaStudyEn.astro';
-import MinaStudyDe from './MinaStudyDe.astro';
+import MinaOriginal from './MinaOriginal.astro';
 import './hall-panel.css';
 import Icon from '../icons/Icon';
 import PanelBack from './PanelBack.astro';
+import { getProjectActivity } from '../../lib/project-activity';
+import './project-activity.css';
 
 interface Props {
   entry: CollectionEntry<'work'>;
@@ -31,6 +32,7 @@ interface Props {
 
 const { entry, items, index, homeHref } = Astro.props;
 const data = entry.data;
+const activity = getProjectActivity(entry.id);
 const n = items.length;
 
 const isMachine = (it: HallItem | undefined): it is HallMachine => Boolean(it) && it!.kind !== 'kasse' && it!.kind !== 'phone';
@@ -133,8 +135,9 @@ const when = data.timeline || data.year;
 const whenEn = data.timelineEn ?? data.yearEn ?? when;
 const kind = machine?.kind ?? 'terminal';
 const status = data.status;
-const statusDe = (D.launcher.status as Record<string, string>)[status] ?? status;
-const statusEn = (E.launcher.status as Record<string, string>)[status] ?? status;
+const pausedPrototype = status === 'wip' && activity?.id === 'paused';
+const statusDe = pausedPrototype ? 'Prototyp' : (D.launcher.status as Record<string, string>)[status] ?? status;
+const statusEn = pausedPrototype ? 'Prototype' : (E.launcher.status as Record<string, string>)[status] ?? status;
 const version = machine?.version ?? data.version;
 const engine = machine?.engine ?? data.engine;
 const brand = machine?.brand.primary ?? data.brand?.primary ?? '#ac8bfd';
@@ -194,6 +197,27 @@ const nextLabel = labelOf(next);
 
     <!-- Körper -->
     <div class="hall-panel__body">
+      <h1 id="case-title" class="hall-panel__title" tabindex="-1">
+        <span data-lang="de">{data.title}</span>
+        <span data-lang="en">{data.titleEn ?? data.title}</span>
+      </h1>
+
+      <p class="hall-panel__summary">
+        <span data-lang="de">{data.summary}</span>
+        <span data-lang="en">{data.summaryEn ?? data.summary}</span>
+      </p>
+
+      <div class="project-context">
+        <p class="project-context__role">
+          <span data-lang="de">{P.role}: {data.role}</span>
+          <span data-lang="en">{PE.role}: {data.roleEn ?? data.role}</span>
+        </p>
+        {activity && <p class="project-activity" data-activity={activity.id}>
+          <span data-lang="de">{activity.de}</span>
+          <span data-lang="en">{activity.en}</span>
+        </p>}
+      </div>
+
       <p class="hall-panel__kind mono">
         <span>
           <span data-lang="de">{(D.hall.machine as Record<string, string>)[kind]}</span>
@@ -220,19 +244,16 @@ const nextLabel = labelOf(next);
         </span>
       </p>
 
-      <h1 id="case-title" class="hall-panel__title" tabindex="-1">
-        <span data-lang="de">{data.title}</span>
-        <span data-lang="en">{data.titleEn ?? data.title}</span>
-      </h1>
-
-      <p class="hall-panel__summary">
-        <span data-lang="de">{data.summary}</span>
-        <span data-lang="en">{data.summaryEn ?? data.summary}</span>
-      </p>
-
       <!-- CTA -->
       <div class="hall-panel__blk" style="--i:0">
         <div class="hall-panel__cta">
+          {entry.id === 'mina' && (
+            <a class="hall-panel__btn hall-panel__btn--coin" href={p('media/mina/case-study-mina.pdf')} target="_blank" rel="noopener" data-astro-reload>
+              <span data-lang="de">Original-PDF öffnen</span>
+              <span data-lang="en">Open original PDF</span>
+              <Icon name="external" size={17} />
+            </a>
+          )}
           {arcadeHref && (
             <a class="hall-panel__btn hall-panel__btn--coin" href={arcadeHref}>
               <span class="hall-panel__coin" aria-hidden="true"></span>
@@ -290,16 +311,6 @@ const nextLabel = labelOf(next);
 
       <!-- Meta -->
       <dl class="hall-panel__meta hall-panel__blk" style="--i:3">
-        <div class="hall-panel__cell">
-          <dt class="hall-panel__lbl mono">
-            <span data-lang="de">{P.role}</span>
-            <span data-lang="en">{PE.role}</span>
-          </dt>
-          <dd class="hall-panel__val">
-            <span data-lang="de">{data.role}</span>
-            <span data-lang="en">{data.roleEn ?? data.role}</span>
-          </dd>
-        </div>
         {when && (
           <div class="hall-panel__cell">
             <dt class="hall-panel__lbl mono">
@@ -337,23 +348,11 @@ const nextLabel = labelOf(next);
       </dl>
 
 
-      <!-- Readable study in both languages; original German deck remains available. -->
+      <!-- The original illustrated presentation is the case study in both languages. -->
       {docPages.length > 0 && data.document && (
         <div class="hall-panel__blk hall-panel__document" style="--i:5">
           {entry.id === 'mina' ? (
-            <>
-              <div data-lang="de">
-                <MinaStudyDe />
-                <details class="mina-original"><summary>Original-Präsentation ansehen · 11 Abschnitte</summary>
-                  {docPages.map((page) => <img src={page.src} alt={page.alt} loading="lazy" width="1400" height="1465" />)}
-                </details>
-              </div>
-              <div data-lang="en">
-                <CaseDocument client:load labelDe={data.document.labelDe} labelEn={data.document.labelEn}>
-                  <MinaStudyEn />
-                </CaseDocument>
-              </div>
-            </>
+            <MinaOriginal />
           ) : (
             <CaseDocument client:load labelDe={data.document.labelDe} labelEn={data.document.labelEn} pages={docPages} />
           )}
@@ -377,6 +376,7 @@ const nextLabel = labelOf(next);
         </span>
       </a>
 
+      <a class="hall-panel__index-link" href={p('work')}><span data-lang="de">Projekte</span><span data-lang="en">Projects</span></a>
       <div class="hall-panel__dots">
         {items.map((it, i) => {
           const l = labelOf(it);
