@@ -18,8 +18,8 @@ import { site } from '../lib/site';
         </p>
         <h2>Verantwortlicher</h2>
         <p>
-          {site.name}<br />
-          {site.legalAddress}<br />
+          {site.legalName}<br />
+          {site.legalAddress.map(line => <Fragment>{line}<br /></Fragment>)}
           Deutschland<br />
           E-Mail: <!--email_off--><a href={`mailto:${site.email}`}>{site.email}</a><!--/email_off-->
         </p>
@@ -70,8 +70,8 @@ import { site } from '../lib/site';
         </p>
         <h2>Controller</h2>
         <p>
-          {site.name}<br />
-          {site.legalAddress}<br />
+          {site.legalName}<br />
+          {site.legalAddress.map(line => <Fragment>{line}<br /></Fragment>)}
           Germany<br />
           Email: <!--email_off--><a href={`mailto:${site.email}`}>{site.email}</a><!--/email_off-->
         </p>

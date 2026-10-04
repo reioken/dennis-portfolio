@@ -20,8 +20,9 @@ export const site = {
       open: 'Open for freelance',
     },
   },
-  /** Only for Impressum / Datenschutz (§ 5 TMG) — not shown on marketing pages */
-  legalAddress: 'In den Gänsgräben 31, 68542 Heddesheim',
+  /** Correspondence details for Impressum / Datenschutz. */
+  legalName: 'Dennis Bierreth Fernandez',
+  legalAddress: ['c/o Autorenglück #64620', 'Albert-Einstein-Straße 47', '02977 Hoyerswerda'],
   profile: {
     de: 'Art Director, UX/UI Designer und Independent Product Builder mit 6+ Jahren Agentur- und Inhouse-Erfahrung.',
     en: 'Art director, UX/UI designer and independent product builder with 6+ years of agency and in-house experience.',
