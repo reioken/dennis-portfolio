@@ -1,0 +1,6 @@
+{
+  "slug": "deductidle",
+  "mode": "built-in image_gen",
+  "prompt": "Create a finished production texture artwork sheet for the full SIDE PANEL of a premium dark arcade machine for Deductidle, a daily logic and deduction game about finding a secret rule. Portrait 2:3, flat unlit screenprint artwork edge-to-edge, NOT a machine mockup. Deep forest-charcoal #18231e covers 75 percent of image, accents muted mint #a8ceb0, cream #e8e5d6, very sparse amber #ce9561. One sophisticated bold vertical conceptual motif: a path of three geometric evidence forms (a filled circle, a triangular negative-space cutout, and an open square) interlocking into a single impossible-looking logical ribbon, a visual puzzle with a calm mid-century scientific-book-cover sensibility. Make the main motif a cohesive single silhouette occupying about a third of the sheet, central 55 percent width, considerable dark negative space. Elegant large geometry, restrained contrast, subtly tactile fine paper grain. No lettering, no text, no numbers, no logos, no UI, no screenshots, no border, no inset rectangle, no tiny scattered symbols, no glow, no perspective, no photographed lighting. It will be printed onto a shaped arcade cabinet side; just deliver the flat artwork.",
+  "output": "public/textures/cabinet-art/quiet-v2/deductidle.webp"
+}

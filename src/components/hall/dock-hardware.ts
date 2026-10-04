@@ -89,7 +89,7 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
     if (!model || dead) return;
     const en=document.documentElement.dataset.lang==='en';
     const index=Number(root.querySelector('.hall-console__ball')?.getAttribute('aria-valuenow') ?? 1);
-    const total=Number(root.querySelector('.hall-console__ball')?.getAttribute('aria-valuemax') ?? 13);
+    const total=Number(root.querySelector('.hall-console__ball')?.getAttribute('aria-valuemax') ?? root.querySelectorAll('.hall-dock__stop').length);
     const title=(root.querySelector('.hall-console__ball')?.getAttribute('aria-valuetext') || '').toUpperCase();
     phosphor.setText(title,index,total,reduce);
     lettering('display_action',[en ? 'OPEN' : 'ÖFFNEN']);
@@ -226,7 +226,7 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
     root.dataset.hardware='ready'; placeTargets(); update();
     void document.fonts.load('600 100px "Barlow Condensed"').then(()=>{
       if(dead)return;
-      phosphor.setText((track?.getAttribute('aria-valuetext')||'').toUpperCase(),Number(track?.getAttribute('aria-valuenow')||1),Number(track?.getAttribute('aria-valuemax')||13),true,true);update();
+      phosphor.setText((track?.getAttribute('aria-valuetext')||'').toUpperCase(),Number(track?.getAttribute('aria-valuenow')||1),Number(track?.getAttribute('aria-valuemax')||root.querySelectorAll('.hall-dock__stop').length),true,true);update();
     });
   }
   async function loadEnvironment() {

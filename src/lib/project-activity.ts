@@ -15,6 +15,7 @@ const PROJECT_ACTIVITY: Readonly<Record<string, ProjectActivityId>> = {
   nexus: 'finished',
   lowlight: 'finished',
   'vgm-battle': 'finished',
+  deductidle: 'finished',
   snapsize: 'finished',
   'cab-no-9': 'active',
   'echo-frequency': 'paused',

@@ -54,6 +54,7 @@ export const ORDER = [
   'nexus',
   'lowlight',
   'vgm-battle',
+  'deductidle',
   'saute-survivors',
   'echo-frequency',
   'safeplate',
@@ -68,7 +69,7 @@ export const ORDER = [
 ];
 const rank = new Map(ORDER.map((s, i) => [s, i]));
 // Content-only projects: keep their pages and directory entries, without hall machines.
-const CONTENT_ONLY = new Set(['mina', 'briefly', 'riftcast', 'carillon']);
+const CONTENT_ONLY = new Set(['mina', 'briefly', 'riftcast', 'carillon', 'saute-survivors']);
 
 /** Requisiten pro Produkt — das Taxi aus Cab No. 9 steht als Modell vor dem Automaten */
 const PROPS: Record<string, HallProp[]> = {

@@ -14,7 +14,7 @@ interface Props { machines: HallMachine[] }
 const { machines } = Astro.props;
 const entries = new Map((await getCollection('work')).map(entry => [entry.id, entry.data]));
 const blank = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-const poster = (slug: string) => p(`media/mobile-arcade/${slug}.webp`).replace(/\.webp$/, '');
+const poster = (slug: string) => p(`media/mobile-arcade/${slug === 'snapsize' ? 'snapsize-v2' : slug}.webp`).replace(/\.webp$/, '');
 ---
 
 <div class="mobile-arcade">

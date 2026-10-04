@@ -75,6 +75,10 @@ const META_EN = {
     title: 'VGM Battle — Dennis Bierreth-Fernandez',
     desc: 'Battle, rank and discover the greatest video game music ever written.',
   },
+  'work/deductidle/': {
+    title: 'Deductidle — Dennis Bierreth-Fernandez',
+    desc: 'A daily deduction game: compare examples, test your ideas and find the secret rule.',
+  },
   'work/riftback/': {
     title: 'Riftback — Dennis Bierreth-Fernandez',
     desc: 'Fan reference for League Classic: builds, champions, items, runes, jungle and tier lists — without invented win rates.',

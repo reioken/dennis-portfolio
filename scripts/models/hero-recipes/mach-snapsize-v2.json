@@ -1,0 +1,15 @@
+{
+  "name": "mach-snapsize", "title": "Snapsize", "variant": "terminal",
+  "brand": "#8e8cf5", "brand2": "#5b5bd6", "tmolding": "#8e8cf5", "accent": "#5b5bd6",
+  "hero": {
+    "width": 1.0, "depth": 0.78, "tilt": 10, "shelf_z": 0.92,
+    "shelf_edge": 0.06, "deck_len": 0.27, "deck_tilt": 7,
+    "display_top": 1.68, "hood_drop": 0.18, "hood_angle": 24,
+    "screen_w": 0.80, "screen_aspect": 1.6,
+    "pedestal": "pc_bay", "bay": "rack", "speakers": "hood", "light_line": "shelf",
+    "controls": "keyboard", "knobs": 1, "kb_w": 0.60, "kb_x": -0.10, "trackball_x": 0.335,
+    "paint": "#202435", "panel": "#283447", "door": 0.09,
+    "seed": "snapsize-single-screen", "speaker_wear": false,
+    "wear": {"edge": 0.58, "hands": 0.48, "shoes": 0.26, "knees": 0, "door": 0.25, "crevice": 0.8, "low": 0.45, "dust": 0.28}
+  }
+}

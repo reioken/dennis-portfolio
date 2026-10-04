@@ -1,0 +1,15 @@
+{
+  "name": "cab-deductidle", "title": "Deductidle", "variant": "terminal",
+  "brand": "#a8ceb0", "brand2": "#ce9561", "tmolding": "#a8ceb0", "accent": "#ce9561",
+  "hero": {
+    "width": 0.84, "depth": 0.78, "tilt": 9, "shelf_z": 0.92,
+    "shelf_edge": 0.055, "deck_len": 0.25, "deck_tilt": 8,
+    "display_top": 1.68, "hood_drop": 0.18, "hood_angle": 22,
+    "screen_w": 0.65, "screen_aspect": 1.7777778,
+    "pedestal": "coin_door", "speakers": "hood", "light_line": "shelf",
+    "controls": "arcade", "second_stick": false, "knobs": 0,
+    "paint": "#19251f", "panel": "#293c30", "door": 0.085,
+    "seed": "deductidle-evidence", "speaker_wear": false,
+    "wear": {"edge": 0.65, "hands": 0.55, "shoes": 0.22, "knees": 0, "door": 0.45, "crevice": 0.8, "low": 0.4, "dust": 0.25}
+  }
+}
