@@ -1,0 +1,50 @@
+{
+  "pack": "Ishikiri marketing pack 2026-10-04",
+  "captures": [
+    {
+      "name": "title",
+      "source": "01-brand/ishikiri-key-art.png",
+      "sha256": "321a09d7866ddea3238710b3210b444449e52e8e7f673f86aa8bc6494a6c690a"
+    },
+    {
+      "name": "carving",
+      "source": "00-featured/02-carving-action-1.png",
+      "sha256": "385c6f8172fa4e71f47ba20ad4a806746234531b252f878d93a3f845962fa831"
+    },
+    {
+      "name": "ushi-oni",
+      "source": "00-featured/03-ushi_oni-cut-2.png",
+      "sha256": "0d5f5ed83b9e13b60c36d288bd1d15267628b945691b1532b6a637fac51509a0"
+    },
+    {
+      "name": "ryujin",
+      "source": "00-featured/04-ryujin-encounter.png",
+      "sha256": "e94263e6676dc641c6a122338cbc2f267edc0e97b27db02cc7d0bbf9ddf2832e"
+    },
+    {
+      "name": "festival-stall",
+      "source": "00-featured/05-festival_stall-cut-1.png",
+      "sha256": "46fd632c5082fbae396f8ef53674629a346688bad6427396ad80c578dff2833b"
+    },
+    {
+      "name": "companions",
+      "source": "00-featured/10-choose-companions.png",
+      "sha256": "4b915de50c8d31bb0af6512d916cbbbc4e9aca71fbac5f1f06e6a16838e03bdb"
+    },
+    {
+      "name": "journey",
+      "source": "00-featured/12-map-stop-1.png",
+      "sha256": "22bdcf31196f656ed8f0209773fac7aa5866c6d02bdb51bd38248b1ad5526749"
+    },
+    {
+      "name": "forge",
+      "source": "00-featured/14-forge.png",
+      "sha256": "21b61fda282cea418f88cf0837776bf987c5b5a947bae4d002bfc05d5305fd00"
+    },
+    {
+      "name": "minerals",
+      "source": "00-featured/15-mineral-cabinet.png",
+      "sha256": "a3c9b0fb71bf990e6693be9993690d6b280eca2d539a98c9970e3b47ae1f8221"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "slug": "ishikiri",
+  "tool": "Built-in image_gen",
+  "reference": "Ishikiri marketing pack 2026-10-04 / 01-brand/ishikiri-key-art.png",
+  "prompt": "Create one premium vertical arcade cabinet side-panel printed illustration for Ishikiri, adapting the supplied official game key art. Output flat artwork only, portrait 2:3 aspect, edge-to-edge, no mockup or cabinet. Preserve the game's exact handmade sumi-e ink and muted watercolor art direction and recognizable imagery: the small straw-hat swordsman on a rocky ledge, the suspended rough stone with luminous jade-green core, weathered timber support and pine branches, layered misty blue-grey and sage mountains. Rearrange these into a beautiful tall composition that reads on the narrow side of an arcade cabinet. Warm parchment paper, black ink brush lines, restrained jade glow, tiny touches of faded vermilion. Large suspended stone in upper middle, small swordsman below it, pines framing top/right, mountains receding below. Strong coherent silhouette with quiet paper breathing space. No typography, no logos, no UI, no frame, no added fantasy creatures. This is artwork printed onto a real arcade cabinet, not a themed machine shape. High quality textured ink-and-watercolor illustration closely faithful to reference.",
+  "output": "public/textures/cabinet-art/quiet-v2/ishikiri.webp"
+}

@@ -41,7 +41,7 @@ const works = (await getCollection('work'))
   title={`Projekte — ${site.name}`}
   description={`Projekte von ${site.name}: NEXUS, Berry, Riftcast und Mina — Product Design, UX/UI und ein Archiv älterer Arbeiten.`}
 >
-  <section class="section pt-[calc(var(--nav-h)+2.5rem)]">
+  <section class="section work-index pt-[calc(var(--nav-h)+2.5rem)]">
     <div class="wrap">
       <p class="section-label">
         <span data-lang="de">{copy.de.work.label}</span>
@@ -61,3 +61,12 @@ const works = (await getCollection('work'))
     </div>
   </section>
 </BaseLayout>
+
+<style>
+  @media (max-width: 899px) {
+    .work-index { padding-top: calc(var(--nav-h) + 28px); }
+    .work-index .wrap { width: auto; margin-inline: clamp(20px, 6.15vw, 32px); padding: 0; }
+    .work-index :global(.work-filter) { display: flex; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; padding: 4px 0 10px; margin-bottom: 24px; scrollbar-width: thin; scrollbar-color: #aab7d555 transparent; }
+    .work-index :global(.work-filter__tab) { flex-shrink: 0; min-height: 44px; white-space: nowrap; }
+  }
+</style>

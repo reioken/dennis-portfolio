@@ -190,6 +190,8 @@ type ModelSpec = {
 /** One height for every station (Dennis, 2026-09-19: only tall machines, no zigzag skyline). Models scale uniformly. */
 const STATION_HEIGHT = 1.95;
 export const MODELS_BY_SLUG: Record<string, ModelSpec> = {
+  ishikiri: { url: '/models/cab-ishikiri-v2.glb.gz?v=de3ab319', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
+    hero: { seed: 'ishikiri', lines: 'scuffs', chips: 'flakes', turn: 2.35, scale: 1.65, chip: .5, line: .7 } },
   'echo-frequency': { url: '/models/cab-echo-frequency-v2.glb.gz?v=cb517594', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
     hero: { seed: 'echo', lines: 'swirls', chips: 'flakes', turn: .6, scale: 1.2, chip: 1.1, line: .5 } },
   carillon: { url: '/models/cab-carillon-v2.glb.gz?v=ee110e02', height: STATION_HEIGHT, screenNames: ['screen'], noMarquee: true,
@@ -699,6 +701,7 @@ export class HallScene {
   private reduce: boolean;
   private lite: boolean;
   private exhibit: boolean;
+  private exhibitPoster = false;
   private container: HTMLElement;
   private cb: SceneCallbacks;
   private items: HallItem[] = [];
@@ -948,7 +951,7 @@ export class HallScene {
       roughnessMap:this.surfaceMaps.roughness, envMapIntensity:.2,
     });addPanelWear(mesh,material);return material;}
     let source=this.cabinetArtSources.get(slug);
-    if(!source){source=this.loader.load('/textures/cabinet-art/quiet-v2/'+slug+'.webp',()=>{if(!this.disposed)this.dirty=true;});this.cabinetArtSources.set(slug,source);}
+    if(!source){source=this.loader.load('/textures/cabinet-art/quiet-v2/'+(slug==='ishikiri'?'ishikiri-v2':slug)+'.webp',()=>{if(!this.disposed)this.dirty=true;});this.cabinetArtSources.set(slug,source);}
     const tex=source.clone();
     tex.colorSpace=THREE.SRGBColorSpace;tex.flipY=false;tex.anisotropy=8;
     const aspect=artworkAspect(mesh),sourceAspect=2/3;
@@ -2160,7 +2163,7 @@ export class HallScene {
   /** Logo des Projekts (Leuchtschild-Grafik) für die Logo-Karte des Fernsehers — lädt nach, Key ändert sich dann */
   private logoImg(m: Machine): HTMLImageElement | undefined {
     if (!isMachine(m.item)) return undefined;
-    const src = m.item.logo ?? m.item.marquee;
+    const src = m.item.slug === 'ishikiri' ? '/media/ishikiri/logo-ink.webp' : m.item.logo ?? m.item.marquee;
     if (!src) return undefined;
     let img = this.logoImgs.get(src);
     if (!img) {
@@ -2174,7 +2177,7 @@ export class HallScene {
         });
       };
       // Text-only logo cards are an intentional, complete fallback for unavailable logos.
-      el.onerror = () => { this.logoFailures.add(src); this.dirty = true; done(); };
+      el.onerror = () => { this.logoFailures.add(src); if (isMachine(m.item)) this.logoFailures.add(m.item.logo ?? m.item.marquee ?? src); this.dirty = true; done(); };
       el.src = src;
       img = el;
       this.logoImgs.set(src, img);
@@ -2185,15 +2188,18 @@ export class HallScene {
   /** Logo-Karte: dunkler Grund, weicher Schein in der Produktfarbe, Logo und Name */
   private drawTvLogo(ctx: CanvasRenderingContext2D, m: Machine) {
     const c = ctx.canvas;
-    ctx.fillStyle = '#07080c';
+    const whiteScreen = m.item.slug === 'ishikiri';
+    ctx.fillStyle = whiteScreen ? '#ffffff' : '#07080c';
     ctx.fillRect(0, 0, c.width, c.height);
     const hex = `#${m.brand.getHexString()}`;
     const glow = ctx.createRadialGradient(c.width / 2, c.height * 0.46, 40, c.width / 2, c.height * 0.46, c.width * 0.55);
     glow.addColorStop(0, `${hex}59`);
     glow.addColorStop(0.5, `${hex}1f`);
     glow.addColorStop(1, `${hex}00`);
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, c.width, c.height);
+    if (!whiteScreen) {
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, c.width, c.height);
+    }
     const img = this.logoImg(m);
     const title = isMachine(m.item) ? m.item.title : '';
     ctx.textAlign = 'center';
@@ -2217,7 +2223,7 @@ export class HallScene {
       ctx.font = `800 96px "Outfit Variable", Outfit, system-ui, sans-serif`;
       const fontSize = Math.min(96, 96 * c.width * 0.8 / Math.max(1, ctx.measureText(title).width));
       ctx.font = `800 ${fontSize}px "Outfit Variable", Outfit, system-ui, sans-serif`;
-      ctx.fillStyle = '#eef1f8';
+      ctx.fillStyle = whiteScreen ? '#181812' : '#eef1f8';
       ctx.fillText(title, c.width / 2, c.height * 0.48);
     }
   }
@@ -2809,6 +2815,7 @@ export class HallScene {
 
   /** Pose wechseln (Halle ↔ Automat ↔ Bildschirm); `frame` = freier Bereich für den Automaten */
   setPose(pose: Pose, frame?: Frame) {
+    this.exhibitPoster = false;
     if (frame && frameOk(frame)) this.frame = frame;
     if (pose === this.pose && !frame) return;
     const was = this.pose;
@@ -2856,6 +2863,7 @@ export class HallScene {
     this.goalPos.set(x - 1.25, 1.45, 3.8);
     this.goalLook.set(x, 1.03, 0);
     this.goalFov = 39;
+    this.exhibitPoster = true;
     this.snapCamera();
     const m = this.machines[this.focus];
     if (m.screen?.material.map) this.displayTexture(m, m.screen.material.map, 0);
@@ -3090,6 +3098,13 @@ export class HallScene {
     // Keep the overhead rig out of this closer framing instead of showing a cut-off TV.
     if (this.tv) this.tv.rig.visible = !compact;
     if (this.exhibit && m && this.pose === 'zoom') {
+      if (this.exhibitPoster) {
+        const x = m.group.position.x;
+        this.goalPos.set(x - 1.25, 1.45, 3.8);
+        this.goalLook.set(x, 1.03, 0);
+        this.goalFov = 39;
+        return;
+      }
       if (this.exhibitReturn) {
         const x = m.group.position.x;
         this.goalPos.set(x - 1.25, 1.45, 3.8);
@@ -3626,7 +3641,7 @@ export class HallScene {
     const startedAt = performance.now();
     // Höchstens ~60 Bilder pro Sekunde: auf 120/144-Hz-Schirmen bleibt so mehr als die Hälfte des Hauptthreads
     // für DOM-Übergänge und Eingabe frei; die Animationen sind zeitbasiert und bleiben gleich schnell
-    if (now - this.last < 15.2) {
+    if (now - this.last < (this.exhibitPoster ? 32 : 15.2)) {
       this.raf = requestAnimationFrame(this.tick);
       return;
     }

@@ -1,5 +1,5 @@
 /** Shared request: the hall's loading manager and the console await the same bytes. */
-export const DOCK_MODEL = '/models/navigation-marquee-v1.glb.gz?v=4ad4de1e';
+export const DOCK_MODEL = '/models/navigation-marquee-v2.glb.gz?v=f48b04d9';
 let pending: Promise<ArrayBuffer> | undefined;
 export function prepareDockAsset() {
   if (!pending) pending = fetch(DOCK_MODEL).then(async response => {

@@ -1,0 +1,15 @@
+{
+  "name": "cab-ishikiri", "title": "Ishikiri", "variant": "terminal",
+  "brand": "#93bda5", "brand2": "#d2b58a", "tmolding": "#93bda5", "accent": "#bd6654",
+  "hero": {
+    "width": 0.9, "depth": 0.81, "tilt": 11, "shelf_z": 0.91,
+    "shelf_edge": 0.06, "deck_len": 0.27, "deck_tilt": 9,
+    "display_top": 1.67, "hood_drop": 0.20, "hood_angle": 24,
+    "screen_w": 0.71, "screen_aspect": 1.7777778,
+    "pedestal": "coin_door", "speakers": "hood", "light_line": "shelf",
+    "controls": "arcade", "second_stick": false, "knobs": 0,
+    "paint": "#d3bf88", "panel": "#d3bf88", "door": 0.085,
+    "seed": "ishikiri-jade-ink", "speaker_wear": false,
+    "wear": {"edge": 0.55, "hands": 0.7, "shoes": 0.3, "knees": 0, "door": 0.2, "crevice": 0.7, "low": 0.3, "dust": 0.2}
+  }
+}

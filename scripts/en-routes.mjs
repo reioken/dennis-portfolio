@@ -79,6 +79,10 @@ const META_EN = {
     title: 'Deductidle — Dennis Bierreth-Fernandez',
     desc: 'A daily deduction game: compare examples, test your ideas and find the secret rule.',
   },
+  'work/ishikiri/': {
+    title: 'Ishikiri — Dennis Bierreth-Fernandez',
+    desc: 'A ronin stonecutter carves into a mountain with a sword: split stone, free minerals whole and keep the blade alive.',
+  },
   'work/riftback/': {
     title: 'Riftback — Dennis Bierreth-Fernandez',
     desc: 'Fan reference for League Classic: builds, champions, items, runes, jungle and tier lists — without invented win rates.',

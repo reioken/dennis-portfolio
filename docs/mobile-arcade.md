@@ -175,3 +175,33 @@ first/repeated close preserve the canvas and scroll position, with no browser
 errors; captures inspected under `%TEMP%/mobile-return-live`. All 48 live HTML,
 JavaScript and CSS files checked match the isolated release build's SHA-256.
 The localhost:4322 preview was updated and reloaded too.
+
+## Mobile live models and interaction review — October 4 (local preview)
+
+Dennis requested real, clickable models throughout the mobile exhibition and a
+better About presentation. Brainstorming compared a vertical live exhibition, a
+horizontal single-cabinet hall, and a sticky changing 3D stage. Implemented the
+vertical exhibition: native scrolling keeps every project discoverable, while a
+compact station selector makes all 13 stations directly accessible.
+
+- Home now includes the real claw/figure and contact phone alongside all eleven
+  project cabinets. Tap reuses the visible canvas and moves its camera into the
+  model; profile stations offer readable About/Contact links after the zoom.
+- One resident model at a time, with a 30 fps exhibit loop. Offscreen/hidden models
+  pause, model disposal clears screen timers, and a visible animation toggle and
+  reduced-motion support are retained. Loading/WebGL failure still has a poster
+  and working document link. Data-saving connections skip background preparation.
+- Cabinet screens cycle while visible. Entry keeps the current screenshot through
+  the camera move, avoiding an abrupt reset. Gallery, full-screen and return retain
+  the existing interactions. Pinch gestures no longer accidentally switch images.
+- About has a full-width live claw with tap-to-zoom, pause and loading/retry states.
+  Its section navigation fits one 48 px row even at 320 px. Work index has proper
+  mobile gutters/header clearance and a single horizontally scrollable filter row.
+
+Verified locally in the in-app browser at 320/390/768 px and 844 x 390 landscape:
+model entry/return, screenshot switching/full-screen, profile and contact models,
+About zoom/pause/anchors, work filters, menu, localized station names and EN links.
+Observed one live exhibition canvas and no horizontal document overflow. Desktop
+1440 px also checked. TypeScript, all 31 review tests, Astro build and the 59-page
+link/metadata audit pass. These are browser-emulated checks, not physical-phone
+performance measurements. This iteration is local on port 4334, not deployed.

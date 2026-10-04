@@ -5,7 +5,8 @@ import os
 import numpy as np
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-NAME = 'navigation-marquee-v1'
+NAME = 'navigation-marquee-v2'
+STATION_COUNT = 14
 SOURCE = os.path.join(ROOT, '.source-assets/models-in', NAME)
 os.makedirs(SOURCE, exist_ok=True)
 bpy.ops.object.select_all(action='SELECT')
@@ -246,14 +247,15 @@ rail=group('station_rail',(0,-.49,.085)); rail.rotation_euler.x=math.radians(40)
 attach(box('station_rail_shell',(0,0,-.018),(3.88,.235,.085),paint,.026),rail)
 ring('station_rail_lip',(0,0,.025),3.77,.196,.018,.012,trim,rail)
 attach(box('station_rail_recess',(0,0,.022),(3.74,.17,.012),rubber,.012),rail)
-for i in range(13):
-    x=(i-6)*.281
-    attach(box(f'station_socket_{i}',(x,0,.030),(.268,.167,.019),rubber,.010),rail)
+key_scale = 13 / STATION_COUNT
+for i in range(STATION_COUNT):
+    x=(i-(STATION_COUNT-1)/2)*.281*key_scale
+    attach(box(f'station_socket_{i}',(x,0,.030),(.268*key_scale,.167,.019),rubber,.010),rail)
     selector=group(f'ctl_station_{i}',(x,0,.056),rail)
-    attach(box(f'station_key_skirt_{i}',(0,0,-.009),(.235,.126,.036),rubber,.006),selector)
-    attach(box(f'station_cap_{i}',(0,0,0),(.247,.139,.034),paint,.008),selector)
-    surface(f'display_station_{i}',(0,-.010,.018),.16,.098,selector)
-    attach(box(f'station_lamp_{i}',(0,.053,.019),(.196,.008,.004),light,.002),selector)
+    attach(box(f'station_key_skirt_{i}',(0,0,-.009),(.235*key_scale,.126,.036),rubber,.006),selector)
+    attach(box(f'station_cap_{i}',(0,0,0),(.247*key_scale,.139,.034),paint,.008),selector)
+    surface(f'display_station_{i}',(0,-.010,.018),.16*key_scale,.098,selector)
+    attach(box(f'station_lamp_{i}',(0,.053,.019),(.196*key_scale,.008,.004),light,.002),selector)
 
 # Material scans use a consistent real-world scale. Authored print UVs remain untouched.
 for o in bpy.context.scene.objects:

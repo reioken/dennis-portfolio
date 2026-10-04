@@ -1,19 +1,32 @@
-import type { HallMachine } from './Hall';
+import type { HallItem } from './Hall';
 import type { HallScene, Frame } from './hallScene';
 import { controlTargets } from '../work/control-targets.mjs';
 import { screenImageRect, travelScreen } from '../../lib/screen-transition';
 
 type Shot = { src: string; alt: string; altEn?: string };
-type Gallery = { machine: HallMachine; groups: { labelDe: string; labelEn: string; images: Shot[] }[] };
+type Gallery = { machine: HallItem & { title: string; titleEn?: string }; detail?: { de: string; en: string }; groups: { labelDe: string; labelEn: string; images: Shot[] }[] };
 let active: (() => void) | undefined;
 const galleryPositions = new Map<string, { group: number; index: number }>();
-type Prepared = { slug: string; exhibit: HTMLElement; stage: HTMLDivElement; scene?: HallScene; promise: Promise<HallScene>; taken: boolean; disposed: boolean };
+type Prepared = { slug: string; exhibit: HTMLElement; stage: HTMLDivElement; scene?: HallScene; promise: Promise<HallScene>; taken: boolean; disposed: boolean; timer?: number; currentShot?: string };
 let prepared: Prepared | undefined;
+let idlePaused = false;
+export function pauseMobileArcade(paused: boolean) {
+  idlePaused = paused;
+  const button = document.querySelector<HTMLButtonElement>('.mobile-arcade__motion');
+  if (button) {
+    button.setAttribute('aria-pressed', String(paused));
+    button.setAttribute('aria-label', paused ? 'Animation abspielen / Play animation' : 'Animation pausieren / Pause animation');
+    button.querySelector('span')!.textContent = paused ? '▷' : 'Ⅱ';
+  }
+  syncMobileArcadeVisibility();
+}
 const readGallery = (exhibit: HTMLElement) => JSON.parse(exhibit.querySelector('[data-mobile-gallery]')!.textContent!) as Gallery;
 function releasePrepared() {
   if (!prepared) return;
   prepared.disposed = true;
+  clearInterval(prepared.timer);
   prepared.scene?.dispose();
+  delete prepared.exhibit.dataset.live;
   prepared.stage.remove();
   prepared = undefined;
 }
@@ -27,7 +40,24 @@ function park(entry: Prepared, fade = false) {
   entry.stage.removeAttribute('style');
   anchor.append(entry.stage);
   entry.scene?.renderExhibitPoster();
+  entry.exhibit.dataset.live = 'ready';
+  syncMobileArcadeVisibility();
   if (fade && !matchMedia('(prefers-reduced-motion: reduce)').matches) entry.stage.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180 });
+}
+
+/** Only the model visible in the scrolling exhibition runs; its canvas stays the zoom origin. */
+export function syncMobileArcadeVisibility() {
+  if (!prepared || prepared.taken || !prepared.scene) return;
+  const r = prepared.stage.getBoundingClientRect();
+  const visible = r.bottom > 100 && r.top < innerHeight - 64 && !document.hidden && innerWidth < 900;
+  prepared.scene.setReduce(matchMedia('(prefers-reduced-motion: reduce)').matches);
+  if (visible && !idlePaused && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    delete prepared.stage.dataset.hallParked;
+    prepared.scene.start();
+  } else {
+    prepared.stage.dataset.hallParked = '';
+    prepared.scene.stop();
+  }
 }
 function prepare(exhibit: HTMLElement): Prepared {
   const { machine, groups } = readGallery(exhibit);
@@ -47,7 +77,17 @@ function prepare(exhibit: HTMLElement): Prepared {
     });
     entry.scene = scene;
     scene.showScreen(groups[0].images[0].src);
+    entry.currentShot = groups[0].images[0].src;
     await scene.ready(30000);
+    if (entry.disposed) throw new Error('Cabinet preparation cancelled');
+    let idleIndex = 0;
+    if ('screens' in machine && machine.screens.length > 1) entry.timer = window.setInterval(() => {
+      const r = entry.stage.getBoundingClientRect();
+      if (entry.taken || entry.disposed || document.hidden || idlePaused || matchMedia('(prefers-reduced-motion: reduce)').matches || r.bottom < 100 || r.top > innerHeight - 64) return;
+      idleIndex = (idleIndex + 1) % machine.screens.length;
+      entry.currentShot = machine.screens[idleIndex];
+      scene.showScreen(entry.currentShot);
+    }, 7000);
     if (!entry.taken) park(entry, true);
     return scene;
   });
@@ -58,25 +98,30 @@ function prepare(exhibit: HTMLElement): Prepared {
   return entry;
 }
 
-/** Keep only the visible exhibit prepared, and park its animation loop. */
+/** Keep one visible exhibit live, with the rest represented by their loading posters. */
 export function warmMobileArcade(exhibit: HTMLElement) {
   if (active || document.hidden || innerWidth >= 900 || !exhibit.isConnected) return;
   prepare(exhibit);
+  pauseMobileArcade(idlePaused);
 }
 document.addEventListener('astro:before-preparation', () => { active?.(); releasePrepared(); });
 window.addEventListener('resize', () => {
   if (innerWidth >= 900) { active?.(); releasePrepared(); }
-  else if (prepared && !prepared.taken && prepared.stage.dataset.startupPhase === 'ready') prepared.scene?.renderExhibitPoster();
+  else if (prepared && !prepared.taken && prepared.stage.dataset.startupPhase === 'ready') { prepared.scene?.renderExhibitPoster(); syncMobileArcadeVisibility(); }
 });
 window.addEventListener('pagehide', () => { active?.(); releasePrepared(); });
+document.addEventListener('visibilitychange', syncMobileArcadeVisibility);
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', syncMobileArcadeVisibility);
 
 /** Reuse the visible cabinet, or prepare it on demand. The list stays underneath. */
 export async function openMobileArcade(exhibit: HTMLElement, href: string) {
   active?.();
-  const { machine, groups } = readGallery(exhibit);
+  const { machine, groups, detail } = readGallery(exhibit);
+  const isProfile = machine.kind === 'kasse' || machine.kind === 'phone';
   const en = document.documentElement.lang === 'en';
   const t = (de: string, english: string) => en ? english : de;
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  let reduce = motion.matches;
   const priorFocus = document.activeElement as HTMLElement | null;
   const sourceImage = exhibit.querySelector('img')!;
   const origin = sourceImage.getBoundingClientRect();
@@ -90,8 +135,14 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
   if (saved && groups[saved.group]?.images[saved.index]) { gi = saved.group; index = saved.index; }
   let resident: Prepared | undefined;
   let reveal: Animation | undefined;
+  motion.addEventListener('change', () => {
+    reduce = motion.matches;
+    scene?.setReduce(reduce);
+    if (reduce) { try { reveal?.finish(); } catch { /* Already cancelled. */ } }
+  }, { signal });
   const dialog = document.createElement('dialog');
   dialog.className = 'mobile-viewer';
+  if (isProfile) dialog.classList.add('mobile-viewer--profile');
   dialog.setAttribute('aria-label', en ? machine.titleEn ?? machine.title : machine.title);
   dialog.innerHTML = `<div class="mobile-viewer__stage"></div>
     <img class="mobile-viewer__poster" alt="">
@@ -127,6 +178,10 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
   q('.mobile-viewer__hint').textContent = t('Wischen oder die Tasten am Automaten nutzen', 'Swipe or use the cabinet buttons');
   q<HTMLAnchorElement>('.mobile-viewer__links a').href = href;
   q('.mobile-viewer__links a').textContent = t('Über das Projekt →', 'About the project →');
+  if (isProfile) {
+    q('.mobile-viewer__links a').textContent = machine.kind === 'kasse' ? t('Mehr über mich →', 'More about me →') : t('Kontakt aufnehmen →', 'Get in touch →');
+    q('.mobile-viewer__hint').textContent = '';
+  }
   const select = q<HTMLSelectElement>('select');
   groups.forEach((group, i) => select.add(new Option(en ? group.labelEn : group.labelDe, String(i))));
   select.value = String(gi);
@@ -151,7 +206,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     galleryPositions.set(machine.slug, { group: gi, index });
     const request = ++imageRequest;
     const alt = en ? shot.altEn ?? shot.alt : shot.alt;
-    q('.mobile-viewer__caption').textContent = alt;
+    q('.mobile-viewer__caption').textContent = isProfile && detail ? t(detail.de, detail.en) : alt;
     full.setAttribute('aria-busy', 'true');
     q('.mobile-viewer__screen').setAttribute('aria-busy', 'true');
     void preload(shot.src).decode().then(() => {
@@ -181,6 +236,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     q<HTMLButtonElement>('[data-full-next]').disabled = images.length < 2;
     dialog.dataset.image = String(index);
     if (scene) scene.showScreen(shot.src);
+    if (resident) resident.currentShot = shot.src;
     if (dialog.dataset.state === 'fallback') poster.src = shot.src;
   };
   const step = (dir: number) => { index = (index + dir + groups[gi].images.length) % groups[gi].images.length; sync(); };
@@ -196,6 +252,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     const origin = screenImageRect(sourceScreen());
     fullTravel?.cancel(); fullFade?.cancel();
     full.hidden = false;
+    scene?.stop();
     inertBackground(true);
     q('[data-full-close]').focus();
     fullTravel = travelScreen(fullImage, origin, screenImageRect(fullImage), dialog, reduce);
@@ -210,6 +267,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     await fullTravel.finished;
     if (closed) return;
     full.hidden = true;
+    if (!document.hidden) scene?.start();
     fullFade?.cancel();
     inertBackground(false);
     q('[data-full]').focus();
@@ -294,7 +352,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
   let touchX = 0, touchY = 0, swipe = false, suppressClickUntil = 0;
   dialog.addEventListener('touchstart', event => {
     // Leave multi-touch (including native pinch zoom), selects and buttons alone.
-    swipe = event.touches.length === 1 && !(event.target as Element).closest('select, a, button:not(.mobile-viewer__screen)');
+    swipe = !isProfile && (window.visualViewport?.scale ?? 1) <= 1.01 && event.touches.length === 1 && !(event.target as Element).closest('select, a, button:not(.mobile-viewer__screen)');
     if (swipe) { touchX = event.touches[0].clientX; touchY = event.touches[0].clientY; }
   }, { passive: true, signal });
   dialog.addEventListener('touchmove', event => { if (event.touches.length > 1) swipe = false; }, { passive: true, signal });
@@ -314,15 +372,15 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
   }, { capture: true, signal });
   document.addEventListener('astro:before-preparation', dispose, { signal });
   window.addEventListener('resize', () => { if (innerWidth >= 900) dispose(); else scene?.setFrame(frame()); }, { signal });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) scene?.stop(); else scene?.start(); }, { signal });
+  document.addEventListener('visibilitychange', () => { if (document.hidden || !full.hidden) scene?.stop(); else scene?.start(); }, { signal });
   document.addEventListener('hall:screenrect', event => {
     const r = (event as CustomEvent).detail;
-    if (r.pose !== 'screen') return;
+    if (r.pose !== 'screen' || isProfile) return;
     Object.assign(q('.mobile-viewer__screen').style, { left: `${r.x + 1}px`, top: `${r.y + 1}px`, width: `${r.w - 2}px`, height: `${r.h - 2}px` });
   }, { signal });
   document.addEventListener('hall:ctlrects', event => {
     const { pose, rects } = (event as CustomEvent).detail;
-    if (pose !== 'screen') return;
+    if (pose !== 'screen' || isProfile) return;
     const layer = q('.mobile-viewer__hotspots');
     for (const [name, r] of Object.entries(controlTargets(rects))) {
       if (!/^(btn_\d+|[tk]btn_[01]|sel_\d+|joy|trackball)$/.test(name)) continue;
@@ -366,7 +424,18 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     delete stage.dataset.hallParked;
     scene = await resident.promise;
     if (closed) return;
-    scene.showScreen(groups[gi].images[index].src);
+    scene.setReduce(reduce);
+    // The attract screen is the image the visitor tapped. Match its full-size
+    // gallery source, so the camera starts from exactly that visible content.
+    const shotKey = (src: string) => src.replace(/@sm(?=\.)/, '').replace(/\.(avif|webp)$/, '');
+    const currentKey = resident.currentShot && shotKey(resident.currentShot);
+    const groupIndex = groups.findIndex(group => group.images.some(shot => shotKey(shot.src) === currentKey));
+    if (groupIndex >= 0) {
+      gi = groupIndex;
+      index = groups[gi].images.findIndex(shot => shotKey(shot.src) === currentKey);
+      select.value = String(gi);
+      sync();
+    }
     scene.enterExhibitFrom(origin);
     stage.style.visibility = 'visible';
     dialog.dataset.state = 'entering';
@@ -384,6 +453,7 @@ export async function openMobileArcade(exhibit: HTMLElement, href: string) {
     stage.style.clipPath = 'none';
     entryReveal.cancel();
     ready = true;
+    scene.showScreen(groups[gi].images[index].src);
     dialog.dataset.state = 'ready';
     status.textContent = '';
   } catch {

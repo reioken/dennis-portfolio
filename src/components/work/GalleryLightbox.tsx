@@ -86,7 +86,7 @@ export default function GalleryLightbox({
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
-  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const dragStart = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const isOpen = Boolean(active);
 
@@ -172,14 +172,25 @@ export default function GalleryLightbox({
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
-    dragStart.current = { x: e.clientX, y: e.clientY };
+    if ((window.visualViewport?.scale ?? 1) > 1.01) {
+      dragStart.current = null;
+      return;
+    }
+    // A second finger belongs to native pinch zoom, never screenshot navigation.
+    if (!e.isPrimary) {
+      const previous = dragStart.current;
+      dragStart.current = null;
+      if (previous && e.currentTarget.hasPointerCapture(previous.pointerId)) e.currentTarget.releasePointerCapture(previous.pointerId);
+      return;
+    }
+    dragStart.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     const start = dragStart.current;
     dragStart.current = null;
-    if (!start) return;
+    if (!start || !e.isPrimary || start.pointerId !== e.pointerId) return;
     const dx = e.clientX - start.x;
     if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(e.clientY - start.y)) go(dx < 0 ? 1 : -1);
   };

@@ -9,8 +9,14 @@ const { item } = Astro.props;
   <div class="mobile-claw__view">
     <picture><source media="(max-width: 899px)" srcset={`${p('media/mobile-arcade/kasse-sm.webp')} 390w, ${p('media/mobile-arcade/kasse.webp')} 780w`} sizes="(min-width: 600px) 440px, 100vw" /><img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Dennis im Greifautomaten / Dennis in the claw machine" width="780" height="940" decoding="async" /></picture>
     <div class="mobile-claw__stage" aria-hidden="true"></div>
+    <button class="mobile-claw__zoom" type="button" aria-pressed="false">
+      <span class="sr-only" data-lang="de">Greifautomaten näher ansehen</span><span class="sr-only" data-lang="en">Take a closer look at the claw machine</span>
+    </button>
   </div>
-  <button class="mobile-claw__pause" type="button" aria-pressed="false" hidden><span data-lang="de">Animation pausieren</span><span data-lang="en">Pause animation</span></button>
+  <div class="mobile-claw__controls">
+    <span class="mobile-claw__hint" aria-live="polite"><span data-lang="de">Antippen · näher ansehen</span><span data-lang="en">Tap · take a closer look</span></span>
+    <button class="mobile-claw__pause" type="button" aria-pressed="false" hidden><span data-lang="de">Animation pausieren</span><span data-lang="en">Pause animation</span></button>
+  </div>
 </div>
 
 <script>

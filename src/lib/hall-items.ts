@@ -50,6 +50,7 @@ export function kindFor(platform: string[]): MachineKind {
 
 /** Reihenfolge in der Halle — Rhythmus aus Cabinets, Terminals und Kiosken */
 export const ORDER = [
+  'ishikiri',
   'riftback',
   'nexus',
   'lowlight',

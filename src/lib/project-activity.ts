@@ -11,6 +11,7 @@ export const PROJECT_ACTIVITY_LABELS = {
 } as const;
 
 const PROJECT_ACTIVITY: Readonly<Record<string, ProjectActivityId>> = {
+  ishikiri: 'active',
   riftback: 'finished',
   nexus: 'finished',
   lowlight: 'finished',

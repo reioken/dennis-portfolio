@@ -24,6 +24,6 @@ const station = { index: initial, total: items.length, title: startItem && 'titl
   <h1 class="sr-only">{site.name}</h1>
   <p class="sr-only">Art Director · UX/UI Designer · Independent apps and games</p>
   <HallGuard />
-  <MobileArcade machines={machines} />
+  <MobileArcade machines={machines} items={items} />
   <Hall client:load transition:persist="hall" transition:persist-props items={items} directoryItems={directoryItems} initialSlug={homeSlug} mode="hall" homeHref={p()} />
 </BaseLayout>

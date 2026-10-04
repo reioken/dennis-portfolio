@@ -9,7 +9,7 @@
   body[data-mode="hall"] .hall,
   body[data-mode="hall"] .hall-startup { display: none; }
   .mobile-arcade { --exhibit-gutter: clamp(20px, 6.15vw, 32px); display: block; max-width: 520px; margin: 0 auto; padding-top: var(--nav-h); background: #090b10; }
-  .mobile-arcade__exhibit { position: relative; isolation: isolate; scroll-margin-top: calc(var(--nav-h) + 16px); }
+  .mobile-arcade__exhibit { position: relative; isolation: isolate; scroll-margin-top: calc(var(--nav-h) + 64px); }
   .mobile-arcade__exhibit + .mobile-arcade__exhibit::before { content: ''; position: absolute; top: 0; left: var(--exhibit-gutter); right: var(--exhibit-gutter); height: 1px; background: #c8daf41c; }
   .mobile-arcade__heading { position: relative; z-index: 1; padding: 28px var(--exhibit-gutter) 0; }
   .mobile-arcade__eyebrow { min-height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -38,11 +38,36 @@
   .mobile-arcade__manifesto em { font-style: normal; color: #baa6d6; }
   .mobile-arcade__exhibit--about .mobile-arcade__intro-role { font-size: 12px; color: #aeadbd; margin-bottom: 24px; }
   .mobile-arcade__exhibit--about .mobile-arcade__open { border: 0; border-block: 1px solid #c5b2de55; border-radius: 0; background: transparent; box-shadow: none; padding-inline: 0; min-height: 60px; font-size: 17px; }
-  .mobile-arcade__exhibit--about .mobile-arcade__machine img { max-height: 420px; object-fit: contain; }
+  .mobile-arcade__exhibit--about .mobile-arcade__machine img { object-fit: cover; }
   .mobile-arcade__footer { border-top: 1px solid #c8daf41c; padding: 28px var(--exhibit-gutter) max(24px, env(safe-area-inset-bottom)); }
   .mobile-arcade .mobile-arcade__contact { display: flex; justify-content: space-between; align-items: center; min-height: 56px; font-size: 34px; font-weight: 500; color: #d1bcff; }
   .mobile-arcade__footer nav { display: flex; flex-wrap: wrap; gap: 0 20px; margin-top: 18px; }
   .mobile-arcade__footer nav a { display: inline-flex; align-items: center; min-height: 44px; color: #b6b9c9; font-size: 12px; }
+}
+
+@media (max-width: 899px) {
+  .mobile-arcade { padding-bottom: env(safe-area-inset-bottom); }
+  .mobile-arcade__exhibit--about .mobile-arcade__heading { padding-top: 20px; }
+  .mobile-arcade__heading .mobile-arcade__manifesto { margin-top: 12px; font-size: clamp(40px, 11.5vw, 60px); }
+  .mobile-arcade__exhibit--about .mobile-arcade__intro-role { margin-bottom: 8px; }
+  .mobile-arcade__machine { margin-top: -12px; }
+  .mobile-arcade__machine picture, .mobile-arcade__machine > img { pointer-events: none; }
+  .mobile-arcade__machine::after { background: linear-gradient(#090b10, transparent 10%, transparent 87%, #090b10); }
+  .mobile-arcade__cue { position: absolute; z-index: 2; left: var(--exhibit-gutter); right: var(--exhibit-gutter); bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 14px; border: 1px solid #cbdaf42a; border-top-color: #e3d2fc65; border-radius: 4px; background: linear-gradient(115deg,#bec5e015,#6b768425),#0b0e17b8; backdrop-filter: blur(14px); color: #e1e2f0; font: 11px/1.4 var(--font-mono); box-shadow: inset 0 1px #ffffff0b,0 5px 18px #0004; }
+  [data-live="ready"] .mobile-arcade__cue::before { content: ''; flex: 0 0 5px; height: 5px; border-radius: 50%; background: #b7d7cb; box-shadow: 0 0 9px #b7d7cb70; }
+  .mobile-arcade__cue > [data-lang] { margin-right: auto; }
+  .mobile-arcade__cue > [aria-hidden] { font: 22px/1 sans-serif; }
+  .mobile-arcade__caption { margin-top: 0; }
+  .mobile-arcade__directory { position: sticky; top: var(--nav-h); z-index: 8; display: grid; grid-template-columns: auto minmax(0,1fr) 44px 44px; align-items: center; gap: 8px; padding: 4px var(--exhibit-gutter); background: #10131de8; backdrop-filter: blur(18px); border-block: 1px solid #c7d0ea33; box-shadow: 0 4px 18px #0003; }
+  .mobile-arcade__motion { min-height: 44px; border: 0; background: transparent; color: #cbd6ec; font-size: 19px; touch-action: manipulation; }
+  .mobile-arcade__motion:focus-visible { outline: 2px solid var(--ice); }
+  .mobile-arcade__position { font: 10px/1.4 var(--font-mono); color: #b8c5df; white-space: nowrap; }
+  .mobile-arcade__directory select { color: #e1dfed; font: 500 16px/1.4 var(--font-sans); border: 0; width: 100%; min-width: 0; min-height: 44px; background: transparent; padding: 4px 20px 4px 0; text-overflow: ellipsis; }
+  .mobile-arcade__directory option { color: #e1dfed; background: #10131d; }
+  .mobile-arcade__directory a { display: grid; place-items: center; height: 44px; border-left: 1px solid #c7d0ea26; }
+  .mobile-arcade__directory select:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
+  .mobile-arcade__caption .mobile-arcade__open[data-mobile-enter] { display: none; }
+  .mobile-arcade__caption .mobile-arcade__story { border-bottom: 1px solid #c7d0ea26; margin-top: 12px; min-height: 48px; font-size: 14px; }
 }
 
 html.mobile-viewer-open { overflow: hidden; scrollbar-gutter: stable; }
@@ -103,6 +128,13 @@ html.mobile-viewer-open { overflow: hidden; scrollbar-gutter: stable; }
 .mobile-viewer__full img { width: 100%; height: 100%; object-fit: contain; padding: max(72px, calc(env(safe-area-inset-top) + 60px)) max(8px, env(safe-area-inset-right)) max(88px, calc(env(safe-area-inset-bottom) + 72px)) max(8px, env(safe-area-inset-left)); box-sizing: border-box; }
 .mobile-viewer__full > [data-full-close] { position: absolute; right: max(16px, env(safe-area-inset-right)); top: max(16px, env(safe-area-inset-top)); }
 .mobile-viewer__full-controls { position: absolute; inset: auto 0 max(16px, env(safe-area-inset-bottom)); }
+.mobile-viewer--profile .mobile-viewer__toolbar,
+.mobile-viewer--profile .mobile-viewer__hint,
+.mobile-viewer--profile .mobile-viewer__screen,
+.mobile-viewer--profile .mobile-viewer__hotspots,
+.mobile-viewer--profile [data-full] { display: none; }
+.mobile-viewer--profile .mobile-viewer__caption { display: block; font-size: 14px; line-height: 1.6; margin: 0; }
+.mobile-viewer--profile .mobile-viewer__links a { width: 100%; font-size: 16px; justify-content: space-between; }
 .mobile-viewer[data-state="fallback"] { background: #090b10; }
 .mobile-viewer[data-state="fallback"] .mobile-viewer__poster { display: block; inset: 90px 16px 190px; width: calc(100% - 32px); height: calc(100% - 280px); }
 @media (min-width: 600px) and (max-height: 500px) {

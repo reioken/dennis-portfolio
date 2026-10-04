@@ -45,3 +45,7 @@
 /* Source is metadata, not a second grid item above the image. */
 .gallery-view__figure source { display: none; }
 .gallery-view .gallery-view__veil { background: #08090cf5; }
+
+/* Horizontal one-finger swipes belong to the gallery; two fingers can zoom the
+   original capture with the browser. Never treat a pinch as the next image. */
+.gallery-view .gallery-view__stage { touch-action: pan-y pinch-zoom; }
