@@ -1,5 +1,17 @@
 # Ishikiri station — October 5, 2026
 
+## Production release — October 5
+
+Dennis authorized commit and deployment. Source commit `15a5136` is pushed to
+`feat/werkstatt`; Pages deployment `07fc6db3` is live at https://www.dennisbf.design.
+The release was built from an isolated archive of that commit, excluding the local
+editor, unrelated `src/data/werkstatt.json` edit and untracked experiments.
+TypeScript, 31 tests, 29 model hashes and the 61-page build audit passed. All 60
+checked live JavaScript/CSS/model/art/poster files match the release build by SHA-256.
+Desktop and mobile browser checks confirmed the beige cabinet, white logo screen,
+14 selectors, model entry, screenshot switching and full-screen. No console errors
+were observed. Mobile verification used an emulated viewport, not a physical phone.
+
 ## Current revision: beige cabinet and series-style graphic
 
 Dennis rejected the scenic side illustration and requested the graphic style of
@@ -52,7 +64,8 @@ Validation: TypeScript, 31 review tests, 29 model hashes and 61-page build audit
 pass. Browser checked at 1440x960 and 390x844: first-machine order, side artwork,
 14th selector, project page, joystick screenshot switching, return to marquee,
 mobile directory, live model zoom, screenshot switching and full-screen. No console
-errors observed. Changes are local on port 4334, not committed or deployed.
+errors observed. This describes the earlier local iteration; the v2 revision above
+is now committed and deployed.
 
-Preserve the preceding uncommitted mobile redesign, the unrelated werkstatt data
-and experimental untracked files when preparing a later release.
+The mobile redesign shipped in the same release. Preserve the unrelated local
+werkstatt data and experimental untracked files.

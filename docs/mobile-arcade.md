@@ -204,4 +204,16 @@ About zoom/pause/anchors, work filters, menu, localized station names and EN lin
 Observed one live exhibition canvas and no horizontal document overflow. Desktop
 1440 px also checked. TypeScript, all 31 review tests, Astro build and the 59-page
 link/metadata audit pass. These are browser-emulated checks, not physical-phone
-performance measurements. This iteration is local on port 4334, not deployed.
+performance measurements. This was initially a local preview on port 4334.
+
+## Production release — October 5, 2026
+
+The mobile redesign and Ishikiri now ship in commit `15a5136`, pushed to
+`feat/werkstatt`, Pages deployment `07fc6db3` at https://www.dennisbf.design.
+Ishikiri is the first project after About, bringing the directory to 14 stations.
+The isolated committed-source build excludes the local editor and unrelated
+werkstatt edits. TypeScript, 31 tests, 29 model hashes and the 61-page audit pass;
+60 live asset hashes match the release build. Live desktop and 390x844 mobile
+checks passed, including claw entry/return, Ishikiri zoom, screenshot switching
+and full-screen. No console errors or mobile horizontal overflow were observed.
+See [ishikiri-station.md](ishikiri-station.md) for model/art provenance.
