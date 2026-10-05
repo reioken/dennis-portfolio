@@ -11,11 +11,11 @@ a request to repeat the deployment or redesign the site again.
 | Repository | `C:/Users/denni/Projects/dennis-portfolio` |
 | Branch | `feat/werkstatt`, pushed to `origin` |
 | Live | https://www.dennisbf.design |
-| Production source | `e6b91f96cf720722163415f3ccdb5736f8ae3969` (performance release, evening of October 5) |
-| Pages deployment | `ed7da1ba`, https://ed7da1ba.dennis-portfolio-87g.pages.dev |
-| Previous release | `15a5136` / `07fc6db3` (mobile exhibition and Ishikiri) |
-| Release documentation | the commit after `e6b91f9` (documentation only) |
-| Latest local preview used | `http://127.0.0.1:4331/` (built `e6b91f9`); earlier `4334` |
+| Production source | `cedb8fad3521f7f0976189739065274e11c25cf6` (CD player, split loader, UX/UI audit fixes; October 6) |
+| Pages deployment | `d381da08`, https://d381da08.dennis-portfolio-87g.pages.dev (preview `9cf7dc68`, alias `ux-preview`) |
+| Previous release | `e6b91f9` / `ed7da1ba` (performance); before that `15a5136` / `07fc6db3` |
+| Release documentation | the commit after `cedb8fa` (documentation only) |
+| Latest local preview used | `http://127.0.0.1:4331/` (serves the repo's `dist`) |
 | Local editor proxy | `http://127.0.0.1:4335/`; external to Git |
 
 Git `main` is not the production source branch. Pages receives an explicit upload
@@ -49,12 +49,16 @@ In progress next: Dennis asked for a silver, early-2000s style CD player model n
 [docs/cd-player.md](docs/cd-player.md). Open: whether his album audio may be hosted on the site (until then a
 click opens Spotify), the cover on the disc, and his verdict on size and placement.
 
-## UX/UI audit — October 5–6, local
+## Release October 6: CD player, split loader, UX/UI audit
 
-Dennis asked for a review against [docs/portfolio-ux-ui-rules.md](docs/portfolio-ux-ui-rules.md). Findings, fixes,
-checks and the open decisions are in [docs/research/ux-audit-2026-10-06.md](docs/research/ux-audit-2026-10-06.md).
-Also local: the loader's editorial split (Dennis's mockup; the cube and its motion unchanged, the two ways in as
-buttons). Nothing of this is committed or released.
+Dennis: „commit and deploy“. Released as `cedb8fa` / Pages `d381da08` (with the earlier `43645d2` loader focus fix).
+Contents: the CD player in Spotify mode ([docs/cd-player.md](docs/cd-player.md); the album is not hosted), the
+loader's editorial split (his mockup; the cube and its motion unchanged, the two ways in as buttons) and the fixes of the
+audit against [docs/portfolio-ux-ui-rules.md](docs/portfolio-ux-ui-rules.md)
+([docs/research/ux-audit-2026-10-06.md](docs/research/ux-audit-2026-10-06.md), including the open decisions).
+Isolated archive build: TypeScript, 32 review tests, 30 model hashes, build, 61-page audit, no editor markers. Preview
+`9cf7dc68`: feature/CSP checks 6/6, flow check 16/16. Live: 56/56 JS/CSS/model assets byte-identical to the build,
+feature/CSP 6/6, flow 16/16, Contact protections 11/11 (network intercepted, nothing sent), close/history 7/7.
 
 ## What shipped earlier on October 5
 
