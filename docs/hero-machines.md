@@ -1,5 +1,10 @@
 # Hero machines
 
+Latest addition: [Ishikiri, October 5](ishikiri-station.md), beige `cab-ishikiri-v2`
+and the 14-key `navigation-marquee-v2`. Current release and continuation state:
+[Claude handover](../HANDOVER-CLAUDE-2026-10-05.md). Historical station counts below
+describe earlier machine releases.
+
 The hall's machines at the level of detail Dennis approved on 2026-09-20 (Riftback first). One generator, one recipe
 per product, one height (1.95 m), and no two machines that age alike.
 

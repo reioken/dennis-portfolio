@@ -1,6 +1,6 @@
 # Portfolio direction and implementation plan — 2026-10-04
 
-Status: implemented locally after Dennis approved “Okay, lets build it.” Three agents contributed to the implementation and review. Production has not been deployed. The original design rationale follows the implementation record below.
+Historical design and implementation log. Its dated local-only/deployment notes describe the state at each entry, not the current site. For the latest published release and continuation instructions, read [HANDOVER-CLAUDE-2026-10-05.md](../HANDOVER-CLAUDE-2026-10-05.md). The original design rationale follows the implementation record below.
 
 ## Implementation record
 

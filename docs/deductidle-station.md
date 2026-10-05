@@ -1,5 +1,9 @@
 # Deductidle station — 2026-10-04
 
+Current release note: Ishikiri was added on October 5; the hall and physical marquee
+now have 14 stations/keys. The 13-key count below records the earlier Deductidle
+release. See [ishikiri-station.md](ishikiri-station.md).
+
 Dennis confirmed: daily game, finished for now; original idea by Dennis, implementation with AI. Public product: https://deductidle.com/.
 
 The project page uses three actual browser captures taken on October 4: the daily shapes puzzle, the hypothesis test dialog, and the interactive introduction. No account was used and no result was submitted. Captures live in `public/media/deductidle/shots/` with full and 720px WebP/AVIF variants. `logo.svg` is the product's original four-tile brand mark.
