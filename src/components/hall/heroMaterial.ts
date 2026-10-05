@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { inflatedBinary, type TextureSource } from './bitmapTextures';
 
 /**
  * Hero machines (scripts/models/blender/hero_gen.py) carry two UV sets and one baked mask atlas, exported as the
@@ -53,11 +54,8 @@ function loadHeroRoom(manager: THREE.LoadingManager, onLoad: () => void): HeroRo
   const url = '/textures/hero-environment-v1.bin.gz';
   manager.itemStart(url);
   void (async () => {
-    const response = await fetch(url);
-    if (!response.ok) return;
-    let buffer = await response.arrayBuffer();
-    const magic = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
-    if (magic[0] === 0x1f && magic[1] === 0x8b) buffer = await new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    const buffer = await inflatedBinary(url);
+    if (!buffer) return;
     const header = new DataView(buffer);
     const width = header.getUint32(0, true), height = header.getUint32(4, true);
     if (width !== 768 || height !== 1024 || buffer.byteLength !== 8 + width * height * 8) return;
@@ -74,7 +72,7 @@ function loadHeroRoom(manager: THREE.LoadingManager, onLoad: () => void): HeroRo
   return room;
 }
 
-export function loadHeroMaps(loader: THREE.TextureLoader, onLoad: () => void): HeroMaps {
+export function loadHeroMaps(loader: TextureSource, onLoad: () => void): HeroMaps {
   const maps: SurfaceMaps = {};
   for (const [key, surface] of Object.entries(SURFACES)) {
     const load = (kind: string) => {

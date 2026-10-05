@@ -32,7 +32,7 @@ try {
     assert.equal(state.overflow, 0);
     assert.equal(state.stage, false);
     assert.equal(state.pending, false);
-    assert.equal(state.exhibits, 12);
+    assert.equal(state.exhibits, 14); // claw, 12 project cabinets, phone (Deductidle and Ishikiri, October 4–5)
     assert.equal(state.first, 'kasse');
     assert.ok(state.height > state.viewport * 3);
     assert.equal(requests.filter(url => /\/Stage3D\./.test(url)).length, 0, 'mobile home must not load the hidden hall');
@@ -102,7 +102,7 @@ try {
   const plain = await noJs.newPage();
   await plain.goto(base);
   assert.ok(await plain.locator('.mobile-arcade').isVisible());
-  assert.equal(await plain.locator('[data-exhibit]').count(), 12);
+  assert.equal(await plain.locator('[data-exhibit]').count(), 14);
   await plain.locator('[data-exhibit="riftback"] .mobile-arcade__open').click();
   await plain.waitForURL('**/work/riftback/');
   await noJs.close();

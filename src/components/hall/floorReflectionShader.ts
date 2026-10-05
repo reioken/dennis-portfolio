@@ -44,13 +44,23 @@ export function createHallFloor(maps:Record<string,THREE.Texture>,lighting:HallL
  };material.customProgramCacheKey=()=>oldKey()+'-rough-planar-v3';
  (mirror as unknown as THREE.Mesh).material=material;
  const previousCamera=new THREE.Matrix4();let last=-1;
- mirror.onBeforeRender=(renderer,scene,camera,geometry,mat,group)=>{const flags=state(),moved=!previousCamera.equals(camera.matrixWorld);if(last>=0&&!moved&&!flags.dirty)return;if(flags.ready&&!moved&&performance.now()-last<(flags.quality===2?45:85))return;
+ // Below full quality the capture runs at half size: it re-renders the whole room on every camera move and is then
+ // blurred twice, so a quarter of its pixels shows the same soft reflection (blur steps stay in full-size units).
+ let scale=1;
+ const fit=(quality:number)=>{const s=quality===2?1:.5;if(s===scale)return;scale=s;const w=Math.round(width*s),h=Math.round(height*s);capture.setSize(w,h);targets.forEach(t=>t.setSize(w,h));};
+ // The capture runs before the frame's own render call (hallScene renderFrame), not from onBeforeRender inside it:
+ // a nested render gets its own render state, so every lit material alternated between two light-state versions and
+ // three re-resolved its program and all uniforms twice per frame (2026-10-05 profile: getParameters/getProgram the
+ // top self time of the frame loop, ~0.7 ms per frame here, a multiple on laptop CPUs).
+ const captureFor=(renderer:THREE.WebGLRenderer,scene:THREE.Scene,camera:THREE.Camera)=>{const flags=state(),moved=!previousCamera.equals(camera.matrixWorld);if(last>=0&&!moved&&!flags.dirty)return;if(flags.ready&&!moved&&performance.now()-last<(flags.quality===2?45:85))return;
  previousCamera.copy(camera.matrixWorld);last=performance.now();captured();
- originalRender.call(mirror,renderer,scene,camera,geometry,mat,group);
+ fit(flags.quality);
  const previous=renderer.getRenderTarget();
+ originalRender.call(mirror,renderer,scene,camera,mirror.geometry,mirror.material as THREE.Material,null as unknown as THREE.Group);
  const filter=(input:THREE.Texture,output:THREE.WebGLRenderTarget,radius:number)=>{blur.uniforms.t.value=input;blur.uniforms.step.value.set(radius/width,0);renderer.setRenderTarget(temporary);quad.render(renderer);blur.uniforms.t.value=temporary.texture;blur.uniforms.step.value.set(0,radius/height);renderer.setRenderTarget(output);quad.render(renderer);};
  filter(capture.texture,soft,1.15);filter(soft.texture,broad,3.5);renderer.setRenderTarget(previous);
  };
+ mirror.onBeforeRender=()=>{};
  mirror.rotation.x=-Math.PI/2;mirror.name='hall-stone-floor';
- return {mesh:mirror,targets,dispose:()=>{mirror.dispose();originalMaterial.dispose();material.dispose();targets.forEach(t=>t.dispose());blur.dispose();quad.dispose();}};
+ return {mesh:mirror,targets,capture:captureFor,dispose:()=>{mirror.dispose();originalMaterial.dispose();material.dispose();targets.forEach(t=>t.dispose());blur.dispose();quad.dispose();}};
 }

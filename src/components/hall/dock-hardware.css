@@ -46,7 +46,9 @@
  :root .hall.is-screen .hall-dock.hall-console { display:none; }
  .hall.is-3d .hall-console:not([data-hardware]),
  .hall-console[data-hardware="loading"] { visibility:hidden; opacity:0; pointer-events:none; }
- .hall-dock.hall-console[data-hardware="ready"] { display:block; width:calc(100% - 48px); max-width:1160px; height:auto; aspect-ratio:4.3; padding:0; border:0; border-radius:0; background:none; box-shadow:none; bottom:0; }
+ /* Smaller assembly (Dennis 2026-10-05): at most 960 px and a quarter of the viewport's height (4.3 × 25vh), so
+    laptop screens keep the room in view; never under 720 px, where the 14 keys keep a 44 px pitch. */
+ .hall-dock.hall-console[data-hardware="ready"] { display:block; width:max(720px,min(calc(100% - 48px),960px,107.5vh)); max-width:none; height:auto; aspect-ratio:4.3; padding:0; border:0; border-radius:0; background:none; box-shadow:none; bottom:0; }
  .hall-console[data-hardware="ready"] > .hall-console__canvas { inset:0; width:100%; height:100%; filter:drop-shadow(0 14px 15px #0008); }
  .hall-console[data-hardware="ready"] .hall-dock__center,.hall-console[data-hardware="ready"] .hall-dock__count { display:contents; }
  .hall-console[data-hardware="ready"] .hall-dock__rail { display:contents; }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { fittedFontSize } from './fitText.mjs';
 
 /** Print at the actual panel ratio. Letterforms are fitted uniformly, never squeezed. */
 export function textTexture(text: string, color: string, opts: { aspect?: number; w?: number; h?: number; upper?: boolean; logo?: string; bg?: string; glow?: boolean } = {}) {
@@ -16,8 +17,8 @@ export function textTexture(text: string, color: string, opts: { aspect?: number
   const label = (opts.upper === false ? text : text.toUpperCase()).split(' – ')[0];
   let size = h * .48;
   const setFont = () => { ctx.font = `600 ${size}px "Outfit Variable", Outfit, sans-serif`; ctx.letterSpacing = `${size * .065}px`; };
+  size = fittedFontSize(size, 12, w - pad * 2, s => { size = s; setFont(); return ctx.measureText(label).width; });
   setFont();
-  while (ctx.measureText(label).width > w - pad * 2 && size > 12) { size -= 1; setFont(); }
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   const metrics = ctx.measureText(label);
   const y = h / 2 + ((metrics.actualBoundingBoxAscent || size * .72) - (metrics.actualBoundingBoxDescent || 0)) / 2;

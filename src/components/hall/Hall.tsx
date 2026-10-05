@@ -1096,6 +1096,12 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
             frame={frameRef.current}
             onScene={(s) => {
               sceneRef.current = s;
+              // The console can settle its size between the boot measurement and this moment (it appears once its
+              // programs are compiled); the dock observer skips changes while there is no scene. Start from now.
+              if (s) {
+                frameRef.current = measureFrame(closeupRef.current ? 'screen' : modeRef.current, items[focusRef.current]?.kind === 'kasse');
+                s.setFrame(frameRef.current);
+              }
             }}
             onPick={(i) => {
               if (modeRef.current === 'hall') setFocus(i);

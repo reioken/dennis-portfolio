@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { fittedFontSize } from './fitText.mjs';
 
 /** Authored phosphor display: typography is uploaded only when the selected station changes. */
 export function createDockScreen() {
@@ -77,9 +78,9 @@ export function createDockScreen() {
     const ctx = canvases[current].getContext('2d')!;
     ctx.fillStyle='#000'; ctx.fillRect(0,0,1536,384);
     ctx.textAlign='left'; ctx.textBaseline='middle';
-    let size=290;
-    do {ctx.font=`600 ${size--}px "Barlow Condensed", "Arial Narrow", sans-serif`;}
-    while(ctx.measureText(title).width>1050 && size>95);
+    // Runs on every station change: one prediction instead of a measurement per pixel step, same size (fitText.mjs).
+    const font=(px:number)=>`600 ${px}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+    ctx.font=font(fittedFontSize(290,96,1050,px=>{ctx.font=font(px);return ctx.measureText(title).width;}));
     ctx.fillStyle='#d5dcef'; ctx.shadowColor='#8eace0'; ctx.shadowBlur=9;
     ctx.fillText(title,54,197); ctx.shadowBlur=0;
     ctx.fillStyle='#4c5870'; ctx.fillRect(1153,66,2,252);

@@ -4,9 +4,17 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { prepareDockAsset } from './dock-asset';
 import { createDockScreen } from './dock-screen';
+import { inflatedBinary } from './bitmapTextures';
+import { fittedFontSize } from './fitText.mjs';
 import { marbleBall } from './heroMaterial';
 import { roomPowerLevels, ROOM_POWER_MS, withRoomPower, collectRoomPowerTargets } from './roomPower.mjs';
 type Control = { element: HTMLElement; object: THREE.Object3D; origin: THREE.Vector3; value: number; velocity: number; target: number; moving: boolean; pressUntil: number; glow?: THREE.ShaderMaterial; lamp?: THREE.PointLight };
+/** Moving keys and the CRT transition: never above 60 fps, whatever the panel's rate (2026-10-05 live: 104 fps at 240 Hz). */
+const MOTION_FRAME_MS = 15.5;
+/** The idle phosphor (slow row crawl, drift, grain) reads the same at 12 fps; at 24 it was the hall's second renderer all the time. */
+const IDLE_FRAME_MS = 1000 / 12;
+/** Key shadows follow travel of a few millimetres: refresh them at most this often while moving, then once at rest. */
+const SHADOW_MS = 100;
 
 /** Every visible surface is in the Blender GLB. DOM elements are invisible, projected hit targets. */
 export function mountDockHardware(root: HTMLElement, reduce: boolean) {
@@ -15,8 +23,11 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
   let renderer: THREE.WebGLRenderer;
   try { renderer = new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'}); }
   catch { root.dataset.hardware='fallback'; return () => {}; }
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  // The hall itself is capped at 1.5 (hallScene pixelRatioFor); the console at 2 drew 1.8× its pixels on Retina panels.
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1;
+  // As in the hall: reading every program's info log after compiling stalls on the driver; shaders are fixed in production.
+  renderer.debug.checkShaderErrors = import.meta.env.DEV;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate=false;
   root.prepend(canvas);
@@ -33,7 +44,7 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
   key.shadow.bias=-.0003; key.shadow.normalBias=.002; key.shadow.radius=2; scene.add(key);
   const fill = new THREE.DirectionalLight(0xa7b9e5,.85); fill.position.set(2,2,-3); scene.add(fill);
   let model: THREE.Group | undefined, ball: THREE.Object3D | undefined;
-  let dead=false, raf=0, previous=0, stickValue=0, stickVelocity=0, stickTarget=0;
+  let dead=false, compiled=false, raf=0, previous=0, lastDrawn=-1e9, shadowAt=-1e9, shadowStale=false, stickValue=0, stickVelocity=0, stickTarget=0;
   let stickRest: THREE.Quaternion | undefined;
   let pulseTimer: ReturnType<typeof setTimeout> | undefined;
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -74,14 +85,21 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
     for (const value of Object.values(old)) if (value instanceof THREE.Texture) ownedTextures.add(value);
     object.material=material; screens.set(name,{canvas:surface,texture});
   }
+  // update() runs on every station change; repainting and re-uploading all 18 printed surfaces each time cost a
+  // canvas raster plus a texture upload per surface. Repaint only what changed (or once more after the font loads).
+  const printed=new Map<string,string>(); let fontEpoch=0;
   function lettering(name:string,lines:string[],disabled=false) {
     const screen=screens.get(name); if(!screen) return;
+    const key=`${fontEpoch}|${disabled}|${lines.join('\n')}`;
+    if(printed.get(name)===key) return;
+    printed.set(name,key);
     const ctx=screen.canvas.getContext('2d')!; const {width:w,height:h}=screen.canvas;
     ctx.clearRect(0,0,w,h); ctx.fillStyle=name==='display_prev'||name==='display_next'||name.startsWith('display_station_') ? (disabled ? '#625c71' : '#e0d4ec') : '#1a1427';
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    let size=lines.length>1 ? 139 : 158;
-    do {ctx.font=`600 ${size--}px "Barlow Condensed", "Arial Narrow", sans-serif`;}
-    while(Math.max(...lines.map(line=>ctx.measureText(line).width))>w-12 && size>40);
+    // Same result as stepping the font down a pixel at a time (fitText.mjs); `size` ends one below the font, as it did.
+    const font=(px:number)=>`600 ${px}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+    const fitted=fittedFontSize(lines.length>1 ? 139 : 158,41,w-12,px=>{ctx.font=font(px);return Math.max(...lines.map(line=>ctx.measureText(line).width));});
+    ctx.font=font(fitted); const size=fitted-1;
     lines.forEach((line,i)=>ctx.fillText(line,w/2,h/2+(i-(lines.length-1)/2)*size*1.02));
     screen.texture.needsUpdate=true;
   }
@@ -223,17 +241,25 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
       c.object.add(c.lamp);c.lamp.position.set(0,.15,0);
     }
     powerTargets=collectRoomPowerTargets(scene);
+    // Build every program on the driver's worker threads before the first frame. The first render compiled the
+    // iridescent/clearcoat MeshPhysical keys with PCF soft shadows synchronously: the worst main-thread stall of
+    // the whole load, 1.1–1.5 s at normal CPU speed (2026-10-05 live). The console stays hidden until then.
+    try { await renderer.compileAsync(scene,camera); } catch { /* A program failing here fails the same way on first render. */ }
+    if(dead) return;
+    compiled=true;
     root.dataset.hardware='ready'; placeTargets(); update();
+    // The assembly now has its final height: the hall frames the room above its top edge (Hall.tsx hall:reframe).
+    document.dispatchEvent(new CustomEvent('hall:reframe'));
     void document.fonts.load('600 100px "Barlow Condensed"').then(()=>{
       if(dead)return;
+      fontEpoch++;
       phosphor.setText((track?.getAttribute('aria-valuetext')||'').toUpperCase(),Number(track?.getAttribute('aria-valuenow')||1),Number(track?.getAttribute('aria-valuemax')||root.querySelectorAll('.hall-dock__stop').length),true,true);update();
     });
   }
   async function loadEnvironment() {
     try {
-      const response=await fetch('/textures/hero-environment-v1.bin.gz',{signal:abort.signal});if(!response.ok)return;
-      let data=await response.arrayBuffer();
-      if(new Uint8Array(data)[0]===31)data=await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+      // The hall's hero machines inflate the same file; both read one shared decode.
+      const data=await inflatedBinary('/textures/hero-environment-v1.bin.gz');if(!data || abort.signal.aborted)return;
       const header=new DataView(data),w=header.getUint32(0,true),h=header.getUint32(4,true);
       if(dead||w!==768||h!==1024||data.byteLength!==8+w*h*8)return;
       const texture=new THREE.DataTexture(new Uint16Array(data,8),w,h,THREE.RGBAFormat,THREE.HalfFloatType);
@@ -249,11 +275,13 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
     return root.closest('.hall')?.classList.contains('is-3d') ? ROOM_POWER_MS : 0;
   }
   function frame(time:number) {
-    raf=0; if(dead || document.hidden || !model) return;
+    raf=0; if(dead || !compiled || document.hidden || !model) return;
     // Park the retained GPU assembly on reading/game pages; wake on the hall's
     // mode mutation when returning. No CRT loop runs behind a hidden console.
     const hall=root.closest('.hall');
     if(hall?.getAttribute('data-mode')!=='hall' || hall.classList.contains('is-screen'))return;
+    if(time-lastDrawn<MOTION_FRAME_MS){raf=requestAnimationFrame(frame);return;}
+    lastDrawn=time;
     const dt=Math.min((time-previous)/1000 || .016,.032); previous=time; let moving=false;
     for(const c of controls) {
       if(!c.moving) continue;
@@ -284,12 +312,16 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
     const elapsed=reduce ? (powerTime(time)>=ROOM_POWER_MS ? ROOM_POWER_MS : 0) : powerTime(time);
     const power=roomPowerLevels(elapsed).screen;
     const changing=phosphor.tick(time,power,reduce);
-    if(moving)renderer.shadowMap.needsUpdate=true;
-    root.dataset.lighting=elapsed>=ROOM_POWER_MS ? 'on' : elapsed>0 ? 'warming' : 'off';
+    if(moving) shadowStale=true;
+    if(shadowStale && (!moving || time-shadowAt>=SHADOW_MS)){renderer.shadowMap.needsUpdate=true;shadowAt=time;shadowStale=false;}
+    // Only on change: writing the attribute every frame re-styled the whole page 12 times a second, which the
+    // hall's frame loop then paid for in a forced style recalc (2026-10-05 trace).
+    const lighting=elapsed>=ROOM_POWER_MS ? 'on' : elapsed>0 ? 'warming' : 'off';
+    if(root.dataset.lighting!==lighting)root.dataset.lighting=lighting;
     if(elapsed<ROOM_POWER_MS)withRoomPower(scene,elapsed,0,()=>renderer.render(scene,camera),false,powerTargets);
     else renderer.render(scene,camera);
     if(moving || changing || (elapsed>0 && elapsed<ROOM_POWER_MS))raf=requestAnimationFrame(frame);
-    else if(!reduce && power>0)idleTimer=setTimeout(wake,1000/24);
+    else if(!reduce && power>0)idleTimer=setTimeout(wake,IDLE_FRAME_MS);
   }
   function wake() {clearTimeout(idleTimer);if(!dead && !raf) {previous=performance.now(); raf=requestAnimationFrame(frame);}}
   function press(event:Event) {

@@ -10,6 +10,7 @@
  */
 import * as THREE from 'three';
 import { prepareDockAsset, DOCK_MODEL } from './dock-asset';
+import { BitmapTextureLoader, inflatedBinary } from './bitmapTextures';
 import { createHallFloor } from './floorReflectionShader';
 import { HallLighting } from './hallLighting';
 import { ScreenDissolve } from './screenDissolve';
@@ -632,6 +633,8 @@ export class HallScene {
   private neonLight!: THREE.PointLight;
   private loadingManager = new THREE.LoadingManager();
   private loader = new THREE.TextureLoader(this.loadingManager);
+  /** Room, hardware and cabinet-art surfaces: decoded off the main thread (bitmapTextures.ts). */
+  private surfaceLoader = new BitmapTextureLoader(this.loadingManager);
   /** Hall models are Meshopt-compressed (geometry and animation). */
   private gltf = new GLTFLoader(this.loadingManager).setMeshoptDecoder(MeshoptDecoder).register(parser => directImages(parser, this.loadingManager));
   private raycaster = new THREE.Raycaster();
@@ -707,7 +710,33 @@ export class HallScene {
   private items: HallItem[] = [];
   private disposed = false;
   /** Leistungswächter: Frame-Zeiten sammeln und bei Bedarf runterschalten */
-  private perfLevel = 2; // 2 = voll, 1 = ohne Bloom/Spiegel, 0 = zusätzlich Pixelratio 1
+  /**
+   * 2 = full; 1 = no bloom, wall and floor light the same lamps with a cheap approximation (hallLighting; the
+   * cabinets keep the exact area lights) and the floor reflection is captured at half size;
+   * 0 = additionally 0.7× pixel ratio. Every level draws through the same composer path with the same programs,
+   * so a change is instant: no compile, no render-path switch (2026-10-05).
+   */
+  private perfLevel = 2;
+  private readyAt = 0;
+  private upgradedAt = -1e9;
+  private upgradeBlocked = false;
+  private composerRatio = 0;
+  /**
+   * Container size, cached. Reading clientWidth in the frame loop forced a style recalc of the whole page whenever
+   * anything had dirtied styles (2026-10-05 trace: ~2 ms a frame on this PC, 9 ms at CPU ×4). A ResizeObserver
+   * keeps it fresh, and the explicit resize paths re-measure.
+   */
+  private viewW = 0;
+  private viewH = 0;
+  private viewObserver?: ResizeObserver;
+  /**
+   * GPU time per frame where the browser exposes it (EXT_disjoint_timer_query_webgl2: Chrome and Edge on the
+   * desktop). It separates a GPU-bound frame from one the main thread delayed: on a fast GPU with a slow CPU the
+   * interval alone looked GPU-bound right after the reveal and cost the room its bloom (2026-10-05, CPU ×4).
+   */
+  private gpuTimer?: { gl: WebGL2RenderingContext; ext: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number }; pending: WebGLQuery[]; samples: number[] };
+  private bloomPass?: UnrealBloomPass;
+  private mirrorCapture?: (renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) => void;
   private mirrorAt = 0;
   private lastRaf = 0;
   private rafTimes: number[] = [];
@@ -773,6 +802,12 @@ export class HallScene {
 
   constructor(container: HTMLElement, items: HallItem[], initial: number, cb: SceneCallbacks, opts: { reduce: boolean; lite: boolean; pose?: Pose; frame?: Frame; exhibit?: boolean }) {
     this.container = container;
+    this.measureView();
+    if (typeof ResizeObserver !== 'undefined') {
+      // Delivered after layout, so the read inside is free; the frame loop only ever reads the cached values.
+      this.viewObserver = new ResizeObserver(() => this.measureView());
+      this.viewObserver.observe(container);
+    }
     this.exhibit = Boolean(opts.exhibit);
     // The first station and its neighbours are in every first view: their downloads start before the room is built.
     // The rest of the first view follows from startStations; everything else loads after the startup assets.
@@ -821,6 +856,9 @@ export class HallScene {
     r.domElement.setAttribute('aria-hidden', 'true');
     container.appendChild(r.domElement);
     this.renderer = r;
+    const gl = r.getContext();
+    const timerExt = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext ? gl.getExtension('EXT_disjoint_timer_query_webgl2') : null;
+    if (timerExt) this.gpuTimer = { gl: gl as WebGL2RenderingContext, ext: timerExt, pending: [], samples: [] };
 
     this.scene.background = new THREE.Color(0x05060a);
     // Umgebungslicht für Metall, Lack und Glas — ohne Environment-Map rendert alles Glänzende schwarz
@@ -837,7 +875,7 @@ export class HallScene {
     this.initialFocus = initial;
     items.forEach((it, i) => this.addMachine(it, i));
     // Shared hero maps can download alongside the models instead of waiting for the first GLB to decode.
-    this.heroMaps = loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+    this.heroMaps = loadHeroMaps(this.surfaceLoader, () => { this.dirty = this.mirrorDirty = true; });
     this.focus = initial;
     this.camX = this.targetX = this.stationX[initial];
     this.wallX = this.camX;
@@ -862,6 +900,8 @@ export class HallScene {
       comp.addPass(bloom);
       comp.addPass(new OutputPass());
       this.composer = comp;
+      this.bloomPass = bloom;
+      this.composerRatio = pr;
     }
 
     // Marquee-Schriften neu zeichnen, sobald Outfit geladen ist (Canvas nutzt sonst die Fallback-Schrift)
@@ -894,12 +934,17 @@ export class HallScene {
     this.queueReady();
   }
 
+  private measureView() {
+    this.viewW = this.container.clientWidth;
+    this.viewH = this.container.clientHeight;
+  }
+
   /** Paint shares the brick surface instead of sitting in front of it. */
   private updateWallTitle() {
     const it=this.items[this.focus]; if(!it)return;
     const en=document.documentElement.dataset.lang==='en';
     const label=(isMachine(it)?(en?it.titleEn??it.title:it.title):it.kind==='kasse'?(en?'About me':'Über mich'):en?'Contact':'Kontakt').split(' – ')[0].toUpperCase();
-    this.wallPaint.update(label,this.stationX[this.focus],this.container.clientWidth<900,this.pose==='hall' && this.container.clientWidth>=900,this.wallTitleKey!==label);
+    this.wallPaint.update(label,this.stationX[this.focus],this.viewW<900,this.pose==='hall' && this.viewW>=900,this.wallTitleKey!==label);
     this.wallTitleKey=label;
     this.syncWallGame();
     this.dirty=true;
@@ -912,7 +957,7 @@ export class HallScene {
   private syncWallGame() {
     const game = this.wallGame;
     if (!game) return;
-    const on = this.pose==='hall' && this.focus===0 && this.container.clientWidth>=900;
+    const on = this.pose==='hall' && this.focus===0 && this.viewW>=900;
     if (on) {
       // Narrow windows play on fewer bricks (whole ones): the painted frame keeps 5 % of the screen to the left
       // edge even at the far end of the parallax and the attract sway (which cost about one percent).
@@ -922,7 +967,7 @@ export class HallScene {
       while (cols > WallGame.COLS_MIN && .5 + (WallGame.paintedLeft(game.fieldRight, cols) - this.stationX[0]) / (2 * halfW) < .062) cols -= 1;
       game.setCols(cols);
     }
-    game.setVisible(on, this.reduce, this.pose==='hall' && this.container.clientWidth>=900);
+    game.setVisible(on, this.reduce, this.pose==='hall' && this.viewW>=900);
   }
 
   /** Where a screen point lands on the back wall, or null if it points away from it. */
@@ -951,7 +996,8 @@ export class HallScene {
       roughnessMap:this.surfaceMaps.roughness, envMapIntensity:.2,
     });addPanelWear(mesh,material);return material;}
     let source=this.cabinetArtSources.get(slug);
-    if(!source){source=this.loader.load('/textures/cabinet-art/quiet-v2/'+(slug==='ishikiri'?'ishikiri-v2':slug)+'.webp',()=>{if(!this.disposed)this.dirty=true;});this.cabinetArtSources.set(slug,source);}
+    // Only flipY:false clones are drawn; the shared source decodes in that orientation (bitmapTextures.ts).
+    if(!source){source=this.surfaceLoader.load('/textures/cabinet-art/quiet-v2/'+(slug==='ishikiri'?'ishikiri-v2':slug)+'.webp',()=>{if(!this.disposed)this.dirty=true;});source.flipY=false;this.cabinetArtSources.set(slug,source);}
     const tex=source.clone();
     tex.colorSpace=THREE.SRGBColorSpace;tex.flipY=false;tex.anisotropy=8;
     const aspect=artworkAspect(mesh),sourceAspect=2/3;
@@ -966,11 +1012,11 @@ export class HallScene {
   private buildRoom() {
     const s = this.scene;
     s.add(new THREE.HemisphereLight(0x939cb8, 0x05060a, .32));
-    this.roomLighting = new HallLighting(s,this.items,this.stationX,this.loader,this.lite);
+    this.roomLighting = new HallLighting(s,this.items,this.stationX,this.surfaceLoader,this.lite);
     const pbr = (base: string, repeat: [number, number]) => {
       const load = (name: string, srgb = false) => {
         // a base with a folder is a texture set of the hall's own (scripts/assets/hall-floor-texture.py)
-        const t = this.loader.load(base.includes('/') ? `/textures/${base}_${name}.webp` : `${TEX}/${base}_${name}.webp`);
+        const t = this.surfaceLoader.load(base.includes('/') ? `/textures/${base}_${name}.webp` : `${TEX}/${base}_${name}.webp`);
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         t.repeat.set(repeat[0], repeat[1]);
         if (srgb) t.colorSpace = THREE.SRGBColorSpace;
@@ -986,6 +1032,7 @@ export class HallScene {
     const floor = createHallFloor(floorTex,this.roomLighting,this.lite,this.container.clientWidth/this.container.clientHeight,()=>({dirty:this.mirrorDirty,ready:this.readyDone,quality:this.perfLevel}),()=>{this.mirrorDirty=false;this.mirrorAt=performance.now();});
     s.add(floor.mesh);this.reflectionResources.push(floor);
     if(floor.mesh instanceof Reflector)this.mirror=floor.mesh;
+    if('capture' in floor)this.mirrorCapture=floor.capture;
     // Rückwand aus Ziegel: eigener Läuferverband, 240 x 73 mm Steine auf 2-m-Kachel (scripts/assets/hall-wall-texture.py),
     // 90 x 12 auf der 180 x 24 m Fläche = reale Steingröße. Decke dunkel.
     const wallTex = pbr('wall/brick-v2', [90, 12]);
@@ -1216,7 +1263,7 @@ export class HallScene {
         const source = mesh.material as THREE.MeshStandardMaterial;
         const control = CTL_NAME.test(name) || Boolean(mesh.parent && CTL_NAME.test(mesh.parent.name.toLowerCase()));
         if (isHeroMaterial(source) && !control) {
-          this.heroMaps ??= loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+          this.heroMaps ??= loadHeroMaps(this.surfaceLoader, () => { this.dirty = this.mirrorDirty = true; });
           if (!glow) { glow = makeHeroGlow(m.brand, spec.hero); if (spec.lamp !== undefined) glow.screen.value.set(spec.lamp).multiplyScalar(7); }
           m.hero = true;
           mesh.material = heroMaterial(source, this.heroMaps, glow);
@@ -1427,13 +1474,8 @@ export class HallScene {
 
   /** Authored dark hall illumination, prefiltered offline before startup. */
   private async loadEnvironment() {
-    const response = await fetch('/textures/hall-environment-v2.bin.gz');
-    if (!response.ok) throw new Error('Hall environment unavailable');
-    let buffer = await response.arrayBuffer();
-    const magic = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
-    if (magic[0] === 0x1f && magic[1] === 0x8b) {
-      buffer = await new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
-    }
+    const buffer = await inflatedBinary('/textures/hall-environment-v2.bin.gz');
+    if (!buffer) throw new Error('Hall environment unavailable');
     if (this.disposed || this.startupFailed) return;
     const header = new DataView(buffer);
     const width = header.getUint32(0, true), height = header.getUint32(4, true);
@@ -1678,7 +1720,6 @@ export class HallScene {
   /** Everything drawable, kept from the startup pass so a deferred render path can be compiled later. */
   private compileRenderables: THREE.Object3D[] = [];
   private compiledTargets = new Set<THREE.WebGLRenderTarget | null>();
-  private compiling: Promise<void> | null = null;
 
   /**
    * compileAsync every renderable for one render target in batches (its synchronous setup and readiness polling
@@ -1738,15 +1779,6 @@ export class HallScene {
     return maxBatch;
   }
 
-  /** Compile the shader variants of a render path that has not been used yet (small batches: the room is live). */
-  private ensureCompiled(target: THREE.WebGLRenderTarget | null): Promise<void> {
-    if (this.compiledTargets.has(target)) return Promise.resolve();
-    if (!this.compiling) {
-      this.compiling = this.compileFor(target, 3).then(() => { this.compiling = null; });
-    }
-    return this.compiling;
-  }
-
   private async prepareStartup() {
     const warmAt = performance.now();
     this.updateGoal();
@@ -1798,11 +1830,11 @@ export class HallScene {
     // compile() traverses invisible meshes too: no visibility or camera mutations.
     // Canvas uses display-space tone mapping; composer and reflector targets use
     // linear output without tone mapping. Both are distinct Three shader variants.
-    // Only the render path that is about to be used is compiled before the reveal: the composer's target at
-    // perfLevel 2, the canvas otherwise. Compiling both cost a constant 8–11 s on a cold driver cache (2026-09-13
-    // measurements: 52 % of the time to a visible hall); the other variant set is compiled in small batches by
-    // ensureCompiled() before the performance watchdog switches the render path, so no program is built on first sight.
-    const startupTarget = this.composer && this.perfLevel === 2 ? this.composer.readBuffer : null;
+    // Only one render path is compiled before the reveal: the composer's target on desktop, the canvas in Lite.
+    // Compiling both cost a constant 8–11 s on a cold driver cache (2026-09-13 measurements: 52 % of the time to a
+    // visible hall). Every quality level draws through that same path (the floor reflection's target has the
+    // composer's output parameters), so this one variant set serves the whole session.
+    const startupTarget = this.composer ? this.composer.readBuffer : null;
     this.compileRenderables = renderables;
     maxCompileBatch = await this.compileFor(startupTarget, 12, true);
     this.container.dataset.compileMs = String(Math.round(performance.now() - compileAt));
@@ -1813,8 +1845,9 @@ export class HallScene {
     this.mirrorDirty = true;
     performance.mark('hall:render-warm-start');
     const renderAt = performance.now();
-    if (this.composer && this.perfLevel === 2) {
+    if (this.composer) {
       const passTimes: number[] = [];
+      if (this.mirror?.visible) this.mirrorCapture?.(this.renderer, this.scene, this.camera);
       // The hall has RenderPass, bloom and OutputPass, with no stencil/mask pass.
       // Match the composer's buffer swaps, yielding between its actual passes.
       for (let i = 0; i < this.composer.passes.length; i++) {
@@ -1861,6 +1894,7 @@ export class HallScene {
       delete this.container.dataset.power;
     }
     this.readyDone = true;
+    this.readyAt = performance.now();
     if (this.powerAt === null) this.flushDeferredScreens();
     const resolves = this.readyResolvers.splice(0);
     this.readyRejectors = [];
@@ -2100,7 +2134,7 @@ export class HallScene {
         if (!mesh.isMesh) return;
         const source = mesh.material as THREE.MeshStandardMaterial;
         if (!isHeroMaterial(source)) return;
-        this.heroMaps ??= loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+        this.heroMaps ??= loadHeroMaps(this.surfaceLoader, () => { this.dirty = this.mirrorDirty = true; });
         mesh.material = heroMaterial(source, this.heroMaps, glow);
       });
       root.updateMatrixWorld(true);
@@ -2324,7 +2358,7 @@ export class HallScene {
           // The hero claw machine (hero_claw_gen.py): baked surfaces like the arcades'. Lamps, LEDs and the panes keep
           // their own materials; the interior lamps are the mask's "screen" light.
           if (isHeroMaterial(source) && !/^(lamp|led|glass)/.test(name) && !/^(lamp|led|glass)/.test(mesh.parent?.name.toLowerCase() ?? '')) {
-            this.heroMaps ??= loadHeroMaps(this.loader, () => { this.dirty = this.mirrorDirty = true; });
+            this.heroMaps ??= loadHeroMaps(this.surfaceLoader, () => { this.dirty = this.mirrorDirty = true; });
             glow ??= makeHeroGlow(brand, CLAW_LOOK);
             glow.screen.value.setRGB(1, .95, .86).multiplyScalar(3.2);
             mesh.material = heroMaterial(source, this.heroMaps, glow);
@@ -2893,7 +2927,8 @@ export class HallScene {
   leaveExhibitTo(rect: { left: number; top: number; width: number; height: number }) {
     if (!this.exhibit || this.disposed) return;
     this.exhibitReturn = rect;
-    const w = this.container.clientWidth, h = this.container.clientHeight;
+    this.measureView();
+    const w = this.viewW, h = this.viewH;
     const view = this.camera.view;
     this.exhibitOffset = {
       fromX: view?.enabled ? view.offsetX : 0, fromY: view?.enabled ? view.offsetY : 0,
@@ -3093,7 +3128,7 @@ export class HallScene {
     const m = this.machines[this.focus];
     const lite = this.lite;
     const aspect = this.camera.aspect || 1.6;
-    const compact = this.container.clientWidth < 900;
+    const compact = this.viewW < 900;
     // On phones the cabinet is the exhibit; the dock supplies its title and navigation.
     // Keep the overhead rig out of this closer framing instead of showing a cut-off TV.
     if (this.tv) this.tv.rig.visible = !compact;
@@ -3109,7 +3144,7 @@ export class HallScene {
         const x = m.group.position.x;
         this.goalPos.set(x - 1.25, 1.45, 3.8);
         this.goalLook.set(x, 1.03, 0);
-        this.goalFov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(39 / 2)) * this.container.clientHeight / this.exhibitReturn.height));
+        this.goalFov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(39 / 2)) * this.viewH / this.exhibitReturn.height));
         return;
       }
       // The exhibition starts at the same three-quarter angle as its real poster.
@@ -3601,13 +3636,12 @@ export class HallScene {
     this.cb.onOpen(idx);
   };
   private onResize = () => {
-    const w = this.container.clientWidth;
-    const h = this.container.clientHeight;
+    this.measureView();
+    const w = this.viewW;
+    const h = this.viewH;
     // Zusammengeklapptes Fenster (0 × 0): nichts anfassen, sonst wird die Projektion NaN
     if (!w || !h) return;
-    if (this.perfLevel > 0) this.renderer.setPixelRatio(this.pixelRatioFor(w, h, this.lite));
-    this.renderer.setSize(w, h, false);
-    this.composer?.setSize(w, h);
+    this.sizeRenderTargets(w, h);
     this.camera.aspect = w / h;
     this.updateWallTitle();
     this.camera.updateProjectionMatrix();
@@ -3682,7 +3716,7 @@ export class HallScene {
       this.camera.updateProjectionMatrix();
     }
     if (this.exhibitOffset) {
-      const w = this.container.clientWidth, h = this.container.clientHeight;
+      const w = this.viewW, h = this.viewH;
       const o = this.exhibitOffset;
       this.camera.setViewOffset(w, h, o.fromX + (o.toX - o.fromX) * k, o.fromY + (o.toY - o.fromY) * k, w, h);
       if (k >= 1 && !this.exhibitReturn) { this.camera.clearViewOffset(); this.exhibitOffset = null; }
@@ -3875,7 +3909,8 @@ export class HallScene {
     if (inHall || camMoving || lightingMoving || brightMoving || fogMoving || wallMoving || ctlMoving || this.dirty || !this.readyDone) {
       if (brightMoving || wallMoving || ctlMoving || this.dirty) this.mirrorDirty = true;
       this.dirty = false;
-      this.renderFrame();
+      const query = this.beginGpuTimer();
+      try { this.renderFrame(); } finally { this.endGpuTimer(query); }
       this.watchPerformance(rafDt, performance.now() - startedAt);
       // Erst wenn alles Nahe geladen und gezeichnet ist, darf die Bühne erscheinen
       if (!this.readyDone && this.pending === 0 && now - this.bornAt > 120) this.finishReady();
@@ -3897,7 +3932,9 @@ export class HallScene {
 
   private renderFrame() {
     const draw = () => {
-      if (this.composer && this.perfLevel === 2) this.composer.render();
+      // The floor reflection is captured beside the frame's render call, never nested in it (floorReflectionShader).
+      if (this.mirror?.visible) this.mirrorCapture?.(this.renderer, this.scene, this.camera);
+      if (this.composer) this.composer.render();
       else this.renderer.render(this.scene, this.camera);
     };
     if (this.powerAt !== null) {
@@ -3925,49 +3962,109 @@ export class HallScene {
     return px > budget ? dpr * Math.sqrt(budget / px) : dpr;
   }
 
-  /** Sustained frames above 24ms reduce GPU cost; isolated stalls do not lower quality. */
+  /** One TIME_ELAPSED query around a frame's draw calls; at most four in flight, results arrive frames later. */
+  private beginGpuTimer() {
+    const t = this.gpuTimer;
+    if (!t || t.pending.length >= 4) return null;
+    const query = t.gl.createQuery();
+    if (query) t.gl.beginQuery(t.ext.TIME_ELAPSED_EXT, query);
+    return query;
+  }
+  private endGpuTimer(query: WebGLQuery | null) {
+    const t = this.gpuTimer;
+    if (!t) return;
+    if (query) { t.gl.endQuery(t.ext.TIME_ELAPSED_EXT); t.pending.push(query); }
+    if (!t.pending.length || !t.gl.getQueryParameter(t.pending[0], t.gl.QUERY_RESULT_AVAILABLE)) return;
+    // A disjoint interval (clock change, context switch) invalidates every pending result.
+    const disjoint = Boolean(t.gl.getParameter(t.ext.GPU_DISJOINT_EXT));
+    while (t.pending.length && t.gl.getQueryParameter(t.pending[0], t.gl.QUERY_RESULT_AVAILABLE)) {
+      const done = t.pending.shift()!;
+      const ns = t.gl.getQueryParameter(done, t.gl.QUERY_RESULT) as number;
+      t.gl.deleteQuery(done);
+      if (!disjoint) t.samples.push(ns / 1e6);
+    }
+    if (disjoint) t.samples.length = 0;
+    if (t.samples.length > 24) t.samples.splice(0, t.samples.length - 24);
+  }
+  /** Mean GPU milliseconds of the recent frames, once there are enough of them; undefined without the extension. */
+  private gpuFrameMs() {
+    const s = this.gpuTimer?.samples;
+    return s && s.length >= 8 ? s.reduce((a, b) => a + b, 0) / s.length : undefined;
+  }
+
+  /** The render pixel ratio of the current quality level. */
+  private levelPixelRatio(w: number, h: number) {
+    const full = this.pixelRatioFor(w, h, this.lite);
+    return this.perfLevel === 0 ? Math.min(1, full * .7) : full;
+  }
+
+  /** Canvas and composer targets at the level's pixel ratio (EffectComposer keeps its own ratio). */
+  private sizeRenderTargets(w: number, h: number) {
+    const ratio = this.levelPixelRatio(w, h);
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.setSize(w, h, false);
+    if (!this.composer) return;
+    if (ratio !== this.composerRatio) { this.composerRatio = ratio; this.composer.setPixelRatio(ratio); }
+    this.composer.setSize(w, h);
+  }
+
+  /** Apply perfLevel: bloom, the wall and floor share of the area lights, pixel ratio. Uniforms and sizes only. */
+  private applyQuality() {
+    if (this.bloomPass) this.bloomPass.enabled = this.perfLevel === 2;
+    // Faded over half a second (HallLighting.update), so no surface pops when a level changes.
+    this.roomLighting.setSurfaceAreaLights(this.perfLevel === 2);
+    const w = this.viewW, h = this.viewH;
+    if (w && h && this.levelPixelRatio(w, h) !== this.renderer.getPixelRatio()) this.sizeRenderTargets(w, h);
+    // GPU times of the previous level would judge the new one.
+    if (this.gpuTimer) this.gpuTimer.samples.length = 0;
+    this.mirrorDirty = this.dirty = true;
+  }
+
+  /**
+   * Sustained frames above 24 ms lower the quality; isolated stalls do not. Measured on an integrated GPU
+   * (2026-10-05): full quality 15–17 fps, level 1 about 29, level 0 45–50; the area lights on the wall and floor
+   * were the cost, not bloom or the reflection. Right after the reveal (the dark ignition and a little after) a
+   * window is 24 frames, so a weak GPU settles within a few seconds instead of the ~13 s two 90-frame windows took.
+   */
   private watchPerformance(rafDt: number, costMs: number) {
     // Ausreißer (Shader-Bau, GC, Tab-Wechsel) sagen nichts über die Bildrate
     if (rafDt <= 0 || rafDt > 0.1 || costMs > 100) return;
     this.rafTimes.push(rafDt);
     this.costTimes.push(costMs);
-    if (this.rafTimes.length < 90) return;
+    const early = performance.now() - this.readyAt < 12000;
+    if (this.rafTimes.length < (early ? 24 : 90)) return;
     const avg = this.rafTimes.reduce((a, b) => a + b, 0) / this.rafTimes.length;
     const cost = this.costTimes.reduce((a, b) => a + b, 0) / this.costTimes.length;
     this.rafTimes = []; this.costTimes = [];
-    // Wieder hochschalten, wenn es länger locker läuft (Bloom/Spiegel zurück): the display keeps its rate and a
-    // frame costs well under half of a 60 Hz budget on the main thread
-    if (avg < 0.0175 && cost < 6 && this.perfLevel < 2) {
+    // Wieder hochschalten, wenn es länger locker läuft: the display keeps its rate and a frame costs well under half
+    // of a 60 Hz budget on the main thread. A level that failed right after such an upgrade is not tried again.
+    if (!early && avg < 0.0175 && cost < 6 && this.perfLevel < 2 && !this.upgradeBlocked) {
       this.perfGood += 1;
       if (this.perfGood >= 4) {
         this.perfGood = 0;
         this.perfLevel += 1;
-        if (this.perfLevel === 1) this.renderer.setPixelRatio(this.pixelRatioFor(this.container.clientWidth, this.container.clientHeight, this.lite));
-        if (this.perfLevel === 2 && this.mirror) this.mirror.visible = this.pose === 'hall' || this.pose === 'zoom';
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight, false);
-        this.composer?.setSize(this.container.clientWidth, this.container.clientHeight);
-        this.dirty = true;
+        this.upgradedAt = performance.now();
+        this.applyQuality();
       }
       return;
     }
     this.perfGood = 0;
-    // Herunterschalten, wenn der Schirm Bilder auslässt oder ein Bild mehr als zwei Drittel des Budgets kostet
-    if ((avg > 0.024 || cost > 11) && this.perfLevel > 0) {
-      if (this.perfLevel === 2 && this.composer && !this.compiledTargets.has(null)) {
-        // Leaving the composer means drawing straight to the canvas with programs that were never built;
-        // compile them in the background first (a few frames of small batches), then re-evaluate.
-        void this.ensureCompiled(null);
-        return;
-      }
+    // GPU-bound: where the browser can time it, GPU time beyond what a 60 Hz frame leaves room for and well beyond
+    // the main thread's own frame time (a timer query also spans the gaps while a slow CPU still submits draws:
+    // a fast GPU behind CPU ×4 read 15–25 ms). Otherwise: the interval is long while the main thread does not fill it.
+    const gpu = this.gpuFrameMs();
+    const gpuSlow = avg > (early ? 0.03 : 0.024) && (gpu !== undefined ? gpu > 14 && gpu > cost * 1.5 : cost < avg * 1000 * .6);
+    // Early windows are short: only a clearly GPU-bound interval counts there, so the main-thread load right after
+    // the reveal (late stations, a slow CPU) cannot trip them; sustained CPU cost is judged on 90-frame windows,
+    // and not during the ignition, whose light cue costs main-thread time of its own.
+    const slow = early ? gpuSlow : avg > 0.024 || (this.powerAt === null && cost > 11);
+    if (slow && this.perfLevel > 0) {
+      // Fewer pixels only help a GPU-bound frame: when the main thread fills the interval, level 0 would just blur.
+      if (this.perfLevel === 1 && !gpuSlow) return;
+      if (performance.now() - this.upgradedAt < 15000) this.upgradeBlocked = true;
       this.perfLevel -= 1;
-      if (this.perfLevel === 1) {
-        this.mirrorDirty = true;
-        console.info('[hall] Leistung: reduzierte Reflexion, Bloom aus');
-      } else {
-        this.renderer.setPixelRatio(Math.min(1,this.pixelRatioFor(this.container.clientWidth,this.container.clientHeight,this.lite)*.7));
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight, false);
-        console.info('[hall] Leistung: reduzierte Renderfläche');
-      }
+      this.applyQuality();
+      console.info(this.perfLevel === 1 ? '[hall] Leistung: Bloom aus, Wand und Boden mit vereinfachtem Flächenlicht' : '[hall] Leistung: reduzierte Renderfläche');
     }
   }
 
@@ -3985,6 +4082,7 @@ export class HallScene {
     this.sharpenTimer = 0;
     this.deferredScreens.clear();
     this.stop();
+    this.viewObserver?.disconnect();
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
     this.renderer.domElement.removeEventListener('pointerdown', this.onWallGamePointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.onWallGamePointerUp);
@@ -4033,6 +4131,7 @@ export class HallScene {
     this.fitCache.forEach((t) => t.dispose());
     this.fitCache.clear();
     this.composer?.dispose();
+    if (this.gpuTimer) { for (const query of this.gpuTimer.pending) this.gpuTimer.gl.deleteQuery(query); this.gpuTimer.pending = []; }
     this.renderer.dispose();
     // Kontext wirklich freigeben — Seiten ohne Halle sollen keinen der ~16 Kontexte belegen
     this.renderer.forceContextLoss();
