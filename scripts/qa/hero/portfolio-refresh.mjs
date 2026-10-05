@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { outDir } from './_out.mjs';
+import { MACHINES } from './_stations.mjs';
 const out = outDir(process.argv[2], 'portfolio-refresh.mjs OUT [BASE]');
 const base = process.argv[3] ?? 'http://127.0.0.1:4334';
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
@@ -34,8 +35,8 @@ try {
     assert.equal(await overflow(p), 0);
     await p.screenshot({ path: `${out}/home-${width}.png` });
     if (width === 390 || width === 844) {
-      const exhibit = p.locator('[data-exhibit="riftback"]');
-      await exhibit.locator('.mobile-arcade__open').click();
+      // Phones open an exhibit by tapping its cabinet; the caption's "Screens erkunden" button is hidden below 900 px.
+      await p.locator('[data-exhibit="riftback"] .mobile-arcade__machine').click();
       const viewer = p.locator('.mobile-viewer');
       await p.locator('.mobile-viewer[data-state="ready"]').waitFor({ timeout: 45000 });
       await p.waitForTimeout(200);
@@ -87,8 +88,9 @@ try {
   await p.waitForTimeout(6500);
   await p.unroute('**/models/**');
   await p.screenshot({ path: `${out}/desktop-home.png` });
+  // From About, one step right is the first machine station (Ishikiri since October 5).
   await p.keyboard.press('ArrowRight'); await p.waitForTimeout(800); await p.keyboard.press('Enter');
-  await p.waitForURL('**/work/riftback/');
+  await p.waitForURL(`**/work/${MACHINES[0]}/`);
   await p.waitForTimeout(600); await p.screenshot({ path: `${out}/desktop-case.png` });
   await p.keyboard.press('Escape'); await p.waitForURL(`${base}/`);
   await p.goto(`${base}/about/`); await p.waitForTimeout(3500); await p.screenshot({ path: `${out}/desktop-about.png` });

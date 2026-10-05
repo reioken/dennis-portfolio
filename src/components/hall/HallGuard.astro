@@ -61,24 +61,38 @@ import SignatureLogo from '../brand/SignatureLogo';
 <script>
   // The entry links remain usable during preparation. If readiness dismisses
   // a focused link, continue at its persistent counterpart in the header.
+  // The header joins the reveal (hall-loading.css): it can take focus only once
+  // gl-pending is gone and its visibility transition runs, which may be after the
+  // link itself has disappeared. Retry per frame until the header has it.
   let stopWatching: (() => void) | undefined;
   function watchStartupFocus() {
     stopWatching?.();
     const startup = document.querySelector('.hall-startup');
     if (!startup) return;
+    let frame = 0;
     const observer = new MutationObserver(() => {
-      const ready = document.querySelector('.hall__stage[data-power="on"], .hall[data-startup-fallback]');
+      // Startup phase, not power: under reduced motion the room skips ignition and drops data-power instead.
+      const ready = document.querySelector('.hall__stage[data-startup-phase="ready"], .hall[data-startup-fallback]');
       if (!ready) return;
-      const focused = document.activeElement;
-      if (focused instanceof HTMLAnchorElement && startup.contains(focused)) {
-        const destination = [...document.querySelectorAll<HTMLAnchorElement>('.site-nav a')]
-          .find(link => link.href === focused.href && link.getClientRects().length > 0);
-        destination?.focus({ preventScroll: true });
-      }
       observer.disconnect();
+      const focused = document.activeElement;
+      if (!(focused instanceof HTMLAnchorElement && startup.contains(focused))) return;
+      const shown = (el: Element) => el.getClientRects().length > 0 && getComputedStyle(el).visibility === 'visible';
+      const until = performance.now() + 3000;
+      const handOff = () => {
+        frame = 0;
+        const active = document.activeElement ?? document.body;
+        // Focus elsewhere, or on the page while the link is still shown: the visitor moved on.
+        if (active !== focused && !(active === document.body && !shown(focused))) return;
+        const destination = [...document.querySelectorAll<HTMLAnchorElement>('.site-nav a')]
+          .find(link => link.href === focused.href && shown(link));
+        destination?.focus({ preventScroll: true });
+        if (document.activeElement !== destination && performance.now() < until) frame = requestAnimationFrame(handOff);
+      };
+      handOff();
     });
-    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-power', 'data-startup-fallback'] });
-    stopWatching = () => observer.disconnect();
+    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-power', 'data-startup-phase', 'data-startup-fallback'] });
+    stopWatching = () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }
   document.addEventListener('astro:page-load', watchStartupFocus);
   document.addEventListener('astro:before-swap', () => stopWatching?.());

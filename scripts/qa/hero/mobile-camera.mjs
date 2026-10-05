@@ -3,10 +3,15 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { outDir } from './_out.mjs';
+import { exhibitInView, modelOwners } from './_exhibits.mjs';
 const out = outDir(process.argv[2], 'mobile-camera.mjs OUT [BASE]');
 const base = process.argv[3] ?? 'http://localhost:4321';
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const results = [], errors = [];
+// Phones open an exhibit by tapping its cabinet; the caption's "Screens erkunden" button is hidden below 900 px.
+const cabinet = slug => `[data-exhibit="${slug}"] .mobile-arcade__machine`;
+// A gallery shot and the cabinet's attract shot differ only by the @sm variant and the format.
+const shotKey = src => src.replace(/@sm(?=\.)/, '').replace(/\.(avif|webp)$/, '');
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
@@ -15,16 +20,19 @@ try {
   page.on('request', request => requests.push(request.url()));
   await page.goto(base);
   await page.waitForTimeout(800);
-  assert.ok(requests.filter(url => /\/models\//.test(url)).every(url => url.includes('mach-riftback-')));
+  // Only the exhibit in view (the claw at the top) prepares a model.
+  const inView = await exhibitInView(page);
+  if (inView) await page.locator(`[data-exhibit="${inView}"][data-live="ready"]`).waitFor({ timeout: 45000 });
+  assert.ok(modelOwners(requests).every(owner => owner === inView), `only ${inView} may prepare, models of: ${modelOwners(requests).join(', ')}`);
   for (const slug of ['riftback', 'lowlight', 'snapsize']) {
     const exhibit = page.locator(`[data-exhibit="${slug}"]`);
-    await exhibit.locator('.mobile-arcade__open').scrollIntoViewIfNeeded();
+    await page.locator(cabinet(slug)).scrollIntoViewIfNeeded();
     const scroll = await page.evaluate(() => scrollY);
     const overview = await page.evaluate(() => {
       const h = window.__hall;
       return h ? { state: 'overview', slug: h.machines[0]?.item.slug, pos: h.camera.position.toArray(), pose: h.pose } : null;
     });
-    await exhibit.locator('.mobile-arcade__open').click();
+    await page.locator(cabinet(slug)).click();
     const dialog = page.locator('.mobile-viewer');
     await dialog.waitFor();
     const poses = overview?.slug === slug ? [overview] : [];
@@ -79,20 +87,31 @@ try {
     }
     const lastImage = await dialog.getAttribute('data-image');
     const lastGroup = await dialog.locator('select').inputValue();
+    const lastShot = await page.evaluate(() => window.__hall.override);
     await dialog.locator('[data-close]').click();
     await dialog.waitFor({ state: 'detached' });
     assert.equal(await page.evaluate(() => scrollY), scroll);
-    await exhibit.locator('.mobile-arcade__open').click();
+    // Back in the list the cabinet resumes its attract loop (a new shot every 7 s in view), and entry follows the
+    // shot on the cabinet. Record that shot at the tap: the retained one applies unless a cycle landed in between.
+    await page.evaluate(() => addEventListener('click', () => { window.__tapShot = window.__hall.override; }, { capture: true, once: true }));
+    await page.locator(cabinet(slug)).click();
     await page.locator('.mobile-viewer[data-state="ready"]').waitFor();
-    assert.equal(await dialog.getAttribute('data-image'), lastImage, 'reopening retains the screenshot');
-    assert.equal(await dialog.locator('select').inputValue(), lastGroup, 'reopening retains the surface group');
+    const tapShot = await page.evaluate(() => window.__tapShot);
+    const gallery = await exhibit.locator('[data-mobile-gallery]').evaluate(el => JSON.parse(el.textContent).groups.flatMap(group => group.images.map(image => image.src)));
+    const cycled = tapShot !== lastShot && gallery.map(shotKey).includes(shotKey(tapShot));
+    if (cycled) {
+      assert.equal(shotKey(await page.evaluate(() => window.__hall.override)), shotKey(tapShot), 'reopening follows the attract shot on the cabinet');
+    } else {
+      assert.equal(await dialog.getAttribute('data-image'), lastImage, 'reopening retains the screenshot');
+      assert.equal(await dialog.locator('select').inputValue(), lastGroup, 'reopening retains the surface group');
+    }
     await dialog.locator('[data-close]').click();
     await dialog.waitFor({ state: 'detached' });
-    results.push({ slug, poses, shot });
+    results.push({ slug, poses, shot, reopen: cycled ? 'followed attract shot' : 'retained' });
   }
   // Closing during a slow model load must leave neither a dialog nor a scroll lock.
   await page.route('**/models/**', route => route.abort());
-  await page.locator('[data-exhibit="berry"] .mobile-arcade__open').click();
+  await page.locator(cabinet('berry')).click();
   await page.locator('.mobile-viewer [data-close]').click();
   await page.waitForTimeout(1000);
   assert.equal(await page.locator('.mobile-viewer').count(), 0);
@@ -103,7 +122,7 @@ try {
     const p = await ctx.newPage();
     p.on('pageerror', error => errors.push(String(error)));
     await p.goto(base);
-    await p.locator('[data-exhibit="safeplate"] .mobile-arcade__open').click();
+    await p.locator(cabinet('safeplate')).click();
     await p.locator('.mobile-viewer[data-state="ready"]').waitFor({ timeout: 45000 });
     const bounds = await p.locator('.mobile-viewer__screen').boundingBox();
     assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1);
@@ -111,7 +130,7 @@ try {
     await p.keyboard.press('Escape');
     await p.locator('.mobile-viewer').waitFor({ state: 'detached' });
     if (width === 320) {
-      await p.locator('[data-exhibit="riftback"] .mobile-arcade__open').click();
+      await p.locator(cabinet('riftback')).click();
       await p.locator('.mobile-viewer[data-state="ready"]').waitFor({ timeout: 45000 });
       const panel = await p.locator('.mobile-viewer__footer').evaluate(el => ({ width: el.clientWidth, content: el.scrollWidth }));
       assert.ok(panel.content <= panel.width, 'gallery panel must not overflow at 320 px');
@@ -125,7 +144,7 @@ try {
   const fp = await fallback.newPage();
   await fp.route('**/models/**', route => route.abort());
   await fp.goto(base);
-  await fp.locator('[data-exhibit="berry"] .mobile-arcade__open').click();
+  await fp.locator(cabinet('berry')).click();
   await fp.locator('.mobile-viewer[data-state="fallback"]').waitFor({ timeout: 45000 });
   await fp.locator('.mobile-viewer [data-next]').click();
   assert.equal(await fp.locator('.mobile-viewer').getAttribute('data-image'), '1');

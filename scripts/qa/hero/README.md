@@ -51,7 +51,7 @@ argument is optional.
 | `tris.mjs` | `node scripts/qa/hero/tris.mjs file.glb [...]` | Triangle count and byte size per GLB. Uncompressed GLB only — run it on `.source-assets`, not on packed output. |
 | `inspect-models.mjs` | `node scripts/qa/hero/inspect-models.mjs mach-berry-v2 [...]` | World bounding size, screen plate size and aspect, and the control node names the close-up maps to. |
 
-`_out.mjs` and `_stations.mjs` are not tools: the first holds the repo root and the out-dir guard the capture tools share, the second reads the machine stations (`ORDER` without `CONTENT_ONLY`) from `src/lib/hall-items.ts`.
+`_out.mjs`, `_stations.mjs` and `_exhibits.mjs` are not tools: the first holds the repo root and the out-dir guard the capture tools share, the second reads the machine stations (`ORDER` without `CONTENT_ONLY`) from `src/lib/hall-items.ts`, the third tells the mobile exhibition suites which exhibit a model request belongs to and which exhibit is in view.
 
 ## Review routine
 

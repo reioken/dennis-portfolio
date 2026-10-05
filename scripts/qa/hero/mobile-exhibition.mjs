@@ -4,11 +4,14 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { outDir } from './_out.mjs';
+import { exhibitInView, liveExhibits, modelOwners } from './_exhibits.mjs';
 
 const out = outDir(process.argv[2], 'mobile-exhibition.mjs OUT [BASE]');
 const base = process.argv[3] ?? 'http://localhost:4322';
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const errors = [], results = [];
+// Phones open an exhibit by tapping its cabinet; the caption's "Screens erkunden" button is hidden below 900 px.
+const cabinet = slug => `[data-exhibit="${slug}"] .mobile-arcade__machine`;
 try {
   for (const width of [320, 390, 768, 844]) {
     const context = await browser.newContext({ viewport: { width, height: width === 844 ? 390 : 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
@@ -20,6 +23,9 @@ try {
     await page.goto(base);
     await page.locator('.mobile-arcade__machine img').first().evaluate(img => img.decode());
     await page.waitForTimeout(700);
+    // The exhibit in view (the claw at the top) prepares its live model; no other exhibit may load one.
+    const inView = await exhibitInView(page);
+    if (inView) await page.locator(`[data-exhibit="${inView}"][data-live="ready"]`).waitFor({ timeout: 45000 });
     const state = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth - innerWidth,
       height: document.documentElement.scrollHeight,
@@ -36,15 +42,25 @@ try {
     assert.equal(state.first, 'kasse');
     assert.ok(state.height > state.viewport * 3);
     assert.equal(requests.filter(url => /\/Stage3D\./.test(url)).length, 0, 'mobile home must not load the hidden hall');
-    assert.ok(requests.filter(url => /\/models\//.test(url)).every(url => url.includes('mach-riftback-')), 'only the visible cabinet may prepare');
+    const owners = modelOwners(requests);
+    assert.ok(owners.every(owner => owner === inView), `only the exhibit in view (${inView}) may prepare, models of: ${owners.join(', ')}`);
+    assert.deepEqual(await liveExhibits(page), inView ? [inView] : []);
     if (width === 320 || width === 390) await page.screenshot({ path: `${out}/home-${width}.png` });
-    results.push({ width, ...state, posterRequests: requests.filter(url => url.includes('/media/mobile-arcade/')).length });
+    results.push({ width, ...state, inView, modelOwners: owners, posterRequests: requests.filter(url => url.includes('/media/mobile-arcade/')).length });
 
     if (width === 390) {
+      // Scrolling on hands the one live model to the cabinet now in view.
+      const seen = requests.length;
+      await page.locator(cabinet('riftback')).scrollIntoViewIfNeeded();
+      await page.locator('[data-exhibit="riftback"][data-live="ready"]').waitFor({ timeout: 45000 });
+      assert.equal(await exhibitInView(page), 'riftback');
+      assert.deepEqual(await liveExhibits(page), ['riftback'], 'one resident model');
+      assert.deepEqual(modelOwners(requests.slice(seen)), ['riftback'], 'only the cabinet in view prepares');
+
       const lowlight = page.locator('[data-exhibit="lowlight"]');
-      await lowlight.locator('.mobile-arcade__open').scrollIntoViewIfNeeded();
+      await page.locator(cabinet('lowlight')).scrollIntoViewIfNeeded();
       const before = await lowlight.evaluate(el => el.getBoundingClientRect().top);
-      await lowlight.locator('.mobile-arcade__open').click();
+      await page.locator(cabinet('lowlight')).click();
       await page.locator('.mobile-viewer__links a').click();
       await page.waitForURL('**/work/lowlight/');
       await page.locator('.captures--native').waitFor();
@@ -65,7 +81,9 @@ try {
       await page.waitForURL('**/en/');
       await page.waitForTimeout(300);
       assert.equal(await page.locator('html').getAttribute('lang'), 'en');
-      assert.ok((await page.locator('[data-exhibit="riftback"] .mobile-arcade__open').getAttribute('href')).startsWith('/en/'));
+      for (const link of ['.mobile-arcade__machine', '.mobile-arcade__story']) {
+        assert.ok((await page.locator(`[data-exhibit="riftback"] ${link}`).getAttribute('href')).startsWith('/en/'), `${link} localized`);
+      }
       assert.ok(Math.abs(before - await page.locator('[data-exhibit="lowlight"]').evaluate(el => el.getBoundingClientRect().top)) < 3);
       await page.goto(base + '/en/');
       await page.locator('.mobile-arcade__machine img').first().evaluate(img => img.decode());
@@ -73,7 +91,12 @@ try {
       assert.equal(await page.locator('.hall__stage').count(), 0);
       await page.locator('.mobile-arcade__index[href="/en/work/"]').click();
       await page.waitForURL('**/en/work/');
-      assert.ok(await page.locator('a[href="/en/work/mina/"]').count());
+      await page.locator('a[href="/en/work/mina/"]').first().waitFor({ state: 'attached' });
+      // Let the index hydrate before leaving. Unmounting its React islands mid-hydration, while the desktop boot
+      // below holds the main thread, logs React's recoverable error #424 (a 13 ms visit no reader makes).
+      // Astro drops [ssr] when it schedules hydration; the idle callback waits for React to finish it.
+      await page.waitForFunction(() => !document.querySelector('astro-island[ssr]'));
+      await page.evaluate(() => new Promise(resolve => requestIdleCallback(() => resolve(), { timeout: 2000 })));
       await page.goBack();
       await page.waitForURL('**/en/');
 
@@ -103,7 +126,7 @@ try {
   await plain.goto(base);
   assert.ok(await plain.locator('.mobile-arcade').isVisible());
   assert.equal(await plain.locator('[data-exhibit]').count(), 14);
-  await plain.locator('[data-exhibit="riftback"] .mobile-arcade__open').click();
+  await plain.locator(cabinet('riftback')).click();
   await plain.waitForURL('**/work/riftback/');
   await noJs.close();
   assert.deepEqual(errors, []);
