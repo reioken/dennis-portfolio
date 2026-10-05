@@ -11,10 +11,11 @@ a request to repeat the deployment or redesign the site again.
 | Repository | `C:/Users/denni/Projects/dennis-portfolio` |
 | Branch | `feat/werkstatt`, pushed to `origin` |
 | Live | https://www.dennisbf.design |
-| Production source | `15a5136545f987258d9435b40060223a692c22b3` |
-| Pages deployment | `07fc6db3`, https://07fc6db3.dennis-portfolio-87g.pages.dev |
-| Release documentation | `5b4e9a6` (pushed; documentation only) |
-| Latest local preview used | `http://127.0.0.1:4334/` |
+| Production source | `e6b91f96cf720722163415f3ccdb5736f8ae3969` (performance release, evening of October 5) |
+| Pages deployment | `ed7da1ba`, https://ed7da1ba.dennis-portfolio-87g.pages.dev |
+| Previous release | `15a5136` / `07fc6db3` (mobile exhibition and Ishikiri) |
+| Release documentation | the commit after `e6b91f9` (documentation only) |
+| Latest local preview used | `http://127.0.0.1:4331/` (built `e6b91f9`); earlier `4334` |
 | Local editor proxy | `http://127.0.0.1:4335/`; external to Git |
 
 Git `main` is not the production source branch. Pages receives an explicit upload
@@ -22,7 +23,31 @@ with `--branch=main` from a build of the committed `feat/werkstatt` source. Do n
 merge/reset branches to make their names agree. The handover's own documentation
 commit will be newer than the deployed source; that does not require another deploy.
 
-## What just shipped
+## Performance release — October 5, evening
+
+A friend of Dennis's reported heavy lag. The measured causes and fixes are in
+[docs/research/performance-2026-10-05.md](docs/research/performance-2026-10-05.md); Dennis approved
+(„Mach alles davon. 3d navi kann auch etwas kleiner gemacht werden.“, then „ja“ to commit and release).
+In short: the navigation console compiles before its first frame, is frame-capped and smaller (max 960 px);
+the quality ladder stays on one render path and reacts within seconds, with an approximated area light on
+wall and floor below full quality; the floor reflection no longer renders nested; surface textures decode
+off the main thread; text fitting no longer measures once per pixel. Full quality is pixel-identical to the
+previous release at the old console size. The integrated-GPU and slow-CPU measurements use this PC's AMD
+iGPU (`--use-adapter-luid`) and CPU throttling as proxies; `scripts/qa/live/perf.mjs` reproduces them.
+
+Released as `e6b91f9` / Pages `ed7da1ba` after a preview deployment (`perf-preview` alias, real headers and
+CSP). Isolated archive build: TypeScript, 32 review tests, 29 model hashes, build and 61-page audit passed;
+no editor markers in the build. Live: 55/55 JS/CSS assets and the console model byte-identical to the build,
+flow check 16/16 (phone claw/exhibit/viewer/full screen/return, desktop keys/case/directory/EN), no errors.
+
+Four older QA suites (`mobile-exhibition`, `mobile-camera`, `mobile-handoff`, `portfolio-refresh`) already
+failed against the previous release: they still expect Riftback first and no live claw model. A separate
+session was started to update them.
+
+In progress next: Dennis asked for a silver, early-2000s style CD player model next to the claw machine
+(left), in the site's palette, where visitors can play his music. Concept image with Gemini, then Meshy.
+
+## What shipped earlier on October 5
 
 **Mobile:** Dennis rejected the static-image presentation and wanted actual models
 that can be tapped and zoomed into. The chosen layout is a vertical exhibition with

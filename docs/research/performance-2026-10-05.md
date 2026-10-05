@@ -2,7 +2,7 @@
 
 Trigger: a friend of Dennis's reported that the site lags a lot. Subject: production `15a5136` (Pages `07fc6db3`),
 https://www.dennisbf.design. The study below was read-only; the fixes that followed are recorded at the end
-("Implemented locally"), not committed and not deployed.
+("Implemented"), released as `e6b91f9` / Pages `ed7da1ba`.
 
 ## Method
 
@@ -105,7 +105,11 @@ Small item seen in passing: on every station change the console title is drawn w
 The friend's device and browser are unknown. Integrated-GPU and CPU-throttle runs are proxies. No physical phone
 or laptop was measured, and Safari/iOS was not tested.
 
-## Implemented locally, 2026-10-05 (not committed, not deployed)
+## Implemented, 2026-10-05 — released as `e6b91f9` / Pages `ed7da1ba`
+
+Committed and released on Dennis's word. A preview deployment with the real headers and CSP passed first.
+Live, all 55 JS/CSS assets and the console model match the build byte for byte, and the flow check passed
+16/16. See the handover's performance release section.
 
 Dennis: „Mach alles davon. 3d navi kann auch etwas kleiner gemacht werden.“ Profiling during the work moved some
 fixes from the list above to their measured causes.
