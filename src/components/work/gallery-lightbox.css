@@ -49,3 +49,4 @@
 /* Horizontal one-finger swipes belong to the gallery; two fingers can zoom the
    original capture with the browser. Never treat a pinch as the next image. */
 .gallery-view .gallery-view__stage { touch-action: pan-y pinch-zoom; }
+html.is-zoomed .gallery-view .gallery-view__stage { touch-action: pan-x pan-y pinch-zoom; }

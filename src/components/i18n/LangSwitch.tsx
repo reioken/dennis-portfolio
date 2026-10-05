@@ -19,7 +19,9 @@ export default function LangSwitch({ initialLang = 'de' }: { initialLang?: Lang 
       const en = document.documentElement.dataset.lang === 'en';
       const b = ref.current;
       if (!b) return;
-      b.setAttribute('aria-label', en ? 'Auf Deutsch wechseln' : 'Switch to English');
+      // The visible DE / EN leads the name (WCAG 2.5.3); the rest is said in the language it switches to.
+      b.setAttribute('aria-label', en ? 'DE / EN – Auf Deutsch wechseln' : 'DE / EN – Switch to English');
+      b.lang = en ? 'de' : 'en';
       b.title = en ? 'Deutsch' : 'English';
     };
     label();
@@ -48,7 +50,8 @@ export default function LangSwitch({ initialLang = 'de' }: { initialLang?: Lang 
       type="button"
       className="lang-switch"
       onClick={toggle}
-      aria-label={initialLang === 'de' ? 'Switch to English' : 'Auf Deutsch wechseln'}
+      aria-label={initialLang === 'de' ? 'DE / EN – Switch to English' : 'DE / EN – Auf Deutsch wechseln'}
+      lang={initialLang === 'de' ? 'en' : 'de'}
       title={initialLang === 'de' ? 'English' : 'Deutsch'}
     >
       <span data-part="de">DE</span>

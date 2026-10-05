@@ -21,6 +21,7 @@ import { visibleTimeout } from './visibleTimeout.mjs';
 import { makeGlassWear, clearScreenGlass, addPanelWear } from './hardwareWear';
 import { WallPaint } from './wallPaint';
 import { WallGame, WALL_GAME_LAMP_OVERHANG } from './wallGame';
+import { HallBoombox, BOOMBOX_MODEL, BOOMBOX_PLACE } from './boombox';
 import { attachWallGrime } from './wallGrime';
 import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './hallLayout';
 import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMaterials';
@@ -761,6 +762,13 @@ export class HallScene {
   private wallZ = -1.6;
   private wallRay = new THREE.Vector2();
   private wallGamePointer: number | null = null;
+  /** The CD player left of the claw machine (boombox.ts); loads with the claw machine's station. */
+  private boombox?: HallBoombox;
+  private boomboxRequested = false;
+  private boomboxFrustum = new THREE.Frustum();
+  private boomboxMatrix = new THREE.Matrix4();
+  private boomboxTwin?: HTMLElement;
+  private boomboxBox = '';
   private stationX: number[] = [];
   private surfaceMaps = makeSurfaceMaps();
   /** Scanned surfaces for hero machines, fetched with the first one (inside the startup gate). */
@@ -815,14 +823,19 @@ export class HallScene {
       const it = items[i];
       const url = !it ? undefined : it.kind === 'kasse' ? CLAW_MODEL : (MODELS_BY_SLUG[it.slug] ?? MODELS[it.kind])?.url;
       if (url) void fetchModel(url);
+      if (it?.kind === 'kasse' && !this.exhibit) void fetchModel(BOOMBOX_MODEL);
     }
     if (!this.exhibit) void fetchModel(TV_RIG_MODEL);
     container.dataset.power = 'loading';
     if (!this.exhibit && container.clientWidth >= 900 && (!opts.pose || opts.pose === 'hall')) {
       this.managedLoading = true;
       this.loadingManager.itemStart(DOCK_MODEL);
-      // A failed decorative console falls back to native controls; it cannot fail the whole hall.
-      void prepareDockAsset().catch(() => {}).finally(() => this.loadingManager.itemEnd(DOCK_MODEL));
+      // A failed decorative console falls back to native controls; it cannot fail the whole hall. Nor can a stalled
+      // one: after 15 s of visible time the room stops waiting for it (dock-hardware falls back at 20 s).
+      let released = false;
+      const release = () => { if (released) return; released = true; this.loadingManager.itemEnd(DOCK_MODEL); };
+      const cancelDockWait = visibleTimeout(15000, release);
+      void prepareDockAsset().catch(() => {}).finally(() => { cancelDockWait(); release(); });
     }
     container.dataset.startupPhase = 'assets';
     this.loadingManager.onStart = () => { this.managedLoading = true; };
@@ -2326,6 +2339,64 @@ export class HallScene {
   }
 
   /**
+   * The player's DOM twin (boombox.ts) follows its projected box. Only in the hall pose, once the room is ready and
+   * while the player is on screen: an invisible tab stop would be worse than none.
+   */
+  private placeBoomboxTwin(seen: boolean) {
+    const twin = this.boomboxTwin;
+    if (!twin || !this.boombox) return;
+    const r = seen && this.pose === 'hall' && this.readyDone ? this.boombox.screenBox(this.camera, this.viewW, this.viewH) : null;
+    // at least 44 x 44 px around the player's centre, however far the camera stands
+    const w = Math.round(Math.max(44, r?.w ?? 0)), h = Math.round(Math.max(44, r?.h ?? 0));
+    const x = Math.round((r ? r.x + r.w / 2 : 0) - w / 2), y = Math.round((r ? r.y + r.h / 2 : 0) - h / 2);
+    const key = r ? `${x},${y},${w},${h}` : '';
+    if (key === this.boomboxBox) return;
+    this.boomboxBox = key;
+    twin.hidden = !r;
+    if (r) {
+      twin.style.transform = `translate(${x}px, ${y}px)`;
+      twin.style.width = `${w}px`;
+      twin.style.height = `${h}px`;
+    }
+  }
+
+  /**
+   * The CD player stands left of the claw machine and loads with its station: inside the startup gate when the claw
+   * machine is in the first view, otherwise prepared like a late station. A failed download leaves the corner empty;
+   * it never fails the hall (no LoadingManager, whose onError would).
+   */
+  private loadBoombox(m: Machine) {
+    if (this.boomboxRequested || this.exhibit) return;
+    this.boomboxRequested = true;
+    const done = this.track(m.index);
+    fetchModel(BOOMBOX_MODEL).then((buffer) => {
+      this.gltf.parse(buffer, THREE.LoaderUtils.extractUrlBase(BOOMBOX_MODEL), (gltf) => {
+        if (this.disposed) { done(); return; }
+        const box = new HallBoombox(gltf.scene, { reduce: this.reduce, onChange: () => { this.dirty = this.mirrorDirty = true; } });
+        box.group.position.set(this.stationX[m.index] + BOOMBOX_PLACE.x, 0, BOOMBOX_PLACE.z);
+        box.group.rotation.y = BOOMBOX_PLACE.rotY;
+        const add = () => {
+          if (this.disposed) { box.dispose(); return; }
+          this.scene.add(box.group);
+          this.boombox = box;
+          this.boomboxTwin = box.makeTwin((event) => {
+            const r = this.renderer.domElement.getBoundingClientRect();
+            this.raycaster.setFromCamera(new THREE.Vector2(((event.clientX - r.left) / r.width) * 2 - 1, -(((event.clientY - r.top) / r.height) * 2 - 1)), this.camera);
+            return box.hit(this.raycaster)?.part ?? 'body';
+          });
+          // after the console in the tab order (the hall root holds both; same coordinates as the stage)
+          (this.container.parentElement ?? this.container).appendChild(this.boomboxTwin);
+          this.dirty = this.mirrorDirty = true;
+        };
+        // In the startup set it joins the scene before the gate opens, so the startup compile covers it.
+        if (m.late) void this.prepareLate(box.group).then(add);
+        else add();
+        done();
+      }, (error) => { console.warn('[hall] CD player unavailable', error); done(); });
+    }).catch((error) => { console.warn('[hall] CD player unavailable', error); done(); });
+  }
+
+  /**
    * "Über mich" als Greifautomat (public/models/claw.glb aus scripts/models/blender/claw_gen.py):
    * die Figur des Hausherrn steht als Hauptgewinn auf dem Drehteller, Nori, das Taxi und die
    * Maskottchen liegen als Preise drumherum, der Greifer fährt über allem. Fehlt das Modell,
@@ -2336,6 +2407,7 @@ export class HallScene {
     g.clear();
     g.visible = false;
     const brand = m.brand;
+    this.loadBoombox(m);
     const done = this.track(m.index);
     this.loadGltf(
       CLAW_MODEL,
@@ -3592,7 +3664,9 @@ export class HallScene {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
     let cursor = '';
-    if (hits.length) {
+    const box = this.pose === 'hall' ? this.boombox?.hit(this.raycaster) : null;
+    if (box && (!hits.length || box.distance <= hits[0].distance)) cursor = 'pointer';
+    else if (hits.length) {
       let o: THREE.Object3D | null = hits[0].object;
       while (o && o.userData.index === undefined) o = o.parent;
       const idx = o?.userData.index as number | undefined;
@@ -3616,6 +3690,12 @@ export class HallScene {
     const p = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
     this.raycaster.setFromCamera(p, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
+    const box = this.pose === 'hall' ? this.boombox?.hit(this.raycaster) : null;
+    if (box && (!hits.length || box.distance <= hits[0].distance)) {
+      this.boombox!.press(box.part);
+      this.dirty = true;
+      return;
+    }
     if (!hits.length) {
       // Nothing in front of the wall: the painted game may take the click before the backdrop does.
       const wall = this.wallGame ? this.wallPointFromRay() : null;
@@ -3664,6 +3744,8 @@ export class HallScene {
   stop() {
     this.running = false;
     cancelAnimationFrame(this.raf);
+    // Parked (another page shows): the player would be out of reach. A hidden tab keeps playing.
+    if (this.container.closest('[data-hall-parked]')) this.boombox?.pause();
   }
   private tick = (now: number) => {
     if (!this.running) return;
@@ -3904,6 +3986,14 @@ export class HallScene {
     if (this.tvDissolve?.tick(now)) wallMoving = true;
     // The painted game asks for frames only while it moves; its idle state is a still picture.
     if (this.wallGame?.update(now)) this.dirty = true;
+    // The CD player asks for frames only while it plays and is in the picture; the music itself never waits on frames.
+    if (this.boombox) {
+      this.boomboxMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+      this.boomboxFrustum.setFromProjectionMatrix(this.boomboxMatrix);
+      const seen = this.boombox.inView(this.boomboxFrustum);
+      if (this.boombox.update(now, seen)) this.dirty = true;
+      this.placeBoomboxTwin(seen);
+    }
 
     // Außerhalb der Halle nur rendern, wenn sich etwas bewegt — die Seite daneben bleibt flüssig
     if (inHall || camMoving || lightingMoving || brightMoving || fogMoving || wallMoving || ctlMoving || this.dirty || !this.readyDone) {
@@ -4083,6 +4173,8 @@ export class HallScene {
     this.deferredScreens.clear();
     this.stop();
     this.viewObserver?.disconnect();
+    this.boombox?.silence();
+    this.boomboxTwin?.remove();
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
     this.renderer.domElement.removeEventListener('pointerdown', this.onWallGamePointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.onWallGamePointerUp);
@@ -4101,6 +4193,7 @@ export class HallScene {
 
   private releaseResources() {
     this.wallGame?.dispose();
+    this.boombox?.dispose();
     this.wallPaint.dispose();
     this.glassWear.roughness.dispose();
     this.tvSlides.forEach(texture=>texture.dispose());this.tvSlides.clear();

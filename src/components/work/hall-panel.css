@@ -476,8 +476,8 @@
   text-align: right;
 }
 .hall-panel__cor-dir {
-  font-size: 9.5px;
-  line-height: 12px;
+  font-size: 12px;
+  line-height: 14px;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -654,7 +654,7 @@ body[data-mode='case'] .hall-panel__hint {
   padding: 4px 0;
   border: 0;
   background: none;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -711,8 +711,11 @@ body[data-mode='case'] .hall-panel__hint {
     0 0 0 2px #0b0c12,
     0 0 0 4px var(--brand);
 }
+/* Keyboard focus has its own ring outside the selection ring: the strip's single tab stop is the selected
+   thumbnail, so a focus style equal to the selection changed nothing on screen. */
 .captures__thumb:focus-visible {
-  outline: none;
+  outline: 2px solid var(--ice);
+  outline-offset: 6px;
   box-shadow:
     0 0 0 2px #0b0c12,
     0 0 0 4px var(--brand);

@@ -89,8 +89,9 @@ try {
       await page.locator('.mobile-arcade__machine img').first().evaluate(img => img.decode());
       await page.screenshot({ path: `${out}/home-en.png` });
       assert.equal(await page.locator('.hall__stage').count(), 0);
-      await page.locator('.mobile-arcade__index[href="/en/work/"]').click();
-      await page.waitForURL('**/en/work/');
+      // "Alle Projekte" opens the full list (?filter=all) since 2026-10-06, not the featured default
+      await page.locator('.mobile-arcade__index[href="/en/work/?filter=all"]').click();
+      await page.waitForURL('**/en/work/?filter=all');
       await page.locator('a[href="/en/work/mina/"]').first().waitFor({ state: 'attached' });
       // Let the index hydrate before leaving. Unmounting its React islands mid-hydration, while the desktop boot
       // below holds the main thread, logs React's recoverable error #424 (a 13 ms visit no reader makes).

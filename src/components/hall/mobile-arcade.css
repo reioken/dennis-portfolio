@@ -53,7 +53,7 @@
   .mobile-arcade__machine { margin-top: -12px; }
   .mobile-arcade__machine picture, .mobile-arcade__machine > img { pointer-events: none; }
   .mobile-arcade__machine::after { background: linear-gradient(#090b10, transparent 10%, transparent 87%, #090b10); }
-  .mobile-arcade__cue { position: absolute; z-index: 2; left: var(--exhibit-gutter); right: var(--exhibit-gutter); bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 14px; border: 1px solid #cbdaf42a; border-top-color: #e3d2fc65; border-radius: 4px; background: linear-gradient(115deg,#bec5e015,#6b768425),#0b0e17b8; backdrop-filter: blur(14px); color: #e1e2f0; font: 11px/1.4 var(--font-mono); box-shadow: inset 0 1px #ffffff0b,0 5px 18px #0004; }
+  .mobile-arcade__cue { position: absolute; z-index: 2; left: var(--exhibit-gutter); right: var(--exhibit-gutter); bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 14px; border: 1px solid #cbdaf42a; border-top-color: #e3d2fc65; border-radius: 4px; background: linear-gradient(115deg,#bec5e015,#6b768425),#0b0e17b8; backdrop-filter: blur(14px); color: #e1e2f0; font: 12px/1.4 var(--font-mono); box-shadow: inset 0 1px #ffffff0b,0 5px 18px #0004; }
   [data-live="ready"] .mobile-arcade__cue::before { content: ''; flex: 0 0 5px; height: 5px; border-radius: 50%; background: #b7d7cb; box-shadow: 0 0 9px #b7d7cb70; }
   .mobile-arcade__cue > [data-lang] { margin-right: auto; }
   .mobile-arcade__cue > [aria-hidden] { font: 22px/1 sans-serif; }
@@ -114,7 +114,7 @@ html.mobile-viewer-open { overflow: hidden; scrollbar-gutter: stable; }
 .mobile-viewer__toolbar .mobile-viewer__controls { gap: 8px; }
 .mobile-viewer__toolbar .mobile-viewer__controls button { width: 44px; height: 44px; padding: 0; font-size: 22px; }
 .mobile-viewer__toolbar .mobile-viewer__controls span { min-width: 52px; text-align: center; font-size: 11px; letter-spacing: .06em; }
-.mobile-viewer__hint { text-align: center; font-size: 11px; line-height: 1.5; color: #a4a7b8; margin: 10px 0 0; }
+.mobile-viewer__hint { text-align: center; font-size: 12px; line-height: 1.5; color: #a4a7b8; margin: 10px 0 0; }
 .mobile-viewer__caption { margin: 10px 0 0; color: #c0c6d5; font-size: 11px; line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .mobile-viewer__links { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #c8daf41a; font-size: 12px; }
 .mobile-viewer__links button { border-color: #d7c1fa66; color: #e4d4fd; padding-inline: 12px; }
@@ -124,6 +124,10 @@ html.mobile-viewer-open { overflow: hidden; scrollbar-gutter: stable; }
 .mobile-viewer .mobile-viewer__screen, .mobile-viewer__hotspots button { position: absolute; z-index: 2; border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 0; min-height: 0; }
 .mobile-viewer__screen img { display: block; width: 100%; height: 100%; object-fit: contain; background: #050609; }
 .mobile-viewer__screen, .mobile-viewer__full img { touch-action: pan-y pinch-zoom; }
+/* Zoomed in (pinch), one finger pans the picture sideways too; the swipe code already steps aside then. */
+html.is-zoomed :is(.mobile-viewer__screen, .mobile-viewer__full img) { touch-action: pan-x pan-y pinch-zoom; }
+.mobile-arcade__machine[data-pending] { cursor: progress; }
+.mobile-arcade__machine[data-pending] .mobile-arcade__cue { opacity: .62; }
 .mobile-viewer__full { position: absolute; z-index: 5; inset: 0; background: #090b10; }
 .mobile-viewer__full img { width: 100%; height: 100%; object-fit: contain; padding: max(72px, calc(env(safe-area-inset-top) + 60px)) max(8px, env(safe-area-inset-right)) max(88px, calc(env(safe-area-inset-bottom) + 72px)) max(8px, env(safe-area-inset-left)); box-sizing: border-box; }
 .mobile-viewer__full > [data-full-close] { position: absolute; right: max(16px, env(safe-area-inset-right)); top: max(16px, env(safe-area-inset-top)); }

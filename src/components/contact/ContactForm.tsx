@@ -29,6 +29,27 @@ type ErrorKey = 'required' | 'invalid_email' | 'rate_limited' | 'send_failed';
 
 type FieldErrorKey = 'required' | 'invalid_email';
 
+/**
+ * The typed message survives leaving the page (a mis-click into the room, Back, a reload) for this tab only, and is
+ * dropped once the service has confirmed delivery.
+ */
+const DRAFT_KEY = 'dennisbf.contact-draft';
+const DRAFT_FIELDS = ['name', 'email', 'subject', 'message'] as const;
+function readDraft(): Partial<Record<(typeof DRAFT_FIELDS)[number], string>> {
+  try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}') ?? {}; } catch { return {}; }
+}
+
+/** data-dirty while anything is typed (the hall then leaves a started message alone), and the draft kept current. */
+function markDirty(form: HTMLFormElement) {
+  const values = Object.fromEntries(DRAFT_FIELDS.map((f) => [f, (form.elements.namedItem(f) as HTMLInputElement | null)?.value ?? '']));
+  const dirty = DRAFT_FIELDS.some((f) => values[f].trim());
+  form.toggleAttribute('data-dirty', dirty);
+  try {
+    if (dirty) sessionStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+    else sessionStorage.removeItem(DRAFT_KEY);
+  } catch { /* storage unavailable: the form works without the draft */ }
+}
+
 export default function ContactForm({
   de,
   en,
@@ -44,6 +65,19 @@ export default function ContactForm({
   useEffect(() => () => {
     requestRef.current?.abort();
     requestRef.current = null;
+  }, []);
+
+  // A draft from earlier in this tab goes back into the empty fields.
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    const draft = readDraft();
+    for (const field of DRAFT_FIELDS) {
+      const el = form.elements.namedItem(field) as HTMLInputElement | HTMLTextAreaElement | null;
+      const value = draft[field];
+      if (el && !el.value && value) el.value = value;
+    }
+    markDirty(form);
   }, []);
 
   function fail(key: ErrorKey, fields: string[]) {
@@ -63,6 +97,7 @@ export default function ContactForm({
   /** Any edit after a result clears the stale note. */
   function onInput(event: FormEvent<HTMLFormElement>) {
     const field = (event.target as HTMLInputElement).name;
+    markDirty(event.currentTarget);
     if (status === 'ok' || status === 'err') {
       setStatus('idle');
       setErrorKey('');
@@ -79,7 +114,8 @@ export default function ContactForm({
     const kind = fieldErrors[field];
     if (!kind) return null;
     return (
-      <span className="contact-form__field-error" id={`fe-${field}`}>
+      // aria-hidden keeps the error out of the field's name (it sits inside the label); aria-describedby still reads it
+      <span className="contact-form__field-error" id={`fe-${field}`} aria-hidden="true">
         {kind === 'invalid_email' ? (
           <>
             <span data-lang="de">Bitte gültige E-Mail-Adresse angeben.</span>
@@ -148,6 +184,7 @@ export default function ContactForm({
       }
       setStatus('ok');
       form.reset();
+      markDirty(form);
     } catch {
       if (requestRef.current === request) fail('send_failed', []);
     } finally {
@@ -205,7 +242,7 @@ export default function ContactForm({
             name="name"
             type="text"
             autoComplete="name"
-            disabled={status === 'sending'}
+            readOnly={status === 'sending'}
             required
             maxLength={80}
             aria-invalid={isInvalid('name') || undefined}
@@ -226,7 +263,7 @@ export default function ContactForm({
             inputMode="email"
             autoCapitalize="none"
             spellCheck={false}
-            disabled={status === 'sending'}
+            readOnly={status === 'sending'}
             required
             maxLength={160}
             aria-invalid={isInvalid('email') || undefined}
@@ -241,7 +278,7 @@ export default function ContactForm({
           <span data-lang="de">{de.subject}</span>
           <span data-lang="en">{en.subject}</span>
         </span>
-        <input name="subject" type="text" autoComplete="off" maxLength={120} disabled={status === 'sending'} />
+        <input name="subject" type="text" autoComplete="off" maxLength={120} readOnly={status === 'sending'} />
       </label>
 
       <label className="contact-form__field">
@@ -252,7 +289,7 @@ export default function ContactForm({
         </span>
         <textarea
           name="message"
-          disabled={status === 'sending'}
+          readOnly={status === 'sending'}
           required
           rows={6}
           maxLength={8000}
@@ -274,7 +311,8 @@ export default function ContactForm({
       </p>
 
       <div className="contact-form__actions">
-        <button className="btn btn--primary" type="submit" disabled={status === 'sending'}>
+        {/* aria-disabled, not disabled: the button keeps focus while sending (a disabled one dropped it to the page) */}
+        <button className="btn btn--primary" type="submit" aria-disabled={status === 'sending' || undefined}>
           {status === 'sending' ? (
             <>
               <span data-lang="de">{de.sending}</span>
@@ -287,12 +325,15 @@ export default function ContactForm({
             </>
           )}
         </button>
-        {status === 'ok' && (
-          <p className="contact-form__note contact-form__note--ok" role="status">
-            <span data-lang="de">{de.success}</span>
-            <span data-lang="en">{en.success}</span>
-          </p>
-        )}
+        {/* A status region that is always there: one inserted together with its text is often not announced */}
+        <p className="contact-form__note contact-form__note--ok" role="status">
+          {status === 'ok' && (
+            <>
+              <span data-lang="de">{de.success}</span>
+              <span data-lang="en">{en.success}</span>
+            </>
+          )}
+        </p>
         {status === 'err' && (
           <p className="contact-form__note contact-form__note--err" role="alert">
             {errorText(errorKey)}

@@ -8,6 +8,7 @@ import { inflatedBinary } from './bitmapTextures';
 import { fittedFontSize } from './fitText.mjs';
 import { marbleBall } from './heroMaterial';
 import { roomPowerLevels, ROOM_POWER_MS, withRoomPower, collectRoomPowerTargets } from './roomPower.mjs';
+import { visibleTimeout } from './visibleTimeout.mjs';
 type Control = { element: HTMLElement; object: THREE.Object3D; origin: THREE.Vector3; value: number; velocity: number; target: number; moving: boolean; pressUntil: number; glow?: THREE.ShaderMaterial; lamp?: THREE.PointLight };
 /** Moving keys and the CRT transition: never above 60 fps, whatever the panel's rate (2026-10-05 live: 104 fps at 240 Hz). */
 const MOTION_FRAME_MS = 15.5;
@@ -122,7 +123,7 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
       const mesh=model?.getObjectByName(`display_station_${i}`) as THREE.Mesh | undefined;
       if(material && mesh)(mesh.material as THREE.MeshBasicMaterial).color.set(i===index-1 ? '#ffffff' : '#a99cbf');
     });
-    for(const c of controls) if(c.element.matches(':disabled')) c.target=0;
+    for(const c of controls) if(c.element.matches(':disabled, [aria-disabled="true"]')) c.target=0;
     if(root.dataset.selected && root.dataset.selected!==String(index)) {
       const selected=controls.find(c=>c.element.classList.contains('hall-dock__stop') && c.element.getAttribute('aria-current')==='location');
       if(selected && !reduce){selected.pressUntil=performance.now()+95;selected.value=Math.max(selected.value,.6);}
@@ -170,9 +171,9 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
   }
   async function load() {
     const [data]=await Promise.all([prepareDockAsset(),loadEnvironment(),document.fonts.load('600 100px "Barlow Condensed"')]);
-    if(dead) return;
+    if(dead || root.dataset.hardware==='fallback') return;
     const gltf=await loader.parseAsync(data,'/models/');
-    if(dead) {disposeModel(gltf.scene); return;}
+    if(dead || root.dataset.hardware==='fallback') {disposeModel(gltf.scene); return;}
     model=gltf.scene; scene.add(model);
     // Cool, pearlescent hardware; retain the GLB's scanned grain and roughness.
     const finishes = new Map<THREE.Material,THREE.Material>();
@@ -327,7 +328,7 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
   function press(event:Event) {
     const target=(event.target as Element).closest('button,a');
     held=target instanceof HTMLElement ? target : null;
-    for(const c of controls) c.target=c.element===target && !c.element.matches(':disabled') ? 1 : 0;
+    for(const c of controls) c.target=c.element===target && !c.element.matches(':disabled, [aria-disabled="true"]') ? 1 : 0;
     // Initial physical travel on pointer down; the spring handles the final compression/release.
     for(const c of controls)if(c.moving && c.target===1){c.value=Math.max(c.value,.65);c.pressUntil=reduce ? 0 : performance.now()+95;}
     wake();
@@ -336,7 +337,7 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
   function hover(event:Event) {
     if(held || event instanceof PointerEvent && event.buttons) return;
     const hovered=(event.target as Element).closest<HTMLElement>('button,a');
-    for(const c of controls)c.target=c.element===hovered && !c.element.matches(':disabled') ? .22 : 0;
+    for(const c of controls)c.target=c.element===hovered && !c.element.matches(':disabled, [aria-disabled="true"]') ? .22 : 0;
     wake();
   }
   function leave() {release();}
@@ -378,8 +379,11 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
   track?.addEventListener('pointerdown',dragStart); track?.addEventListener('pointermove',dragMove); track?.addEventListener('pointerup',dragEnd); track?.addEventListener('lostpointercapture',dragEnd);
   const lost=(event:Event)=>{event.preventDefault();cancelInput();canvas.style.display='none';root.dataset.hardware='fallback';}; canvas.addEventListener('webglcontextlost',lost);
   void load().catch(()=>{if(!dead){canvas.style.display='none'; root.dataset.hardware='fallback';}});
+  // A download that stalls (not fails) used to keep the console hidden and dead for good: after 20 s of visible time
+  // the DOM console takes over, and a late GLB is then ignored rather than swapped in under the visitor's hand.
+  const cancelBudget=visibleTimeout(20000,()=>{if(!dead && root.dataset.hardware==='loading'){canvas.style.display='none'; root.dataset.hardware='fallback';}});
   return ()=>{
-    dead=true; abort.abort(); clearTimeout(pulseTimer);clearTimeout(idleTimer);cancelAnimationFrame(raf); resize.disconnect(); mutation.disconnect(); visibility.disconnect();
+    dead=true; cancelBudget(); abort.abort(); clearTimeout(pulseTimer);clearTimeout(idleTimer);cancelAnimationFrame(raf); resize.disconnect(); mutation.disconnect(); visibility.disconnect();
     root.removeEventListener('pointerdown',press); root.removeEventListener('keydown',keyDown); root.removeEventListener('pointerover',hover); root.removeEventListener('pointerleave',leave); root.removeEventListener('focusin',hover); root.removeEventListener('focusout',leave);
     root.removeEventListener('click',click);
     window.removeEventListener('pointerup',release); window.removeEventListener('pointercancel',cancelInput); window.removeEventListener('keyup',release); window.removeEventListener('blur',cancelInput); document.removeEventListener('visibilitychange',cancelInput);

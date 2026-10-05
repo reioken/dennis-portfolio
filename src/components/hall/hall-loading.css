@@ -3,55 +3,76 @@
 .hall .hall__stage[data-power='on'] { opacity: 1; transition: none; }
 html.gl-pending .hall:not(.is-3d) .hall-dock { visibility: hidden; }
 /* Header joins the room reveal, including its keyboard focus targets. Native
-   pages and the fallback keep their navigation immediately available. */
-html.gl-pending:not(.hall-native):not(:has(.hall[data-startup-fallback])) .site-nav,
-html:not(.hall-native):has(.hall__stage[data-power='loading']):not(:has(.hall[data-startup-fallback])) .site-nav {
+   pages and the fallback keep their navigation immediately available, and so does a direct landing on a project,
+   About or Contact: there the page is readable before the room, and the header is its way on. */
+html.gl-pending:not(.hall-native):not(:has(.hall[data-startup-fallback])):not(:has(body[data-mode='case'])) .site-nav,
+html:not(.hall-native):has(.hall__stage[data-power='loading']):not(:has(.hall[data-startup-fallback])):not(:has(body[data-mode='case'])) .site-nav {
   opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-12px); transition: none;
 }
-html.gl-pending:not(.hall-native):not(:has(.hall[data-startup-fallback])) .site-nav__fallback,
-html:not(.hall-native):has(.hall__stage[data-power='loading']):not(:has(.hall[data-startup-fallback])) .site-nav__fallback { visibility: hidden; }
+html.gl-pending:not(.hall-native):not(:has(.hall[data-startup-fallback])):not(:has(body[data-mode='case'])) .site-nav__fallback,
+html:not(.hall-native):has(.hall__stage[data-power='loading']):not(:has(.hall[data-startup-fallback])):not(:has(body[data-mode='case'])) .site-nav__fallback { visibility: hidden; }
 /* Reading and contact never wait for the decorative room. Its geometry stays
    hidden above until prepared; server-rendered content remains available. */
 
-/* A centered console-era emblem, rendered before the 3D bundle executes.
-   Six prepainted panels rotate on compositor layers, with no image decode or JS frame loop. */
+/* Editorial split (Dennis, 2026-10-05): signature, statement and role at the left; the console-era emblem with its
+   status and signal at the right; both ways in along the foot. The emblem is rendered before the 3D bundle executes:
+   six prepainted panels rotate on compositor layers, with no image decode or JS frame loop. Its motion and the copy's
+   entrance are unchanged; only their places are new. */
 .hall-startup {
+  --emblem-scale: 4.8;
   position: fixed;
   z-index: 45;
-  left: 50%;
-  top: 50%;
+  inset: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template: "identity stage" minmax(0, 1fr) "routes routes" auto / minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  gap: 28px;
-  width: min(860px, calc(100vw - 48px));
-  padding: 0;
-  text-align: center;
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
+  padding: clamp(28px, 6vh, 72px) clamp(20px, 2.9vw, 56px) clamp(16px, 4vh, 44px);
+  /* Only the ways in take input: the room below must never be blocked by a box of empty air. */
+  pointer-events: none;
   opacity: 0;
   visibility: hidden;
 }
+.hall-startup__identity { grid-area: identity; min-width: 0; padding-left: clamp(0px, 5.1vw, 112px); text-align: left; }
+.hall-startup__stage { grid-area: stage; display: flex; flex-direction: column; align-items: center; min-width: 0; padding-right: clamp(0px, 4.4vw, 96px); text-align: center; }
 .hall-startup__label {
-  margin: 20px 0 0; color: #b0b8cd;
-  font: 11px/1.6 var(--font-mono); letter-spacing: .035em;
+  margin: 0; color: #d9dbe6;
+  font: clamp(12px, 1.05vw, 19px)/1.6 var(--font-mono); letter-spacing: .02em;
 }
+/* The emblem's own box is the 66 px bracket square; the scale is the only size, so the motion stays as authored. */
 .hall-startup__emblem {
-  position: relative; display: block; width: 72px; height: 78px;
-  margin: 66px auto 60px; transform: scale(2.7); pointer-events: none;
+  position: relative; display: block; width: 72px; height: 66px;
+  /* The brackets turn: on the diagonal their corners reach about 40 px from the centre (26 px square half-diagonal
+     plus the breath), not the square's 33. The margins keep that circle clear of the status line below. */
+  margin: calc(40px * var(--emblem-scale) - 25px) auto calc(40px * var(--emblem-scale) - 33px + clamp(8px, 2vh, 24px));
+  transform: scale(var(--emblem-scale)); pointer-events: none;
 }
-.hall-startup__name { margin: 0; font: 600 clamp(36px, 4.5vw, 64px)/1.06 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: -.025em; color: #efedf5; }
-.hall-startup__logo { width: clamp(160px, 18vw, 220px); margin: 0 auto 22px; }
-.hall-startup__name em { font-style: normal; color: #bba6d9; }
+.hall-startup__name { margin: 0; font: 600 clamp(44px, min(6.3vw, 12.5vh), 136px)/.98 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: -.02em; color: #efedf5; }
+.hall-startup__logo { width: clamp(150px, 12.5vw, 280px); margin: 0 0 clamp(24px, 6.5vh, 88px); }
+.hall-startup__name em { font-style: normal; color: #b79ce9; }
 .hall-startup__line { display: block; white-space: nowrap; }
-.hall-startup__role { margin: 14px 0 0; color: #c1c5d2; font-size: 14px; line-height: 1.65; white-space: nowrap; }
-.hall-startup__routes { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 24px; margin-top: 10px; }
-.hall-startup__routes a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: #dcc9fc; font-size: 13px; text-decoration: none; }
-.hall-startup__routes a:hover { color: #fff; }
+.hall-startup__role { margin: clamp(16px, 3.4vh, 40px) 0 0; color: #c9ccd8; font: clamp(12px, 1.04vw, 19px)/1.6 var(--font-mono); letter-spacing: .01em; white-space: nowrap; }
+.hall-startup__routes { grid-area: routes; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; pointer-events: auto; }
+/* The ways in are keys: graphite caps with a hairline rim, the projects one lit in the room's violet. They lift a
+   pixel on hover and press in on click. */
+.hall-startup__routes a {
+  position: relative; display: inline-flex; align-items: center; gap: 14px;
+  min-height: 52px; padding: 0 20px 0 24px; border-radius: 12px;
+  border: 1px solid #ffffff24;
+  background: linear-gradient(180deg, #23232c, #16161d);
+  box-shadow: inset 0 1px 0 #ffffff1c, inset 0 -2px 0 #0000004d, 0 10px 24px #00000059;
+  color: #ebe8f4; font: 500 clamp(14px, 1.02vw, 18px)/1.2 var(--font-sans); text-decoration: none;
+  transition: transform 140ms ease, border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+}
+.hall-startup__routes a:first-child { border-color: #b79ce973; background: linear-gradient(180deg, #2e2840, #1c1928); color: #f3eeff; }
+.hall-startup__routes a > [aria-hidden] { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #ffffff0f; color: #c9b4f5; font-size: .95em; transition: transform 160ms ease; }
+.hall-startup__routes a:hover { transform: translateY(-1px); border-color: #d7c6ff8c; color: #fff; box-shadow: inset 0 1px 0 #ffffff26, inset 0 -2px 0 #0000004d, 0 14px 30px #0000006b, 0 0 0 4px #ac8bfd14; }
+.hall-startup__routes a:hover > [aria-hidden] { transform: translate(2px, -2px); }
+.hall-startup__routes a:active { transform: translateY(1px); box-shadow: inset 0 2px 6px #00000080, 0 4px 12px #00000059; }
 .hall-startup__routes a:focus-visible { outline: 2px solid var(--ice); outline-offset: 4px; }
-/* The emblem leads; the copy follows down the same axis without delaying readiness. */
-html.gl-pending .hall-startup__identity > *,
-html:has(.hall__stage[data-power]) .hall-startup__identity > * { animation: hall-startup-copy 560ms var(--copy-delay, 0ms) cubic-bezier(.2,.7,.25,1) both; }
+/* The emblem leads; the copy follows without delaying readiness (same beats as before the split: signature with
+   the emblem, then statement, role, status and ways in). */
+html.gl-pending :is(.hall-startup__identity > *, .hall-startup__label, .hall-startup__routes),
+html:has(.hall__stage[data-power]) :is(.hall-startup__identity > *, .hall-startup__label, .hall-startup__routes) { animation: hall-startup-copy 560ms var(--copy-delay, 0ms) cubic-bezier(.2,.7,.25,1) both; }
 .hall-startup__name { --copy-delay: 140ms; }
 .hall-startup__role { --copy-delay: 200ms; }
 .hall-startup__label { --copy-delay: 260ms; }
@@ -59,11 +80,13 @@ html:has(.hall__stage[data-power]) .hall-startup__identity > * { animation: hall
 @keyframes hall-startup-copy { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 /* A direct case landing has readable content at the right. Keep preparation
    feedback in the scene area, without repeating the whole home introduction. */
-body[data-mode='case'] .hall-startup { left: 21%; width: min(320px, 36vw); display: block; text-align: center; border: 0; pointer-events: none; }
-body[data-mode='case'] .hall-startup__emblem { margin: 50px auto; }
-body[data-mode='case'] .hall-startup__name,
-body[data-mode='case'] .hall-startup__role,
-body[data-mode='case'] .hall-startup__routes { display: none; }
+body[data-mode='case'] .hall-startup { --emblem-scale: 2.7; inset: auto; left: 21%; top: 50%; width: min(320px, 36vw); display: flex; flex-direction: column; align-items: center; padding: 0; text-align: center; transform: translate(-50%, -50%); }
+body[data-mode='case'] :is(.hall-startup__identity, .hall-startup__stage) { display: contents; }
+body[data-mode='case'] .hall-startup__emblem { order: 1; margin-block: 66px 40px; }
+body[data-mode='case'] .hall-startup__signal { order: 2; width: 194px; margin: 0 0 30px; }
+body[data-mode='case'] .hall-startup__logo { order: 3; width: clamp(160px, 18vw, 220px); margin: 0 auto 22px; }
+body[data-mode='case'] .hall-startup__label { order: 4; font-size: 11px; }
+body[data-mode='case'] :is(.hall-startup__name, .hall-startup__role, .hall-startup__routes) { display: none; }
 .hall-startup__prism {
   position: absolute; left: 4px; top: 1px;
   width: 64px; height: 64px;
@@ -150,7 +173,8 @@ html:has(.hall__stage[data-power]) .hall-startup__cube > i { animation: hall-cub
 .hall-startup__orbit > i:nth-child(2) { --angle: 90deg; }
 .hall-startup__orbit > i:nth-child(3) { --angle: 180deg; }
 .hall-startup__orbit > i:nth-child(4) { --angle: 270deg; }
-.hall-startup__signal { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: 4px; }
+/* Under the status line now, at the width of a line of it; the dashes keep their breath. */
+.hall-startup__signal { position: relative; display: flex; gap: 4px; width: clamp(150px, 13vw, 260px); margin-top: clamp(12px, 2.2vh, 26px); }
 .hall-startup__signal > i {
   flex: 1; height: 2px;
   background: linear-gradient(90deg, #b9a9c9, #c8d1d5); opacity: .2;
@@ -192,19 +216,24 @@ html:has(.hall__stage[data-power='on']) .hall-startup__emblem { animation: hall-
   .hall-startup__signal > i { opacity: .6; }
   html:has(.hall__stage[data-power='on']) .hall-startup { opacity: 0; visibility: hidden; }
 }
-@media (max-width: 600px) {
-  .hall-startup { gap: 20px; }
-  .hall-startup__emblem { transform: scale(2.1); margin-block: 44px 40px; }
-  .hall-startup__name { font-size: clamp(32px, 8vw, 46px); }
-  .hall-startup__role { margin-inline: auto; font-size: clamp(10px, 2.55vw, 14px); }
-  .hall-startup__routes { justify-content: center; }
+/* Emblem size steps with the screen (a unitless scale cannot follow vw); short screens step down. */
+@media (min-width: 1280px) { .hall-startup { --emblem-scale: 5.8; } }
+@media (min-width: 1600px) { .hall-startup { --emblem-scale: 7.2; } }
+@media (min-width: 2200px) { .hall-startup { --emblem-scale: 8.4; } }
+@media (max-height: 820px) and (min-width: 900px) { .hall-startup { --emblem-scale: 4.6; } }
+@media (max-height: 700px) and (min-width: 900px) {
+  .hall-startup { --emblem-scale: 3.6; }
+  .hall-startup__logo { margin-bottom: 20px; }
+  .hall-startup__routes a { min-height: 46px; }
 }
-@media (max-height: 700px) and (min-width: 601px) {
-  .hall-startup { gap: 20px; }
-  .hall-startup__emblem { transform: scale(2.2); margin-block: 44px 42px; }
-  .hall-startup__name { font-size: clamp(36px, 4vw, 52px); }
-  .hall-startup__label { margin-top: 14px; }
-}
+/* Below 900 px only pages without a native phone version still wait for the room: one centred column. */
 @media (max-width: 899px) {
   html.hall-native .hall-startup { display: none; }
+  .hall-startup { --emblem-scale: 2.4; grid-template: "stage" auto "identity" auto "routes" auto / minmax(0, 1fr); align-content: center; gap: 22px; padding: 24px 20px; }
+  .hall-startup__identity { padding-left: 0; text-align: center; }
+  .hall-startup__stage { padding-right: 0; }
+  .hall-startup__logo { width: clamp(130px, 34vw, 200px); margin: 0 auto 16px; }
+  .hall-startup__name { font-size: clamp(32px, 8vw, 46px); }
+  .hall-startup__role { font-size: clamp(10px, 2.55vw, 14px); }
+  .hall-startup__routes { justify-content: center; }
 }

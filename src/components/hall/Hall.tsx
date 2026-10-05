@@ -323,6 +323,8 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
   glRef.current = gl;
   /** WebGL is available but the stage was not booted because the visit began on a native project page */
   const deferredBoot = useRef(false);
+  /** Which side of the 900 px boundary the page was on at the last resize (the station crosses with the visitor) */
+  const wasNative = useRef(false);
   /** Pose the stage is built with: the page mode at mount, or the route a deferred boot happens on */
   const bootMode = useRef<HallMode>(initialMode);
   const [lite, setLite] = useState(false);
@@ -334,6 +336,12 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
   const focusRef = useRef(focus);
   focusRef.current = focus;
   const modeRef = useRef(mode);
+  /** The history entry of the hall this visit last stood in, and its language (see back()). */
+  const hallEntryRef = useRef<{ index: number; lang: 'de' | 'en' } | null>(null);
+  const noteHallEntry = useCallback(() => {
+    const index = (history.state as { index?: number } | null)?.index;
+    hallEntryRef.current = typeof index === 'number' ? { index, lang: document.documentElement.dataset.lang === 'en' ? 'en' : 'de' } : null;
+  }, []);
   modeRef.current = mode;
   const H = copy.de.hall;
   const HE = copy.en.hall;
@@ -415,8 +423,36 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
     if (modeRef.current === 'arcade') {
       const t = items[focusRef.current];
       go(t ? t.href : homeHref);
-    } else go(homeHref);
+      return;
+    }
+    // A project, About or Contact opened from the hall closes by going back to the hall's own history entry (Astro's
+    // ClientRouter numbers entries in history.state.index): browser Back afterwards no longer reopens what was just
+    // closed. A direct landing, a language switch in between or a phone page opens the hall as a new entry, as before.
+    const entry = hallEntryRef.current, index = (history.state as { index?: number } | null)?.index;
+    const sameLang = entry?.lang === (document.documentElement.dataset.lang === 'en' ? 'en' : 'de');
+    if (entry && typeof index === 'number' && index > entry.index && sameLang && !nativeView(modeRef.current, items[focusRef.current]) && navigator.onLine !== false) {
+      history.go(entry.index - index);
+      return;
+    }
+    go(homeHref);
   }, [items, go, homeHref]);
+
+  useEffect(() => {
+    if (routeState(location.pathname, items).mode === 'hall') noteHallEntry();
+  }, [items, noteHallEntry]);
+  // The panels' own back link (PanelBack) closes the same way as Esc: a plain click goes back(), modified clicks and
+  // phone pages keep the link.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement | null)?.closest?.('.hall-panel__back');
+      if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (modeRef.current !== 'case' || nativeView(modeRef.current, items[focusRef.current])) return;
+      e.preventDefault();
+      back();
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [back, items]);
 
   /* ---------- Attract (nur in der Halle) ---------- */
   const stopAttract = useCallback(() => {
@@ -508,6 +544,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
     let hallNavigation = false;
     const apply = () => {
       const r = routeState(location.pathname, items);
+      if (!r.exit && r.mode === 'hall') noteHallEntry();
       performance.mark('hall:panel-ready');
       const started = navigationStarted;
       requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -556,6 +593,9 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
     const prep = (e: Event) => {
       const ev = e as PrepEvent;
       if (!ev.to) return;
+      // Any route change (an entry's link, browser Back) closes the directory: left open it stayed modal inside the
+      // hall that the next page hides.
+      if (directoryRef.current?.open) directoryRef.current.close();
       const now = performance.now();
       navigationStarted = inputAt && now - inputAt < 1000 ? inputAt : now;
       const r = routeState(ev.to.pathname, items);
@@ -633,14 +673,28 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
   /* Fenstergröße: freien Bereich neu messen */
   useEffect(() => {
     let raf = 0;
+    wasNative.current = nativeView(modeRef.current, items[focusRef.current]);
     const onResize = () => {
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
         if (routeState(location.pathname, items).exit) return;
         const native = nativeView(modeRef.current, items[focusRef.current]);
+        const crossed = native !== wasNative.current;
+        wasNative.current = native;
         document.documentElement.classList.toggle('hall-native', native);
         const sc = sceneRef.current;
+        // Crossing 900 px (a tablet turned, a window resized) keeps the station: the exhibition opens at the hall's
+        // station, and the hall at the exhibit that was in view.
+        if (crossed && modeRef.current === 'hall') {
+          if (native) {
+            requestAnimationFrame(() => document.getElementById(`exhibit-${items[focusRef.current]?.slug}`)?.scrollIntoView({ block: 'start', behavior: 'instant' }));
+          } else {
+            const slug = document.querySelector<HTMLSelectElement>('#mobile-station')?.value;
+            const index = slug ? items.findIndex((it) => it.slug === slug) : -1;
+            if (index >= 0 && index !== focusRef.current) { focusRef.current = index; setFocus(index); }
+          }
+        }
         if (native) {
           sc?.stop();
           document.documentElement.classList.remove('gl-pending');
@@ -758,7 +812,8 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
   /* ---------- Tastatur ---------- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (nativeView(modeRef.current, items[focusRef.current]) && modeRef.current === 'hall') return;
+      // Phone pages (the exhibition, projects, About, Contact) are native reading pages: their keys scroll and type.
+      if (nativeView(modeRef.current, items[focusRef.current])) return;
       if (rootRef.current?.closest('[data-hall-parked]')) return;
       if (directoryRef.current?.open) return;
       if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
@@ -767,12 +822,20 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
       // Eingabefelder behalten ihre Tasten — die Sheet-Raste (Checkbox) nicht, sonst ist nach dem Tippen Esc tot
       // Form controls own their arrow keys, including About's evidence selector.
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      // So does a whole form: from its send button or privacy link a stray Esc or arrow left Contact and lost the message.
+      if (t?.closest('form')) return;
+      // Letters only act while the hall itself (console, room) has focus, never across the page (WCAG 2.1.4).
+      const inHallUi = Boolean(t && rootRef.current?.contains(t));
+      const letter = e.key.length === 1;
+      if (letter && !inHallUi) return;
       const m = modeRef.current;
       // Im Close-up gehören alle Tasten der Seite (CaseCaptures hört auf document und blockt vorher)
       if (m === 'case' && closeupRef.current) return;
       if (m !== 'hall') {
         // Innerhalb der Captures-Leiste gehören die Pfeile der Leiste
         const inStrip = Boolean(t?.closest?.('.captures'));
+        // Reading a panel (its title, text, a link or a button in it): arrows and Home/End scroll it; only Esc leaves.
+        const inPanel = Boolean(t?.closest?.('.hall-panel, main') && !inHallUi);
         switch (e.key) {
           case 'Escape':
             e.preventDefault();
@@ -780,13 +843,13 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
             return;
           case 'ArrowRight':
           case 'ArrowLeft':
-            if (m !== 'case' || inStrip) return;
+            if (m !== 'case' || inStrip || inPanel) return;
             e.preventDefault();
             walk(e.key === 'ArrowRight' ? 1 : -1);
             return;
           case 'Home':
           case 'End': {
-            if (m !== 'case') return;
+            if (m !== 'case' || inPanel) return;
             e.preventDefault();
             const target = items[e.key === 'Home' ? 0 : n - 1];
             if (target) go(target.href);
@@ -1119,7 +1182,8 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
             onBackdrop={() => {
               // Klick ins Leere: aus dem Close-up zurück zum Automaten, aus dem Zoom zurück in die Halle
               if (closeupRef.current) document.dispatchEvent(new CustomEvent('hall:backdrop'));
-              else if (modeRef.current === 'case') go(homeHref);
+              // A started Contact message is not thrown away by a click into the room beside the panel.
+              else if (modeRef.current === 'case' && !document.querySelector('.hall-panel form[data-dirty]')) back();
             }}
             onReady={() => { setGl('on'); if (nativeView(modeRef.current, items[focusRef.current])) sceneRef.current?.stop(); }}
             onFail={() => { rootRef.current?.setAttribute('data-startup-fallback', 'true'); setGl('css'); }}
@@ -1332,7 +1396,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
           <span>{String(focus + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}</span>
         </div>
         <div className="hall-dock__center">
-        <button type="button" className="hall-dock__arrow hall-dock__arrow--prev" onClick={() => move(-1)} disabled={focus === 0} aria-label={lang === 'en' ? 'Previous machine' : 'Vorheriger Automat'} tabIndex={inHall ? 0 : -1}><Icon name="chevron-left" size={20} /></button>
+        <button type="button" className="hall-dock__arrow hall-dock__arrow--prev" onClick={() => { if (focus > 0) move(-1); }} aria-disabled={focus === 0 || undefined} aria-label={lang === 'en' ? 'Back: previous machine' : 'Zurück: vorheriger Automat'} tabIndex={inHall ? 0 : -1}><Icon name="chevron-left" size={20} /></button>
         <div className="hall-dock__identity" aria-live="polite" data-activity={activity?.id}>
           <span className="hall-dock__lamp" aria-hidden="true" />
           <div className="hall-dock__label" key={current.slug}>
@@ -1342,9 +1406,11 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
           <span className="hall-dock__mobile-count" aria-hidden="true">{String(focus + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}</span>
         </div>
         <a className="hall-dock__open" href={pageHref(current.href)} tabIndex={inHall ? 0 : -1} onClick={(e) => { if (modifiedClick(e)) return; e.preventDefault(); go(current.href); }}>
+          {/* The key is printed ÖFFNEN / OPEN: its name starts with that word (WCAG 2.5.3) */}
+          <span className="sr-only"><Bi de="Öffnen:" en="Open:" /> </span>
           {isMachine(current) ? <Bi de="Projekt ansehen" en="Explore project" /> : current.kind === 'kasse' ? <Bi de="Lern mich kennen" en="Meet the maker" /> : <Bi de="Ins Gespräch kommen" en="Let’s talk" />} <Icon name="arrow-up-right" size={18} />
         </a>
-        <button type="button" className="hall-dock__arrow hall-dock__arrow--next" onClick={() => move(1)} disabled={focus === n - 1} aria-label={lang === 'en' ? 'Next machine' : 'Nächster Automat'} tabIndex={inHall ? 0 : -1}><Icon name="chevron-right" size={20} /></button>
+        <button type="button" className="hall-dock__arrow hall-dock__arrow--next" onClick={() => { if (focus < n - 1) move(1); }} aria-disabled={focus === n - 1 || undefined} aria-label={lang === 'en' ? 'Next machine' : 'Weiter: nächster Automat'} tabIndex={inHall ? 0 : -1}><Icon name="chevron-right" size={20} /></button>
         </div>
         <button className="hall-dock__directory" type="button" tabIndex={inHall ? 0 : -1} aria-haspopup="dialog" onClick={() => directoryRef.current?.showModal()}><Icon name="grid" size={17} /><Bi de="Alle Projekte" en="All projects" /></button>
       </nav>
@@ -1363,6 +1429,8 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
             <span>{isMachine(it) ? <Bi de={it.title} en={it.titleEn} /> : it.kind === 'kasse' ? <Bi de={H.kasseSub} en={HE.kasseSub} /> : <Bi de={H.phoneSub} en={HE.phoneSub} />}</span><Icon name="arrow-up-right" size={18} />
           </a>
         </li>)}</ol>
+        {/* Archive work has no station; the list still reaches it, so "Alle Projekte" leaves nothing out. */}
+        <a className="hall-directory__more" href={`${pageHref('/work/')}?filter=archive`}><Bi de={copy.de.work.filterArchive} en={copy.en.work.filterArchive} /><Icon name="arrow-up-right" size={16} /></a>
       </dialog>
       <p className="hall__hint mono" aria-hidden>
         {pad ? (

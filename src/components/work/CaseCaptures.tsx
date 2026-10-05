@@ -277,11 +277,14 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
     return () => document.removeEventListener('hall:screenclick', onScreen);
   }, [enterCloseup]);
 
-  /* ---------- 1–9 überall: Capture n der aktiven Gruppe ---------- */
+  /* ---------- 1–9: Capture n der aktiven Gruppe ---------- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented || open) return;
       if (inField(e.target)) return;
+      // Only while the screenshots themselves have focus (strip or close-up): a digit typed anywhere else on the page
+      // must not change the picture (WCAG 2.1.4).
+      if (!(e.target as HTMLElement | null)?.closest?.('.captures, .closeup')) return;
       if (e.key.length !== 1 || e.key < '1' || e.key > '9') return;
       const n = Number(e.key) - 1;
       if (n >= images.length) return;
@@ -353,7 +356,9 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
   const titleAttr = lang === 'en' ? PE.showOnCabinet : P.showOnCabinet;
 
   return (
-    <div className={`captures captures--native${phone ? ' captures--phone' : ''}`} style={{ ['--brand' as string]: brand } as CSSProperties}>
+    // Keyboard focus anywhere in the strip takes over from the 7 s rotation, as a click or hover does: the selection
+    // and the tab stop must not move away from the thumbnail being read (WCAG 2.2.2).
+    <div className={`captures captures--native${phone ? ' captures--phone' : ''}`} style={{ ['--brand' as string]: brand } as CSSProperties} onFocus={() => setAutoplayPaused(true)}>
       {groups.length > 1 ? (
         <div className="captures__chips" role="group" aria-label={surfacesLabel}>
           {groups.map((g, i) => (

@@ -32,9 +32,9 @@ const profileGallery = (kind: 'kasse' | 'phone', title: string, titleEn: string,
       <h2 class="mobile-arcade__manifesto"><span data-lang="de">{entrance.first.de}{' '}<em>{entrance.second.de}</em></span><span data-lang="en">{entrance.first.en}{' '}<em>{entrance.second.en}</em></span></h2>
       <p class="mobile-arcade__intro-role">{site.role}</p>
     </header>
-    <a class="mobile-arcade__machine mobile-arcade__claw" href={p('about')} aria-label={site.name} data-mobile-enter>
+    <a class="mobile-arcade__machine mobile-arcade__claw" href={p('about')} data-mobile-enter>
       <picture><source media="(max-width: 899px)" srcset={`${poster('kasse')}-sm.webp 390w, ${poster('kasse')}.webp 780w`} sizes="(min-width: 600px) 520px, 100vw" /><img src={blank} alt="" width="780" height="940" loading="eager" fetchpriority="high" decoding="async" /></picture>
-      <span class="mobile-arcade__cue"><span data-lang="de">Antippen · näher kommen</span><span data-lang="en">Tap · take a closer look</span><span aria-hidden="true">↗</span></span>
+      <span class="sr-only">{site.name}: </span><span class="mobile-arcade__cue"><span data-lang="de">Antippen · näher kommen</span><span data-lang="en">Tap · take a closer look</span><span aria-hidden="true">↗</span></span>
     </a>
     <div class="mobile-arcade__caption">
       <p><span data-lang="de">{entrance.note.de}</span><span data-lang="en">{entrance.note.en}</span></p>
@@ -42,7 +42,7 @@ const profileGallery = (kind: 'kasse' | 'phone', title: string, titleEn: string,
       <a class="mobile-arcade__story" href={`${p('about')}#about-current`}><span data-lang="de">Woran ich gerade arbeite</span><span data-lang="en">What I'm working on now</span><Icon name="arrow-up-right" size={16} /></a>
     </div>
   </article>
-  <nav class="mobile-arcade__directory" aria-label="Stationen / Stations">
+  <nav class="mobile-arcade__directory" aria-label="Stationen">
     <span class="mobile-arcade__position" aria-hidden="true">01 / {items.length}</span>
     <label class="sr-only" for="mobile-station">Station</label>
     <select id="mobile-station">
@@ -50,8 +50,8 @@ const profileGallery = (kind: 'kasse' | 'phone', title: string, titleEn: string,
       {machines.map(machine => <option value={machine.slug}>{machine.title}</option>)}
       <option value="telefon" data-de="Kontakt" data-en="Contact">Kontakt</option>
     </select>
-    <button class="mobile-arcade__motion" type="button" aria-pressed="false" aria-label="Animation pausieren / Pause animation"><span aria-hidden="true">Ⅱ</span></button>
-    <a href={p('work')} aria-label="Alle Projekte / All projects"><Icon name="grid" size={18} /></a>
+    <button class="mobile-arcade__motion" type="button" aria-pressed="false" aria-label="Animation pausieren"><span aria-hidden="true">Ⅱ</span></button>
+    <a href={`${p('work')}?filter=all`} aria-label="Alle Projekte"><Icon name="grid" size={18} /></a>
   </nav>
   {machines.map((machine, index) => {
     const entry = entries.get(machine.slug)!;
@@ -72,7 +72,7 @@ const profileGallery = (kind: 'kasse' | 'phone', title: string, titleEn: string,
         <header class="mobile-arcade__heading">
           <div class="mobile-arcade__eyebrow">
             <span class="mobile-arcade__number">{String(index + 2).padStart(2, '0')} / {String(items.length).padStart(2, '0')}</span>
-            {index === 0 && <a class="mobile-arcade__index" href={p('work')}>
+            {index === 0 && <a class="mobile-arcade__index" href={`${p('work')}?filter=all`}>
               <span data-lang="de">{copy.de.home.allProjects}</span><span data-lang="en">{copy.en.home.allProjects}</span>
               <Icon name="grid" size={15} />
             </a>}
@@ -81,12 +81,12 @@ const profileGallery = (kind: 'kasse' | 'phone', title: string, titleEn: string,
           <p class="mobile-arcade__role"><span data-lang="de">{entry.role}</span><span data-lang="en">{entry.roleEn ?? entry.role}</span></p>
           {activity && <p class="project-activity" data-activity={activity.id}><span data-lang="de">{activity.de}</span><span data-lang="en">{activity.en}</span></p>}
         </header>
-        <a class="mobile-arcade__machine" href={machine.href} aria-label={machine.title} data-mobile-enter>
+        <a class="mobile-arcade__machine" href={machine.href} data-mobile-enter>
           <picture>
             <source media="(max-width: 899px)" srcset={`${poster(machine.slug)}-sm.webp 390w, ${poster(machine.slug)}.webp 780w`} sizes="(min-width: 600px) 520px, 100vw" />
             <img src={blank} alt="" width="780" height="940" loading="lazy" decoding="async" />
           </picture>
-          <span class="mobile-arcade__cue"><span data-lang="de">Antippen · Screens erkunden</span><span data-lang="en">Tap · explore screens</span><span aria-hidden="true">↗</span></span>
+          <span class="sr-only"><span data-lang="de">{machine.title}: </span><span data-lang="en">{machine.titleEn ?? machine.title}: </span></span><span class="mobile-arcade__cue"><span data-lang="de">Antippen · Screens erkunden</span><span data-lang="en">Tap · explore screens</span><span aria-hidden="true">↗</span></span>
         </a>
         <div class="mobile-arcade__caption">
           <p><span data-lang="de">{machine.summary}</span><span data-lang="en">{machine.summaryEn ?? machine.summary}</span></p>
@@ -101,15 +101,15 @@ const profileGallery = (kind: 'kasse' | 'phone', title: string, titleEn: string,
   <article class="mobile-arcade__exhibit mobile-arcade__exhibit--contact" id="exhibit-telefon" data-exhibit="telefon">
     <script type="application/json" data-mobile-gallery set:html={JSON.stringify(profileGallery('phone','Kontakt','Contact',p('media/contact/booth.webp'),{de:'Du hast ein Projekt im Kopf? Lass uns darüber sprechen.',en:'Have a project in mind? Let’s talk about it.'})).replace(/</g, '\\u003c')} />
     <header class="mobile-arcade__heading"><span class="mobile-arcade__number">{String(items.length).padStart(2,'0')} / {items.length}</span><h2><span data-lang="de">Kontakt</span><span data-lang="en">Contact</span></h2></header>
-    <a class="mobile-arcade__machine" href={p('contact')} data-mobile-enter aria-label="Kontakt / Contact">
+    <a class="mobile-arcade__machine" href={p('contact')} data-mobile-enter>
       <img src={p('media/contact/booth.webp')} alt="" width="780" height="940" loading="lazy" decoding="async" />
-      <span class="mobile-arcade__cue"><span data-lang="de">Antippen · näher kommen</span><span data-lang="en">Tap · take a closer look</span><span aria-hidden="true">↗</span></span>
+      <span class="sr-only"><span data-lang="de">Kontakt: </span><span data-lang="en">Contact: </span></span><span class="mobile-arcade__cue"><span data-lang="de">Antippen · näher kommen</span><span data-lang="en">Tap · take a closer look</span><span aria-hidden="true">↗</span></span>
     </a>
     <div class="mobile-arcade__caption"><a class="mobile-arcade__open" href={p('contact')}><span data-lang="de">Kontakt aufnehmen</span><span data-lang="en">Get in touch</span><Icon name="arrow-up-right" size={19} /></a></div>
   </article>
   <footer class="mobile-arcade__footer">
     <nav aria-label="Portfolio">
-      <a href={p('work')}><span data-lang="de">{copy.de.home.allProjects}</span><span data-lang="en">{copy.en.home.allProjects}</span></a>
+      <a href={`${p('work')}?filter=all`}><span data-lang="de">{copy.de.home.allProjects}</span><span data-lang="en">{copy.en.home.allProjects}</span></a>
       <a href={p('impressum')}><span data-lang="de">Impressum</span><span data-lang="en">Legal notice</span></a>
       <a href={p('privacy')}><span data-lang="de">Datenschutz</span><span data-lang="en">Privacy</span></a>
     </nav>
@@ -182,12 +182,29 @@ const profileGallery = (kind: 'kasse' | 'phone', title: string, titleEn: string,
     event.stopImmediatePropagation();
     if (opening) return;
     opening = true;
+    // The tap shows at once that it was taken (the viewer's module can take seconds on a slow line)
+    entry.dataset.pending = '';
+    const from = location.pathname;
     import('./mobile-arcade-viewer').then(module => {
       opening = false;
+      // Only if the visitor is still where they tapped: a late module must not open a viewer over another page.
+      if (!exhibit.isConnected || location.pathname !== from || window.innerWidth >= 900) return;
       return module.openMobileArcade(exhibit, entry.href);
     })
-      .catch(() => { window.location.href = entry.href; })
-      .finally(() => { opening = false; });
+      .catch(() => { if (exhibit.isConnected && location.pathname === from) window.location.href = entry.href; })
+      .finally(() => { opening = false; delete entry.dataset.pending; });
+  }, true);
+  // "Die Projekte" scrolls to the first project without leaving #exhibit-… in the address: a hash there disabled
+  // the return-position restore for the rest of the visit (and the language switch carried it along).
+  document.addEventListener('click', event => {
+    const link = (event.target as Element)?.closest<HTMLAnchorElement>('a.mobile-arcade__index[href^="#exhibit-"]');
+    if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const target = document.getElementById(link.getAttribute('href')!.slice(1));
+    if (!target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    // capture phase: ahead of the ClientRouter, which would otherwise push the hash itself
   }, true);
   document.addEventListener('astro:before-preparation', event => {
     const ev = event as Event & { from: URL; to: URL; loader: () => Promise<void>; signal: AbortSignal };

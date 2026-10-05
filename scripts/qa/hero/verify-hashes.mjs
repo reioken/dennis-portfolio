@@ -8,6 +8,7 @@ const ROOT = path.resolve(fileURLToPath(import.meta.url), '../../../..');
 const files = [
   'src/components/hall/hallScene.ts',
   'src/components/hall/hallLayout.ts',
+  'src/components/hall/boombox.ts',
   'src/components/hall/heroMaterial.ts',
   'src/components/hall/hardwareWear.ts',
   'src/components/hall/floorReflectionShader.ts',

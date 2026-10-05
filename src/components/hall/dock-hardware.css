@@ -19,8 +19,8 @@
 .hall-console[data-hardware="ready"] .hall-dock__arrow,.hall-console[data-hardware="ready"] .hall-dock__open,.hall-console[data-hardware="ready"] .hall-dock__directory,.hall-console[data-hardware="ready"] .hall-dock__identity,.hall-console[data-hardware="ready"] .hall-console__ball { background: transparent; border-color: transparent; box-shadow: none; }
 .hall-console[data-hardware="ready"] .hall-dock__arrow:hover,.hall-console[data-hardware="ready"] .hall-dock__open:hover { color: #0e0c17; }
 .hall-console[data-hardware="ready"] .hall-dock__directory:hover { color: white; }
-.hall-console .hall-dock__arrow:disabled { opacity: .3; }
-.hall-console .hall-dock__arrow:hover:not(:disabled) svg { filter: drop-shadow(0 0 3px #fff8); }
+.hall-console .hall-dock__arrow:is(:disabled, [aria-disabled='true']) { opacity: .3; }
+.hall-console .hall-dock__arrow:hover:not(:disabled, [aria-disabled='true']) svg { filter: drop-shadow(0 0 3px #fff8); }
 .hall-console .hall-dock__open:hover { text-shadow: 0 0 12px #fff8; }
 .hall-console .hall-dock__identity::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,#c6b9e709,transparent 50%),repeating-linear-gradient(0deg,transparent 0 3px,#0002 3px 4px); }
 @media (min-width:900px) and (max-width:1100px) {

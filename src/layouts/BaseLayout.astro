@@ -184,6 +184,9 @@ const personLd = {
       // das der ClientRouter beim ersten Laden und nach jedem Wechsel feuert.
       import { revealBoot } from '../lib/reveal-boot';
       import { focusAfterNav } from '../lib/focus-after-nav';
+      import { keepFocusClear, trackPinchZoom } from '../lib/focus-clear';
+      keepFocusClear();
+      trackPinchZoom();
       document.addEventListener('astro:page-load', () => {
         revealBoot();
         focusAfterNav();

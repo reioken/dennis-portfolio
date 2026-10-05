@@ -15,7 +15,8 @@ export function pauseMobileArcade(paused: boolean) {
   const button = document.querySelector<HTMLButtonElement>('.mobile-arcade__motion');
   if (button) {
     button.setAttribute('aria-pressed', String(paused));
-    button.setAttribute('aria-label', paused ? 'Animation abspielen / Play animation' : 'Animation pausieren / Pause animation');
+    // A toggle keeps one name; aria-pressed says whether the animation is paused.
+    button.setAttribute('aria-label', document.documentElement.dataset.lang === 'en' ? 'Pause animation' : 'Animation pausieren');
     button.querySelector('span')!.textContent = paused ? '▷' : 'Ⅱ';
   }
   syncMobileArcadeVisibility();

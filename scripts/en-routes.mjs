@@ -241,6 +241,11 @@ function toEnglish(html, rel) {
   out = out.replace(/aria-label="Menü öffnen"/g, 'aria-label="Open menu"');
   out = out.replace(/aria-label="Portfolio-Halle"/g, 'aria-label="Portfolio hall"');
   out = out.replace(/aria-label="Stationen"/g, 'aria-label="Stations"');
+  out = out.replace(/aria-label="Alle Projekte"/g, 'aria-label="All projects"');
+  out = out.replace(/aria-label="Animation pausieren"/g, 'aria-label="Pause animation"');
+  out = out.replace(/alt="Dennis im Greifautomaten"/g, 'alt="Dennis in the claw machine"');
+  out = out.replace(/class="mobile-about-intro" aria-label="Greifautomat"/g, 'class="mobile-about-intro" aria-label="Claw machine"');
+  out = out.replace(/class="about-index" aria-label="Über mich"/g, 'class="about-index" aria-label="About sections"');
   out = out.replace(/aria-label="Station wählen"/g, 'aria-label="Choose station"');
   out = out.replace(/aria-label="Capture (\d+) von (\d+): /g, 'aria-label="Capture $1 of $2: ');
   // Häufige SSR-Aria-Labels in Galerie-Buttons

@@ -480,6 +480,8 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
 
   /* Unsichtbare Trefferflächen über den Bedienelementen: Maus, Touch, Tastatur, Screenreader in einem;
      dazu eine kleine Beschriftung über jedem Teil, was es tut */
+  // Hit areas that repeat the rail (prev/next/fullscreen, joystick and trackball halves) stay pointer-only:
+  // tabbing through the same three actions twice was noise. Play and capture picks have no rail twin and stay.
   const proxies: React.ReactNode[] = [];
   const tagEls: React.ReactNode[] = [];
   const targetRects = controlTargets(Object.fromEntries(Object.entries(ctlRects).filter(([name]) => roleOf(name, hasPlay))));
@@ -530,6 +532,7 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
           type="button"
           {...common}
           className="closeup__proxy closeup__proxy--ball"
+          tabIndex={-1}
           style={box(dir < 0 ? r.x : r.x + r.w / 2, r.y, r.w / 2, r.h)}
           aria-label={`Trackball: ${dir < 0 ? prevLabel : nextLabel}`}
           onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); ballDrag.current = { x: e.clientX, y: e.clientY, acc: 0, moved: false }; ballDragged.current = false; }}
@@ -551,13 +554,13 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
       proxies.push(half(-1), half(1));
     } else if (role === 'both') {
       proxies.push(
-        <button key={`${name}-l`} type="button" {...common} style={box(r.x, r.y, r.w / 2, r.h)} aria-label={`${name === 'joy' ? 'Joystick' : 'Trackball'}: ${prevLabel}`} onClick={() => step(-1, name)} />,
-        <button key={`${name}-r`} type="button" {...common} style={box(r.x + r.w / 2, r.y, r.w / 2, r.h)} aria-label={`${name === 'joy' ? 'Joystick' : 'Trackball'}: ${nextLabel}`} onClick={() => step(1, name)} />,
+        <button key={`${name}-l`} type="button" {...common} tabIndex={-1} style={box(r.x, r.y, r.w / 2, r.h)} aria-label={`${name === 'joy' ? 'Joystick' : 'Trackball'}: ${prevLabel}`} onClick={() => step(-1, name)} />,
+        <button key={`${name}-r`} type="button" {...common} tabIndex={-1} style={box(r.x + r.w / 2, r.y, r.w / 2, r.h)} aria-label={`${name === 'joy' ? 'Joystick' : 'Trackball'}: ${nextLabel}`} onClick={() => step(1, name)} />,
       );
     } else if (role === 'prev' || role === 'next') {
-      proxies.push(<button key={name} type="button" {...common} style={box(r.x, r.y, r.w, r.h)} aria-label={role === 'prev' ? prevLabel : nextLabel} onClick={() => step(role === 'prev' ? -1 : 1, name)} />);
+      proxies.push(<button key={name} type="button" {...common} tabIndex={-1} style={box(r.x, r.y, r.w, r.h)} aria-label={role === 'prev' ? prevLabel : nextLabel} onClick={() => step(role === 'prev' ? -1 : 1, name)} />);
     } else if (role === 'fullscreen') {
-      proxies.push(<button key={name} type="button" {...common} style={box(r.x, r.y, r.w, r.h)} aria-label={fsLabel} onClick={toggleFullscreen} />);
+      proxies.push(<button key={name} type="button" {...common} tabIndex={-1} style={box(r.x, r.y, r.w, r.h)} aria-label={fsLabel} onClick={toggleFullscreen} />);
     } else if (role === 'play') {
       proxies.push(<button key={name} type="button" {...common} style={box(r.x, r.y, r.w, r.h)} aria-label={en ? PE.play : P.play} onClick={play} />);
     } else if (role === 'pick') {

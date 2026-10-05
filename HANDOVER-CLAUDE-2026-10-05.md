@@ -45,7 +45,16 @@ failed against the previous release: they still expect Riftback first and no liv
 session was started to update them.
 
 In progress next: Dennis asked for a silver, early-2000s style CD player model next to the claw machine
-(left), in the site's palette, where visitors can play his music. Concept image with Gemini, then Meshy.
+(left), in the site's palette, where visitors can play his music. Built locally (not committed, not released):
+[docs/cd-player.md](docs/cd-player.md). Open: whether his album audio may be hosted on the site (until then a
+click opens Spotify), the cover on the disc, and his verdict on size and placement.
+
+## UX/UI audit — October 5–6, local
+
+Dennis asked for a review against [docs/portfolio-ux-ui-rules.md](docs/portfolio-ux-ui-rules.md). Findings, fixes,
+checks and the open decisions are in [docs/research/ux-audit-2026-10-06.md](docs/research/ux-audit-2026-10-06.md).
+Also local: the loader's editorial split (Dennis's mockup; the cube and its motion unchanged, the two ways in as
+buttons). Nothing of this is committed or released.
 
 ## What shipped earlier on October 5
 

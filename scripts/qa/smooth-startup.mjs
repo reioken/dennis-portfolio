@@ -11,7 +11,8 @@ const browser=await chromium.launch({headless:true,args:['--use-angle=d3d11']});
 const cases=(process.env.STARTUP_CASES||'normal,delayed-figure,delayed-art,reduced,early-about,abort-gpu,no-webgl,failed-figure,timeout').split(',');
 try{for(const name of cases){
  const context=await browser.newContext({viewport:{width:name==='reduced'?390:1366,height:900},reducedMotion:name==='reduced'?'reduce':'no-preference'});
- await context.route('**/Stage3D.*.js',async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('this.scene.background=','window.__hall=this,this.scene.background=')});});
+ // The scene lives in a chunk of its own since the phone viewer shares it (2026-10-04): hook whichever file has it.
+ await context.route(/\/(Stage3D|hallScene)\.[^/]*\.js(\?|$)/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('this.scene.background=','window.__hall=this,this.scene.background=')});});
  if(name==='no-webgl')await context.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return type.includes('webgl')?null:get.call(this,type,...args);};});
  if(['delayed-figure','early-about','timeout'].includes(name))await context.route('**/models/dennis.glb*',async route=>{await new Promise(r=>setTimeout(r,name==='timeout'?35000:name==='delayed-figure'?12000:5000));await route.continue().catch(()=>{});});
  if(name==='failed-figure')await context.route('**/models/dennis.glb*',route=>route.fulfill({status:404,body:''}));

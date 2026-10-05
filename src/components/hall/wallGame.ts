@@ -494,9 +494,15 @@ export class WallGame {
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
-    if (!this.engaged || e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
+    if (!this.engaged || e.altKey || e.ctrlKey || e.metaKey) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (e.repeat) {
+      // A held paddle key repeats: the repeats are the game's too. Let through, they reached the hall and moved it to
+      // the next station, which ended the round.
+      if (/^(ArrowLeft|ArrowRight|a|A|d|D| |Spacebar)$/.test(e.key)) { e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
     switch (e.key) {
       case 'Escape':
         // ends the round: the piece is signed and stays, the keys go back to the hall
