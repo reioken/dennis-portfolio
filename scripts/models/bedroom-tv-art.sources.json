@@ -1,0 +1,218 @@
+[
+  {
+    "id": "melee",
+    "title": "Super Smash Bros. Melee",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_GameCube/master/Named_Boxarts/Super%20Smash%20Bros.%20Melee%20(Europe)%20(En%2CFr%2CDe%2CEs%2CIt).png",
+    "local": "melee-Named_Boxarts.png",
+    "sha256": "3da5c8dd149820d1d4ef5a5b8fdbd76c746bcee51123f07e6b3db1725517def4"
+  },
+  {
+    "id": "wind-waker",
+    "title": "Legend of Zelda, The - The Wind Waker",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_GameCube/master/Named_Boxarts/Legend%20of%20Zelda%2C%20The%20-%20The%20Wind%20Waker%20(Europe)%20(En%2CFr%2CDe%2CEs%2CIt).png",
+    "local": "wind-waker-Named_Boxarts.png",
+    "sha256": "e65f7889377b92b1ea96bb48f47cef6dbe1a693ae89ffbd78b963b7953f0778e"
+  },
+  {
+    "id": "ocarina",
+    "title": "Legend of Zelda, The - Ocarina of Time",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Nintendo_64/master/Named_Boxarts/Legend%20of%20Zelda%2C%20The%20-%20Ocarina%20of%20Time%20(Europe)%20(En%2CFr%2CDe).png",
+    "local": "ocarina-Named_Boxarts.png",
+    "sha256": "8e17c6c4995df4c46a18cc843694776444b8beb41d20729005cbbec95703bb52"
+  },
+  {
+    "id": "yoshi",
+    "title": "Super Mario World 2 - Yoshi's Island",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/master/Named_Boxarts/Super%20Mario%20World%202%20-%20Yoshi's%20Island%20(Europe)%20(En%2CFr%2CDe)%20(Rev%201).png",
+    "local": "yoshi-Named_Boxarts.png",
+    "sha256": "1e1f05adf5cf3431be8e5f80b0342e1c88f88f767209a1c9df5de9ba98939c64"
+  },
+  {
+    "id": "smash64",
+    "title": "Super Smash Bros.",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Nintendo_64/master/Named_Boxarts/Super%20Smash%20Bros.%20(Europe)%20(En%2CFr%2CDe).png",
+    "local": "smash64-Named_Boxarts.png",
+    "sha256": "489dea00cece0dbc7ec77060076c1a5aeccd586ef763f73329ec1b570922b522"
+  },
+  {
+    "id": "link-past",
+    "title": "Legend of Zelda, The - A Link to the Past",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/master/Named_Boxarts/Legend%20of%20Zelda%2C%20The%20-%20A%20Link%20to%20the%20Past%20(Europe).png",
+    "local": "link-past-Named_Boxarts.png",
+    "sha256": "64c79ffeb438a3733024b7cf39e4e4d2790ee9130f5686d4b559f6643eeda5cc"
+  },
+  {
+    "id": "links-awakening",
+    "title": "Legend of Zelda, The - Link's Awakening",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Game_Boy/master/Named_Boxarts/Legend%20of%20Zelda%2C%20The%20-%20Link's%20Awakening%20(Canada)%20(Fr).png",
+    "local": "links-awakening-Named_Boxarts.png",
+    "sha256": "87bf63bb1ee64dc69b51448f84f9d9194cb88f626aabdc520e427de7b8b0056a"
+  },
+  {
+    "id": "mario-ds",
+    "title": "Super Mario 64 DS",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Nintendo_DS/master/Named_Boxarts/Super%20Mario%2064%20DS%20(USA).png",
+    "local": "mario-ds-Named_Boxarts.png",
+    "sha256": "b741632f240ed91dcd4a696337c9eef29f51e458cc15498f8a9217c3505fbc6a"
+  },
+  {
+    "id": "melee",
+    "title": "Super Smash Bros. Melee",
+    "category": "Named_Snaps",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_GameCube/master/Named_Snaps/Super%20Smash%20Bros.%20Melee%20(Europe)%20(En%2CFr%2CDe%2CEs%2CIt).png",
+    "local": "melee-Named_Snaps.png",
+    "sha256": "3771632c2f47bbe102b23295eba207c1b33b3998219bf072714a011b8a912e23"
+  },
+  {
+    "id": "links-awakening",
+    "title": "Legend of Zelda, The - Link's Awakening",
+    "category": "Named_Snaps",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Game_Boy/master/Named_Snaps/Legend%20of%20Zelda%2C%20The%20-%20Link's%20Awakening%20(Canada)%20(Fr).png",
+    "local": "links-awakening-Named_Snaps.png",
+    "sha256": "2c0622f51044d76e98997a1d41d9221c00b21e43fdbe5ee061f00bd225de5ee9"
+  },
+  {
+    "id": "mario-ds",
+    "title": "Super Mario 64 DS",
+    "category": "Named_Snaps",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Nintendo_DS/master/Named_Snaps/Super%20Mario%2064%20DS%20(USA).png",
+    "local": "mario-ds-Named_Snaps.png",
+    "sha256": "11a4eefda67f70ed38745022ac9e4a0810a897dd17a6ce8387c1925b97e75d3a"
+  },
+  {
+    "id": "mario64",
+    "title": "Super Mario 64",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Nintendo_64/master/Named_Boxarts/Super%20Mario%2064%20(Europe)%20(En%2CFr%2CDe).png",
+    "local": "mario64-Named_Boxarts.png",
+    "sha256": "f9a774be7c86f036a899e4df8da7d6084e06361e481971810ccc80c1d552c36a"
+  },
+  {
+    "id": "mariokart64",
+    "title": "Mario Kart 64",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Nintendo_64/master/Named_Boxarts/Mario%20Kart%2064%20(Europe).png",
+    "local": "mariokart64-Named_Boxarts.png",
+    "sha256": "34d1702f11ca060e774a40d2f9a3bb5c20ac2a4a37bd94064313597a740d1b3c"
+  },
+  {
+    "id": "mario-world",
+    "title": "Super Mario World",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/master/Named_Boxarts/Super%20Mario%20World%20(Europe).png",
+    "local": "mario-world-Named_Boxarts.png",
+    "sha256": "d716d0134d4ddbf7c55513bfe9caf7131a8190ad6c73c0c1a2438f81c21b17d2"
+  },
+  {
+    "id": "dkc",
+    "title": "Donkey Kong Country",
+    "category": "Named_Boxarts",
+    "url": "https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/master/Named_Boxarts/Donkey%20Kong%20Country%20(Europe)%20(En%2CFr%2CDe).png",
+    "local": "dkc-Named_Boxarts.png",
+    "sha256": "a17a323552e71a8559c58e4fbc9497c224f1812cfb4e8697c321d5189016a272"
+  },
+  {
+    "id": "gc-melee",
+    "title": "Super Smash Bros. Melee",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GALP01.png",
+    "local": "gc/melee-full.png",
+    "sha256": "9c69658055f6984d3973b5809e2585c621d8514e30701f102552669fcb495a13"
+  },
+  {
+    "id": "gc-wind-waker",
+    "title": "The Legend of Zelda: The Wind Waker",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GZLP01.png",
+    "local": "gc/wind-waker-full.png",
+    "sha256": "f39fdc5a65aaf1072234394f870236f3a869f4d459d5c3b10434652e967b9884"
+  },
+  {
+    "id": "gc-double-dash",
+    "title": "Mario Kart: Double Dash!!",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GM4P01.png",
+    "local": "gc/double-dash-full.png",
+    "sha256": "d1975da81df13c63efd337ec644ed08d5317662274f6a0a26ca872f19c30b67e"
+  },
+  {
+    "id": "gc-luigis-mansion",
+    "title": "Luigi's Mansion",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GLMP01.png",
+    "local": "gc/luigis-mansion-full.png",
+    "sha256": "9517e8ad6e3c0f4e1d698f6425a87194f8399071f3721b5eb4f99d0b04f31f00"
+  },
+  {
+    "id": "gc-sunshine",
+    "title": "Super Mario Sunshine",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GMSP01.png",
+    "local": "gc/sunshine-full.png",
+    "sha256": "320207292322151adde5da9df4f5b7b569796888ef7c8af00b9ba99c7c7bf443"
+  },
+  {
+    "id": "gc-metroid-prime",
+    "title": "Metroid Prime",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GM8P01.png",
+    "local": "gc/metroid-prime-full.png",
+    "sha256": "5f8dfe515b85dff3b3afef802ae5766286f32c93e897587aed47ce806f8e479c"
+  },
+  {
+    "id": "gc-pikmin",
+    "title": "Pikmin",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GPIP01.png",
+    "local": "gc/pikmin-full.png",
+    "sha256": "1a0e4993d6823051e89efdacda894137014d10e3963e4a8014bf1f4646102acb"
+  },
+  {
+    "id": "gc-twilight-princess",
+    "title": "The Legend of Zelda: Twilight Princess",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GZ2P01.png",
+    "local": "gc/twilight-princess-full.png",
+    "sha256": "2573c4f4cbe1c81541420acdf4e7707f672300c02e2d68b808bc194d00c841d4"
+  },
+  {
+    "id": "gc-mario-party-4",
+    "title": "Mario Party 4",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GMPP01.png",
+    "local": "gc/mario-party-4-full.png",
+    "sha256": "95f1572f5d9b5a9960ed648ef8be7801693a9ce231825b11ef57f13d9d6bd6c2"
+  },
+  {
+    "id": "gc-f-zero-gx",
+    "title": "F-Zero GX",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GFZP01.png",
+    "local": "gc/f-zero-gx-full.png",
+    "sha256": "d764e8260ee11e2783bba8610143bc38b49be63f31870810493e5037950948c9"
+  },
+  {
+    "id": "gc-paper-mario",
+    "title": "Paper Mario: The Thousand-Year Door",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/G8MP01.png",
+    "local": "gc/paper-mario-full.png",
+    "sha256": "48337ba2f6fa7939c559a7abe1fbeafcf59d8ef8bf80a90d735d44d3caff1348"
+  },
+  {
+    "id": "gc-animal-crossing",
+    "title": "Animal Crossing",
+    "category": "GameTDB coverfullHQ",
+    "url": "https://art.gametdb.com/wii/coverfullHQ/EN/GAFP01.png",
+    "local": "gc/animal-crossing-full.png",
+    "sha256": "79dd995a304f41ed0c3ae4777488849ffcb5dfeae592f491a5b883cfc9a15150"
+  }
+]

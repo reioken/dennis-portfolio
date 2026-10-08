@@ -565,7 +565,7 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
       proxies.push(<button key={name} type="button" {...common} style={box(r.x, r.y, r.w, r.h)} aria-label={en ? PE.play : P.play} onClick={play} />);
     } else if (role === 'pick') {
       const i = Number(name.slice(4));
-      if (i < total) proxies.push(<button key={name} type="button" {...common} style={box(r.x, r.y, r.w, r.h)} aria-label={`Capture ${i + 1}`} onClick={() => { onIndex(i); ctl(name, 'press'); }} />);
+      if (i < total) proxies.push(<button key={name} type="button" {...common} style={box(r.x, r.y, r.w, r.h)} aria-label={`Screenshot ${i + 1}`} onClick={() => { onIndex(i); ctl(name, 'press'); }} />);
     }
   }
 
@@ -579,7 +579,7 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
         style={screenStyle}
         tabIndex={-1}
         role="region"
-        aria-roledescription="carousel"
+        aria-roledescription={en ? 'carousel' : 'Bilderkarussell'}
         aria-label={`${en ? PE.captures : P.captures}: ${title}`}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
@@ -592,7 +592,7 @@ export default function Closeup({ open, title, brand, lang, reduce, groups, gi, 
           </figure>
         ) : null}
         {shot ? (
-          <figure key={shot.src} className="closeup__shot is-current" role="group" aria-roledescription="slide" aria-label={slideLabel}>
+          <figure key={shot.src} className="closeup__shot is-current" role="group" aria-roledescription={en ? 'slide' : 'Bild'} aria-label={slideLabel}>
             <picture>
               {toAvif(hiReady === shot.src && shot.srcHi ? shot.srcHi : shot.src) && <source type="image/avif" srcSet={toAvif(hiReady === shot.src && shot.srcHi ? shot.srcHi : shot.src)} />}
               <img src={hiReady === shot.src && shot.srcHi ? shot.srcHi : shot.src} alt={altFor(shot, lang)} decoding="async" draggable={false} />

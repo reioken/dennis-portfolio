@@ -2,7 +2,8 @@
 // roughness and occlusion maps up to 1024², everything as WebP. Runs in its own process on purpose: the
 // @gltf-transform/functions bundle pulls in a second native sharp build, and two libvips in one process break
 // every encode ("colourspace: parameter space not set"). Run before pack-models.mjs.
-//   node scripts/models/shrink-textures.mjs
+//   node scripts/models/shrink-textures.mjs [--only <name>] [--detail-cap <px>]
+// --detail-cap raises the normal/roughness cap for one model seen up close (the hi-fi's radio: 2048).
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptEncoder, MeshoptDecoder } from 'meshoptimizer';
@@ -12,6 +13,7 @@ import { join, relative, basename } from 'node:path';
 
 const ROOT = 'public/models';
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
+const detailCap = process.argv.includes('--detail-cap') ? Number(process.argv[process.argv.indexOf('--detail-cap') + 1]) : 1024;
 await MeshoptEncoder.ready; await MeshoptDecoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 
@@ -34,7 +36,7 @@ for await (const file of walk(ROOT)) {
     for (const material of root.listMaterials()) {
       if (material.getBaseColorTexture() === texture || material.getEmissiveTexture() === texture) colour = true;
     }
-    const cap = colour ? 2048 : 1024;
+    const cap = colour ? 2048 : detailCap;
     const view = texture.getImage();
     if (!view) continue;
     const image = Buffer.from(view);

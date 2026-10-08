@@ -50,6 +50,6 @@ export const aboutContent = {
     de: 'Neben meiner Arbeit als Art Director entstehen eigene Spiele und Musik. Hier liegen gerade meine aktuellen Projekte.',
     en: 'Alongside my work as an art director, I make games and music. These are my current projects.',
   },
-  games: ['Ishikiri', 'Umbra', 'Double Dip', 'Cab No. 09', 'Sew It!'],
+  games: ['Ishikiri', 'Umbra', 'Double Dip', 'Cab No. 9', 'Sew It!'],
   music: { artist: 'memoryrot', title: 'a lifetime, briefly', url: 'https://open.spotify.com/album/44mNF6rpjYqVwUrxJ0X7q1' },
 };

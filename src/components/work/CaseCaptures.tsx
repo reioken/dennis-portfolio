@@ -397,7 +397,7 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
             data-slide={i}
             className="captures__slide"
             style={{ aspectRatio: `${shot.width ?? (phone ? 9 : 16)} / ${shot.height ?? (phone ? 16 : 10)}` }}
-            aria-label={`Capture ${i + 1} ${lang === 'en' ? 'of' : 'von'} ${images.length}: ${altFor(shot, lang)}`}
+            aria-label={`Screenshot ${i + 1} ${lang === 'en' ? 'of' : 'von'} ${images.length}: ${altFor(shot, lang)}`}
             onClick={() => enterCloseup(i)}
           >
             <picture>
@@ -434,7 +434,7 @@ export default function CaseCaptures({ title, brand, groups, arcadeHref }: Props
               style={{ ['--i' as string]: i } as CSSProperties}
               tabIndex={on ? 0 : -1}
               aria-pressed={on}
-              aria-label={`Capture ${i + 1} ${lang === 'en' ? 'of' : 'von'} ${images.length}: ${altFor(shot, lang)}`}
+              aria-label={`Screenshot ${i + 1} ${lang === 'en' ? 'of' : 'von'} ${images.length}: ${altFor(shot, lang)}`}
               title={titleAttr}
               onClick={() => enterCloseup(i)}
               onPointerEnter={(e) => onEnter(e, i)}

@@ -9,6 +9,7 @@ import WebsitesStackLogo from './WebsitesStackLogo';
 import { toAvif } from '../../lib/img';
 import Icon from '../icons/Icon';
 import type { ProjectActivityId } from '../../lib/project-activity';
+import { getProjectStatus } from '../../lib/project-status';
 
 /** Tag slugs are data values — show localized labels on the cards. */
 const TAG_LABELS: Record<string, { de: string; en: string }> = {
@@ -106,7 +107,7 @@ export default function ProjectCard({
   const ambient = !reduce && !compact;
   const liveActive = hovering && !reduce;
   const Heading = headingLevel;
-  const pausedPrototype = status === 'wip' && activity === 'paused';
+  const delivery = getProjectStatus(status, activity);
 
   const onMove = (e: React.MouseEvent) => {
     if (preview || reduce || window.matchMedia('(pointer: coarse)').matches) return;
@@ -259,7 +260,7 @@ export default function ProjectCard({
           }`}
         >
           <Bi de={year} en={yearEn} />
-          {status ? <> · <Bi de={pausedPrototype ? 'Prototyp' : ({ live: 'Live', wip: 'In Entwicklung', private: 'Privat', archived: 'Archiv', released: 'Veröffentlicht', case: 'Case Study' } as Record<string,string>)[status] ?? status} en={pausedPrototype ? 'Prototype' : ({ live: 'Live', wip: 'In development', private: 'Private', archived: 'Archive', released: 'Released', case: 'Case study' } as Record<string,string>)[status] ?? status} /></> : null}
+          {delivery ? <> · <Bi de={delivery.de} en={delivery.en} /></> : null}
         </span>
       </div>
       <div

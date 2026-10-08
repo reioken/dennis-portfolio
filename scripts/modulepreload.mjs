@@ -38,7 +38,8 @@ async function reachable(distDir, entry, cache) {
 }
 
 /**
- * The first view's large files (environment, the claw machine's figure and plush). Measured live 2026-09-19:
+ * The first view's large files (environment, the claw machine's figure and plush, the music corner beside it).
+ * Measured live 2026-09-19:
  * the network sat idle from 0.5 s (JS done) to 1.4 s (scene constructed, loaders started) while these megabytes
  * were still to come. `as="fetch" crossorigin` matches three's FileLoader and the environment fetch, so the
  * preloaded response is reused. Phone case pages are native and never start the hall: they get a media condition.
@@ -52,12 +53,15 @@ const CLAW_FIRST = /^(en[\\/])?(about[\\/])?index\.html$/;
 async function firstViewAssets(distDir, html, rel, chunkSources) {
   const figure = html.match(/\/models\/dennis\.glb\.gz\?v=[0-9a-f]+/)?.[0];
   const bundled = (name) => chunkSources.map((s) => s.match(new RegExp(`/models/plush/${name}\\.glb\\.gz\\?v=[0-9a-f]+`))?.[0]).find(Boolean);
+  const hifi = chunkSources.map((s) => s.match(/\/models\/hifi-v1\.glb\.gz\?v=[0-9a-f]+/)?.[0]).find(Boolean);
   const claw = CLAW_FIRST.test(rel);
   const wanted = [
     '/textures/hall-environment-v2.bin.gz',
     claw && figure,
     claw && bundled('pile-back-v1'),
     claw && bundled('pile-side-v1'),
+    claw && hifi,
+    // The Nintendo corner (4.8 MB) loads after the reveal (hallScene loadBedroom): no preload competing with startup.
   ].filter(Boolean);
   const present = [];
   for (const href of wanted) {

@@ -1,0 +1,686 @@
+{
+  "date": "2026-10-08",
+  "scope": "Nintendo TV corner",
+  "pipeline": [
+    "isolated-reference-image",
+    "Tripo-image-to-3D",
+    "Blender-polish",
+    "hall-integration",
+    "visual-review"
+  ],
+  "tripoStudio": "https://studio.tripo3d.ai/",
+  "status": "V2 rejected by Dennis; all fifteen source types reprocessed and assembled in Blender v3; correction candidate awaiting visual acceptance; browser verification unavailable",
+  "artSources": "scripts/models/bedroom-tv-art.sources.json",
+  "layout": {
+    "stand": "Selected rounded graphite three-tier mockup 03, right of claw",
+    "games": "Uneven horizontal GameCube stacks with long spines outward; mixed SNES/N64 boxes and cartridges; naturally angled controllers",
+    "favorites": [
+      "Super Smash Bros. Melee",
+      "The Legend of Zelda: The Wind Waker",
+      "The Legend of Zelda: Ocarina of Time",
+      "The Legend of Zelda: A Link to the Past",
+      "The Legend of Zelda: Link's Awakening",
+      "Yoshi's Island (SNES)",
+      "Super Smash Bros. (N64)"
+    ]
+  },
+  "references": [
+    {
+      "id": "crt",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-eb93a1e9-ac0b-419d-ab4a-58848e6a330d.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/crt.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/dcb4d486-d2e4-4ec5-b0fc-9972f7393178",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/crt.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "be67544fe1a286550275ea3ab3853d2e2c0a5c6b9f08423f0fefe4e7c139e90c",
+        "bytes": 4455272,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/crt.glb",
+        "texturedSha256": "fcee9f4b49d4f5e89cf14ab67b0c6441c13f6dd59b9a02ac438243a6ecb988c0",
+        "texturedBytes": 11167804
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/crt.glb",
+        "sha256": "17da6dbe37830c203a70762d3f82b64b88dfdcb661985b5ee323d4769d5c1dd5",
+        "bytes": 3845524,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "019dadc967d433f2b9e46a1e285611d5753b939ae9b4f855bf1e8e260b77c5c9",
+      "bytes": 2016825,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/crt.glb",
+        "cleanSourceSha256": "1271f983c4a2acb084130155591f104363667c7d37741f28a5a287304eed9f8b",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\crt.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "gamecube",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-27e5475b-05ba-4a1a-83fc-f27f69c8fc19.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/gamecube.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/86ad0ad8-3543-42b8-b1c0-9dbc3e637431",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/gamecube.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "827cacd9144771d81e256e2548093ccc2e323e1b417f72432e0a6898060ad472",
+        "bytes": 4261988,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/gamecube.glb",
+        "texturedSha256": "d5e2def591b19f72af427344be3917925248e36fb9206436eb5d244994988d87",
+        "texturedBytes": 8691468
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/gamecube.glb",
+        "sha256": "93163ecd134f2d4a8c782cbf8d28b7a3a8c5d68453b9b0477bf5c1963a36dba1",
+        "bytes": 3102256,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "4b516b8c092b49ad106f7b17d9ab49e4c1645ce63c7bb2e8d4d2a3c69b32f2d0",
+      "bytes": 1920006,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/gamecube.glb",
+        "cleanSourceSha256": "ce16f680fb3028273996c46372a83d839b4ad80ca696c74900bc910e44955732",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\gamecube.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "snes",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-ca0fd5a7-bbc6-416a-8e2c-3142ec6a47c9.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/snes.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/caaeb45d-5eef-48e8-8db8-0ec27d6f0119",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/snes.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "31559de30f806444a0d201eedbad6d9262e6bbc46a5e11aa560a9f072d0a6a1a",
+        "bytes": 4479248,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/snes.glb",
+        "texturedSha256": "e84ea0cb501e9d744ebae7d13fb72ceaf076c0f413dbef25341a9fce46ebcc0a",
+        "texturedBytes": 9053272
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/snes.glb",
+        "sha256": "af857f1f7a1ad76e344873c83061b60173fab7c65fd8adaf0b3f853b3bad08c5",
+        "bytes": 3868588,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "7fb1869c3ca2608d4fd8fa340ddc6d7ccf92d00b92430306fa7ce8b04bb0ed26",
+      "bytes": 2002974,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/snes.glb",
+        "cleanSourceSha256": "14e0b61229acc55c70468aa6e06445ee1f52c6b0f376c0a7857956b1a9d5a690",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\snes.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "n64",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-8eed1e8f-31b3-4a66-864b-4f4b8397fa3d.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/n64.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/1d1d613e-71ec-4727-9420-0159e3f6f729",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/n64.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "bee7677f4b2a42c513a929ed38d8382ca432bf357d63094339de4839ce19343b",
+        "bytes": 4578680,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/n64.glb",
+        "texturedSha256": "b1b30aec0b2cae77374f67f128a985fd9da32c9d6dd149e603a1dfe555eaca4e",
+        "texturedBytes": 9778420
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/n64.glb",
+        "sha256": "1c2ff2521504a26849e94772282c62fc076921a613f69025cea6d0cec861de18",
+        "bytes": 1325632,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "3ee4d40077f666ddb2931bdac1d5dbd24055ef2685945e5dedb52adc8254d52b",
+      "bytes": 1755613,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/n64.glb",
+        "cleanSourceSha256": "4105c64615252747a89ceb9dcdc1e1d2c7eb367ab98feac2a0ba8050ee06ef6d",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\n64.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "gameboy",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-6f8ec48a-7016-4daa-8c2b-883bde113aa2.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/gameboy.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/e3c647fe-aa8e-4f98-bd29-291fe6fac4ef",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/gameboy.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "6fd8ed90861f3839c725b8b6d5460574e105de9da309ad4b5e796ee086c55a1c",
+        "bytes": 4551960,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/gameboy.glb",
+        "texturedSha256": "642f9358c323e4bcb9d386170ef8d3ab330e88459734293fa76346ff1b9f392e",
+        "texturedBytes": 9869228
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/gameboy.glb",
+        "sha256": "7983ddd03686f90bf9d4dc53d5b34f7dd39a3170a0eb8038ed1b378197d14a4d",
+        "bytes": 3332932,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "efde58e3f87aade2efc1dffbad41404982e73d4889a589df196d51077778cf41",
+      "bytes": 1793225,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/gameboy.glb",
+        "cleanSourceSha256": "814da07ec687f06889acc7a40f41f46b11bc940c643d2875da9795cdece12747",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\gameboy.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "ds",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-ce0e390a-882d-4b72-8dd3-5fe5a292cd0f.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/ds.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/c7723537-c2d6-40bc-ab3b-d47c1bbe82dc",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/ds.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "90b34849657185e1dec437b7cebf4fc8e07d628fcaea8c8c553da9abaf8d4ed8",
+        "bytes": 4458640,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/ds.glb",
+        "texturedSha256": "c57b6799046a24c85b3ba62c599e62ee9c44cfe815fa75a5aaaefe101c8fadab",
+        "texturedBytes": 10208564
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/ds.glb",
+        "sha256": "c5e54341b6b5dace442c0cf4e5f5798db9a413cdbf6a34658e53f45f5d524400",
+        "bytes": 3641944,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "75885fa2462b3adede93b1b8335d293c7bcb4c3384d88d4edce6d54f8923f990",
+      "bytes": 2187411,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/ds.glb",
+        "cleanSourceSha256": "11064912461878f831dbe28ed3ca17ed62cf7f5028bb4a942debc8debf7ee441",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\ds.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "stand",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-786da4a4-1579-4646-9435-a86311beb2f9.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/stand.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/1e69db2e-f4a9-4520-afbd-f3fc1a752b0a",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/stand.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "9afcefb6e6d542329616232a22e9151097d6ca23555a65fda456a4ed29c449f2",
+        "bytes": 4316320,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/stand.glb",
+        "texturedSha256": "0194489d4c6ed530368db7bb306f52c03359341d89dce11ef995d7bab19c8247",
+        "texturedBytes": 8061908
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/stand.glb",
+        "sha256": "2f6b3967b38928d1d522720cab2978c4615e7931e06d2c353572134e62bc999d",
+        "bytes": 800876,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "86f2131332e409c803c0c4db9e19cdb8c23e7e13bef57f7a7764730c8d6ef4c3",
+      "bytes": 1549481,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/stand.glb",
+        "cleanSourceSha256": "e0bfe39a4360b88560cf4c5bd39fa55c3782d57b008b5df27b36cc90f69c589b",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\stand.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "gamecube-controller",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-63d30011-bc17-4562-bae3-e7ee8ce5f41a.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/gamecube-controller.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/80740255-1354-47d4-a4a7-9df4d8e17165",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/gamecube-controller.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "c2159bf9d281a1fc630da8ded361f8034b3bc6960aa1efe514c2199e4eedf0be",
+        "bytes": 4580016,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/gamecube-controller.glb",
+        "texturedSha256": "9542646ed1a198fdb80e3dd1ad21248e48363d79311e8fd39e6f4b99cb63cc67",
+        "texturedBytes": 7927456
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/gamecube-controller.glb",
+        "sha256": "a77618bd49fe81ab73fd82c80e5cc2f31047fd88d9656b160c2125c7b28f0d9c",
+        "bytes": 1357044,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "30ea2929729c0c547c553fcb1704d0e12d52262c10060b84635453ff82b87106",
+      "bytes": 2051084,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/gamecube-controller.glb",
+        "cleanSourceSha256": "581b44170e798096ca11519bfc79c2747050b3ce4ed46aeb2c58537c379e2309",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\gamecube-controller.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "snes-controller",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-908a8297-6ac5-46ba-880c-d695efdf948f.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/snes-controller.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/3e087935-8575-4688-b38a-d63024ce8489",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/snes-controller.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "af5550042c3c9e1c6df39030ee07a0cd25e5621e84ecb5243bccd00ea22cb898",
+        "bytes": 4694312,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/snes-controller.glb",
+        "texturedSha256": "ef6d70ae07f2ded1bc890fafc86833ddd8714bbddb98803915f56a5507c91863",
+        "texturedBytes": 10675620
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/snes-controller.glb",
+        "sha256": "18861b9c458a6960f6040bfa9f49279d2201a58771a02abb35902f20f3d706f0",
+        "bytes": 1583792,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "5a5b2e1b5a9650972a8d2b42a10694c4d0416d9bea93ee32e6cb217c2d657011",
+      "bytes": 1813299,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/snes-controller.glb",
+        "cleanSourceSha256": "fb281a7e506ac6146dd8b0fb1f237fb33560ca041ef894373bbd9d082ac26b79",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\snes-controller.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "n64-controller",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-e22716a8-8e2d-4ba1-b205-909a4d47c1ea.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/n64-controller.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/e9882e4f-0fb7-4a70-9e59-ed7cc5071ccf",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/n64-controller.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "2ce076b9f5226269b3a3d6193c936d384549c0637d5a6bd0a7dd69c11f155dda",
+        "bytes": 4674524,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/n64-controller.glb",
+        "texturedSha256": "ba83d419b9b34c4035db7241ce982f5a7e62481e8dbf7f9385095316c1110fc0",
+        "texturedBytes": 9379440
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/n64-controller.glb",
+        "sha256": "7933e0311e4f60394de0beea1db73abd6ff5301a607adeee3c5b243926975a21",
+        "bytes": 1281224,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "dc8e378df5f8e3ec054d78bc5af4aa2667951f6314f4259a625095773fc37597",
+      "bytes": 2001225,
+      "artwork": "Generated hardware markings require review during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/n64-controller.glb",
+        "cleanSourceSha256": "7308115b15e512fcaa747f1230c342b6efaee72a522ad7b381eb0c385c180a07",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\n64-controller.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "gamecube-stack",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-e871c1c6-3428-4914-bb06-a964ab17721e.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/gamecube-stack.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/942b72ab-aaf9-4933-9458-ab8869e9dcb8",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/gamecube-stack.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "1fb9337d35619b9e9d9ea3711fbee5307ce74f3958772510fcb31a7e367461fa",
+        "bytes": 4298672,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/gamecube-stack.glb",
+        "texturedSha256": "808a3b94e1359bfab3097fa75747cbe4bf6157fd5a9567e697beab0e47b0dc47",
+        "texturedBytes": 11496008
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/gamecube-stack.glb",
+        "sha256": "ff3329616f1e064dbf6696481ab5eb38277964ab5ff927445ac8a611fefb4908",
+        "bytes": 807580,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "a5f1e703846eda2839ee8b65f41e5404d32440b7c42f3d971a08bfb7ab818eaf",
+      "bytes": 2132062,
+      "artwork": "Blank printed inserts; apply original artwork and title spines during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/gamecube-stack.glb",
+        "cleanSourceSha256": "0b2937115fbe8287aee043219673da1d409fd82ed902b852ec4d198f9f77928e",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\gamecube-stack.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "retro-games",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-9d1519a4-cade-414f-8b86-fad2c9eb7c4e.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/retro-games.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/932ba425-15eb-44fe-aad3-ed05a9938194",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/retro-games.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "f350c1694e4b21ab04b8596eea412a2bbf389ab554ab64d4b86178191c14e792",
+        "bytes": 4447568,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/retro-games.glb",
+        "texturedSha256": "c87a76a79df9466260f1019ad95cb26b52af35b4c8d06f833c34f260d7b4faf6",
+        "texturedBytes": 9909912
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/retro-games.glb",
+        "sha256": "563e2dee49fedd1b3c854d6733cfc0463ae0ff80dc427fa3e6095dc3ceba10fc",
+        "bytes": 1354052,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "24c2597e6e9cc4931eb6eee11360f73d6ad04afb121c6b13eeae96640bd19a16",
+      "bytes": 1863661,
+      "artwork": "Blank printed inserts; apply original artwork and title spines during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/retro-games.glb",
+        "cleanSourceSha256": "fdacf89f61a2d9aaada0c5c41a41f25d8bc5193bd12d813ae74166130ef9609f",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\retro-games.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "melee-case",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-84da630c-9e51-4b56-a5d2-509913b212aa.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/melee-case.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/9be72caa-743e-447e-a444-40b47b6d13f4",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/melee-case.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "854856266f75de3368f23cbfe702eb213dbeae7fbf0c6a93f73c0d1f38322e36",
+        "bytes": 4226736,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/melee-case.glb",
+        "texturedSha256": "d6720c5664031c175c8c19bccf68a7e962396247fe8bdd37a75ae32f339a97dd",
+        "texturedBytes": 7955736
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/melee-case.glb",
+        "sha256": "fd4fcc54bc18344f18c4ed33344486d832d51bed24933a658de483451fb68977",
+        "bytes": 230896,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "652252490631a7bed562f9d68f58ea3a756aab16202fc52c8d6b3698288dc789",
+      "bytes": 1535229,
+      "artwork": "Blank printed inserts; apply original artwork and title spines during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/melee-case.glb",
+        "cleanSourceSha256": "6e4541b57fe9b4f33f2f8a3f3e05e65ef10fd2c1a78acf16ee81971b78ae757e",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\melee-case.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "snes-cartridge",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-e39b76bb-3c53-4501-85ae-a3e2b13bc659.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/snes-cartridge.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/c6cd54ae-731c-4087-b5a7-ac95c70ee148",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/snes-cartridge.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "2bb788e26931d9fb74893793ad8c2401aeb2f4f5a9ed832d09b093cc0ff2bcb1",
+        "bytes": 4168020,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/snes-cartridge.glb",
+        "texturedSha256": "c25c75fd3aed3f3c14543795732316905089f7d34300d2e66385701eaeed162d",
+        "texturedBytes": 9080644
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/snes-cartridge.glb",
+        "sha256": "a62953bc6a165e987e1345716c1be3fc492763606110b7cab7ab29418d98b2c3",
+        "bytes": 894780,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "858713b1415ab2ea8dd56cc504dd0d90285b81719408de751b8b5b1558df2290",
+      "bytes": 1895725,
+      "artwork": "Blank printed inserts; apply original artwork and title spines during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/snes-cartridge.glb",
+        "cleanSourceSha256": "63144f9a2384f5d3b44e9bdcd733e6319763f74971f31ff7c9cd2ffe6487ed0d",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\snes-cartridge.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    },
+    {
+      "id": "n64-cartridge",
+      "originalImage": "C:\\Users\\denni\\.codex\\generated_images\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\exec-93503622-452a-4e16-bc36-2407415d9841.png",
+      "reference": ".source-assets/bedroom-tv-tripo/references/n64-cartridge.png",
+      "tripo": {
+        "status": "downloaded",
+        "jobUrl": "https://studio.tripo3d.ai/workspace/generate/e0bd3097-2ed6-49a6-8b15-feb18bd9abf3",
+        "sourceGlb": ".source-assets/bedroom-tv-tripo/raw/n64-cartridge.glb",
+        "generator": "H3.1 Best Quality",
+        "generationCredits": 30,
+        "privacy": "Private",
+        "sha256": "9bb485793b4bdfa0e788731a0e6cd76c5818e6eb399e55517e445e6607faa279",
+        "bytes": 4196856,
+        "textureStatus": "downloaded",
+        "textureResolution": "4K",
+        "textureCredits": 20,
+        "removeLighting": true,
+        "texturedGlb": ".source-assets/bedroom-tv-tripo/textured/n64-cartridge.glb",
+        "texturedSha256": "f0bad35396aa9adaf020492a70e9f88a6e279b63865a4267751cfc640150fe96",
+        "texturedBytes": 10038736
+      },
+      "blender": {
+        "status": "polished",
+        "outputGlb": ".source-assets/bedroom-tv-tripo/polished/n64-cartridge.glb",
+        "sha256": "57bc79149f21cf3264572429adf9eaf3fce1649614399f58b36c59deb5d5321d",
+        "bytes": 722892,
+        "visualApproval": "rejected-v2"
+      },
+      "sha256": "5b57dd3d5f2cb6153db30babe2d9ccc1e28b02d030879a4b6852d9327022009e",
+      "bytes": 1940767,
+      "artwork": "Blank printed inserts; apply original artwork and title spines during Blender polish",
+      "correction": {
+        "status": "assembled-v3-candidate-unapproved",
+        "cleanSourceGlb": ".source-assets/bedroom-tv-tripo/corrected/n64-cartridge.glb",
+        "cleanSourceSha256": "66c4ff9a6c0fbe48da3112a545a935e36bec2fbc62fd4036f669c2fa9299acc0",
+        "hardwareAITextures": 0,
+        "artistRepairs": "Recorded in editable assembled Blender source and bedroom_tv_artist_repairs.py",
+        "closeup": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\n64-cartridge.png",
+        "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f"
+      }
+    }
+  ],
+  "credits": {
+    "geometry": 450,
+    "texture": 300,
+    "total": 750,
+    "purchased": false
+  },
+  "assembly": {
+    "blend": ".source-assets/bedroom-tv-tripo/bedroom-tv-v2.blend",
+    "model": "public/models/bedroom-tv-v2.glb.gz",
+    "sha256": "a1c96b20190f8a5ab61b13dc218efeb256f2d0ceae429f6f51d389c39c77a1d7",
+    "bytes": 5447498,
+    "runtimeUrl": "/models/bedroom-tv-v2.glb.gz?v=a1c96b20",
+    "triangles": 210220,
+    "materials": 28,
+    "preview": "http://127.0.0.1:4333/",
+    "visualApproval": "rejected",
+    "published": false,
+    "checks": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-tripo-built-checks.json",
+    "studio": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-tripo-v2-final\\assembly.png",
+    "artistRepairs": [
+      "CRT bezel, speakers and RCA/front controls",
+      "GameCube ports, memory slots and disc lid"
+    ]
+  },
+  "correction": {
+    "version": 3,
+    "blend": ".source-assets/bedroom-tv-tripo/bedroom-tv-v3.blend",
+    "sourceBlendSha256": "8cfb5cc7e88f65567d3d67557eedc8014e11f79be58ad09f5aa6cfce27265c4f",
+    "model": "public/models/bedroom-tv-v3.glb.gz",
+    "sha256": "5bfa96da9c1d03079a718679aa6ce5c93463c7a4dd92a0de59f5890e04da8a63",
+    "bytes": 5928346,
+    "triangles": 742449,
+    "materials": 44,
+    "artworkTextures": 13,
+    "hardwareAITextures": 0,
+    "additionalTripoCredits": 0,
+    "published": false,
+    "visualApproval": "unapproved",
+    "checks": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-delivery-audit.json",
+    "closeups": "C:\\Users\\denni\\.codex\\visualizations\\2026\\10\\07\\01a117ee-e0f3-7ad3-961b-2f5d01aa0701\\tv-v3-final-pieces\\review.json",
+    "browserVerification": "Unavailable: CUA fails before execution with kernel-assets path error, os error 3"
+  }
+}

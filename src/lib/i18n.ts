@@ -1,3 +1,5 @@
+import { PROJECT_STATUS_COPY } from './project-status';
+
 export type Lang = 'de' | 'en';
 
 export const copy = {
@@ -72,7 +74,7 @@ export const copy = {
     work: {
       label: 'Arbeit',
       title: 'Projekte',
-      body: 'Apps, Spiele und UX/UI – von der Idee bis zur Umsetzung. Starte mit sechs ausgewählten Projekten oder entdecke alle Arbeiten.',
+      body: 'Apps, Spiele und UX/UI – von der Idee bis zur Umsetzung. Starte mit {count} ausgewählten Projekten oder entdecke alle Arbeiten.',
       filterAll: 'Alle',
       filterProduct: 'Product',
       filterDesign: 'Design',
@@ -107,14 +109,7 @@ export const copy = {
       padHint: '◀ ▶ wählen · A öffnen · Y Zufall',
       attract: 'Attract Mode — beliebige Taste beendet',
       castLabel: 'Der Cast',
-      status: {
-        live: 'live',
-        released: 'released',
-        private: 'Private Build',
-        wip: 'in Arbeit',
-        archived: 'Archiv',
-        case: 'Case Study',
-      },
+      status: PROJECT_STATUS_COPY.de,
       platform: {
         desktop: 'Desktop',
         mobile: 'Mobile',
@@ -292,7 +287,7 @@ export const copy = {
     work: {
       label: 'Work',
       title: 'Projects',
-      body: 'Apps, games and UX/UI, from concept to implementation. Start with six selected projects or explore all the work.',
+      body: 'Apps, games and UX/UI, from concept to implementation. Start with {count} selected projects or explore all the work.',
       filterAll: 'All',
       filterProduct: 'Product',
       filterDesign: 'Design',
@@ -327,14 +322,7 @@ export const copy = {
       padHint: '◀ ▶ select · A open · Y random',
       attract: 'Attract mode — press anything to exit',
       castLabel: 'The cast',
-      status: {
-        live: 'live',
-        released: 'released',
-        private: 'private build',
-        wip: 'in progress',
-        archived: 'archive',
-        case: 'case study',
-      },
+      status: PROJECT_STATUS_COPY.en,
       platform: {
         desktop: 'Desktop',
         mobile: 'Mobile',

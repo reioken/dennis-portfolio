@@ -39,6 +39,8 @@ export function smooth(points: Pt[], perSpan = 10): Pt[] {
 }
 
 const sprites = new Map<number, HTMLCanvasElement>();
+/** A GPU reset blanks canvases held on the GPU, these stamps too: a hall rebuilt after one forgets them first. */
+export function forgetSprayStamps() { sprites.clear(); }
 function sprite(radius: number) {
   const key = Math.max(1, Math.round(radius * 2) / 2);
   let c = sprites.get(key);

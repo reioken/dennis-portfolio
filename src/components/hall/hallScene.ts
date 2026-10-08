@@ -18,10 +18,13 @@ import { textTexture } from './marqueeTexture';
 import { tvPresentation } from './presentation.mjs';
 import { ROOM_POWER_MS, collectRoomPowerTargets, roomCircuitOffset, roomPowerLevels, withRoomPower } from './roomPower.mjs';
 import { visibleTimeout } from './visibleTimeout.mjs';
+import { forgetSprayStamps } from './wallSpray';
 import { makeGlassWear, clearScreenGlass, addPanelWear } from './hardwareWear';
 import { WallPaint } from './wallPaint';
 import { WallGame, WALL_GAME_LAMP_OVERHANG } from './wallGame';
-import { HallBoombox, BOOMBOX_MODEL, BOOMBOX_PLACE } from './boombox';
+import { HallCdPlayer, CD_PLACE } from './cdPlayer';
+import { HallBedroomTv, BEDROOM_PLACE } from './bedroomTv';
+import { albumPlayer } from '../../lib/albumPlayer';
 import { attachWallGrime } from './wallGrime';
 import { cabinetWidth, stationPositions, nearestStation, mascotOffset } from './hallLayout';
 import { makeSurfaceMaps, finishHardware, artworkAspect } from './cabinetMaterials';
@@ -38,8 +41,9 @@ import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLigh
 import type { HallItem, HallMachine, MachineKind } from './Hall';
 
 /** Kamerapose: Reihe (Halle), vor dem Automaten (Projektseite), vor dem Bildschirm (Arcade) */
-/** hall = Reihe · zoom = Automat mit Panel · screen = Close-up (Bildschirm + Bedienfeld) · play = Bildschirm mit Web-Build */
-export type Pose = 'hall' | 'zoom' | 'play' | 'screen';
+/** hall = Reihe · zoom = Automat mit Panel · screen = Close-up (Bildschirm + Bedienfeld) · play = Bildschirm mit Web-Build
+ * · player = the CD player's lid, with its track list (cdPlayer.ts; the hall itself opens and closes it) */
+export type Pose = 'hall' | 'zoom' | 'play' | 'screen' | 'player' | 'bedroom';
 /**
  * Freier Bereich des Viewports, in dem der Automat stehen soll: Mitte (cx, cy als Anteil von
  * Breite/Höhe) und Ausdehnung (fw, fh als Anteil). Desktop: links neben dem Panel; Phone: über dem Sheet.
@@ -68,6 +72,9 @@ const TV_RIG_MODEL = '/models/tv-rig-v1.glb.gz?v=15b5eea7';
 const TV_RIG_LOOK: HeroLook = { seed: 'tvrig', lines: 'swirls', chips: 'chips', turn: .4, scale: 1.6, chip: .4, line: .5 };
 /** The claw machine, rebuilt as a hero machine; its wear is its own (wiped glass box, dinged steel). */
 const CLAW_MODEL = '/models/claw-v2.glb.gz?v=05095413';
+/** The music corner beside it (hifi.ts): Tripo models of every piece, from scripts/models/blender/hifi_build.py. */
+const HIFI_MODEL = '/models/hifi-v1.glb.gz?v=922bcc8c';
+const BEDROOM_MODEL = '/models/bedroom-tv-v9.glb.gz?v=7e5f11d6';
 const CLAW_LOOK: HeroLook = { seed: 'claw', lines: 'swirls', chips: 'chips', turn: .8, scale: .9, chip: .22, line: .3 };
 const SPIN_UP = new THREE.Vector3(0, 1, 0), SPIN_RIGHT = new THREE.Vector3(1, 0, 0);
 const CTL_NAME = /^(joy|btn|btn_\d+|start_\d+|trackball|tbtn_\d+|kbtn_\d+|sel_\d+)$/;
@@ -762,13 +769,18 @@ export class HallScene {
   private wallZ = -1.6;
   private wallRay = new THREE.Vector2();
   private wallGamePointer: number | null = null;
-  /** The CD player left of the claw machine (boombox.ts); loads with the claw machine's station. */
-  private boombox?: HallBoombox;
-  private boomboxRequested = false;
-  private boomboxFrustum = new THREE.Frustum();
-  private boomboxMatrix = new THREE.Matrix4();
-  private boomboxTwin?: HTMLElement;
-  private boomboxBox = '';
+  /** The CD player left of the claw machine (cdPlayer.ts); loads with the claw machine's station. */
+  private cd?: HallCdPlayer;
+  private cdRequested = false;
+  private bedroom?: HallBedroomTv;
+  private bedroomRequested = false;
+  private cdFrustum = new THREE.Frustum();
+  private cdMatrix = new THREE.Matrix4();
+  /** The track list's box when the close-up was framed: the lid stays left of it. */
+  private cdMenu: DOMRect | null = null;
+  /** The next camera travel is the way onto the lid or back: slower than a step between stations. */
+  private longTween = false;
+  private cdClosing = 0;
   private stationX: number[] = [];
   private surfaceMaps = makeSurfaceMaps();
   /** Scanned surfaces for hero machines, fetched with the first one (inside the startup gate). */
@@ -808,7 +820,7 @@ export class HallScene {
   /** Maskottchen für den Greifautomaten (Character-Bilder der Produkte) */
   private kassePlush: string[] = [];
 
-  constructor(container: HTMLElement, items: HallItem[], initial: number, cb: SceneCallbacks, opts: { reduce: boolean; lite: boolean; pose?: Pose; frame?: Frame; exhibit?: boolean }) {
+  constructor(container: HTMLElement, items: HallItem[], initial: number, cb: SceneCallbacks, opts: { reduce: boolean; lite: boolean; pose?: Pose; frame?: Frame; exhibit?: boolean; recover?: boolean }) {
     this.container = container;
     this.measureView();
     if (typeof ResizeObserver !== 'undefined') {
@@ -823,10 +835,16 @@ export class HallScene {
       const it = items[i];
       const url = !it ? undefined : it.kind === 'kasse' ? CLAW_MODEL : (MODELS_BY_SLUG[it.slug] ?? MODELS[it.kind])?.url;
       if (url) void fetchModel(url);
-      if (it?.kind === 'kasse' && !this.exhibit) void fetchModel(BOOMBOX_MODEL);
     }
     if (!this.exhibit) void fetchModel(TV_RIG_MODEL);
-    container.dataset.power = 'loading';
+    // A rebuild after a lost WebGL context (Stage3D) comes back without the loading screen and the ignition: the stage
+    // stays dark until the room is ready, then fades in (hall-loading.css).
+    if (opts.recover) {
+      forgetSprayStamps();
+      this.powerSkipped = true;
+      delete container.dataset.power;
+      container.dataset.recover = 'loading';
+    } else container.dataset.power = 'loading';
     if (!this.exhibit && container.clientWidth >= 900 && (!opts.pose || opts.pose === 'hall')) {
       this.managedLoading = true;
       this.loadingManager.itemStart(DOCK_MODEL);
@@ -957,7 +975,7 @@ export class HallScene {
     const it=this.items[this.focus]; if(!it)return;
     const en=document.documentElement.dataset.lang==='en';
     const label=(isMachine(it)?(en?it.titleEn??it.title:it.title):it.kind==='kasse'?(en?'About me':'Über mich'):en?'Contact':'Kontakt').split(' – ')[0].toUpperCase();
-    this.wallPaint.update(label,this.stationX[this.focus],this.viewW<900,this.pose==='hall' && this.viewW>=900,this.wallTitleKey!==label);
+    this.wallPaint.update(label,this.stationX[this.focus],this.viewW<900,this.roomPose && this.viewW>=900,this.wallTitleKey!==label);
     this.wallTitleKey=label;
     this.syncWallGame();
     this.dirty=true;
@@ -980,7 +998,7 @@ export class HallScene {
       while (cols > WallGame.COLS_MIN && .5 + (WallGame.paintedLeft(game.fieldRight, cols) - this.stationX[0]) / (2 * halfW) < .062) cols -= 1;
       game.setCols(cols);
     }
-    game.setVisible(on, this.reduce, this.pose==='hall' && this.viewW>=900);
+    game.setVisible(on, this.reduce, this.roomPose && this.viewW>=900);
   }
 
   /** Where a screen point lands on the back wall, or null if it points away from it. */
@@ -1571,7 +1589,7 @@ export class HallScene {
       const url = (MODELS_BY_SLUG[m.item.slug] ?? MODELS[m.item.kind])?.url;
       return url ? [url] : [];
     }
-    return [...new Set([CLAW_MODEL, ...(!isMachine(m.item) && m.item.figure ? [m.item.figure] : []), ...CLAW_PRIZES.map(p => p.url)])];
+    return [...new Set([CLAW_MODEL, ...(!isMachine(m.item) && m.item.figure ? [m.item.figure] : []), ...CLAW_PRIZES.map(p => p.url), ...(this.exhibit ? [] : [HIFI_MODEL, BEDROOM_MODEL])])];
   }
 
   /** Background downloads, two at a time, nearest to the current focus first; `urgent` jumps the queue. */
@@ -1662,7 +1680,7 @@ export class HallScene {
       let pending: Promise<unknown>;
       try {
         this.renderer.setRenderTarget(target);
-        pending = this.renderer.compileAsync(obj, this.camera, this.scene);
+        pending = this.compileReady(obj, this.camera, this.scene);
       } finally {
         this.renderer.setRenderTarget(previousTarget);
       }
@@ -1730,6 +1748,29 @@ export class HallScene {
     void this.prepareStartup().catch(error => this.failStartup(error instanceof Error ? error : new Error(String(error))));
   }
 
+  /**
+   * three's compileAsync, ending with the scene: its readiness poll read material properties that dispose() had
+   * already removed (an uncaught TypeError while a late station was still compiling), and on a lost context it
+   * polled every 10 ms for good.
+   */
+  private compileReady(object: THREE.Object3D, camera: THREE.Camera, scene: THREE.Scene): Promise<void> {
+    const renderer = this.renderer;
+    const materials = renderer.compile(object, camera, scene);
+    return new Promise((resolve) => {
+      const check = () => {
+        if (this.disposed || renderer.getContext().isContextLost()) { resolve(); return; }
+        materials.forEach((material) => {
+          const program = (renderer.properties.get(material) as { currentProgram?: { isReady(): boolean } }).currentProgram;
+          if (!program || program.isReady()) materials.delete(material);
+        });
+        if (!materials.size) resolve();
+        else window.setTimeout(check, 10);
+      };
+      if (renderer.extensions.get('KHR_parallel_shader_compile') !== null) check();
+      else window.setTimeout(check, 10);
+    });
+  }
+
   /** Everything drawable, kept from the startup pass so a deferred render path can be compiled later. */
   private compileRenderables: THREE.Object3D[] = [];
   private compiledTargets = new Set<THREE.WebGLRenderTarget | null>();
@@ -1754,7 +1795,7 @@ export class HallScene {
       let pending: Promise<unknown>;
       try {
         this.renderer.setRenderTarget(target);
-        pending = this.renderer.compileAsync(batch, this.camera, this.scene);
+        pending = this.compileReady(batch, this.camera, this.scene);
       } finally {
         // Compilation captures these parameters synchronously. Never retain an
         // offscreen framebuffer across an asynchronous navigation/disposal turn.
@@ -1806,8 +1847,8 @@ export class HallScene {
     this.tv.dur = 0;
     const resident = this.machines[nearestStation(this.stationX, tvX)];
     if (resident && isMachine(resident.item)) {
-      this.updateTv(resident, this.pose === 'hall', performance.now());
-      this.tv.screen.material.opacity = this.pose === 'hall' || this.pose === 'zoom' ? .94 : 0;
+      this.updateTv(resident, this.roomPose, performance.now());
+      this.tv.screen.material.opacity = this.roomPose || this.pose === 'zoom' ? .94 : 0;
       this.tv.screen.visible = this.tv.screen.material.opacity > 0;
     }
     performance.mark('hall:upload-start');
@@ -1906,6 +1947,10 @@ export class HallScene {
     } else {
       delete this.container.dataset.power;
     }
+    if (this.container.dataset.recover) {
+      this.container.dataset.recover = 'done';
+      window.setTimeout(() => { if (!this.disposed) delete this.container.dataset.recover; }, 700);
+    }
     this.readyDone = true;
     this.readyAt = performance.now();
     if (this.powerAt === null) this.flushDeferredScreens();
@@ -1927,14 +1972,14 @@ export class HallScene {
 
   private screenWorkAllowed(index: number) {
     return this.readyDone && this.powerAt === null && this.focus === index
-      && (this.pose === 'hall' || this.pose === 'zoom') && !document.hidden
+      && (this.roomPose || this.pose === 'zoom') && !document.hidden
       && this.settledFlag && performance.now() - this.tweenStart > this.tweenDur + 700;
   }
 
   /** Only the selected project's extra slides may use idle time, one operation at a time. */
   private flushDeferredScreens() {
     if (this.disposed || this.startupFailed || !this.readyDone || this.deferredScreenBusy || this.deferredScreenTimer) return;
-    if (!this.deferredScreens.get(this.focus)?.length || !['hall', 'zoom'].includes(this.pose)) return;
+    if (!this.deferredScreens.get(this.focus)?.length || !['hall', 'zoom', 'player'].includes(this.pose)) return;
     this.deferredScreenTimer = window.setTimeout(() => {
       this.deferredScreenTimer = 0;
       const index = this.focus;
@@ -2299,8 +2344,9 @@ export class HallScene {
     const tv = this.tv;
     const focused = this.machines[this.focus];
     const parked = Boolean(focused && !isMachine(focused.item));
-    // About/contact keep the resident image; allow an initial pending logo to finish loading.
-    if (parked && tv.key && tv.phaseAt >= 0) return;
+    // About/contact show the logo card of the machine the parked TV hangs over (never the slideshow: see
+    // tvPresentation). It used to keep whatever the TV showed before, so jumping back to Über mich or Kontakt left the
+    // last project's logo above Ishikiri or Snapsize (2026-10-06); the key below now decides, as for every station.
     const images = m.bitmaps.filter((b): b is ImageBitmap => Boolean(b));
     const ready = Boolean(this.logoImg(m)) || (isMachine(m.item) && ((!m.item.logo && !m.item.marquee) || this.logoFailures.has((m.item.logo ?? m.item.marquee)!)));
     if (tv.phaseAt < 0 && ready) tv.phaseAt = now;
@@ -2339,61 +2385,81 @@ export class HallScene {
   }
 
   /**
-   * The player's DOM twin (boombox.ts) follows its projected box. Only in the hall pose, once the room is ready and
-   * while the player is on screen: an invisible tab stop would be worse than none.
+   * The CD player's DOM (cdPlayer.ts) follows the picture: its button over the player in the hall pose once the room is
+   * ready, the key twins over the keys in the close-up, nothing while the player is off screen.
    */
-  private placeBoomboxTwin(seen: boolean) {
-    const twin = this.boomboxTwin;
-    if (!twin || !this.boombox) return;
-    const r = seen && this.pose === 'hall' && this.readyDone ? this.boombox.screenBox(this.camera, this.viewW, this.viewH) : null;
-    // at least 44 x 44 px around the player's centre, however far the camera stands
-    const w = Math.round(Math.max(44, r?.w ?? 0)), h = Math.round(Math.max(44, r?.h ?? 0));
-    const x = Math.round((r ? r.x + r.w / 2 : 0) - w / 2), y = Math.round((r ? r.y + r.h / 2 : 0) - h / 2);
-    const key = r ? `${x},${y},${w},${h}` : '';
-    if (key === this.boomboxBox) return;
-    this.boomboxBox = key;
-    twin.hidden = !r;
-    if (r) {
-      twin.style.transform = `translate(${x}px, ${y}px)`;
-      twin.style.width = `${w}px`;
-      twin.style.height = `${h}px`;
-    }
+  private placeCd(seen: boolean) {
+    const cd = this.cd;
+    if (!cd) return;
+    const mode = !seen || !this.readyDone ? 'none' : this.pose === 'hall' ? 'hall' : this.pose === 'player' && cd.isOpen ? 'open' : 'none';
+    cd.place(this.camera, this.viewW, this.viewH, mode);
   }
 
   /**
-   * The CD player stands left of the claw machine and loads with its station: inside the startup gate when the claw
-   * machine is in the first view, otherwise prepared like a late station. A failed download leaves the corner empty;
-   * it never fails the hall (no LoadingManager, whose onError would).
+   * The music corner stands left of the claw machine and is loaded with its station (HIFI_MODEL): inside the startup
+   * gate when the claw machine is in the first view, otherwise prepared like a late station.
    */
-  private loadBoombox(m: Machine) {
-    if (this.boomboxRequested || this.exhibit) return;
-    this.boomboxRequested = true;
-    const done = this.track(m.index);
-    fetchModel(BOOMBOX_MODEL).then((buffer) => {
-      this.gltf.parse(buffer, THREE.LoaderUtils.extractUrlBase(BOOMBOX_MODEL), (gltf) => {
-        if (this.disposed) { done(); return; }
-        const box = new HallBoombox(gltf.scene, { reduce: this.reduce, onChange: () => { this.dirty = this.mirrorDirty = true; } });
-        box.group.position.set(this.stationX[m.index] + BOOMBOX_PLACE.x, 0, BOOMBOX_PLACE.z);
-        box.group.rotation.y = BOOMBOX_PLACE.rotY;
-        const add = () => {
-          if (this.disposed) { box.dispose(); return; }
-          this.scene.add(box.group);
-          this.boombox = box;
-          this.boomboxTwin = box.makeTwin((event) => {
-            const r = this.renderer.domElement.getBoundingClientRect();
-            this.raycaster.setFromCamera(new THREE.Vector2(((event.clientX - r.left) / r.width) * 2 - 1, -(((event.clientY - r.top) / r.height) * 2 - 1)), this.camera);
-            return box.hit(this.raycaster)?.part ?? 'body';
-          });
-          // after the console in the tab order (the hall root holds both; same coordinates as the stage)
-          (this.container.parentElement ?? this.container).appendChild(this.boomboxTwin);
-          this.dirty = this.mirrorDirty = true;
-        };
-        // In the startup set it joins the scene before the gate opens, so the startup compile covers it.
-        if (m.late) void this.prepareLate(box.group).then(add);
-        else add();
-        done();
-      }, (error) => { console.warn('[hall] CD player unavailable', error); done(); });
-    }).catch((error) => { console.warn('[hall] CD player unavailable', error); done(); });
+  private loadCd(m: Machine) {
+    if (this.cdRequested || this.exhibit) return;
+    this.cdRequested = true;
+    this.loadGltf(HIFI_MODEL, (res) => {
+      if (this.disposed) return;
+      const cd = new HallCdPlayer(res.scene, {
+        reduce: this.reduce,
+        wallZ: this.wallZ,
+        onChange: () => { this.dirty = this.mirrorDirty = true; },
+        onOpen: (keyboard) => this.openPlayer(keyboard),
+        onClose: () => this.closePlayer(),
+      });
+      cd.group.position.set(this.stationX[m.index] + CD_PLACE.x, 0, CD_PLACE.z);
+      cd.group.rotation.y = CD_PLACE.rotY;
+      const add = () => {
+        if (this.disposed) { cd.dispose(); return; }
+        this.scene.add(cd.group);
+        this.cd = cd;
+        // after the console in the tab order (the hall root holds both; same coordinates as the stage)
+        (this.container.parentElement ?? this.container).appendChild(cd.dom);
+        if (this.pose === 'player') {
+          this.cdUi(true); this.cdMenu = cd.menuRect(); this.updateGoal(); this.markGoalChanged();
+        }
+        this.dirty = this.mirrorDirty = true;
+      };
+      // In the startup set it joins the scene before the gate opens, so the startup compile covers it.
+      if (m.late) void this.prepareLate(cd.group).then(add);
+      else add();
+    });
+  }
+
+  /**
+   * The Nintendo corner beside the claw. It is 4.8 MB and ~600k triangles, so it never holds the startup gate: in the
+   * first view it is fetched after the reveal and prepared like a late station (2026-10-08 weak-PC pass).
+   */
+  private loadBedroom(m: Machine) {
+    if (this.bedroomRequested || this.exhibit) return;
+    this.bedroomRequested = true;
+    if (!this.readyDone) {
+      this.ready(600000).then(() => { if (!this.disposed) this.fetchBedroom(m, true); }).catch(() => undefined);
+      return;
+    }
+    this.fetchBedroom(m, !!m.late);
+  }
+
+  private fetchBedroom(m: Machine, late: boolean) {
+    this.loadGltf(BEDROOM_MODEL, res => {
+      if (this.disposed) return;
+      const corner = new HallBedroomTv(res.scene, { open: () => this.openBedroom(), close: () => this.closeBedroom() });
+      corner.group.position.set(this.stationX[m.index] + BEDROOM_PLACE.x, 0, BEDROOM_PLACE.z);
+      corner.group.rotation.y = BEDROOM_PLACE.rotY;
+      const add = () => {
+        if (this.disposed) { corner.dispose(); return; }
+        this.scene.add(corner.group); this.bedroom = corner;
+        (this.container.parentElement ?? this.container).appendChild(corner.dom);
+        if (this.pose === 'bedroom') { this.bedroomUi(true); this.updateGoal(); this.markGoalChanged(); }
+        this.dirty = this.mirrorDirty = true;
+      };
+      if (late) void this.prepareLate(corner.group).then(add);
+      else add();
+    });
   }
 
   /**
@@ -2407,7 +2473,8 @@ export class HallScene {
     g.clear();
     g.visible = false;
     const brand = m.brand;
-    this.loadBoombox(m);
+    this.loadCd(m);
+    this.loadBedroom(m);
     const done = this.track(m.index);
     this.loadGltf(
       CLAW_MODEL,
@@ -2881,6 +2948,7 @@ export class HallScene {
   /* ---------- Fokus ---------- */
   setFocus(i: number) {
     const next = Math.max(0, Math.min(this.machines.length - 1, i));
+    if (next !== this.focus && (this.pose === 'player' || this.pose === 'bedroom')) this.setPose('hall');
     if (next !== this.focus) {
       this.finishPower();
       // Kanalwechsel: Schnee auf dem Fernseher, bis er angekommen ist (mindestens kurz)
@@ -2920,6 +2988,9 @@ export class HallScene {
   }
 
   /** Pose wechseln (Halle ↔ Automat ↔ Bildschirm); `frame` = freier Bereich für den Automaten */
+  /** Includes corner close-ups, which are scene poses and do not change the page route. */
+  viewState() { return { pose: this.pose, frame: { ...this.frame }, focus: this.focus }; }
+
   setPose(pose: Pose, frame?: Frame) {
     this.exhibitPoster = false;
     if (frame && frameOk(frame)) this.frame = frame;
@@ -2928,7 +2999,10 @@ export class HallScene {
     if (pose !== 'hall') this.finishPower();
     this.pose = pose;
     this.updateWallTitle();
-    if (pose === 'hall' && was !== 'hall') {
+    if (was === 'player' && pose !== 'player') this.cdUi(false);
+    if (was === 'bedroom' && pose !== 'bedroom') this.bedroomUi(false);
+    this.longTween = was === 'player' || pose === 'player' || was === 'bedroom' || pose === 'bedroom';
+    if (pose === 'hall' && was !== 'hall' && was !== 'player') {
       this.override = null;
       this.blackout = false;
       const m = this.machines[this.focus];
@@ -2936,10 +3010,57 @@ export class HallScene {
     }
     if (was === 'screen' && pose !== 'screen') this.ctlReset();
     // Der Spiegel rendert die Szene ein zweites Mal — im Close-up und beim Spielen ist der Boden nicht im Bild
-    if (this.mirror) this.mirror.visible = pose === 'hall' || pose === 'zoom';
+    if (this.mirror) this.mirror.visible = pose === 'hall' || pose === 'zoom' || pose === 'player' || pose === 'bedroom';
     this.applyFocus(false);
     this.updateGoal();
     this.markGoalChanged();
+  }
+
+  /** The hall pose and the CD player's close-up look at the same room: paint, screens and lights stay as they are. */
+  private get roomPose() { return this.pose === 'hall' || this.pose === 'player' || this.pose === 'bedroom'; }
+
+  openBedroom() {
+    if (!this.bedroom || this.pose !== 'hall' || !this.readyDone || this.disposed) return;
+    this.bedroomUi(true); this.setPose('bedroom');
+  }
+
+  closeBedroom() { if (this.pose === 'bedroom') this.setPose('hall'); }
+
+  private bedroomUi(open: boolean) {
+    this.bedroom?.setOpen(open, !open && this.pose === 'hall');
+    const hall = this.container.closest('.hall');
+    if (open) hall?.setAttribute('data-bedroom-tv', 'open');
+    else hall?.removeAttribute('data-bedroom-tv');
+  }
+
+  /**
+   * Opens the CD player from the hall pose: its track list opens and the camera goes onto the lid (cdPlayer.ts). An
+   * opening from the keyboard takes focus to the player's play key.
+   */
+  openPlayer(keyboard = false) {
+    const cd = this.cd;
+    if (!cd || this.pose !== 'hall' || !this.readyDone || this.disposed) return;
+    this.cdUi(true);
+    this.cdMenu = cd.menuRect();
+    this.setPose('player');
+    if (keyboard) cd.focusInside();
+  }
+
+  /** Back to the hall pose; the music keeps playing. */
+  closePlayer() {
+    if (this.pose === 'player') this.setPose('hall');
+  }
+
+  private cdUi(open: boolean) {
+    this.cd?.setOpen(open);
+    const hall = this.container.closest('.hall');
+    window.clearTimeout(this.cdClosing);
+    if (open) hall?.setAttribute('data-player', 'open');
+    else if (hall?.hasAttribute('data-player')) {
+      // 'closing' while the camera flies back: the console fades in behind it (cd-player.css)
+      hall.setAttribute('data-player', 'closing');
+      this.cdClosing = window.setTimeout(() => { if (hall.getAttribute('data-player') === 'closing') hall.removeAttribute('data-player'); }, 900);
+    }
   }
 
   setFrame(frame: Frame) {
@@ -3033,7 +3154,8 @@ export class HallScene {
     this.tweenFrom.look.copy(this.camLook);
     this.tweenFrom.fov = this.fov;
     this.tweenStart = now;
-    this.tweenDur = this.reduce ? 0 : this.exhibit ? 720 : this.pose === 'hall' ? 260 : 220;
+    this.tweenDur = this.reduce ? 0 : this.exhibit ? 720 : this.longTween ? 620 : this.pose === 'hall' ? 260 : 220;
+    this.longTween = false;
     // Jede neue Fahrt endet mit einer neuen Ankunft: Bildschirm- und Bedienelement-Rechtecke werden dann
     // erneut projiziert — sonst bleibt die Seite auf einem Rechteck von unterwegs sitzen
     this.settledFlag = false;
@@ -3136,14 +3258,14 @@ export class HallScene {
    * das ist die Unschärfe auf dem Glas. Auf 128er Stufen gerundet liegt die Abtastung wieder auf Mip 0.
    */
   private screenLong(m: Machine) {
-    if (this.pose === 'hall' || !this.settledFlag) return 1024;
+    if (this.roomPose || !this.settledFlag) return 1024;
     const px = this.screenPixels(m);
     if (!(px > 64)) return 1024;
     return Math.max(256, Math.min(2048, Math.ceil(px / 128) * 128));
   }
 
   private scheduleSharpen(delay = 90) {
-    if (this.sharpenTimer || this.disposed || this.pose === 'hall') return;
+    if (this.sharpenTimer || this.disposed || this.roomPose) return;
     this.sharpenTimer = window.setTimeout(() => {
       this.sharpenTimer = 0;
       this.sharpenFocusScreen();
@@ -3160,7 +3282,7 @@ export class HallScene {
    * Capture in voller Auflösung ohnehin schon geladen.
    */
   private sharpenFocusScreen() {
-    if (this.disposed || this.startupFailed || this.pose === 'hall' || this.blackout || !this.override) return;
+    if (this.disposed || this.startupFailed || this.roomPose || this.blackout || !this.override) return;
     const m = this.machines[this.focus];
     if (!m?.screen || !isMachine(m.item)) return;
     const raw = this.texCache.get(this.override);
@@ -3230,6 +3352,40 @@ export class HallScene {
       this.goalPos.set(x - distance * 1.25 / 3.8, 1.45 + offset, distance);
       this.goalLook.set(x, 1.03 + offset, 0);
       this.goalFov = 39;
+      return;
+    }
+    if (this.pose === 'bedroom' && this.bedroom) {
+      const { centre, dir, width, height } = this.bedroom.view();
+      const fov = 32, tan = Math.tan(THREE.MathUtils.degToRad(fov / 2));
+      const d = Math.max(height / (.77 * 2 * tan), width / (.84 * aspect * 2 * tan));
+      this.goalLook.copy(centre).add(new THREE.Vector3(0, -.015, 0));
+      this.goalPos.copy(this.goalLook).addScaledVector(dir, d);
+      this.goalFov = fov;
+      return;
+    }
+    if (this.pose === 'player' && this.cd) {
+      // The CD player's close-up: down onto the lid along its normal, tipped a little towards the room so the keys
+      // show their height. Lid and track list are one pair in the middle of the screen, the list just beside the lid
+      // (Dennis, 2026-10-06: it was "too far" at the screen's edge); the lid is as tall as the room under the nav allows.
+      const { centre, normal, radius } = this.cd.lidWorld();
+      const fov = 30;
+      const tanH = Math.tan(THREE.MathUtils.degToRad(fov / 2));
+      const menuW = this.cdMenu?.width || 360;
+      const gap = THREE.MathUtils.clamp(this.viewW * 0.028, 28, 56);
+      const top = 0.1, fh = 0.86;
+      const room = this.viewW - 2 * Math.max(24, this.viewW * 0.04);
+      const lid = Math.max(200, Math.min(0.9 * fh * this.viewH, room - gap - menuW));
+      const left = (this.viewW - (lid + gap + menuW)) / 2;
+      const cx = (left + lid / 2) / this.viewW, cy = top + fh / 2;
+      this.cd.placeMenu(left + lid + gap, cy * this.viewH);
+      const d = (radius * this.viewH) / (lid * tanH);
+      const viewHeight = 2 * d * tanH;
+      const dir = normal.clone().lerp(new THREE.Vector3(Math.sin(CD_PLACE.rotY), 0, Math.cos(CD_PLACE.rotY)), 0.1).normalize();
+      const right = new THREE.Vector3(0, 1, 0).cross(dir).normalize();
+      const up = new THREE.Vector3().crossVectors(dir, right);
+      this.goalLook.copy(centre).addScaledVector(right, (0.5 - cx) * viewHeight * aspect).addScaledVector(up, (cy - 0.5) * viewHeight);
+      this.goalPos.copy(this.goalLook).addScaledVector(dir, d);
+      this.goalFov = fov;
       return;
     }
     if (this.pose === 'hall' || !m) {
@@ -3573,6 +3729,7 @@ export class HallScene {
   }
   setReduce(r: boolean) {
     this.reduce = r;
+    this.cd?.setReduce(r);
     this.syncWallGame();
     if (r) this.finishPower();
   }
@@ -3585,7 +3742,7 @@ export class HallScene {
       // bleiben in der Hand von loadModel)
       if (m.loaded || !(m.item.kind === 'kasse' || MODELS_BY_SLUG[m.item.slug] || MODELS[m.item.kind])) m.group.visible = d <= 6;
       if (d <= NEAR) this.ensureTextures(m);
-      const bright = d === 0 ? 1 : this.pose !== 'hall' ? 0.14 : d === 1 ? 0.62 : 0.4;
+      const bright = d === 0 ? 1 : !this.roomPose ? 0.14 : d === 1 ? 0.62 : 0.4;
       m.group.userData.targetBright = bright;
       if (immediate) m.group.userData.bright = bright;
     }
@@ -3664,8 +3821,15 @@ export class HallScene {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
     let cursor = '';
-    const box = this.pose === 'hall' ? this.boombox?.hit(this.raycaster) : null;
-    if (box && (!hits.length || box.distance <= hits[0].distance)) cursor = 'pointer';
+    const cd = this.roomPose ? this.cd?.hit(this.raycaster) : null;
+    const cdFirst = cd && (!hits.length || cd.distance <= hits[0].distance);
+    const bedroom = this.pose === 'hall' ? this.bedroom?.hit(this.raycaster) : null;
+    const bedroomFirst = bedroom != null && (!hits.length || bedroom <= hits[0].distance) && (!cd || bedroom < cd.distance);
+    // in the close-up a key presses, the unit holds still and anything else (table, speakers, room) goes back
+    if (this.pose === 'bedroom') cursor = 'zoom-out';
+    else if (bedroomFirst) cursor = 'zoom-in';
+    else if (this.pose === 'player') cursor = cdFirst && cd.part === 'key' ? 'pointer' : cdFirst && cd.part === 'body' ? '' : 'zoom-out';
+    else if (cdFirst) cursor = 'pointer';
     else if (hits.length) {
       let o: THREE.Object3D | null = hits[0].object;
       while (o && o.userData.index === undefined) o = o.parent;
@@ -3690,10 +3854,20 @@ export class HallScene {
     const p = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
     this.raycaster.setFromCamera(p, this.camera);
     const hits = this.raycaster.intersectObjects(this.rayCandidates(), true);
-    const box = this.pose === 'hall' ? this.boombox?.hit(this.raycaster) : null;
-    if (box && (!hits.length || box.distance <= hits[0].distance)) {
-      this.boombox!.press(box.part);
-      this.dirty = true;
+    const cd = this.roomPose ? this.cd?.hit(this.raycaster) : null;
+    const cdFirst = cd && (!hits.length || cd.distance <= hits[0].distance);
+    if (this.pose === 'bedroom') { this.closeBedroom(); return; }
+    const bedroom = this.pose === 'hall' ? this.bedroom?.hit(this.raycaster) : null;
+    if (bedroom != null && (!hits.length || bedroom <= hits[0].distance) && (!cd || bedroom < cd.distance)) {
+      this.openBedroom(); return;
+    }
+    if (this.pose === 'player') {
+      if (cdFirst && cd.part === 'key') this.cd!.pressKey(cd.index);
+      else if (!cdFirst || cd.part === 'furniture') this.closePlayer();
+      return;
+    }
+    if (cdFirst) {
+      this.openPlayer(false);
       return;
     }
     if (!hits.length) {
@@ -3722,6 +3896,8 @@ export class HallScene {
     // Zusammengeklapptes Fenster (0 × 0): nichts anfassen, sonst wird die Projektion NaN
     if (!w || !h) return;
     this.sizeRenderTargets(w, h);
+    // the track list sizes with the window: the close-up keeps the lid beside it
+    if (this.pose === 'player') this.cdMenu = this.cd?.menuRect() ?? null;
     this.camera.aspect = w / h;
     this.updateWallTitle();
     this.camera.updateProjectionMatrix();
@@ -3745,7 +3921,7 @@ export class HallScene {
     this.running = false;
     cancelAnimationFrame(this.raf);
     // Parked (another page shows): the player would be out of reach. A hidden tab keeps playing.
-    if (this.container.closest('[data-hall-parked]')) this.boombox?.pause();
+    if (this.container.closest('[data-hall-parked]')) albumPlayer.pause();
   }
   private tick = (now: number) => {
     if (!this.running) return;
@@ -3874,7 +4050,7 @@ export class HallScene {
     const hasPic = Boolean(cur && isMachine(cur.item) && (cur.bitmaps.some(Boolean) || cur.raw.some((t) => t?.image)));
     const arrived = tt >= 1;
     // In der Halle und im Zoom an; im Close-up und beim Spielen aus
-    const screenOn = hasPic && (inHall || this.pose === 'zoom');
+    const screenOn = hasPic && (this.roomPose || this.pose === 'zoom');
     const tvGoalOp = screenOn ? 0.94 : 0;
     tv.screen.material.opacity += (tvGoalOp - tv.screen.material.opacity) * Math.min(1, dt * 5);
     if (Math.abs(tvGoalOp - tv.screen.material.opacity) < 0.015) tv.screen.material.opacity = tvGoalOp;
@@ -3987,13 +4163,14 @@ export class HallScene {
     // The painted game asks for frames only while it moves; its idle state is a still picture.
     if (this.wallGame?.update(now)) this.dirty = true;
     // The CD player asks for frames only while it plays and is in the picture; the music itself never waits on frames.
-    if (this.boombox) {
-      this.boomboxMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
-      this.boomboxFrustum.setFromProjectionMatrix(this.boomboxMatrix);
-      const seen = this.boombox.inView(this.boomboxFrustum);
-      if (this.boombox.update(now, seen)) this.dirty = true;
-      this.placeBoomboxTwin(seen);
+    if (this.cd) {
+      this.cdMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+      this.cdFrustum.setFromProjectionMatrix(this.cdMatrix);
+      const seen = this.cd.inView(this.cdFrustum);
+      if (this.cd.update(now, seen)) this.dirty = true;
+      this.placeCd(seen);
     }
+    this.bedroom?.place(this.camera, this.viewW, this.viewH, !this.readyDone ? 'none' : this.pose === 'hall' ? 'hall' : this.pose === 'bedroom' ? 'open' : 'none');
 
     // Außerhalb der Halle nur rendern, wenn sich etwas bewegt — die Seite daneben bleibt flüssig
     if (inHall || camMoving || lightingMoving || brightMoving || fogMoving || wallMoving || ctlMoving || this.dirty || !this.readyDone) {
@@ -4173,8 +4350,11 @@ export class HallScene {
     this.deferredScreens.clear();
     this.stop();
     this.viewObserver?.disconnect();
-    this.boombox?.silence();
-    this.boomboxTwin?.remove();
+    // The music is albumPlayer's and outlives a rebuilt hall (Stage3D); only the player's DOM goes.
+    this.cd?.dom.remove();
+    this.bedroom?.dom.remove();
+    this.container.closest('.hall')?.removeAttribute('data-player');
+    this.container.closest('.hall')?.removeAttribute('data-bedroom-tv');
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
     this.renderer.domElement.removeEventListener('pointerdown', this.onWallGamePointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.onWallGamePointerUp);
@@ -4193,7 +4373,8 @@ export class HallScene {
 
   private releaseResources() {
     this.wallGame?.dispose();
-    this.boombox?.dispose();
+    this.cd?.dispose();
+    this.bedroom?.dispose();
     this.wallPaint.dispose();
     this.glassWear.roughness.dispose();
     this.tvSlides.forEach(texture=>texture.dispose());this.tvSlides.clear();

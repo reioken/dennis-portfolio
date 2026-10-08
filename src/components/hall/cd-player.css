@@ -1,0 +1,81 @@
+/* The CD player's DOM (cdPlayer.ts): its button over the player in the hall, the key twins over its keys in the
+   close-up, and the track list beside the lid. The layer spans the hall; only its parts take the pointer. */
+.hall-cd-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.hall-cd, .hall-cd-key { position: absolute; left: 0; top: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; pointer-events: auto; -webkit-tap-highlight-color: transparent; }
+.hall-cd[hidden], .hall-cd-key[hidden], .hall-cd-menu[hidden] { display: none; }
+.hall-cd { border-radius: 14px; }
+.hall-cd:focus-visible { outline: 2px solid var(--ice); outline-offset: 4px; }
+.hall-cd__hint {
+  position: absolute; left: 50%; bottom: calc(100% + 12px); translate: -50% 4px;
+  display: grid; gap: 2px; width: max-content; max-width: 260px; padding: 10px 14px;
+  border: 1px solid #ffffff1f; border-radius: 10px; background: #101117eb; box-shadow: 0 10px 24px #0008;
+  color: #c9ccd8; font: 13px/1.4 var(--font-sans); text-align: left;
+  opacity: 0; pointer-events: none; transition: opacity 120ms ease, translate 120ms ease;
+}
+.hall-cd__hint strong { color: #f0f1f5; font-weight: 600; }
+.hall-cd__now { margin-top: 4px; color: #c4adf4; }
+.hall-cd__now:empty { display: none; }
+.hall-cd:is(:hover, :focus-visible) .hall-cd__hint { opacity: 1; translate: -50% 0; }
+
+.hall-cd-key { border-radius: 50%; }
+.hall-cd-key:focus-visible { outline: 2px solid var(--ice); outline-offset: 3px; }
+
+.hall-cd-menu {
+  position: absolute; z-index: 1; top: calc(50% + 32px); right: clamp(16px, 3.2vw, 56px); translate: 0 -50%;
+  box-sizing: border-box; width: min(360px, 34vw); max-height: calc(100% - 132px); overflow: auto; overscroll-behavior: contain;
+  display: grid; gap: 14px; padding: 18px;
+  border: 1px solid #ffffff1a; border-radius: 16px; background: #0e0f16e8; box-shadow: 0 24px 60px #0009, inset 0 1px #ffffff0d;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  color: #c9ccd8; font: 14px/1.4 var(--font-sans); pointer-events: auto;
+  animation: hall-cd-menu-in 340ms 120ms cubic-bezier(.2, .7, .25, 1) both;
+}
+@keyframes hall-cd-menu-in { from { opacity: 0; translate: 18px -50%; } }
+.hall-cd-menu__head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+.hall-cd-menu__cover { display: block; width: 56px; height: 56px; border-radius: 6px; object-fit: cover; box-shadow: 0 4px 14px #0009; }
+.hall-cd-menu__album { display: grid; margin: 0; min-width: 0; }
+.hall-cd-menu__album strong { color: #f1f2f6; font-size: 15px; font-weight: 600; }
+.hall-cd-menu__close {
+  display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
+  border: 1px solid #ffffff1f; border-radius: 10px; background: #ffffff0a; color: #e8e9ef; font: 22px/1 var(--font-sans); cursor: pointer;
+}
+.hall-cd-menu__close:hover { background: #ffffff14; }
+.hall-cd-menu__close:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
+.hall-cd-menu__tracks { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.hall-cd-menu__track {
+  position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  box-sizing: border-box; width: 100%; min-height: 44px; padding: 8px 10px;
+  border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.hall-cd-menu__track:hover { background: #ffffff0d; }
+.hall-cd-menu__track:focus-visible { outline: 2px solid var(--ice); outline-offset: -2px; }
+.hall-cd-menu__track[aria-current] { background: #ffffff12; color: #f4f4f8; }
+.hall-cd-menu__n, .hall-cd-menu__time { color: #8e91a7; font: 12px/1 var(--font-mono); }
+.hall-cd-menu__track[aria-current] .hall-cd-menu__n { color: #c4adf4; }
+.hall-cd-menu__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the playing track's level meter: three bars, still while paused */
+.hall-cd-menu__eq { display: none; align-items: end; gap: 2px; height: 12px; }
+.hall-cd-menu__eq i { width: 3px; height: 100%; border-radius: 1px; background: #c4adf4; transform-origin: bottom; }
+.hall-cd-menu:is([data-state='playing'], [data-state='paused']) .hall-cd-menu__track[aria-current] .hall-cd-menu__eq { display: inline-flex; }
+.hall-cd-menu[data-state='playing'] .hall-cd-menu__eq i { animation: hall-cd-eq 900ms ease-in-out infinite; }
+.hall-cd-menu__eq i:nth-child(2) { animation-delay: -300ms !important; }
+.hall-cd-menu__eq i:nth-child(3) { animation-delay: -600ms !important; }
+.hall-cd-menu[data-state='paused'] .hall-cd-menu__eq i { transform: scaleY(.35); }
+@keyframes hall-cd-eq { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+.hall-cd-menu__bar { position: absolute; right: 10px; bottom: 5px; left: 10px; height: 2px; border-radius: 1px; background: linear-gradient(90deg, #c4adf4 calc(var(--progress, 0) * 100%), #ffffff14 0); opacity: 0; }
+.hall-cd-menu:not([data-state='stopped']) .hall-cd-menu__track[aria-current] .hall-cd-menu__bar { opacity: 1; }
+.hall-cd-menu[data-failed] .hall-cd-menu__track { color: #8e91a7; }
+.hall-cd-menu__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 2px; border-top: 1px solid #ffffff12; }
+.hall-cd-menu__spotify { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: #c4adf4; font-size: 13px; text-decoration: none; }
+.hall-cd-menu__spotify:hover { text-decoration: underline; text-underline-offset: 3px; }
+.hall-cd-menu__spotify:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; border-radius: 6px; }
+.hall-cd-menu__esc { color: #767990; font: 12px/1 var(--font-mono); letter-spacing: .04em; }
+
+/* In the close-up the console steps aside: the lid takes the room's whole height. */
+.hall[data-player='open'] .hall-dock { opacity: 0; visibility: hidden; transition: opacity 200ms ease, visibility 0s 200ms; }
+.hall[data-player='closing'] .hall-dock { transition: opacity 320ms ease 260ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hall-cd__hint { transition: none; }
+  .hall-cd-menu { animation: none; }
+  .hall-cd-menu[data-state='playing'] .hall-cd-menu__eq i { animation: none; transform: scaleY(.7); }
+}

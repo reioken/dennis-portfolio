@@ -377,7 +377,8 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
   root.addEventListener('click',click);
   window.addEventListener('pointerup',release); window.addEventListener('pointercancel',cancelInput); window.addEventListener('keyup',release); window.addEventListener('blur',cancelInput); document.addEventListener('visibilitychange',cancelInput);
   track?.addEventListener('pointerdown',dragStart); track?.addEventListener('pointermove',dragMove); track?.addEventListener('pointerup',dragEnd); track?.addEventListener('lostpointercapture',dragEnd);
-  const lost=(event:Event)=>{event.preventDefault();cancelInput();canvas.style.display='none';root.dataset.hardware='fallback';}; canvas.addEventListener('webglcontextlost',lost);
+  // Not restored in place (Hall.tsx mounts a new console once the GPU is back); captured ahead of three's handler, which would ask for it.
+  const lost=(event:Event)=>{event.stopImmediatePropagation();cancelInput();canvas.style.display='none';root.dataset.hardware='fallback';root.dispatchEvent(new CustomEvent('dock:contextlost'));}; canvas.addEventListener('webglcontextlost',lost,{capture:true});
   void load().catch(()=>{if(!dead){canvas.style.display='none'; root.dataset.hardware='fallback';}});
   // A download that stalls (not fails) used to keep the console hidden and dead for good: after 20 s of visible time
   // the DOM console takes over, and a late GLB is then ignored rather than swapped in under the visitor's hand.
@@ -387,7 +388,7 @@ export function mountDockHardware(root: HTMLElement, reduce: boolean) {
     root.removeEventListener('pointerdown',press); root.removeEventListener('keydown',keyDown); root.removeEventListener('pointerover',hover); root.removeEventListener('pointerleave',leave); root.removeEventListener('focusin',hover); root.removeEventListener('focusout',leave);
     root.removeEventListener('click',click);
     window.removeEventListener('pointerup',release); window.removeEventListener('pointercancel',cancelInput); window.removeEventListener('keyup',release); window.removeEventListener('blur',cancelInput); document.removeEventListener('visibilitychange',cancelInput);
-    track?.removeEventListener('pointerdown',dragStart); track?.removeEventListener('pointermove',dragMove); track?.removeEventListener('pointerup',dragEnd); track?.removeEventListener('lostpointercapture',dragEnd); canvas.removeEventListener('webglcontextlost',lost);
+    track?.removeEventListener('pointerdown',dragStart); track?.removeEventListener('pointermove',dragMove); track?.removeEventListener('pointerup',dragEnd); track?.removeEventListener('lostpointercapture',dragEnd); canvas.removeEventListener('webglcontextlost',lost,{capture:true});
     if(model)disposeModel(model); ownedMaterials.forEach(m=>m.dispose()); ownedTextures.forEach(t=>{t.dispose(); if(t.image instanceof ImageBitmap)t.image.close();});
     phosphor.dispose();environment.dispose(); key.shadow.map?.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove(); delete root.dataset.hardware;delete root.dataset.lighting;
     for(const {element} of controls) for(const property of ['--hit-x','--hit-y','--hit-w','--hit-h'])element.style.removeProperty(property);

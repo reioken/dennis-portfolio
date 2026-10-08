@@ -2,10 +2,23 @@
 import sharp from 'sharp';
 import { p } from '../../lib/paths';
 const pdf = p('media/mina/case-study-mina.pdf');
+const descriptions = [
+  ['Titel, Rahmenbedingungen und Mina-App-Vorschau', 'Title, project context and Mina app preview'],
+  ['Hypothese, zu lösendes Problem und Zielgruppe', 'Hypothesis, problem and target audience'],
+  ['UX-Design und Painpoints', 'UX design and pain points'],
+  ['Interviews, Online-Umfragen und Fazit', 'Interviews, online surveys and conclusions'],
+  ['User-Persona Hilde und Storytelling', 'User persona Hilde and storytelling'],
+  ['How Might We, Design-System und Design-Prinzipien', 'How Might We, design system and design principles'],
+  ['UI-Design mit Farbpalette, Typografie und Komponenten', 'UI design with colour palette, typography and components'],
+  ['Namensfindung, Keyvisual und Gamification', 'Naming, key visual and gamification'],
+  ['Szenario und User Journey', 'Scenario and user journey'],
+  ['Clickflow und Wireframes', 'Clickflow and wireframes'],
+  ['Mina-App-Präsentation mit Videolink und Credits', 'Mina app presentation with video link and credits'],
+];
 const pages = await Promise.all(Array.from({ length: 11 }, async (_, i) => {
   const file = `media/mina/study-${String(i + 1).padStart(2, '0')}.webp`;
   const { width, height } = await sharp(`public/${file}`).metadata();
-  return { src: p(file), width, height };
+  return { src: p(file), width, height, alt: `Mina · ${descriptions[i][0]} · ${i + 1}/11`, altEn: `Mina · ${descriptions[i][1]} · ${i + 1}/11` };
 }));
 ---
 <section class="mina-original-study" id="mina-original" aria-labelledby="mina-original-title">
@@ -18,7 +31,7 @@ const pages = await Promise.all(Array.from({ length: 11 }, async (_, i) => {
     </div>
   </header>
   <div class="mina-original-study__pages">
-    {pages.map((page, i) => <img src={page.src} width={page.width} height={page.height} loading="lazy" decoding="async" alt={`Mina · Original Case Study · ${i + 1}/11`} />)}
+    {pages.map(page => <img src={page.src} width={page.width} height={page.height} loading="lazy" decoding="async" alt={page.alt} data-alt-en={page.altEn} />)}
   </div>
 </section>
 <style>

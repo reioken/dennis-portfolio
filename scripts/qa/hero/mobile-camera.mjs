@@ -91,23 +91,18 @@ try {
     await dialog.locator('[data-close]').click();
     await dialog.waitFor({ state: 'detached' });
     assert.equal(await page.evaluate(() => scrollY), scroll);
-    // Back in the list the cabinet resumes its attract loop (a new shot every 7 s in view), and entry follows the
-    // shot on the cabinet. Record that shot at the tap: the retained one applies unless a cycle landed in between.
+    // After inspection the selected screenshot belongs to the visitor: the 7 s attract cycle must not replace it.
+    if (slug === 'riftback') await page.waitForTimeout(7500);
     await page.evaluate(() => addEventListener('click', () => { window.__tapShot = window.__hall.override; }, { capture: true, once: true }));
     await page.locator(cabinet(slug)).click();
     await page.locator('.mobile-viewer[data-state="ready"]').waitFor();
     const tapShot = await page.evaluate(() => window.__tapShot);
-    const gallery = await exhibit.locator('[data-mobile-gallery]').evaluate(el => JSON.parse(el.textContent).groups.flatMap(group => group.images.map(image => image.src)));
-    const cycled = tapShot !== lastShot && gallery.map(shotKey).includes(shotKey(tapShot));
-    if (cycled) {
-      assert.equal(shotKey(await page.evaluate(() => window.__hall.override)), shotKey(tapShot), 'reopening follows the attract shot on the cabinet');
-    } else {
-      assert.equal(await dialog.getAttribute('data-image'), lastImage, 'reopening retains the screenshot');
-      assert.equal(await dialog.locator('select').inputValue(), lastGroup, 'reopening retains the surface group');
-    }
+    assert.equal(shotKey(tapShot), shotKey(lastShot), 'the exhibit retains the screenshot after its attract interval');
+    assert.equal(await dialog.getAttribute('data-image'), lastImage, 'reopening retains the screenshot');
+    assert.equal(await dialog.locator('select').inputValue(), lastGroup, 'reopening retains the surface group');
     await dialog.locator('[data-close]').click();
     await dialog.waitFor({ state: 'detached' });
-    results.push({ slug, poses, shot, reopen: cycled ? 'followed attract shot' : 'retained' });
+    results.push({ slug, poses, shot, reopen: 'retained' });
   }
   // Closing during a slow model load must leave neither a dialog nor a scroll lock.
   await page.route('**/models/**', route => route.abort());

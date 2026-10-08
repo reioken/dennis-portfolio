@@ -19,6 +19,7 @@ import './hall-panel.css';
 import Icon from '../icons/Icon';
 import PanelBack from './PanelBack.astro';
 import { getProjectActivity } from '../../lib/project-activity';
+import { getProjectStatus } from '../../lib/project-status';
 import './project-activity.css';
 
 interface Props {
@@ -135,9 +136,7 @@ const when = data.timeline || data.year;
 const whenEn = data.timelineEn ?? data.yearEn ?? when;
 const kind = machine?.kind ?? 'terminal';
 const status = data.status;
-const pausedPrototype = status === 'wip' && activity?.id === 'paused';
-const statusDe = pausedPrototype ? 'Prototyp' : (D.launcher.status as Record<string, string>)[status] ?? status;
-const statusEn = pausedPrototype ? 'Prototype' : (E.launcher.status as Record<string, string>)[status] ?? status;
+const delivery = getProjectStatus(status, activity?.id);
 const version = machine?.version ?? data.version;
 const engine = machine?.engine ?? data.engine;
 const brand = machine?.brand.primary ?? data.brand?.primary ?? '#ac8bfd';
@@ -235,13 +234,13 @@ const nextLabel = labelOf(next);
             <span>{engine}</span>
           </span>
         )}
-        <span class="hall-panel__pair">
+        {delivery && <span class="hall-panel__pair">
           <span class="hall-panel__dot" aria-hidden="true"></span>
           <span class={`hall-panel__status is-${status}`}>
-            <span data-lang="de">{statusDe}</span>
-            <span data-lang="en">{statusEn}</span>
+            <span data-lang="de">{delivery.de}</span>
+            <span data-lang="en">{delivery.en}</span>
           </span>
-        </span>
+        </span>}
       </p>
 
       <!-- CTA -->

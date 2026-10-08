@@ -77,14 +77,16 @@ function prepare(exhibit: HTMLElement): Prepared {
       reduce: matchMedia('(prefers-reduced-motion: reduce)').matches, lite: true, pose: 'zoom', exhibit: true,
     });
     entry.scene = scene;
-    scene.showScreen(groups[0].images[0].src);
-    entry.currentShot = groups[0].images[0].src;
+    const saved = galleryPositions.get(machine.slug);
+    const first = (saved && groups[saved.group]?.images[saved.index]) || groups[0].images[0];
+    scene.showScreen(first.src);
+    entry.currentShot = first.src;
     await scene.ready(30000);
     if (entry.disposed) throw new Error('Cabinet preparation cancelled');
     let idleIndex = 0;
     if ('screens' in machine && machine.screens.length > 1) entry.timer = window.setInterval(() => {
       const r = entry.stage.getBoundingClientRect();
-      if (entry.taken || entry.disposed || document.hidden || idlePaused || matchMedia('(prefers-reduced-motion: reduce)').matches || r.bottom < 100 || r.top > innerHeight - 64) return;
+      if (entry.taken || entry.disposed || galleryPositions.has(machine.slug) || document.hidden || idlePaused || matchMedia('(prefers-reduced-motion: reduce)').matches || r.bottom < 100 || r.top > innerHeight - 64) return;
       idleIndex = (idleIndex + 1) % machine.screens.length;
       entry.currentShot = machine.screens[idleIndex];
       scene.showScreen(entry.currentShot);

@@ -1,5 +1,8 @@
 # Hero machines
 
+Bedroom accessory: [Nintendo TV corner, October 7](bedroom-tv.md), the rounded graphite/silver stand right of
+the claw, with a curved CRT, five Nintendo systems, controllers and original game packaging. Built local preview.
+
 Latest addition: [Ishikiri, October 5](ishikiri-station.md), beige `cab-ishikiri-v2`
 and the 14-key `navigation-marquee-v2`. Current release and continuation state:
 [Claude handover](../HANDOVER-CLAUDE-2026-10-05.md). Historical station counts below

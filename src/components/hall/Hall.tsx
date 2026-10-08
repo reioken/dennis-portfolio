@@ -11,6 +11,8 @@ import type { CtlAction, Frame, HallScene, Pose } from './hallScene';
 import './hall.css';
 import './hall-loading.css';
 import './dock-hardware.css';
+import './cd-player.css';
+import './bedroom-tv.css';
 
 /** WebGL-Bühne nur im Browser laden — three.js bleibt aus dem Hauptbundle */
 const Stage3D = lazy(() => import('./Stage3D'));
@@ -365,8 +367,17 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
         if (!cancelled && desktop.matches && dockRef.current && !dispose) dispose = mountDockHardware(dockRef.current, !!reduceMq);
       }).catch(() => { if (!cancelled && dockRef.current) dockRef.current.dataset.hardware = 'fallback'; });
     };
+    // A lost WebGL context (a GPU reset) hands the console to its DOM controls; once the GPU is back it is built again.
+    let losses = 0, retry = 0;
+    const dock = dockRef.current;
+    const onLost = () => {
+      if (++losses > 3) return;
+      window.clearTimeout(retry);
+      retry = window.setTimeout(() => { if (!cancelled) setup(); }, 1200);
+    };
+    dock?.addEventListener('dock:contextlost', onLost);
     setup(); desktop.addEventListener('change', setup);
-    return () => { cancelled = true; desktop.removeEventListener('change', setup); dispose?.(); };
+    return () => { cancelled = true; window.clearTimeout(retry); dock?.removeEventListener('dock:contextlost', onLost); desktop.removeEventListener('change', setup); dispose?.(); };
   }, [reduceMq]);
 
   /* Die Leiste oben zeigt die Station: bei jedem Fokus- oder Moduswechsel melden */
@@ -819,6 +830,19 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
       if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
       const t = e.target as HTMLElement | null;
       if (t?.closest('.site-nav')) return;
+      // The CD player's close-up (hallScene.openPlayer) keeps the keys: Esc goes back to the hall; Tab, Enter and Space
+      // work on its buttons as anywhere else.
+      if (rootRef.current?.dataset.bedroomTv === 'open') {
+        if (e.key === 'Escape') { e.preventDefault(); sceneRef.current?.closeBedroom(); }
+        return;
+      }
+      if (rootRef.current?.dataset.player === 'open') {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          sceneRef.current?.closePlayer();
+        }
+        return;
+      }
       // Eingabefelder behalten ihre Tasten — die Sheet-Raste (Checkbox) nicht, sonst ist nach dem Tippen Esc tot
       // Form controls own their arrow keys, including About's evidence selector.
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
@@ -1157,6 +1181,7 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
             lite={lite}
             pose={poseFor(bootMode.current)}
             frame={frameRef.current}
+            view={() => ({ pose: closeupRef.current ? 'screen' : poseFor(modeRef.current), frame: frameRef.current, focus: focusRef.current })}
             onScene={(s) => {
               sceneRef.current = s;
               // The console can settle its size between the boot measurement and this moment (it appears once its
@@ -1423,14 +1448,14 @@ export default function Hall({ items, directoryItems = items, initialSlug, mode:
           <h2 id="hall-directory-title"><Bi de="Alle Projekte" en="All projects" /></h2>
           <button className="hall-directory__close" type="button" onClick={() => directoryRef.current?.close()} aria-label={lang === 'en' ? 'Close project list' : 'Projektliste schließen'}><Icon name="close" size={18} /></button>
         </div>
-        <ol>{directoryItems.map((it, i) => <li key={it.slug}>
+        <ol>{directoryItems.map((it) => <li key={it.slug}>
           <a className="hall-directory__item" href={pageHref(it.href)} aria-current={it.slug === current.slug ? 'true' : undefined} onClick={(e) => { if (modifiedClick(e)) return; e.preventDefault(); directoryRef.current?.close(); go(it.href); }}>
-            <small>{String(i + 1).padStart(2, '0')}</small>
-            <span>{isMachine(it) ? <Bi de={it.title} en={it.titleEn} /> : it.kind === 'kasse' ? <Bi de={H.kasseSub} en={HE.kasseSub} /> : <Bi de={H.phoneSub} en={HE.phoneSub} />}</span><Icon name="arrow-up-right" size={18} />
+            <small aria-hidden="true">{items.some(station => station.slug === it.slug) ? String(items.findIndex(station => station.slug === it.slug) + 1).padStart(2, '0') : '—'}</small>
+            <span>{isMachine(it) ? <Bi de={it.title} en={it.titleEn} /> : it.kind === 'kasse' ? <Bi de={H.kasseSub} en={HE.kasseSub} /> : <Bi de={H.phoneSub} en={HE.phoneSub} />}</span><Icon name="chevron-right" size={18} />
           </a>
         </li>)}</ol>
         {/* Archive work has no station; the list still reaches it, so "Alle Projekte" leaves nothing out. */}
-        <a className="hall-directory__more" href={`${pageHref('/work/')}?filter=archive`}><Bi de={copy.de.work.filterArchive} en={copy.en.work.filterArchive} /><Icon name="arrow-up-right" size={16} /></a>
+        <a className="hall-directory__more" href={`${pageHref('/work/')}?filter=archive`}><Bi de={copy.de.work.filterArchive} en={copy.en.work.filterArchive} /><Icon name="chevron-right" size={16} /></a>
       </dialog>
       <p className="hall__hint mono" aria-hidden>
         {pad ? (

@@ -248,6 +248,7 @@ function toEnglish(html, rel) {
   out = out.replace(/class="about-index" aria-label="Über mich"/g, 'class="about-index" aria-label="About sections"');
   out = out.replace(/aria-label="Station wählen"/g, 'aria-label="Choose station"');
   out = out.replace(/aria-label="Capture (\d+) von (\d+): /g, 'aria-label="Capture $1 of $2: ');
+  out = out.replace(/aria-label="Screenshot (\d+) von (\d+): /g, 'aria-label="Screenshot $1 of $2: ');
   // Häufige SSR-Aria-Labels in Galerie-Buttons
   out = out.replace(/aria-label="Galerie öffnen — /g, 'aria-label="Open gallery — ');
   out = out.replace(

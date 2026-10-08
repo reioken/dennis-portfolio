@@ -1,6 +1,9 @@
 /* Reveal only the fully assembled, GPU-warmed room. */
 .hall .hall__stage[data-power='loading'] { opacity: 0; transition: none; }
 .hall .hall__stage[data-power='on'] { opacity: 1; transition: none; }
+/* Rebuilt after a lost WebGL context (Stage3D): dark until the room is ready, then it fades back. */
+.hall .hall__stage[data-recover='loading'] { opacity: 0; transition: none; }
+.hall .hall__stage[data-recover='done'] { opacity: 1; transition: opacity 600ms ease-out; }
 html.gl-pending .hall:not(.is-3d) .hall-dock { visibility: hidden; }
 /* Header joins the room reveal, including its keyboard focus targets. Native
    pages and the fallback keep their navigation immediately available, and so does a direct landing on a project,
@@ -15,43 +18,50 @@ html:not(.hall-native):has(.hall__stage[data-power='loading']):not(:has(.hall[da
    hidden above until prepared; server-rendered content remains available. */
 
 /* Editorial split (Dennis, 2026-10-05): signature, statement and role at the left; the console-era emblem with its
-   status and signal at the right; both ways in along the foot. The emblem is rendered before the 3D bundle executes:
-   six prepainted panels rotate on compositor layers, with no image decode or JS frame loop. Its motion and the copy's
-   entrance are unchanged; only their places are new. */
+   status centred above a flowing line across the whole group; both ways in below. The emblem is rendered before the 3D bundle executes: six
+   prepainted panels rotate on compositor layers, with no image decode or JS frame loop. Its motion and the copy's
+   entrance are unchanged; only their places are new. October 6: "way too big … should be more centered … way too far
+   from each other": one compact group in the middle of the screen, sized to its content, the ways in centred under it. */
 .hall-startup {
-  --emblem-scale: 4.8;
+  --emblem-scale: 3.2;
   position: fixed;
   z-index: 45;
   inset: 0;
   display: grid;
-  grid-template: "identity stage" minmax(0, 1fr) "routes routes" auto / minmax(0, 1fr) minmax(0, 1fr);
+  --row-gap: clamp(28px, 5.5vh, 60px);
+  grid-template: "identity stage" auto "label label" auto "routes routes" auto / auto auto;
+  place-content: center;
   align-items: center;
-  padding: clamp(28px, 6vh, 72px) clamp(20px, 2.9vw, 56px) clamp(16px, 4vh, 44px);
+  column-gap: clamp(56px, 6vw, 120px);
+  row-gap: var(--row-gap);
+  padding: clamp(24px, 5vh, 56px) clamp(20px, 3vw, 56px);
   /* Only the ways in take input: the room below must never be blocked by a box of empty air. */
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
 }
-.hall-startup__identity { grid-area: identity; min-width: 0; padding-left: clamp(0px, 5.1vw, 112px); text-align: left; }
-.hall-startup__stage { grid-area: stage; display: flex; flex-direction: column; align-items: center; min-width: 0; padding-right: clamp(0px, 4.4vw, 96px); text-align: center; }
+.hall-startup__identity { grid-area: identity; min-width: 0; text-align: left; }
+.hall-startup__stage { grid-area: stage; display: flex; flex-direction: column; align-items: center; min-width: 0; text-align: center; }
+/* The status sits centred between the group and the ways in (Dennis, 2026-10-08: the loading line is removed). */
 .hall-startup__label {
-  margin: 0; color: #d9dbe6;
-  font: clamp(12px, 1.05vw, 19px)/1.6 var(--font-mono); letter-spacing: .02em;
+  grid-area: label; justify-self: center; margin: 0; color: #d9dbe6; text-align: center;
+  font: clamp(12px, .86vw, 15px)/1.6 var(--font-mono); letter-spacing: .02em;
 }
 /* The emblem's own box is the 66 px bracket square; the scale is the only size, so the motion stays as authored. */
 .hall-startup__emblem {
   position: relative; display: block; width: 72px; height: 66px;
   /* The brackets turn: on the diagonal their corners reach about 40 px from the centre (26 px square half-diagonal
-     plus the breath), not the square's 33. The margins keep that circle clear of the status line below. */
-  margin: calc(40px * var(--emblem-scale) - 25px) auto calc(40px * var(--emblem-scale) - 33px + clamp(8px, 2vh, 24px));
+     plus the breath), not the square's 33. The margins keep that circle clear of the status line below, and to the
+     sides make its column as wide as it draws, so the group centres on what is seen and the line spans all of it. */
+  margin: calc(40px * var(--emblem-scale) - 25px) calc(40px * var(--emblem-scale) - 36px) calc(40px * var(--emblem-scale) - 33px + clamp(8px, 2vh, 24px));
   transform: scale(var(--emblem-scale)); pointer-events: none;
 }
-.hall-startup__name { margin: 0; font: 600 clamp(44px, min(6.3vw, 12.5vh), 136px)/.98 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: -.02em; color: #efedf5; }
-.hall-startup__logo { width: clamp(150px, 12.5vw, 280px); margin: 0 0 clamp(24px, 6.5vh, 88px); }
+.hall-startup__name { margin: 0; font: 600 clamp(40px, min(4.3vw, 8.6vh), 88px)/.98 'Barlow Condensed', 'Arial Narrow', sans-serif; letter-spacing: -.02em; color: #efedf5; }
+.hall-startup__logo { width: clamp(128px, 9.5vw, 196px); margin: 0 0 clamp(18px, 3.4vh, 40px); }
 .hall-startup__name em { font-style: normal; color: #b79ce9; }
 .hall-startup__line { display: block; white-space: nowrap; }
-.hall-startup__role { margin: clamp(16px, 3.4vh, 40px) 0 0; color: #c9ccd8; font: clamp(12px, 1.04vw, 19px)/1.6 var(--font-mono); letter-spacing: .01em; white-space: nowrap; }
-.hall-startup__routes { grid-area: routes; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; pointer-events: auto; }
+.hall-startup__role { margin: clamp(12px, 2.2vh, 24px) 0 0; color: #c9ccd8; font: clamp(12px, .86vw, 15px)/1.6 var(--font-mono); letter-spacing: .01em; white-space: nowrap; }
+.hall-startup__routes { grid-area: routes; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; pointer-events: auto; }
 /* The ways in are keys: graphite caps with a hairline rim, the projects one lit in the room's violet. They lift a
    pixel on hover and press in on click. */
 .hall-startup__routes a {
@@ -78,15 +88,9 @@ html:has(.hall__stage[data-power]) :is(.hall-startup__identity > *, .hall-startu
 .hall-startup__label { --copy-delay: 260ms; }
 .hall-startup__routes { --copy-delay: 320ms; }
 @keyframes hall-startup-copy { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-/* A direct case landing has readable content at the right. Keep preparation
-   feedback in the scene area, without repeating the whole home introduction. */
-body[data-mode='case'] .hall-startup { --emblem-scale: 2.7; inset: auto; left: 21%; top: 50%; width: min(320px, 36vw); display: flex; flex-direction: column; align-items: center; padding: 0; text-align: center; transform: translate(-50%, -50%); }
-body[data-mode='case'] :is(.hall-startup__identity, .hall-startup__stage) { display: contents; }
-body[data-mode='case'] .hall-startup__emblem { order: 1; margin-block: 66px 40px; }
-body[data-mode='case'] .hall-startup__signal { order: 2; width: 194px; margin: 0 0 30px; }
-body[data-mode='case'] .hall-startup__logo { order: 3; width: clamp(160px, 18vw, 220px); margin: 0 auto 22px; }
-body[data-mode='case'] .hall-startup__label { order: 4; font-size: 11px; }
-body[data-mode='case'] :is(.hall-startup__name, .hall-startup__role, .hall-startup__routes) { display: none; }
+/* A refresh on a page (a project, About, Contact) shows its content at once: the room behind it prepares quietly and
+   fades in when ready (hall.css). Dennis, 2026-10-06: the emblem turning beside readable content looked broken. */
+body[data-mode='case'] .hall-startup { display: none; }
 .hall-startup__prism {
   position: absolute; left: 4px; top: 1px;
   width: 64px; height: 64px;
@@ -104,7 +108,7 @@ body[data-mode='case'] :is(.hall-startup__name, .hall-startup__role, .hall-start
   transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg) rotate3d(.55,1,.25,0deg) rotateY(var(--y,0deg)) rotateX(var(--x,0deg)) translateZ(12px);
   will-change: transform;
 }
-/* The faces start on the same style flush as the brackets and signal, so their
+/* The faces start on the same style flush as the brackets, so their
    shared 2400 ms breath (two expansions per 4800 ms turn) stays phase-locked. */
 html.gl-pending .hall-startup__cube > i,
 html:has(.hall__stage[data-power]) .hall-startup__cube > i { animation: hall-cube-panel 4800ms linear infinite; }
@@ -173,30 +177,16 @@ html:has(.hall__stage[data-power]) .hall-startup__cube > i { animation: hall-cub
 .hall-startup__orbit > i:nth-child(2) { --angle: 90deg; }
 .hall-startup__orbit > i:nth-child(3) { --angle: 180deg; }
 .hall-startup__orbit > i:nth-child(4) { --angle: 270deg; }
-/* Under the status line now, at the width of a line of it; the dashes keep their breath. */
-.hall-startup__signal { position: relative; display: flex; gap: 4px; width: clamp(150px, 13vw, 260px); margin-top: clamp(12px, 2.2vh, 26px); }
-.hall-startup__signal > i {
-  flex: 1; height: 2px;
-  background: linear-gradient(90deg, #b9a9c9, #c8d1d5); opacity: .2;
-}
-.hall-startup__signal > i:nth-child(2) { --signal-delay: 80ms; }
-.hall-startup__signal > i:nth-child(3) { --signal-delay: 160ms; }
-.hall-startup__signal > i:nth-child(4) { --signal-delay: 240ms; }
-.hall-startup__signal > i:nth-child(5) { --signal-delay: 320ms; }
 html.gl-pending .hall-startup,
 html:has(.hall__stage[data-power]) .hall-startup { opacity: 1; visibility: visible; }
 /* Continuous rotation across preparation; ignition immediately starts the exit fade. */
 html.gl-pending .hall-startup__orbit,
 html:has(.hall__stage[data-power]) .hall-startup__orbit { animation: hall-orbit-turn 9600ms linear infinite; }
-/* Brackets and signal share the cube's 2400 ms breath: everything is widest and brightest
+/* The brackets share the cube's 2400 ms breath: everything is widest and brightest
    at 1200 ms, when the faces reach their outer 17 px, and settles together at 2400 ms. */
 html.gl-pending .hall-startup__orbit > i,
 html:has(.hall__stage[data-power]) .hall-startup__orbit > i { animation: hall-orbit-dock 2400ms ease-in-out infinite; }
-html.gl-pending .hall-startup__signal > i,
-html:has(.hall__stage[data-power]) .hall-startup__signal > i { animation: hall-signal 2400ms var(--signal-delay, 0ms) ease-in-out infinite; }
 html:has(.hall__stage[data-power='on']) .hall-startup { animation: hall-emblem-dismiss 320ms ease-out both; }
-/* The signal resolves as the existing room ignition begins; it adds no waiting time. */
-html:has(.hall__stage[data-power='on']) .hall-startup__signal > i { animation: none; opacity: 1; background: #eadbff; box-shadow: 0 0 10px #c9afff99; }
 html:has(.hall__stage[data-power='on']) .hall-startup__emblem { animation: hall-emblem-light 320ms ease-out both; }
 @keyframes hall-emblem-light { from { filter: drop-shadow(0 0 0 #c9afff00); } to { filter: drop-shadow(0 0 18px #c9afff99); } }
 @keyframes hall-orbit-turn {
@@ -207,29 +197,26 @@ html:has(.hall__stage[data-power='on']) .hall-startup__emblem { animation: hall-
   0%, 100% { transform: rotate(var(--angle)) translate3d(2px, 2px, 0); opacity: .35; }
   50% { transform: rotate(var(--angle)) translate3d(-3px, -3px, 0); opacity: .9; }
 }
-@keyframes hall-signal { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
 @keyframes hall-emblem-dismiss { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) {
   .site-nav { transition: none; }
   html .hall__stage { transition: none; }
   html .hall-startup, html .hall-startup * { animation: none !important; }
-  .hall-startup__signal > i { opacity: .6; }
   html:has(.hall__stage[data-power='on']) .hall-startup { opacity: 0; visibility: hidden; }
 }
 /* Emblem size steps with the screen (a unitless scale cannot follow vw); short screens step down. */
-@media (min-width: 1280px) { .hall-startup { --emblem-scale: 5.8; } }
-@media (min-width: 1600px) { .hall-startup { --emblem-scale: 7.2; } }
-@media (min-width: 2200px) { .hall-startup { --emblem-scale: 8.4; } }
-@media (max-height: 820px) and (min-width: 900px) { .hall-startup { --emblem-scale: 4.6; } }
+@media (min-width: 1600px) { .hall-startup { --emblem-scale: 3.7; } }
+@media (min-width: 2200px) { .hall-startup { --emblem-scale: 4.3; } }
+@media (max-height: 820px) and (min-width: 900px) { .hall-startup { --emblem-scale: 2.9; } }
 @media (max-height: 700px) and (min-width: 900px) {
-  .hall-startup { --emblem-scale: 3.6; }
+  .hall-startup { --emblem-scale: 2.5; }
   .hall-startup__logo { margin-bottom: 20px; }
   .hall-startup__routes a { min-height: 46px; }
 }
 /* Below 900 px only pages without a native phone version still wait for the room: one centred column. */
 @media (max-width: 899px) {
   html.hall-native .hall-startup { display: none; }
-  .hall-startup { --emblem-scale: 2.4; grid-template: "stage" auto "identity" auto "routes" auto / minmax(0, 1fr); align-content: center; gap: 22px; padding: 24px 20px; }
+  .hall-startup { --emblem-scale: 2.4; --row-gap: 22px; grid-template: "stage" auto "identity" auto "label" auto "routes" auto / minmax(0, 1fr); align-content: center; gap: var(--row-gap); padding: 24px 20px; }
   .hall-startup__identity { padding-left: 0; text-align: center; }
   .hall-startup__stage { padding-right: 0; }
   .hall-startup__logo { width: clamp(130px, 34vw, 200px); margin: 0 auto 16px; }

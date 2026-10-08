@@ -1,0 +1,10 @@
+.hall-bedroom-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.hall-bedroom { position: absolute; border: 0; border-radius: 12px; padding: 0; background: none; color: inherit; cursor: zoom-in; pointer-events: auto; }
+.hall-bedroom[hidden], .hall-bedroom-close[hidden] { display: none; }
+.hall-bedroom:focus-visible { outline: 2px solid var(--ice); outline-offset: 4px; }
+.hall-bedroom__hint { position: absolute; left: 50%; bottom: calc(100% + 12px); translate: -50% 0; width: max-content; padding: 10px 14px; border: 1px solid #ffffff1f; border-radius: 10px; background: #101117eb; color: #e1e3ed; font: 13px/1.4 var(--font-sans); opacity: 0; pointer-events: none; transition: opacity 120ms ease; }
+.hall-bedroom:is(:hover, :focus-visible) .hall-bedroom__hint { opacity: 1; }
+.hall-bedroom-close { position: absolute; left: 50%; bottom: 28px; translate: -50% 0; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 18px; border: 1px solid #ffffff28; border-radius: 12px; background: #101117eb; color: #ececf4; font: 14px/1.4 var(--font-sans); cursor: pointer; pointer-events: auto; }
+.hall-bedroom-close:focus-visible { outline: 2px solid var(--ice); outline-offset: 3px; }
+.hall[data-bedroom-tv='open'] .hall-dock { opacity: 0; visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .hall-bedroom__hint { transition: none; } }

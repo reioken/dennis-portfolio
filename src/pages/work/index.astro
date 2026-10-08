@@ -54,8 +54,8 @@ const works = (await getCollection('work'))
         </span>
       </h1>
       <p class="mb-10 max-w-2xl text-[1.05rem] normal-case tracking-normal text-[var(--dim)]">
-        <span data-lang="de">{copy.de.work.body}</span>
-        <span data-lang="en">{copy.en.work.body}</span>
+        <span data-lang="de">{copy.de.work.body.replace('{count}', String(works.filter(work => work.featured).length))}</span>
+        <span data-lang="en">{copy.en.work.body.replace('{count}', String(works.filter(work => work.featured).length))}</span>
       </p>
       <WorkFilter client:load items={works} basePath={base} />
     </div>
