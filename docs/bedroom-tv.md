@@ -1,5 +1,8 @@
 # Bedroom Nintendo corner — updated October 8, 2026 (v4 candidate)
 
+**Released October 8, 2026: model v9 (`/models/bedroom-tv-v9.glb.gz?v=7e5f11d6`) in `21f0d0e` / Pages `70f1afb8`.**
+The corner loads after the room's reveal and is hit-tested by its bounds (weak-PC pass, see handover).
+
 Current continuation and site-wide priorities: [Claude handover — October 8](../HANDOVER-CLAUDE-2026-10-08.md).
 
 ## Latest verdict — October 8, 2026

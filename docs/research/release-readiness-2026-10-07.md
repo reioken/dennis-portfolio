@@ -1,5 +1,8 @@
 # Release readiness — October 7, 2026
 
+**Released October 8, 2026 as `21f0d0e` / Pages `70f1afb8`** together with the Nintendo corner v9 and the
+weak-PC fixes; see the [October 8 handover](../../HANDOVER-CLAUDE-2026-10-08.md). The text below is the pre-release record.
+
 This records the approved hi-fi payload. The later TV v3 candidate is unapproved and local only;
 see [current Claude continuation](../../HANDOVER-CLAUDE-2026-10-08.md) for the complete remaining work.
 

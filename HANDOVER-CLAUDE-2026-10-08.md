@@ -4,7 +4,29 @@ This is the current handover. Dennis requested updated documentation and a promp
 continue all work. Continue the existing project and unfinished tasks; do not restart the completed
 hi-fi, mobile overhaul or release batches. Communicate clearly and concisely, with large headings.
 
-## Update — October 8, night: TV v9 + loader charge mode (read this first)
+## RELEASED — October 8, 2026: `21f0d0e` / Pages `70f1afb8` (read this first)
+
+Dennis: "remove the line. Do performance check for everything so it runs on worse pcs also. then commit and deploy".
+Production https://www.dennisbf.design now runs source `21f0d0e` on `feat/werkstatt` (deployment
+https://70f1afb8.dennis-portfolio-87g.pages.dev, uploaded with `--branch=main --commit-hash=21f0d0e…
+--commit-dirty=false` from a `git archive` of the commit; contact Worker not redeployed).
+- Contents: approved hi-fi + album playback and range function, the Nintendo corner model v9, UX/mobile fixes since
+  October 6, and the loader without its progress line (cube, status and ways in remain).
+- Weak-PC pass (`scripts/qa/live/perf.mjs`, AMD iGPU via adapter LUID, evidence in scratchpad `release/perf/`):
+  the corner was hit-tested per triangle on every pointer move; at 4× CPU throttling that halved pointer/navigation
+  frame rates (20/19 fps vs live 40/29). `bedroomTv.ts` now tests its world bounds → 36/28.6 fps, long tasks as live.
+  The corner no longer gates the startup: `loadBedroom` waits for the reveal and loads it as a late station, and
+  `modulepreload.mjs` no longer preloads it; on throttled network + CPU the reveal time equals the previous
+  production (10.7 s vs 10.8 s). Remaining cost: hall idle on the iGPU ~4 % lower than before at normal CPU,
+  ~12 % lower at 4× CPU throttle (two extra corners drawn); phone unchanged (corners not loaded there).
+- Verified: TypeScript, 39 tests, 31 hashes, build, 61-page audit, no editor markers on the committed source;
+  corner QA 17/17 and loader QA on the candidate; live DE/EN/phone browser smoke without errors, served model/cover/
+  JS/CSS SHA-256 equal to `dist`, music byte ranges 206, CSP/HSTS/frame headers present.
+- Not in Git: dirty `src/data/werkstatt.json`, old TV candidates (v1–v8 models, untracked), editor tooling.
+- Open: Dennis's question whether to remodel the Tripo consoles in Blender; GPU shader-compile stalls (~1 s) during
+  startup remain (sequential compiling would remove them but makes startup ~15 s).
+
+## Earlier update — October 8, night: TV v9 + loader charge mode
 
 Preview **http://127.0.0.1:4347/** (`bedroom-v9-release/`, `prepare-bedroom-v9-release.mjs`), model
 `/models/bedroom-tv-v9.glb.gz?v=7e5f11d6` (603,711 triangles, 4.83 MB gzip).
